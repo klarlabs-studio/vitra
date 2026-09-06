@@ -154,3 +154,41 @@ func TestApp_RequiresHostAndAssets(t *testing.T) {
 		t.Fatal("expected assets required")
 	}
 }
+
+func TestApp_HelpersAndBadInvoke(t *testing.T) {
+	host := &fakeHost{quit: make(chan struct{}), ran: make(chan struct{})}
+	assets := fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("<html>ok</html>")}}
+	application, err := app.New(app.Options{
+		AppID:  "com.vitra.helpers",
+		Assets: assets,
+		Host:   host,
+		Window: app.WindowOptions{ID: "main"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if application.Runtime() == nil {
+		t.Fatal("runtime")
+	}
+	errCh := make(chan error, 1)
+	go func() { errCh <- application.Run(context.Background()) }()
+	select {
+	case <-host.ran:
+	case <-time.After(2 * time.Second):
+		t.Fatal("run timeout")
+	}
+	if application.Addr() == "" || !strings.Contains(application.DebugString(), "com.vitra.helpers") {
+		t.Fatalf("addr/debug %q %q", application.Addr(), application.DebugString())
+	}
+	bad := host.invoke("main", domain.OriginPackagedLocal, []byte("{"))
+	if !strings.Contains(string(bad), "bad_request") && !strings.Contains(string(bad), "invalid") {
+		t.Fatalf("bad json: %s", bad)
+	}
+	wrongType, _ := json.Marshal(map[string]any{"type": "nope", "id": "1"})
+	resp := host.invoke("main", domain.OriginPackagedLocal, wrongType)
+	if !strings.Contains(string(resp), "bad_request") && !strings.Contains(string(resp), "unsupported") {
+		t.Fatalf("wrong type: %s", resp)
+	}
+	application.Quit()
+	<-errCh
+}

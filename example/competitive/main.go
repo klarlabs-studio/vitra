@@ -131,7 +131,9 @@ func run() error {
 
 	if secs := os.Getenv("VITRA_DEMO_SECONDS"); secs != "" {
 		var n int
-		fmt.Sscanf(secs, "%d", &n)
+		if _, err := fmt.Sscanf(secs, "%d", &n); err != nil {
+			return fmt.Errorf("VITRA_DEMO_SECONDS: %w", err)
+		}
 		if n > 0 {
 			go func() {
 				time.Sleep(time.Duration(n) * time.Second)

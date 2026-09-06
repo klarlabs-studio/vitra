@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/bridge"
@@ -59,7 +58,6 @@ type App struct {
 	host   DesktopHost
 	server *http.Server
 	addr   string
-	mu     sync.Mutex
 }
 
 // New constructs an App. Host must be a native desktop host (e.g. linux.New()).
