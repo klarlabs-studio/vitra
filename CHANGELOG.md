@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 3 plugin SDK: manifests, SemVer compatibility, permission-ownership registry (invariant 6),
+  official `fs`/`dialog` plugin contracts, TypeScript binding stub generator.
 - Phase 2 desktop completeness: navigation policy, window-owned event
   subscriptions (cleaned up on window close), capability-gated `desktop`
   services (menu/tray/dialog/clipboard/shortcuts/deeplinks/single-instance).
