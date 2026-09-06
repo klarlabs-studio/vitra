@@ -1,4 +1,4 @@
-.PHONY: build test vet fmt fmt-check lint cover security check install-hooks
+.PHONY: build build-native test vet fmt fmt-check lint cover security check install-hooks demo
 
 GO       := go
 LINT     := golangci-lint
@@ -9,8 +9,14 @@ COVERAGE := coverage.out
 build:
 	$(GO) build ./...
 
+build-native:
+	CGO_ENABLED=1 $(GO) build -tags vitra_native ./...
+
 test:
 	$(GO) test ./... -count=1
+
+demo:
+	CGO_ENABLED=1 VITRA_DEMO_SECONDS=3 xvfb-run -a $(GO) run -tags vitra_native ./example/competitive
 
 vet:
 	$(GO) vet ./...

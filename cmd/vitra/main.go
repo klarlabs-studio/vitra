@@ -1,18 +1,21 @@
 // Command vitra is the Vitra developer CLI.
-//
-// Exact commands are not yet contractual (see docs/intent.md). This skeleton
-// exposes version, inspect, and doctor so the DX shape from the charter is
-// exercisable against the Phase 1 kernel.
 package main
 
 import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strings"
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/platform"
+	"go.klarlabs.de/vitra/platform/darwin"
+	"go.klarlabs.de/vitra/platform/linux"
+	"go.klarlabs.de/vitra/platform/windows"
 )
 
 func main() {
@@ -35,6 +38,12 @@ func run(args []string) error {
 		return doctor()
 	case "inspect":
 		return inspectDemo(args[1:])
+	case "new":
+		return scaffoldNew(args[1:])
+	case "dev":
+		return runDev(args[1:])
+	case "build":
+		return runBuild(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return nil
@@ -48,35 +57,225 @@ func printUsage() {
 
 Usage:
   vitra version              Print kernel version
-  vitra doctor               Diagnose environment prerequisites
+  vitra doctor               Diagnose WebView / CGO prerequisites
+  vitra new <dir>            Scaffold a starter desktop app
+  vitra dev [dir]            Run the app with the native host (Linux: -tags vitra_native)
+  vitra build [dir]          Build the app binary with the native host
   vitra inspect capabilities Demo capability inspection against an in-memory runtime
-  vitra help                 Show this help
-
-Phase 1 ships the secure runtime kernel. Windowing, packaging, and
-frontend starters arrive in later phases — see docs/intent.md.`)
+  vitra help                 Show this help`)
 }
 
 func doctor() error {
 	fmt.Println("vitra doctor")
 	fmt.Printf("  go:      %s\n", runtime.Version())
 	fmt.Printf("  os/arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("  cgo:     %s\n", map[bool]string{true: "enabled", false: "disabled"}[cgoEnabled()])
 	fmt.Printf("  kernel:  %s\n", vitra.Version)
-	switch runtime.GOOS {
-	case "darwin":
-		fmt.Println("  webview: WKWebView (adapter not yet linked in Phase 1)")
-	case "windows":
-		fmt.Println("  webview: WebView2 (adapter not yet linked in Phase 1)")
-	case "linux":
-		fmt.Println("  webview: WebKitGTK (adapter not yet linked in Phase 1)")
-	default:
-		fmt.Printf("  webview: unsupported platform %q (explicit)\n", runtime.GOOS)
+
+	host := currentHost()
+	fmt.Printf("  adapter: %s\n", host.OS())
+	for _, f := range []platform.Feature{
+		platform.FeatureWindowCreate,
+		platform.FeatureWebViewMessage,
+		platform.FeatureClipboard,
+		platform.FeatureDialogOpen,
+	} {
+		s := host.Features()[f]
+		status := "missing"
+		if s.Available {
+			status = "ok"
+		} else if s.Detail != "" {
+			status = "unavailable — " + s.Detail
+		}
+		fmt.Printf("  %-18s %s\n", string(f)+":", status)
 	}
-	fmt.Println("  status:  kernel-only; platform adapters pending Phase 0 spikes")
+
+	if runtime.GOOS == "linux" {
+		if out, err := exec.Command("pkg-config", "--exists", "webkit2gtk-4.1").CombinedOutput(); err != nil {
+			fmt.Printf("  pkg-config: webkit2gtk-4.1 not found (%v %s)\n", err, strings.TrimSpace(string(out)))
+			fmt.Println("  hint:     sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev")
+		} else {
+			fmt.Println("  pkg-config: webkit2gtk-4.1 ok")
+		}
+		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native")
+	}
 	return nil
 }
 
-// inspectDemo builds a small in-memory app so `vitra inspect capabilities`
-// demonstrates the inspectable privileged surface without a full desktop host.
+func currentHost() platform.Host {
+	switch runtime.GOOS {
+	case "darwin":
+		return darwin.New()
+	case "windows":
+		return windows.New()
+	default:
+		return linux.New()
+	}
+}
+
+func cgoEnabled() bool {
+	switch os.Getenv("CGO_ENABLED") {
+	case "0":
+		return false
+	case "1":
+		return true
+	default:
+		// Default Go toolchain enables cgo on platforms with a C compiler.
+		_, err := exec.LookPath("gcc")
+		if err != nil {
+			_, err = exec.LookPath("cc")
+		}
+		return err == nil
+	}
+}
+
+func scaffoldNew(args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("usage: vitra new <dir>")
+	}
+	dir := args[0]
+	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
+		return err
+	}
+	files := map[string]string{
+		"main.go": `package main
+
+import (
+	"context"
+	"embed"
+	"fmt"
+	"io/fs"
+	"os"
+	"runtime"
+
+	"go.klarlabs.de/vitra"
+	"go.klarlabs.de/vitra/app"
+	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/platform/darwin"
+	"go.klarlabs.de/vitra/platform/linux"
+	"go.klarlabs.de/vitra/platform/windows"
+)
+
+//go:embed frontend/*
+var frontendRoot embed.FS
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "app: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	assets, err := fs.Sub(frontendRoot, "frontend")
+	if err != nil {
+		return err
+	}
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.app"})
+	if err != nil {
+		return err
+	}
+	greet, _ := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
+	_ = rt.RegisterCommand(greet, domain.CommandExecutorFunc(func(ctx context.Context, name domain.CommandName, input any) (any, error) {
+		who, _ := input.(string)
+		if who == "" {
+			who = "world"
+		}
+		return map[string]any{"message": "Hello, " + who}, nil
+	}))
+	grant, _ := domain.NewCapabilityGrant(
+		"demo", "demo", []domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{{Name: "demo.greet"}},
+	)
+	_ = rt.RegisterGrant(grant)
+
+	host := desktopHost()
+	application, err := app.New(app.Options{
+		AppID: "com.example.app", Title: "Vitra App", Assets: assets, Host: host, Runtime: rt,
+		Window: app.WindowOptions{ID: "main", Width: 960, Height: 640},
+	})
+	if err != nil {
+		return err
+	}
+	return application.Run(context.Background())
+}
+
+func desktopHost() app.DesktopHost {
+	switch runtime.GOOS {
+	case "darwin":
+		return darwin.New()
+	case "windows":
+		return windows.New()
+	default:
+		return linux.New()
+	}
+}
+`,
+		"frontend/index.html": `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
+<style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
+button{padding:.75rem 1rem;cursor:pointer}</style></head>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter.</p>
+<button id="go">Invoke demo.greet</button><pre id="out"></pre>
+<script>
+document.getElementById("go").onclick=async()=>{
+  try{document.getElementById("out").textContent=JSON.stringify(await window.vitra.invoke("demo.greet","Vitra"),null,2)}
+  catch(e){document.getElementById("out").textContent=String(e)}
+};
+</script></body></html>
+`,
+		"README.md": "# Vitra app\n\n```bash\n# Linux native host\nCGO_ENABLED=1 go run -tags vitra_native .\n# or\nvitra dev\n```\n",
+	}
+	for name, body := range files {
+		path := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			return err
+		}
+	}
+	fmt.Printf("created %s\n", dir)
+	fmt.Println("next: cd", dir, "&& CGO_ENABLED=1 go run -tags vitra_native .")
+	return nil
+}
+
+func runDev(args []string) error {
+	dir := "."
+	if len(args) > 0 {
+		dir = args[0]
+	}
+	argsGo := []string{"run"}
+	if runtime.GOOS == "linux" {
+		argsGo = append(argsGo, "-tags", "vitra_native")
+	}
+	argsGo = append(argsGo, ".")
+	return execGo(dir, argsGo...)
+}
+
+func runBuild(args []string) error {
+	dir := "."
+	if len(args) > 0 {
+		dir = args[0]
+	}
+	argsGo := []string{"build"}
+	if runtime.GOOS == "linux" {
+		argsGo = append(argsGo, "-tags", "vitra_native")
+	}
+	argsGo = append(argsGo, "-o", "vitra-app", ".")
+	return execGo(dir, argsGo...)
+}
+
+func execGo(dir string, goArgs ...string) error {
+	cmd := exec.Command("go", goArgs...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=1")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 func inspectDemo(args []string) error {
 	if len(args) == 0 || args[0] != "capabilities" {
 		return fmt.Errorf("usage: vitra inspect capabilities")
