@@ -9,38 +9,32 @@
 
 # Test binary
 *.test
-
 # Output
 *.out
-
 # Coverage
 *.cov
 coverage.out
 coverage.html
 .cover/*
 !.cover/history.json
-
 # Security scanning — track suppression baseline, ignore scan outputs
 .nox/*
 !.nox/baseline.json
 findings.json
-
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-
 # Claude Code local state
 .claude/
-
 # Relicta
 .relicta/
-
 # Roady — version-control spec/plan/policy/state, ignore append-only
 # event log and ephemeral telemetry.
 .roady/events.jsonl
 .roady/usage.json
-
 # OS
 .DS_Store
+/vitra
+/competitive

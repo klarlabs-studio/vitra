@@ -26,6 +26,9 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "kernel:") {
 		t.Fatalf("doctor output: %q", out)
 	}
+	if !strings.Contains(out, "adapter:") {
+		t.Fatalf("doctor missing adapter: %q", out)
+	}
 
 	out = capture(t, func() {
 		if err := run([]string{"inspect", "capabilities"}); err != nil {
@@ -42,6 +45,9 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if err := run([]string{"nope"}); err == nil {
 		t.Fatal("expected unknown command")
 	}
+	if err := run([]string{"new"}); err == nil {
+		t.Fatal("expected new usage error")
+	}
 
 	out = capture(t, func() {
 		if err := run(nil); err != nil {
@@ -51,8 +57,25 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	if !strings.Contains(out, "Usage:") {
+	if !strings.Contains(out, "vitra new") {
 		t.Fatalf("help output: %q", out)
+	}
+}
+
+func TestRun_NewScaffold(t *testing.T) {
+	dir := t.TempDir() + "/app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "created") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{"main.go", "frontend/index.html", "README.md"} {
+		if _, err := os.Stat(dir + "/" + name); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

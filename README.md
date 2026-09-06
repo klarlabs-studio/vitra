@@ -6,7 +6,8 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/go.klarlabs.de/vitra.svg)](https://pkg.go.dev/go.klarlabs.de/vitra)
 
-**Phase 1: secure runtime kernel.** Zero external dependencies. Standard library only.
+Secure kernel **plus** a runnable Linux WebView host. Capabilities are explicit;
+the frontend is untrusted; identity is stamped by the native bridge.
 
 ---
 
@@ -20,19 +21,22 @@ Vitra makes the seam a first-class architectural boundary:
 
 ```text
 Web Frontend (untrusted)
-        │ typed messages
+        │ window.vitra.invoke
+        ▼
+Native bridge (host-stamped identity)
         ▼
 Capability Gateway  — origin · window · permission · scope
         │ authorized invocation
         ▼
-Vitra Runtime (trusted) — commands · lifecycle · diagnostics
+Vitra Runtime (trusted) — commands · lifecycle · plugins · workers
 ```
 
 A new window receives **no** privileged capability merely because it belongs
 to the application. Commands are explicitly registered. Grants are narrow,
 inspectable, and enforced at runtime.
 
-See [`docs/intent.md`](docs/intent.md) for the full product charter.
+See [`docs/intent.md`](docs/intent.md) for the full product charter and
+[`docs/spikes/competitive.md`](docs/spikes/competitive.md) for the desktop host.
 
 ## Install
 
@@ -41,7 +45,13 @@ go get go.klarlabs.de/vitra
 go install go.klarlabs.de/vitra/cmd/vitra@latest
 ```
 
-## 60-Second Tour
+Linux native host dependencies:
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev pkg-config
+```
+
+## 60-Second Tour (kernel)
 
 ```go
 rt, _ := vitra.New(vitra.Config{AppID: "com.example.demo"})
@@ -76,53 +86,70 @@ result, err := rt.Invoke(ctx, domain.InvocationRequest{
 
 Runnable walkthrough: `go run ./example/quickstart`
 
+## Desktop app (competitive)
+
+```bash
+vitra new myapp
+cd myapp
+CGO_ENABLED=1 go run -tags vitra_native .
+# or: vitra doctor && vitra dev
+```
+
+Headless demo on Linux:
+
+```bash
+VITRA_DEMO_SECONDS=3 xvfb-run -a make demo
+```
+
 ## CLI
 
 ```bash
 vitra version
 vitra doctor
+vitra new ./myapp
+vitra dev
+vitra build
 vitra inspect capabilities
 ```
 
-Exact commands are not yet contractual; the skeleton matches the DX shape in
-the charter.
-
 ## Architecture
-
-Strict DDD / hexagonal (Klarlabs house style, same spirit as [axi-go](https://github.com/klarlabs-studio/axi-go)):
 
 ```
 vitra (root)     Runtime facade
+app/             Desktop application runtime (assets + host + gateway)
+bridge/          Injected frontend preload
+platform/        OS adapters (linux WebKitGTK, darwin/windows stubs)
 domain/          Aggregates + ports (stdlib only)
 application/     Use cases
 inmemory/        Default adapters
 cmd/vitra/       Developer CLI
 ```
 
-Dependency direction: `domain` ← `application` ← `inmemory` ← `vitra` ← your code.
+Dependency direction: `domain` ← `application` ← `inmemory` ← `vitra` ← `app` ← your code.
 
 Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 
 ## Status
 
-| Phase | Status |
+| Track | Status |
 |-------|--------|
-| 0 — Platform spikes (WebView + IPC) | Planned |
-| 1 — Secure runtime kernel | **In progress** |
-| 2 — Desktop completeness | Planned |
-| 3 — Plugin SDK | Planned |
-| 4 — Distribution | Planned |
-| 5 — Isolation / enterprise | Planned |
+| Secure runtime kernel (Phase 1) | Done |
+| Platform spikes + IPC (Phase 0) | Done |
+| Desktop completeness contracts (Phase 2) | Done |
+| Plugin SDK (Phase 3) | Done |
+| Distribution (Phase 4) | Done |
+| Isolation / enterprise (Phase 5) | Done |
+| **Competitive Linux WebView host** | **Done** (`-tags vitra_native`) |
+| Linux menu bar + tray | **Done** |
+| Invoke E2E (`make e2e`) | **Done** |
+| Darwin WKWebView / Windows WebView2 | Stubs (explicit unsupported) |
 
 ## Development
 
 ```bash
 make test
-make check          # fmt + lint + test + security (requires golangci-lint, nox)
-make cover          # coverage + coverctl ratchet
-make install-hooks
+make build-native   # requires WebKitGTK
+make demo           # xvfb competitive example
+make e2e            # Eval→invoke→gateway round-trip
+make check
 ```
-
-## License
-
-Apache License 2.0 — see [LICENSE](LICENSE).

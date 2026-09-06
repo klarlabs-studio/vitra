@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths-ignore: ["**.md", "docs/**", "LICENSE"]
   pull_request:
-    branches: [main]
+    # Stacked phase PRs target non-main bases; still need status checks.
     # No paths-ignore: branch protection requires this workflow's status
     # checks. Docs-only PRs must still report them.
 

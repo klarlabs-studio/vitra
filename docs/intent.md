@@ -1,6 +1,6 @@
 # Vitra — Project Intent
 
-> **Status:** Working intent / implementation charter  
+> **Status:** Competitive Linux desktop runtime + secure kernel  
 > **Working name:** Vitra  
 > **Language:** Go  
 > **Scope:** Secure, extensible, cross-platform application runtime for
@@ -8,9 +8,10 @@
 > **Date:** 2026-09-06
 
 This document is the product charter. Implementation follows DDD/TDD under
-Klarlabs conventions. Phase 1 (this repository bootstrap) delivers the
-**secure runtime kernel**: capability gateway, explicit commands, caller
-identity, inspectable privileged surface, and CLI skeletons.
+Klarlabs conventions. The repository delivers the **secure runtime kernel**
+and a **runnable Linux WebView host** (`app` + `platform/linux` with
+`-tags vitra_native`). Darwin/Windows adapters expose the same contract with
+explicit unsupported feature matrices until native hosts land.
 
 ## Why Vitra Exists
 
@@ -114,7 +115,8 @@ kernel can enforce them today:
 | 2 | Desktop completeness — see `docs/spikes/phase2.md` |
 | 3 | Plugin SDK and ecosystem — see `docs/spikes/phase3.md` |
 | 4 | Distribution excellence — see `docs/spikes/phase4.md` |
-| **5** | **Isolation and enterprise hardening** — see `docs/spikes/phase5.md` |
+| 5 | Isolation and enterprise hardening — see `docs/spikes/phase5.md` |
+| **Competitive** | **Runnable desktop host** — see `docs/spikes/competitive.md` |
 
 ## Decision Rule
 

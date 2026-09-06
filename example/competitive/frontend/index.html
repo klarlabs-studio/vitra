@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vitra</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222c;
+      --text: #e7ecf1;
+      --muted: #9aa7b5;
+      --accent: #3dd6c6;
+      --danger: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--text); background:
+        radial-gradient(1200px 600px at 10% -10%, #1d3a3a 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #243048 0%, transparent 50%),
+        var(--bg);
+      display: grid; place-items: center; padding: 2rem;
+    }
+    main { width: min(640px, 100%); }
+    h1 { font-family: "IBM Plex Serif", Georgia, serif; font-weight: 500; font-size: 2.4rem; margin: 0 0 .4rem; }
+    p { color: var(--muted); margin: 0 0 1.5rem; line-height: 1.5; }
+    .row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    input, button {
+      border: 0; border-radius: 10px; padding: .85rem 1rem; font: inherit;
+    }
+    input { flex: 1; background: var(--panel); color: var(--text); outline: 2px solid transparent; }
+    input:focus { outline-color: var(--accent); }
+    button { background: var(--accent); color: #04221f; font-weight: 600; cursor: pointer; }
+    button.secondary { background: #2a3442; color: var(--text); }
+    pre {
+      background: var(--panel); border-radius: 12px; padding: 1rem; min-height: 7rem;
+      white-space: pre-wrap; color: #c9f7ef; font-size: .92rem;
+    }
+    .err { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Vitra</h1>
+    <p>Secure Go ↔ web desktop runtime. Invokes cross the capability gateway with host-stamped identity — not ambient Wails-style exports.</p>
+    <div class="row">
+      <input id="name" placeholder="Your name" value="Klarlabs" />
+      <button id="greet">Invoke demo.greet</button>
+      <button id="clip" class="secondary">Clipboard round-trip</button>
+    </div>
+    <pre id="out">Ready.</pre>
+  </main>
+  <script>
+    const out = document.getElementById("out");
+    function show(v, isErr) {
+      out.className = isErr ? "err" : "";
+      out.textContent = typeof v === "string" ? v : JSON.stringify(v, null, 2);
+    }
+    document.getElementById("greet").onclick = async () => {
+      try {
+        const name = document.getElementById("name").value;
+        const res = await window.vitra.invoke("demo.greet", name);
+        show(res);
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("clip").onclick = async () => {
+      try {
+        await window.vitra.invoke("clipboard.write", "vitra-clipboard-" + Date.now());
+        const text = await window.vitra.invoke("clipboard.read");
+        show({ clipboard: text });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+  </script>
+</body>
+</html>
