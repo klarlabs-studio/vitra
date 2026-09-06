@@ -1,4 +1,4 @@
-.PHONY: build build-native test vet fmt fmt-check lint cover security check install-hooks demo
+.PHONY: build build-native test vet fmt fmt-check lint cover security check install-hooks demo e2e
 
 GO       := go
 LINT     := golangci-lint
@@ -17,6 +17,11 @@ test:
 
 demo:
 	CGO_ENABLED=1 VITRA_DEMO_SECONDS=3 xvfb-run -a $(GO) run -tags vitra_native ./example/competitive
+
+e2e:
+	@out=$$(CGO_ENABLED=1 VITRA_DEMO_SECONDS=5 VITRA_E2E=1 xvfb-run -a $(GO) run -tags vitra_native ./example/competitive 2>&1); \
+	echo "$$out"; \
+	echo "$$out" | grep -q VITRA_E2E_OK
 
 vet:
 	$(GO) vet ./...

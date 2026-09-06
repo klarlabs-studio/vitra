@@ -15,6 +15,7 @@ import (
 type Host struct {
 	onInvoke func(domain.WindowID, domain.Origin, []byte) []byte
 	onNav    func(domain.WindowID, string) bool
+	onAction func(id string)
 }
 
 // New returns a stub host that reports why native UI is unavailable.
@@ -35,14 +36,25 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDialogOpen, Available: false,
 			Detail: "requires native linux host",
 		},
+		platform.FeatureMenuBar: {
+			Feature: platform.FeatureMenuBar, Available: false,
+			Detail: "requires native linux host",
+		},
+		platform.FeatureTray: {
+			Feature: platform.FeatureTray, Available: false,
+			Detail: "requires native linux host",
+		},
 	}
 }
 func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) []byte) {
 	h.onInvoke = fn
 }
-func (h *Host) SetNavPolicy(fn func(domain.WindowID, string) bool)      { h.onNav = fn }
-func (h *Host) CreateWindow(context.Context, platform.WindowSpec) error { return h.err() }
-func (h *Host) Open(platform.WindowSpec, string, string) error          { return h.err() }
+func (h *Host) SetNavPolicy(fn func(domain.WindowID, string) bool) { h.onNav = fn }
+func (h *Host) SetActionHandler(fn func(id string))                { h.onAction = fn }
+func (h *Host) CreateWindow(context.Context, platform.WindowSpec) error {
+	return h.err()
+}
+func (h *Host) Open(platform.WindowSpec, string, string) error { return h.err() }
 func (h *Host) NavigateWindow(context.Context, domain.WindowID, domain.Origin) error {
 	return h.err()
 }
@@ -52,8 +64,18 @@ func (h *Host) CloseWindow(context.Context, domain.WindowID) error         { ret
 func (h *Host) ClipboardGet() (string, error)                              { return "", h.err() }
 func (h *Host) ClipboardSet(string) error                                  { return h.err() }
 func (h *Host) OpenFileDialog() (string, error)                            { return "", h.err() }
+func (h *Host) SetMenuBar(domain.WindowID, []MenuItem) error               { return h.err() }
+func (h *Host) SetTray(string) error                                       { return h.err() }
+func (h *Host) ClearTray()                                                 {}
 func (h *Host) Run() error                                                 { return h.err() }
 func (h *Host) Quit()                                                      {}
 func (h *Host) err() error {
 	return errors.New("linux webview host requires CGO_ENABLED=1 -tags vitra_native and webkit2gtk-4.1")
+}
+
+// MenuItem matches the native host API for stub builds.
+type MenuItem struct {
+	Menu  string
+	ID    string
+	Label string
 }

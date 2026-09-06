@@ -12,10 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Competitive desktop runtime: `app.App` binds the secure kernel to a native
   WebView host; `bridge` injects `window.vitra.invoke` with host-stamped identity.
 - Linux WebKitGTK host (`platform/linux`, build tag `vitra_native`) with
-  clipboard, open-file dialog, navigation policy, and GTK main loop.
+  clipboard, open-file dialog, GTK menu bar, status-icon tray, navigation policy,
+  and GTK main loop.
+- Eval-driven E2E (`make e2e`) proving frontend invoke → capability gateway.
 - Darwin/Windows `DesktopHost` stubs with explicit `ErrUnsupported` feature matrices.
 - CLI DX: `vitra new`, `vitra dev`, `vitra build`, upgraded `vitra doctor`.
 - Competitive demo: `example/competitive` (run under xvfb with `make demo`).
+- CI runs on all pull requests (including stacked non-`main` bases).
 - Phase 5 isolation/enterprise: supervised workers with crash-safe bookkeeping,
   audit sink, enterprise policy overlay (signed updates + no dev-priv leak in production).
 - Phase 4 distribution: packaging specs with signing identity refs (invariant 10),

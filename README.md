@@ -140,8 +140,9 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Distribution (Phase 4) | Done |
 | Isolation / enterprise (Phase 5) | Done |
 | **Competitive Linux WebView host** | **Done** (`-tags vitra_native`) |
+| Linux menu bar + tray | **Done** |
+| Invoke E2E (`make e2e`) | **Done** |
 | Darwin WKWebView / Windows WebView2 | Stubs (explicit unsupported) |
-| Tray / native menu | Feature-flagged unavailable |
 
 ## Development
 
@@ -149,5 +150,6 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 make test
 make build-native   # requires WebKitGTK
 make demo           # xvfb competitive example
+make e2e            # Eval→invoke→gateway round-trip
 make check
 ```

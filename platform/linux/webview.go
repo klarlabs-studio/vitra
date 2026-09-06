@@ -31,6 +31,7 @@ type Host struct {
 	origins  map[domain.WindowID]domain.Origin
 	onInvoke func(domain.WindowID, domain.Origin, []byte) []byte
 	onNav    func(domain.WindowID, string) bool
+	onAction func(id string)
 	looping  bool
 	inited   bool
 	jobs     sync.Map // uint64 -> func()
@@ -74,8 +75,8 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureWebViewMessage: {Feature: platform.FeatureWebViewMessage, Available: true},
 		platform.FeatureDialogOpen:     {Feature: platform.FeatureDialogOpen, Available: true},
 		platform.FeatureClipboard:      {Feature: platform.FeatureClipboard, Available: true},
-		platform.FeatureMenuBar:        {Feature: platform.FeatureMenuBar, Available: false, Detail: "GTK menu follow-up"},
-		platform.FeatureTray:           {Feature: platform.FeatureTray, Available: false, Detail: "AppIndicator follow-up"},
+		platform.FeatureMenuBar:        {Feature: platform.FeatureMenuBar, Available: true},
+		platform.FeatureTray:           {Feature: platform.FeatureTray, Available: true},
 	}
 }
 
@@ -86,6 +87,9 @@ func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) 
 
 // SetNavPolicy registers navigation allow/deny.
 func (h *Host) SetNavPolicy(fn func(domain.WindowID, string) bool) { h.onNav = fn }
+
+// SetActionHandler registers menu/tray action callbacks.
+func (h *Host) SetActionHandler(fn func(id string)) { h.onAction = fn }
 
 // CreateWindow implements platform.Host.
 func (h *Host) CreateWindow(_ context.Context, spec platform.WindowSpec) error {
@@ -251,6 +255,58 @@ func (h *Host) OpenFileDialog() (string, error) {
 	return <-ch, nil
 }
 
+// MenuItem is a native menu entry.
+type MenuItem struct {
+	Menu  string // top-level menu label, e.g. "File"
+	ID    string
+	Label string
+}
+
+// SetMenuBar replaces the application menu bar on the given window.
+func (h *Host) SetMenuBar(id domain.WindowID, items []MenuItem) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		C.vitra_win_clear_menu(w.ptr)
+		for _, it := range items {
+			cmenu := C.CString(it.Menu)
+			cid := C.CString(it.ID)
+			clabel := C.CString(it.Label)
+			C.vitra_win_add_menu_item(w.ptr, cmenu, cid, clabel)
+			C.free(unsafe.Pointer(cmenu))
+			C.free(unsafe.Pointer(cid))
+			C.free(unsafe.Pointer(clabel))
+		}
+		errCh <- nil
+	})
+	return <-errCh
+}
+
+// SetTray shows a status-icon tray entry with tooltip.
+func (h *Host) SetTray(tooltip string) error {
+	done := make(chan struct{}, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ct := C.CString(tooltip)
+		defer C.free(unsafe.Pointer(ct))
+		C.vitra_tray_set(ct)
+		done <- struct{}{}
+	})
+	<-done
+	return nil
+}
+
+// ClearTray hides the tray icon.
+func (h *Host) ClearTray() {
+	h.dispatch(func() { C.vitra_tray_clear() })
+}
+
 // Run runs the GTK main loop (blocking). Must be called from the main OS thread.
 func (h *Host) Run() error {
 	h.ensureInit()
@@ -349,4 +405,15 @@ func goVitraNav(windowID, uri *C.char) C.int {
 		return 1
 	}
 	return 0
+}
+
+//export goVitraAction
+func goVitraAction(actionID *C.char) {
+	activeMu.Lock()
+	h := active
+	activeMu.Unlock()
+	if h == nil || h.onAction == nil {
+		return
+	}
+	h.onAction(C.GoString(actionID))
 }

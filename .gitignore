@@ -36,4 +36,5 @@ findings.json
 .roady/usage.json
 # OS
 .DS_Store
-vitra
+/vitra
+/competitive

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"go.klarlabs.de/vitra"
@@ -36,7 +37,8 @@ func run() error {
 	}
 	host := linux.New()
 
-	// Demo command: greet — no elevated permission beyond an explicit grant.
+	var e2eOK atomic.Bool
+
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet the user", "demo.greet")
 	if err != nil {
 		return err
@@ -46,7 +48,14 @@ func run() error {
 		if who == "" {
 			who = "Vitra"
 		}
-		return map[string]any{"message": "Hello from native Go, " + who, "at": time.Now().UTC().Format(time.RFC3339)}, nil
+		if who == "E2E" {
+			e2eOK.Store(true)
+			fmt.Println("VITRA_E2E_OK")
+		}
+		return map[string]any{
+			"message": "Hello from native Go, " + who,
+			"at":      time.Now().UTC().Format(time.RFC3339),
+		}, nil
 	})); err != nil {
 		return err
 	}
@@ -64,7 +73,6 @@ func run() error {
 		return err
 	}
 
-	// Clipboard requires grant + native feature.
 	clipRead, _ := domain.NewCommandDefinition("clipboard.read", "Read clipboard", "clipboard.read")
 	_ = rt.RegisterCommand(clipRead, domain.CommandExecutorFunc(func(ctx context.Context, name domain.CommandName, input any) (any, error) {
 		if err := platform.Require(host, platform.FeatureClipboard); err != nil {
@@ -101,13 +109,35 @@ func run() error {
 		return err
 	}
 
-	// Auto-quit in CI/demo mode so xvfb runs don't hang forever.
-	if os.Getenv("VITRA_DEMO_SECONDS") != "" {
+	host.SetActionHandler(func(id string) {
+		fmt.Println("native action:", id)
+		if id == "app.quit" || id == "tray.activate" {
+			application.Quit()
+		}
+	})
+
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		_ = host.SetMenuBar("main", []linux.MenuItem{
+			{Menu: "File", ID: "app.quit", Label: "Quit"},
+			{Menu: "Help", ID: "help.about", Label: "About Vitra"},
+		})
+		_ = host.SetTray("Vitra competitive demo")
+		if os.Getenv("VITRA_E2E") == "1" {
+			js := `window.vitra.invoke("demo.greet","E2E").then(function(r){document.getElementById("out").textContent=JSON.stringify(r,null,2);}).catch(function(e){document.getElementById("out").textContent=String(e);});`
+			_ = host.Eval("main", js)
+		}
+	}()
+
+	if secs := os.Getenv("VITRA_DEMO_SECONDS"); secs != "" {
 		var n int
-		fmt.Sscanf(os.Getenv("VITRA_DEMO_SECONDS"), "%d", &n)
+		fmt.Sscanf(secs, "%d", &n)
 		if n > 0 {
 			go func() {
 				time.Sleep(time.Duration(n) * time.Second)
+				if os.Getenv("VITRA_E2E") == "1" && !e2eOK.Load() {
+					fmt.Fprintln(os.Stderr, "VITRA_E2E_FAIL: demo.greet did not complete")
+				}
 				application.Quit()
 			}()
 		}
