@@ -113,8 +113,8 @@ kernel can enforce them today:
 | 1 | Secure runtime kernel |
 | 2 | Desktop completeness — see `docs/spikes/phase2.md` |
 | 3 | Plugin SDK and ecosystem — see `docs/spikes/phase3.md` |
-| **4** | **Distribution excellence** — see `docs/spikes/phase4.md` |
-| 5 | Isolation and enterprise hardening |
+| 4 | Distribution excellence — see `docs/spikes/phase4.md` |
+| **5** | **Isolation and enterprise hardening** — see `docs/spikes/phase5.md` |
 
 ## Decision Rule
 

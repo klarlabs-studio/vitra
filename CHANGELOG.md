@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 5 isolation/enterprise: supervised workers with crash-safe bookkeeping,
+  audit sink, enterprise policy overlay (signed updates + no dev-priv leak in production).
 - Phase 4 distribution: packaging specs with signing identity refs (invariant 10),
   ed25519-signed update manifests + install plans (invariant 9), provenance/SBOM documents.
 - Phase 3 plugin SDK: manifests, SemVer compatibility, permission-ownership registry (invariant 6),
