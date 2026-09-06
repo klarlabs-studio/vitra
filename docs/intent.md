@@ -112,8 +112,8 @@ kernel can enforce them today:
 | 0 | Architecture spikes (WebView + IPC per OS) — see `docs/spikes/phase0.md` |
 | 1 | Secure runtime kernel |
 | 2 | Desktop completeness — see `docs/spikes/phase2.md` |
-| **3** | **Plugin SDK and ecosystem** — see `docs/spikes/phase3.md` |
-| 4 | Distribution excellence |
+| 3 | Plugin SDK and ecosystem — see `docs/spikes/phase3.md` |
+| **4** | **Distribution excellence** — see `docs/spikes/phase4.md` |
 | 5 | Isolation and enterprise hardening |
 
 ## Decision Rule
