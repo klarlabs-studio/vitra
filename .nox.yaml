@@ -1,0 +1,19 @@
+# nox security scanner configuration.
+# Reference: https://github.com/nox-hq/nox
+
+scan:
+  exclude:
+    - ".nox/**"
+    - ".roady/**"
+    - "*.md"
+    - "**/*.md"
+    - "go.sum"
+    - "**/go.sum"
+    - ".github/workflows/*.yml"
+    - "example/**"
+    - "*_test.go"
+    - "**/*_test.go"
+
+plugins:
+  required:
+    - nox/taint-analysis
