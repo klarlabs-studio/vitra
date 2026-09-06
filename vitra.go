@@ -29,9 +29,9 @@ const Version = "0.2.0"
 
 // Config configures a Runtime.
 type Config struct {
-	AppID             domain.AppID
-	TrustedOrigins    []domain.Origin
-	AllowExternalNav  bool
+	AppID            domain.AppID
+	TrustedOrigins   []domain.Origin
+	AllowExternalNav bool
 }
 
 // Runtime is the fluent entry point for the Vitra kernel.

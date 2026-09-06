@@ -15,16 +15,16 @@ import (
 
 // Permission names for Phase 2 desktop surfaces.
 const (
-	PermMenuSet           domain.PermissionName = "menu.set"
-	PermTraySet           domain.PermissionName = "tray.set"
-	PermDialogOpen        domain.PermissionName = "dialog.open"
-	PermDialogSave        domain.PermissionName = "dialog.save"
-	PermClipboardRead     domain.PermissionName = "clipboard.read"
-	PermClipboardWrite    domain.PermissionName = "clipboard.write"
-	PermShortcutRegister  domain.PermissionName = "shortcut.register"
-	PermDeepLinkHandle    domain.PermissionName = "deeplink.handle"
-	PermSingleInstance    domain.PermissionName = "app.single_instance"
-	PermDragDrop          domain.PermissionName = "dragdrop.receive"
+	PermMenuSet          domain.PermissionName = "menu.set"
+	PermTraySet          domain.PermissionName = "tray.set"
+	PermDialogOpen       domain.PermissionName = "dialog.open"
+	PermDialogSave       domain.PermissionName = "dialog.save"
+	PermClipboardRead    domain.PermissionName = "clipboard.read"
+	PermClipboardWrite   domain.PermissionName = "clipboard.write"
+	PermShortcutRegister domain.PermissionName = "shortcut.register"
+	PermDeepLinkHandle   domain.PermissionName = "deeplink.handle"
+	PermSingleInstance   domain.PermissionName = "app.single_instance"
+	PermDragDrop         domain.PermissionName = "dragdrop.receive"
 )
 
 // Gateway evaluates desktop permissions for a caller.
@@ -42,9 +42,9 @@ type MenuItem struct {
 
 // MenuService applies application menus when permitted and supported.
 type MenuService struct {
-	Gateway  Gateway
-	Host     platform.Host
-	OnSet    func(ctx context.Context, items []MenuItem) error // optional native hook
+	Gateway Gateway
+	Host    platform.Host
+	OnSet   func(ctx context.Context, items []MenuItem) error // optional native hook
 }
 
 // SetMenu authorizes menu.set then applies items (or returns unsupported).
