@@ -3,6 +3,9 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -22,7 +25,9 @@ import (
 	"go.klarlabs.de/vitra/platform/windows"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
+	"go.klarlabs.de/vitra/policy"
 	"go.klarlabs.de/vitra/provenance"
+	"go.klarlabs.de/vitra/updater"
 )
 
 func main() {
@@ -55,6 +60,8 @@ func run(args []string) error {
 		return runPackage(args[1:])
 	case "generate":
 		return runGenerate(args[1:])
+	case "update-apply":
+		return runUpdateApply(args[1:])
 	case "register-scheme":
 		return registerScheme(args[1:])
 	case "help", "-h", "--help":
@@ -78,6 +85,8 @@ Usage:
                              Stage Linux dir, build .deb / AppDir / .AppImage + provenance.json
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
+  vitra update-apply --manifest <json> --artifact <path> --pubkey <hex> --dest <path> [--policy production|development]
+                             Verify a signed update and atomically install it
   vitra register-scheme <scheme> [app-id] [exec]
                              Register an xdg URL scheme handler (Linux)
   vitra inspect capabilities Demo capability inspection against an in-memory runtime
@@ -402,6 +411,95 @@ func runGenerate(args []string) error {
 		return err
 	}
 	fmt.Printf("wrote %s (%d commands)\n", outPath, len(cmds))
+	return nil
+}
+
+func runUpdateApply(args []string) error {
+	manifestPath, artifactPath, pubkeyHex, dest, policyEnv := "", "", "", "", ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--manifest":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--manifest requires a path")
+			}
+			manifestPath = args[i]
+		case "--artifact":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--artifact requires a path")
+			}
+			artifactPath = args[i]
+		case "--pubkey":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--pubkey requires hex-encoded ed25519 public key")
+			}
+			pubkeyHex = args[i]
+		case "--dest":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--dest requires a path")
+			}
+			dest = args[i]
+		case "--policy":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--policy requires production or development")
+			}
+			policyEnv = args[i]
+		default:
+			return fmt.Errorf("unknown update-apply flag %q", args[i])
+		}
+	}
+	if manifestPath == "" || artifactPath == "" || pubkeyHex == "" || dest == "" {
+		return fmt.Errorf("usage: vitra update-apply --manifest <json> --artifact <path> --pubkey <hex> --dest <path> [--policy production|development]")
+	}
+	rawManifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return err
+	}
+	var m updater.Manifest
+	if err := json.Unmarshal(rawManifest, &m); err != nil {
+		return fmt.Errorf("manifest: %w", err)
+	}
+	pubBytes, err := hex.DecodeString(strings.TrimSpace(pubkeyHex))
+	if err != nil || len(pubBytes) != ed25519.PublicKeySize {
+		return fmt.Errorf("pubkey must be %d-byte ed25519 key as hex", ed25519.PublicKeySize)
+	}
+	artifact, err := os.ReadFile(artifactPath)
+	if err != nil {
+		return err
+	}
+	rt, err := vitra.New(vitra.Config{AppID: domain.AppID(m.AppID)})
+	if err != nil {
+		// Fall back if manifest app id empty / invalid for Config.
+		rt, err = vitra.New(vitra.Config{AppID: "com.vitra.update"})
+		if err != nil {
+			return err
+		}
+	}
+	if policyEnv != "" {
+		var env policy.Environment
+		switch policyEnv {
+		case string(policy.EnvProduction):
+			env = policy.EnvProduction
+		case string(policy.EnvDevelopment):
+			env = policy.EnvDevelopment
+		default:
+			return fmt.Errorf("--policy: want %q or %q", policy.EnvProduction, policy.EnvDevelopment)
+		}
+		eng, err := policy.NewEngine(policy.Document{}, env)
+		if err != nil {
+			return err
+		}
+		rt.SetPolicy(eng)
+	}
+	plan, err := rt.ApplyUpdate(m, ed25519.PublicKey(pubBytes), artifact, dest)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("installed %s v%s (%s) → %s\n  sha256: %s\n", plan.AppID, plan.Version, plan.Channel, dest, plan.SHA256)
 	return nil
 }
 

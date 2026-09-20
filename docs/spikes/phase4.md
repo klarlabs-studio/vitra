@@ -37,6 +37,12 @@ Pipeline: optional `policy.AuthorizeUpdate` (channel + unsigned reject) →
 `PlanInstall` (signature + digest) → `ApplyInstall` (re-check digest, atomic
 rename into place). No filesystem mutation occurs unless verification succeeds.
 
+CLI:
+
+```bash
+vitra update-apply --manifest update.json --artifact app.bin --pubkey <hex> --dest ./vitra-app --policy production
+```
+
 ## Security invariants
 
 - **9**: `PlanInstall` / `ApplyUpdate` refuse unsigned or digest-mismatched artifacts
