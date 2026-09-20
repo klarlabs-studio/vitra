@@ -7,9 +7,14 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
+| Linux staged app directory | `packaging.StageLinux` + `vitra package` |
 | Signed update manifests (ed25519) | `updater` |
 | Install plans only after verify | `updater.PlanInstall` |
 | SBOM / plugin / capability inventory | `provenance` |
+
+`vitra package --out dist/` stages `bin/<name>`, a `.desktop` launcher, and
+`provenance.json` (artifact digest + official plugin inventory). AppImage/deb
+generators remain future adapters on top of `TargetLinuxDir`.
 
 ## Security invariants
 

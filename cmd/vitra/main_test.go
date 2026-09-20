@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -68,6 +69,29 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	}
 	if !strings.Contains(out, "register-scheme") {
 		t.Fatalf("help missing register-scheme: %q", out)
+	}
+	if !strings.Contains(out, "vitra package") {
+		t.Fatalf("help missing package: %q", out)
+	}
+}
+
+func TestRun_PackageStagesLinuxDir(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist")
+	capture(t, func() {
+		if err := run([]string{"package", "--out", out, "--bin", bin, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if _, err := os.Stat(filepath.Join(out, "bin", "T")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "provenance.json")); err != nil {
+		t.Fatal(err)
 	}
 }
 
