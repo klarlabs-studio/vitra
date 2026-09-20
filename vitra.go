@@ -19,6 +19,7 @@ package vitra
 
 import (
 	"context"
+	"crypto/ed25519"
 	"fmt"
 	"strconv"
 	"strings"
@@ -28,6 +29,7 @@ import (
 	"go.klarlabs.de/vitra/inmemory"
 	"go.klarlabs.de/vitra/plugin"
 	"go.klarlabs.de/vitra/policy"
+	"go.klarlabs.de/vitra/updater"
 )
 
 // Version is the kernel API version. Generated frontend bindings should be
@@ -249,6 +251,24 @@ func (rt *Runtime) Authorize(caller domain.Caller, permission domain.PermissionN
 		d = rt.policyEng.OverlayDecision(permission, d)
 	}
 	return d
+}
+
+// ApplyUpdate verifies a signed update (and optional enterprise policy), then
+// atomically installs the artifact at destPath (invariant 9).
+func (rt *Runtime) ApplyUpdate(m updater.Manifest, pub ed25519.PublicKey, artifact []byte, destPath string) (updater.InstallPlan, error) {
+	if rt.policyEng != nil {
+		if err := rt.policyEng.AuthorizeUpdate(m); err != nil {
+			return updater.InstallPlan{}, err
+		}
+	}
+	plan, err := updater.PlanInstall(m, pub, artifact)
+	if err != nil {
+		return updater.InstallPlan{}, err
+	}
+	if err := updater.ApplyInstall(plan, artifact, destPath); err != nil {
+		return updater.InstallPlan{}, err
+	}
+	return plan, nil
 }
 
 // InspectCapabilities returns the effective privileged surface for a window.

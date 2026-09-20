@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Signed update apply: `updater.ApplyInstall` (atomic replace) and `Runtime.ApplyUpdate` (policy channel gate → verify → install).
 - Runtime enterprise policy wiring: `SetPolicy` / `Policy()` overlay on `Authorize` and `Invoke`; competitive demo honors `VITRA_POLICY` (+ optional `VITRA_POLICY_DENY`).
 - Linux `.deb` builder (`packaging.BuildDeb`) and AppImage AppDir (`BuildAppDir`); `vitra package --format deb|appdir|dir`.
 - Linux package staging: `packaging.StageLinux` + `vitra package` (app dir, `.desktop`, `provenance.json` with artifact digest).

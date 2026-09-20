@@ -6,6 +6,7 @@ package policy
 
 import (
 	"errors"
+	"fmt"
 
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/updater"
@@ -106,4 +107,17 @@ func (e *Engine) OverlayDecision(permission domain.PermissionName, d domain.Deci
 		}
 	}
 	return d
+}
+
+// AuthorizeUpdate reports whether an update manifest is allowed by enterprise policy.
+// Signature presence is enforced when RequireUpdateSignature is set; cryptographic
+// verification remains the caller's responsibility via updater.PlanInstall.
+func (e *Engine) AuthorizeUpdate(m updater.Manifest) error {
+	if !e.AllowsUpdateChannel(m.Channel) {
+		return fmt.Errorf("update channel %q denied by enterprise policy", m.Channel)
+	}
+	if e.RequireUpdateSignature() && m.Signature == "" {
+		return errors.New("unsigned updates denied by enterprise policy")
+	}
+	return nil
 }
