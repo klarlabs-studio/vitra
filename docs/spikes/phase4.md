@@ -13,8 +13,13 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | SBOM / plugin / capability inventory | `provenance` |
 
 `vitra package --out dist/` stages `bin/<name>`, a `.desktop` launcher, and
-`provenance.json` (artifact digest + official plugin inventory). AppImage/deb
-generators remain future adapters on top of `TargetLinuxDir`.
+`provenance.json`. Formats:
+
+| `--format` | Output |
+|------------|--------|
+| `dir` (default) | Staged Linux app directory (`StageLinux`) |
+| `deb` | Pure-Go `.deb` (`BuildDeb`) |
+| `appdir` | AppImage-ready AppDir (`BuildAppDir`; fold with appimagetool separately) |
 
 ## Security invariants
 

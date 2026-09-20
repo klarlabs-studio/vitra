@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"go.klarlabs.de/vitra/packaging"
 )
 
 func TestRun_VersionDoctorInspectHelp(t *testing.T) {
@@ -92,6 +94,33 @@ func TestRun_PackageStagesLinuxDir(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(out, "provenance.json")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRun_PackageDeb(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "deb", "--out", out, "--bin", bin, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	deb := filepath.Join(out, "com-vitra-t_0.1.0_"+packaging.DefaultArch()+".deb")
+	if _, err := os.Stat(deb); err != nil {
+		entries, _ := os.ReadDir(out)
+		found := false
+		for _, e := range entries {
+			if strings.HasSuffix(e.Name(), ".deb") {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("no deb in %v (%v)", entries, err)
+		}
 	}
 }
 
