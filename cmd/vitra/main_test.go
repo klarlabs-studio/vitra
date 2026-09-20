@@ -41,6 +41,9 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "project-files") {
 		t.Fatalf("inspect output: %q", out)
 	}
+	if !strings.Contains(out, "vitra.fs") || !strings.Contains(out, "vitra.dialog") {
+		t.Fatalf("inspect missing plugin ownership: %q", out)
+	}
 
 	if err := run([]string{"inspect"}); err == nil {
 		t.Fatal("expected usage error")

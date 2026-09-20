@@ -8,6 +8,9 @@ import (
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/plugin"
+	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
+	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 )
 
 type echoExec struct{}
@@ -180,6 +183,104 @@ func TestRuntime_AuthorizeSharesGateway(t *testing.T) {
 	if !d.Allowed {
 		t.Fatalf("expected allow after grant: %+v", d)
 	}
+}
+
+func TestRuntime_RegisterOfficialPlugins(t *testing.T) {
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := rt.RegisterPlugin(ctx, officialfs.New()); err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.RegisterPlugin(ctx, officialdialog.New()); err != nil {
+		t.Fatal(err)
+	}
+	if owner, ok := rt.Plugins().OwnerOf("fs.read"); !ok || owner != officialfs.PluginID {
+		t.Fatalf("fs.read owner = %q ok=%v", owner, ok)
+	}
+	if owner, ok := rt.Plugins().OwnerOf("dialog.open"); !ok || owner != officialdialog.PluginID {
+		t.Fatalf("dialog.open owner = %q ok=%v", owner, ok)
+	}
+
+	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
+		t.Fatal(err)
+	}
+	fsGrant, err := domain.NewCapabilityGrant(
+		"files", "files",
+		[]domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{{Name: "fs.read", PathScope: &domain.PathScope{Allow: []string{"/**"}}}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.RegisterGrant(fsGrant); err != nil {
+		t.Fatal(err)
+	}
+	caller, _ := rt.CallerFor("main")
+	_, err = rt.Invoke(ctx, domain.InvocationRequest{Caller: caller, Command: "fs.read", ResourcePath: "/x"})
+	var nf *domain.ErrNotFound
+	if !errors.As(err, &nf) || nf.Entity != "command executor" {
+		t.Fatalf("expected unbound fs executor, got %v", err)
+	}
+
+	grant, err := domain.NewCapabilityGrant(
+		"dialogs", "dialogs",
+		[]domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{{Name: "dialog.open"}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.RegisterGrant(grant); err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.BindExecutor("dialog.open", domain.CommandExecutorFunc(func(context.Context, domain.CommandName, any) (any, error) {
+		return []string{"/tmp/a"}, nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	res, err := rt.Invoke(ctx, domain.InvocationRequest{Caller: caller, Command: "dialog.open"})
+	if err != nil || !res.Authorized {
+		t.Fatalf("dialog invoke: %+v %v", res, err)
+	}
+}
+
+func TestRuntime_RejectPluginPermissionCollision(t *testing.T) {
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := rt.RegisterPlugin(ctx, officialfs.New()); err != nil {
+		t.Fatal(err)
+	}
+	err = rt.RegisterPlugin(ctx, collidingFS{})
+	var conflict *domain.ErrConflict
+	if !errors.As(err, &conflict) {
+		t.Fatalf("expected conflict, got %v", err)
+	}
+}
+
+type collidingFS struct{}
+
+func (collidingFS) Manifest() plugin.Manifest {
+	return plugin.Manifest{
+		ID: "evil.fs", Name: "Evil", Version: plugin.SemVer{Major: 1},
+		Permissions: []domain.PermissionName{"fs.read"},
+		MinKernel:   plugin.SemVer{Major: 0, Minor: 3},
+	}
+}
+
+func (collidingFS) Contribute() (plugin.Contribution, error) {
+	cmd, err := domain.NewCommandDefinition("evil.read", "x", "fs.read")
+	if err != nil {
+		return plugin.Contribution{}, err
+	}
+	return plugin.Contribution{Commands: []*domain.CommandDefinition{cmd}}, nil
 }
 
 func mustInspect(t *testing.T, rt *vitra.Runtime, window domain.WindowID) string {

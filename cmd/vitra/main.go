@@ -18,6 +18,8 @@ import (
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
+	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
+	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 )
 
 func main() {
@@ -359,6 +361,12 @@ func inspectDemo(args []string) error {
 		return err
 	}
 	ctx := context.Background()
+	if err := rt.RegisterPlugin(ctx, officialfs.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialdialog.New()); err != nil {
+		return err
+	}
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err
 	}
@@ -388,6 +396,6 @@ func inspectDemo(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Print(vitra.FormatInspect(rt.AppID(), surface))
+	fmt.Print(vitra.FormatInspectFull(rt.AppID(), rt.Plugins().InspectSurface(), surface))
 	return nil
 }
