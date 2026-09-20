@@ -71,8 +71,8 @@ Usage:
   vitra new <dir>            Scaffold a starter desktop app
   vitra dev [dir]            Watch + run the app with the native host (Linux: -tags vitra_native)
   vitra build [dir]          Build the app binary with the native host
-  vitra package --out <dir> [--bin path] [--app-id id] [--name name] [--version ver]
-                             Stage a Linux app directory + provenance.json
+  vitra package --out <dir> [--format dir|deb|appdir] [--bin path] [--app-id id] [--name name] [--version ver]
+                             Stage Linux dir, build .deb, or write AppImage AppDir + provenance.json
   vitra register-scheme <scheme> [app-id] [exec]
                              Register an xdg URL scheme handler (Linux)
   vitra inspect capabilities Demo capability inspection against an in-memory runtime
@@ -351,12 +351,13 @@ func runPackage(args []string) error {
 	appID := "com.vitra.app"
 	name := "Vitra App"
 	version := vitra.Version
+	format := "dir"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("usage: vitra package --out <dir> [--bin path] [--app-id id] [--name name] [--version ver]")
+				return fmt.Errorf("usage: vitra package --out <dir> [--format dir|deb|appdir] [--bin path] [--app-id id] [--name name] [--version ver]")
 			}
 			outDir = args[i]
 		case "--bin":
@@ -383,24 +384,57 @@ func runPackage(args []string) error {
 				return fmt.Errorf("--version requires a value")
 			}
 			version = args[i]
+		case "--format":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--format requires dir, deb, or appdir")
+			}
+			format = args[i]
 		default:
 			return fmt.Errorf("unknown package flag %q", args[i])
 		}
 	}
 	if outDir == "" {
-		return fmt.Errorf("usage: vitra package --out <dir> [--bin path] [--app-id id] [--name name] [--version ver]")
+		return fmt.Errorf("usage: vitra package --out <dir> [--format dir|deb|appdir] [--bin path] [--app-id id] [--name name] [--version ver]")
 	}
 	if _, err := os.Stat(bin); err != nil {
 		return fmt.Errorf("binary %q: %w (run vitra build first)", bin, err)
+	}
+
+	var target packaging.Target
+	switch format {
+	case "dir":
+		target = packaging.TargetLinuxDir
+	case "deb":
+		target = packaging.TargetLinuxDeb
+	case "appdir":
+		target = packaging.TargetLinuxAppImage
+	default:
+		return fmt.Errorf("unknown format %q (want dir, deb, or appdir)", format)
 	}
 	spec := packaging.Spec{
 		AppID:   appID,
 		Version: version,
 		Name:    name,
-		Targets: []packaging.Target{packaging.TargetLinuxDir},
+		Targets: []packaging.Target{target},
 		Arch:    packaging.DefaultArch(),
 	}
-	art, err := packaging.StageLinux(spec, bin, outDir)
+
+	var art packaging.Artifact
+	var err error
+	switch format {
+	case "dir":
+		art, err = packaging.StageLinux(spec, bin, outDir)
+	case "appdir":
+		art, err = packaging.BuildAppDir(spec, bin, outDir)
+	case "deb":
+		debPath := outDir
+		if !strings.HasSuffix(outDir, ".deb") {
+			pkg := strings.ReplaceAll(strings.ToLower(appID), ".", "-")
+			debPath = filepath.Join(outDir, fmt.Sprintf("%s_%s_%s.deb", pkg, version, packaging.DefaultArch()))
+		}
+		art, err = packaging.BuildDeb(spec, bin, debPath)
+	}
 	if err != nil {
 		return err
 	}
@@ -419,11 +453,18 @@ func runPackage(args []string) error {
 	if err != nil {
 		return err
 	}
-	provPath := filepath.Join(outDir, "provenance.json")
+	provDir := art.Path
+	if format == "deb" {
+		provDir = filepath.Dir(art.Path)
+	}
+	if err := os.MkdirAll(provDir, 0o755); err != nil {
+		return err
+	}
+	provPath := filepath.Join(provDir, "provenance.json")
 	if err := os.WriteFile(provPath, body, 0o644); err != nil {
 		return err
 	}
-	fmt.Printf("staged %s\n  binary sha256: %s\n  provenance:    %s\n", art.Path, art.SHA256, provPath)
+	fmt.Printf("packaged %s (%s)\n  artifact sha256: %s\n  provenance:      %s\n", art.Path, art.Target, art.SHA256, provPath)
 	return nil
 }
 
