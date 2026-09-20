@@ -5,9 +5,10 @@ Guidance for Claude Code (and other agents) working in this repository.
 ## What Vitra Is
 
 A secure, capability-oriented desktop application runtime for Go + web
-frontends. Phase 1 is the **secure runtime kernel** — capability gateway,
-explicit commands, caller identity, inspectable surface. It is a library you
-embed; platform WebView adapters and packaging come later.
+frontends. The repo ships a **secure runtime kernel** (capability gateway,
+explicit commands, host-stamped identity) and a **runnable Linux WebView host**
+(`app` + `platform/linux` with `-tags vitra_native`). Darwin/Windows adapters
+expose the same `DesktopHost` contract with explicit unsupported matrices.
 
 Read `docs/intent.md` and `docs/architecture-ddd.md` before substantive changes.
 
@@ -18,6 +19,7 @@ make check          # fmt + lint + test + security
 make test
 make lint
 make cover
+make e2e            # Linux native Eval→invoke round-trip (needs WebKitGTK + xvfb)
 go test ./... -race
 go run ./example/quickstart
 go run ./cmd/vitra -- help
@@ -29,6 +31,9 @@ Zero external dependencies in the kernel — standard library only.
 
 ```
 vitra (root)     Fluent Runtime facade
+app/             Desktop application runtime (assets + host + gateway)
+bridge/          Injected frontend preload
+platform/        OS adapters (linux WebKitGTK, darwin/windows stubs)
 domain/          Aggregates, services, ports (zero deps)
 application/     Use cases
 inmemory/        Default adapters
@@ -36,7 +41,7 @@ cmd/vitra/       CLI delivery adapter
 example/         Runnable docs
 ```
 
-Dependency direction: `domain` ← `application` ← `inmemory` ← `vitra`.
+Dependency direction: `domain` ← `application` ← `inmemory` ← `vitra` ← `app`.
 
 ## Key Design Rules
 

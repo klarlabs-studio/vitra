@@ -8,7 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-
+- Linux tray context menus on the status-icon; `DesktopHost.SetTray` accepts menu items.
+- Competitive demo chrome (menu/tray/dialogs/clipboard/deeplink) authorizes through the kernel gateway (`Runtime.Authorize`).
+- `vitra new` scaffold no longer emits a duplicate `io/fs` import.
+- Kernel version bumped to `0.3.0` (matches official plugin `MinKernel`).
+- Linux deep-link argv parsing and unix-socket secondary-instance handoff.
+- Linux save-file dialog and flock-based single-instance lock on `platform/linux`.
+- `app.DesktopHost` now includes menu/tray/action/save/single-instance/deep-link surface.
+- Competitive demo routes clipboard/dialogs/menu/tray through `desktop` permission services.
+- `vitra new` emits `go.mod`; `vitra dev` watches source and restarts the app.
+- Competitive desktop runtime: `app.App` binds the secure kernel to a native
+  WebView host; `bridge` injects `window.vitra.invoke` with host-stamped identity.
+- Linux WebKitGTK host (`platform/linux`, build tag `vitra_native`) with
+  clipboard, open/save dialogs, GTK menu bar, status-icon tray + context menu,
+  navigation policy, and GTK main loop.
+- Eval-driven E2E (`make e2e`) proving frontend invoke → capability gateway.
+- Darwin/Windows `DesktopHost` stubs with explicit `ErrUnsupported` feature matrices.
+- CLI DX: `vitra new`, `vitra dev`, `vitra build`, upgraded `vitra doctor`.
+- Competitive demo: `example/competitive` (run under xvfb with `make demo`).
+- CI runs on all pull requests (including stacked non-`main` bases).
+- Phase 5 isolation/enterprise: supervised workers with crash-safe bookkeeping,
+  audit sink, enterprise policy overlay (signed updates + no dev-priv leak in production).
 - Phase 4 distribution: packaging specs with signing identity refs (invariant 10),
   ed25519-signed update manifests + install plans (invariant 9), provenance/SBOM documents.
 - Phase 3 plugin SDK: manifests, SemVer compatibility, permission-ownership registry (invariant 6),
