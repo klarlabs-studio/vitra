@@ -5,7 +5,8 @@
 // lifecycle, navigation policy, window-owned subscriptions, and capability-
 // gated desktop services (menu/tray/dialog/clipboard/shortcuts/deeplinks).
 // Phase 3 plugins register through RegisterPlugin; hosts BindExecutor for
-// contributed commands.
+// contributed commands. Phase 5 enterprise policy installs via SetPolicy and
+// can only tighten Authorize/Invoke decisions.
 //
 // Example:
 //
@@ -26,6 +27,7 @@ import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/inmemory"
 	"go.klarlabs.de/vitra/plugin"
+	"go.klarlabs.de/vitra/policy"
 )
 
 // Version is the kernel API version. Generated frontend bindings should be
@@ -53,6 +55,8 @@ type Runtime struct {
 	executors     *inmemory.ExecutorRegistry
 	navPolicy     *domain.NavigationPolicy
 	plugins       *plugin.Registry
+	policyEng     *policy.Engine
+	invoker       *domain.InvocationService
 
 	registerGrant   *application.RegisterGrantUseCase
 	registerCommand *application.RegisterCommandUseCase
@@ -109,7 +113,7 @@ func ParseKernelVersion(v string) (plugin.SemVer, error) {
 }
 
 func (rt *Runtime) wire() {
-	invoker := &domain.InvocationService{
+	rt.invoker = &domain.InvocationService{
 		Commands:  rt.commands,
 		Grants:    rt.grants,
 		Windows:   rt.windows,
@@ -123,7 +127,7 @@ func (rt *Runtime) wire() {
 	rt.closeWindow = &application.CloseWindowUseCase{
 		Windows: rt.windows, Resources: rt.resources, Subscriptions: rt.subscriptions,
 	}
-	rt.invoke = &application.InvokeCommandUseCase{Invoker: invoker}
+	rt.invoke = &application.InvokeCommandUseCase{Invoker: rt.invoker}
 	rt.inspect = &application.InspectCapabilitiesUseCase{Grants: rt.grants, Windows: rt.windows}
 	rt.subscribe = &application.SubscribeEventUseCase{Windows: rt.windows, Subscriptions: rt.subscriptions}
 }
@@ -133,6 +137,20 @@ func (rt *Runtime) AppID() domain.AppID { return rt.appID }
 
 // Plugins returns the plugin registry.
 func (rt *Runtime) Plugins() *plugin.Registry { return rt.plugins }
+
+// SetPolicy installs an enterprise policy overlay (Phase 5). Nil clears it.
+// Policy can only tighten grants — never loosen denials.
+func (rt *Runtime) SetPolicy(eng *policy.Engine) {
+	rt.policyEng = eng
+	if eng == nil {
+		rt.invoker.Overlay = nil
+		return
+	}
+	rt.invoker.Overlay = eng.OverlayDecision
+}
+
+// Policy returns the installed enterprise policy engine, if any.
+func (rt *Runtime) Policy() *policy.Engine { return rt.policyEng }
 
 // RegisterGrant installs a capability grant.
 func (rt *Runtime) RegisterGrant(grant *domain.CapabilityGrant) error {
@@ -216,6 +234,7 @@ func (rt *Runtime) Invoke(ctx context.Context, req domain.InvocationRequest) (*d
 
 // Authorize evaluates a permission against registered grants.
 // Implements desktop.Gateway so host chrome can share the kernel gateway.
+// When an enterprise policy is installed, it may tighten an allow into a deny.
 func (rt *Runtime) Authorize(caller domain.Caller, permission domain.PermissionName, resourcePath string) domain.Decision {
 	grants, err := rt.grants.List()
 	if err != nil {
@@ -225,7 +244,11 @@ func (rt *Runtime) Authorize(caller domain.Caller, permission domain.PermissionN
 			Reason:     err.Error(),
 		}
 	}
-	return domain.NewCapabilityGateway(grants...).Authorize(caller, permission, resourcePath)
+	d := domain.NewCapabilityGateway(grants...).Authorize(caller, permission, resourcePath)
+	if rt.policyEng != nil {
+		d = rt.policyEng.OverlayDecision(permission, d)
+	}
+	return d
 }
 
 // InspectCapabilities returns the effective privileged surface for a window.

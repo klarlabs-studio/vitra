@@ -11,6 +11,22 @@ the WebView host’s privilege.
 | Crash-safe bookkeeping | worker records survive runner failures |
 | Audit log sink | `audit.MemorySink` (+ `Sink` port) |
 | Enterprise policy overlay | `policy.Engine` |
+| Live Runtime wiring | `Runtime.SetPolicy` / `Authorize` + invocation overlay |
+
+## Runtime wiring
+
+`Runtime.SetPolicy` installs a `policy.Engine` that can only tighten decisions:
+
+- `Authorize` applies `OverlayDecision` after the capability gateway
+- `Invoke` applies the same overlay via `InvocationService.Overlay`
+
+Production engines force signed updates and strip development privileges
+(invariants 9 / 11). The competitive demo honors optional env hooks:
+
+```bash
+VITRA_POLICY=production
+VITRA_POLICY_DENY=shell.exec,clipboard.read
+```
 
 ## Invariants
 

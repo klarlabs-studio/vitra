@@ -163,6 +163,37 @@ func TestInvocationService_RejectsSpoofedOrigin(t *testing.T) {
 	}
 }
 
+func TestInvocationService_OverlayTightensAllow(t *testing.T) {
+	grant := mustGrant(t)
+	cmd, _ := domain.NewCommandDefinition("project.open", "Open project", "fs.read")
+	win, _ := domain.NewWindow("main", domain.OriginPackagedLocal)
+	svc := &domain.InvocationService{
+		Commands: &memCommands{byName: map[domain.CommandName]*domain.CommandDefinition{cmd.Name(): cmd}},
+		Grants:   &memGrants{items: []*domain.CapabilityGrant{grant}},
+		Windows:  &memWindows{byID: map[domain.WindowID]*domain.Window{win.ID(): win}},
+		Executors: memExecLookup{"project.open": memExec{fn: func(context.Context, domain.CommandName, any) (any, error) {
+			return "ok", nil
+		}}},
+		Overlay: func(permission domain.PermissionName, d domain.Decision) domain.Decision {
+			return domain.Decision{
+				Permission: permission,
+				Code:       domain.DenialNoGrant,
+				Reason:     "denied by enterprise policy",
+			}
+		},
+	}
+	caller, _ := win.Caller()
+	_, err := svc.Invoke(context.Background(), domain.InvocationRequest{
+		Caller:       caller,
+		Command:      "project.open",
+		ResourcePath: "/project/app",
+	})
+	var denied *domain.ErrDenied
+	if !errors.As(err, &denied) || denied.Reason != "denied by enterprise policy" {
+		t.Fatalf("expected overlay denial, got %v", err)
+	}
+}
+
 func TestCommandDefinition_RequiresPermission(t *testing.T) {
 	_, err := domain.NewCommandDefinition("x", "", "")
 	if err == nil {

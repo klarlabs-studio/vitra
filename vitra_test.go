@@ -11,6 +11,7 @@ import (
 	"go.klarlabs.de/vitra/plugin"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
+	"go.klarlabs.de/vitra/policy"
 )
 
 type echoExec struct{}
@@ -182,6 +183,73 @@ func TestRuntime_AuthorizeSharesGateway(t *testing.T) {
 	d = rt.Authorize(caller, "tray.set", "")
 	if !d.Allowed {
 		t.Fatalf("expected allow after grant: %+v", d)
+	}
+}
+
+func TestRuntime_PolicyOverlayTightensGrant(t *testing.T) {
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
+		t.Fatal(err)
+	}
+	grant, err := domain.NewCapabilityGrant(
+		"shell", "shell",
+		[]domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{{Name: "shell.exec"}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.RegisterGrant(grant); err != nil {
+		t.Fatal(err)
+	}
+	cmd, _ := domain.NewCommandDefinition("shell.run", "Run shell", "shell.exec")
+	if err := rt.RegisterCommand(cmd, echoExec{}); err != nil {
+		t.Fatal(err)
+	}
+
+	caller, _ := rt.CallerFor("main")
+	d := rt.Authorize(caller, "shell.exec", "")
+	if !d.Allowed {
+		t.Fatalf("expected grant allow before policy: %+v", d)
+	}
+	res, err := rt.Invoke(ctx, domain.InvocationRequest{Caller: caller, Command: "shell.run"})
+	if err != nil || !res.Authorized {
+		t.Fatalf("invoke before policy: %+v %v", res, err)
+	}
+
+	eng, err := policy.NewEngine(policy.Document{
+		DenyPermissions: []domain.PermissionName{"shell.exec"},
+	}, policy.EnvProduction)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt.SetPolicy(eng)
+	if rt.Policy() != eng {
+		t.Fatal("Policy() should return installed engine")
+	}
+
+	d = rt.Authorize(caller, "shell.exec", "")
+	if d.Allowed || d.Reason != "denied by enterprise policy" {
+		t.Fatalf("expected policy deny on Authorize: %+v", d)
+	}
+	_, err = rt.Invoke(ctx, domain.InvocationRequest{Caller: caller, Command: "shell.run"})
+	var denied *domain.ErrDenied
+	if !errors.As(err, &denied) || denied.Reason != "denied by enterprise policy" {
+		t.Fatalf("expected policy deny on Invoke, got %v", err)
+	}
+
+	rt.SetPolicy(nil)
+	if rt.Policy() != nil {
+		t.Fatal("nil SetPolicy should clear engine")
+	}
+	d = rt.Authorize(caller, "shell.exec", "")
+	if !d.Allowed {
+		t.Fatalf("clearing policy should restore grant allow: %+v", d)
 	}
 }
 
