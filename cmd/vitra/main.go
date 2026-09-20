@@ -14,12 +14,14 @@ import (
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/packaging"
 	"go.klarlabs.de/vitra/platform"
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
+	"go.klarlabs.de/vitra/provenance"
 )
 
 func main() {
@@ -48,6 +50,8 @@ func run(args []string) error {
 		return runDev(args[1:])
 	case "build":
 		return runBuild(args[1:])
+	case "package":
+		return runPackage(args[1:])
 	case "register-scheme":
 		return registerScheme(args[1:])
 	case "help", "-h", "--help":
@@ -67,6 +71,8 @@ Usage:
   vitra new <dir>            Scaffold a starter desktop app
   vitra dev [dir]            Watch + run the app with the native host (Linux: -tags vitra_native)
   vitra build [dir]          Build the app binary with the native host
+  vitra package --out <dir> [--bin path] [--app-id id] [--name name] [--version ver]
+                             Stage a Linux app directory + provenance.json
   vitra register-scheme <scheme> [app-id] [exec]
                              Register an xdg URL scheme handler (Linux)
   vitra inspect capabilities Demo capability inspection against an in-memory runtime
@@ -337,6 +343,88 @@ func runBuild(args []string) error {
 	}
 	argsGo = append(argsGo, "-o", "vitra-app", ".")
 	return execGo(dir, argsGo...)
+}
+
+func runPackage(args []string) error {
+	outDir := ""
+	bin := "vitra-app"
+	appID := "com.vitra.app"
+	name := "Vitra App"
+	version := vitra.Version
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--out":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("usage: vitra package --out <dir> [--bin path] [--app-id id] [--name name] [--version ver]")
+			}
+			outDir = args[i]
+		case "--bin":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--bin requires a path")
+			}
+			bin = args[i]
+		case "--app-id":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--app-id requires a value")
+			}
+			appID = args[i]
+		case "--name":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--name requires a value")
+			}
+			name = args[i]
+		case "--version":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--version requires a value")
+			}
+			version = args[i]
+		default:
+			return fmt.Errorf("unknown package flag %q", args[i])
+		}
+	}
+	if outDir == "" {
+		return fmt.Errorf("usage: vitra package --out <dir> [--bin path] [--app-id id] [--name name] [--version ver]")
+	}
+	if _, err := os.Stat(bin); err != nil {
+		return fmt.Errorf("binary %q: %w (run vitra build first)", bin, err)
+	}
+	spec := packaging.Spec{
+		AppID:   appID,
+		Version: version,
+		Name:    name,
+		Targets: []packaging.Target{packaging.TargetLinuxDir},
+		Arch:    packaging.DefaultArch(),
+	}
+	art, err := packaging.StageLinux(spec, bin, outDir)
+	if err != nil {
+		return err
+	}
+	raw, err := os.ReadFile(bin)
+	if err != nil {
+		return err
+	}
+	doc := provenance.NewDocument(appID, version, runtime.Version()).
+		WithArtifactDigest(raw)
+	doc.Plugins = []provenance.PluginInfo{
+		{ID: string(officialfs.PluginID), Version: "1.0.0", Perms: []string{"fs.read", "fs.write"}},
+		{ID: string(officialdialog.PluginID), Version: "1.0.0", Perms: []string{"dialog.open", "dialog.save"}},
+	}
+	doc.Capabilities = []string{"fs.read", "fs.write", "dialog.open", "dialog.save"}
+	body, err := doc.JSON()
+	if err != nil {
+		return err
+	}
+	provPath := filepath.Join(outDir, "provenance.json")
+	if err := os.WriteFile(provPath, body, 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("staged %s\n  binary sha256: %s\n  provenance:    %s\n", art.Path, art.SHA256, provPath)
+	return nil
 }
 
 func registerScheme(args []string) error {
