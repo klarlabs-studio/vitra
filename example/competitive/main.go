@@ -13,6 +13,7 @@ import (
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/app"
+	"go.klarlabs.de/vitra/audit"
 	"go.klarlabs.de/vitra/desktop"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/platform"
@@ -44,6 +45,7 @@ func run() error {
 	if err := installOptionalPolicy(rt); err != nil {
 		return err
 	}
+	installOptionalAudit(rt)
 	host := linux.New()
 	const appID = "com.vitra.competitive"
 
@@ -354,6 +356,9 @@ func run() error {
 				if os.Getenv("VITRA_E2E") == "1" && !e2eOK.Load() {
 					fmt.Fprintln(os.Stderr, "VITRA_E2E_FAIL: demo.greet did not complete")
 				}
+				if sink := rt.Audit(); sink != nil {
+					fmt.Printf("audit events: %d\n", len(sink.List()))
+				}
 				application.Quit()
 			}()
 		}
@@ -397,4 +402,12 @@ func installOptionalPolicy(rt *vitra.Runtime) error {
 	rt.SetPolicy(eng)
 	fmt.Printf("enterprise policy: env=%s deny=%v\n", env, doc.DenyPermissions)
 	return nil
+}
+
+func installOptionalAudit(rt *vitra.Runtime) {
+	if os.Getenv("VITRA_AUDIT") != "1" {
+		return
+	}
+	rt.SetAudit(&audit.MemorySink{})
+	fmt.Println("audit sink: memory")
 }

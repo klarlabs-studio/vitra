@@ -11,7 +11,7 @@ the WebView host’s privilege.
 | Crash-safe bookkeeping | worker records survive runner failures |
 | Audit log sink | `audit.MemorySink` (+ `Sink` port) |
 | Enterprise policy overlay | `policy.Engine` |
-| Live Runtime wiring | `Runtime.SetPolicy` / `Authorize` + invocation overlay |
+| Live Runtime wiring | `Runtime.SetPolicy` / `SetAudit` on Authorize, Invoke, plugins, updates |
 
 ## Runtime wiring
 
@@ -21,12 +21,23 @@ the WebView host’s privilege.
 - `Invoke` applies the same overlay via `InvocationService.Overlay`
 - `ApplyUpdate` calls `AuthorizeUpdate` before signed install (channel + unsigned reject)
 
+`Runtime.SetAudit` installs an `audit.Sink`. Live paths emit:
+
+| Kind | Source |
+|------|--------|
+| `capability.decision` | `Authorize` |
+| `policy.override` | policy tighten on `Authorize` |
+| `command.invoke` | `Invoke` |
+| `plugin.register` | `RegisterPlugin` |
+| `update.plan` | `ApplyUpdate` |
+
 Production engines force signed updates and strip development privileges
 (invariants 9 / 11). The competitive demo honors optional env hooks:
 
 ```bash
 VITRA_POLICY=production
 VITRA_POLICY_DENY=shell.exec,clipboard.read
+VITRA_AUDIT=1
 ```
 
 ## Invariants

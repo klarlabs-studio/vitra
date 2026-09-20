@@ -6,7 +6,8 @@
 // gated desktop services (menu/tray/dialog/clipboard/shortcuts/deeplinks).
 // Phase 3 plugins register through RegisterPlugin; hosts BindExecutor for
 // contributed commands. Phase 5 enterprise policy installs via SetPolicy and
-// can only tighten Authorize/Invoke decisions.
+// can only tighten Authorize/Invoke decisions. SetAudit records capability,
+// plugin, and update outcomes for fleet diagnostics.
 //
 // Example:
 //
@@ -20,11 +21,13 @@ package vitra
 import (
 	"context"
 	"crypto/ed25519"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"go.klarlabs.de/vitra/application"
+	"go.klarlabs.de/vitra/audit"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/inmemory"
 	"go.klarlabs.de/vitra/plugin"
@@ -58,6 +61,7 @@ type Runtime struct {
 	navPolicy     *domain.NavigationPolicy
 	plugins       *plugin.Registry
 	policyEng     *policy.Engine
+	auditSink     audit.Sink
 	invoker       *domain.InvocationService
 
 	registerGrant   *application.RegisterGrantUseCase
@@ -154,6 +158,19 @@ func (rt *Runtime) SetPolicy(eng *policy.Engine) {
 // Policy returns the installed enterprise policy engine, if any.
 func (rt *Runtime) Policy() *policy.Engine { return rt.policyEng }
 
+// SetAudit installs an audit sink (Phase 5). Nil clears it.
+func (rt *Runtime) SetAudit(s audit.Sink) { rt.auditSink = s }
+
+// Audit returns the installed audit sink, if any.
+func (rt *Runtime) Audit() audit.Sink { return rt.auditSink }
+
+func (rt *Runtime) emitAudit(e audit.Event) {
+	if rt.auditSink == nil {
+		return
+	}
+	_ = rt.auditSink.Append(e)
+}
+
 // RegisterGrant installs a capability grant.
 func (rt *Runtime) RegisterGrant(grant *domain.CapabilityGrant) error {
 	return rt.registerGrant.Execute(grant)
@@ -174,18 +191,34 @@ func (rt *Runtime) RegisterCommand(cmd *domain.CommandDefinition, exec domain.Co
 // Command definitions are registered without executors; call BindExecutor
 // (or RegisterCommand for app-owned commands) to attach host handlers.
 func (rt *Runtime) RegisterPlugin(ctx context.Context, p plugin.Plugin) error {
+	id := string(p.Manifest().ID)
 	if err := rt.plugins.Register(ctx, p); err != nil {
+		rt.emitAudit(audit.Event{
+			Kind: audit.KindPluginRegister, Actor: id, Action: "register",
+			Outcome: "error", Detail: err.Error(),
+		})
 		return err
 	}
 	reg, err := rt.plugins.Get(p.Manifest().ID)
 	if err != nil {
+		rt.emitAudit(audit.Event{
+			Kind: audit.KindPluginRegister, Actor: id, Action: "register",
+			Outcome: "error", Detail: err.Error(),
+		})
 		return err
 	}
 	for _, cmd := range reg.Contribution.Commands {
 		if err := rt.registerCommand.Execute(cmd); err != nil {
+			rt.emitAudit(audit.Event{
+				Kind: audit.KindPluginRegister, Actor: id, Action: "register",
+				Outcome: "error", Detail: err.Error(),
+			})
 			return err
 		}
 	}
+	rt.emitAudit(audit.Event{
+		Kind: audit.KindPluginRegister, Actor: id, Action: "register", Outcome: "allowed",
+	})
 	return nil
 }
 
@@ -231,7 +264,28 @@ func (rt *Runtime) NavigationPolicy() *domain.NavigationPolicy { return rt.navPo
 
 // Invoke runs a frontend command through the capability gateway.
 func (rt *Runtime) Invoke(ctx context.Context, req domain.InvocationRequest) (*domain.InvocationResult, error) {
-	return rt.invoke.Execute(ctx, req)
+	res, err := rt.invoke.Execute(ctx, req)
+	outcome := "allowed"
+	detail := ""
+	if err != nil {
+		var denied *domain.ErrDenied
+		if errors.As(err, &denied) {
+			outcome = "denied"
+			detail = denied.Reason
+		} else {
+			outcome = "error"
+			detail = err.Error()
+		}
+	}
+	rt.emitAudit(audit.Event{
+		Kind:    audit.KindCommandInvoke,
+		Window:  string(req.Caller.Window),
+		Origin:  string(req.Caller.Origin),
+		Action:  string(req.Command),
+		Outcome: outcome,
+		Detail:  detail,
+	})
+	return res, err
 }
 
 // Authorize evaluates a permission against registered grants.
@@ -240,16 +294,36 @@ func (rt *Runtime) Invoke(ctx context.Context, req domain.InvocationRequest) (*d
 func (rt *Runtime) Authorize(caller domain.Caller, permission domain.PermissionName, resourcePath string) domain.Decision {
 	grants, err := rt.grants.List()
 	if err != nil {
-		return domain.Decision{
+		d := domain.Decision{
 			Permission: permission,
 			Code:       domain.DenialNoGrant,
 			Reason:     err.Error(),
 		}
+		rt.emitAudit(audit.Event{
+			Kind: audit.KindCapabilityDecision, Window: string(caller.Window), Origin: string(caller.Origin),
+			Action: string(permission), Outcome: "denied", Detail: d.Reason,
+		})
+		return d
 	}
 	d := domain.NewCapabilityGateway(grants...).Authorize(caller, permission, resourcePath)
 	if rt.policyEng != nil {
+		before := d
 		d = rt.policyEng.OverlayDecision(permission, d)
+		if before.Allowed && !d.Allowed {
+			rt.emitAudit(audit.Event{
+				Kind: audit.KindPolicyOverride, Window: string(caller.Window), Origin: string(caller.Origin),
+				Action: string(permission), Outcome: "denied", Detail: d.Reason,
+			})
+		}
 	}
+	outcome := "denied"
+	if d.Allowed {
+		outcome = "allowed"
+	}
+	rt.emitAudit(audit.Event{
+		Kind: audit.KindCapabilityDecision, Window: string(caller.Window), Origin: string(caller.Origin),
+		Action: string(permission), Outcome: outcome, Detail: d.Reason,
+	})
 	return d
 }
 
@@ -258,16 +332,36 @@ func (rt *Runtime) Authorize(caller domain.Caller, permission domain.PermissionN
 func (rt *Runtime) ApplyUpdate(m updater.Manifest, pub ed25519.PublicKey, artifact []byte, destPath string) (updater.InstallPlan, error) {
 	if rt.policyEng != nil {
 		if err := rt.policyEng.AuthorizeUpdate(m); err != nil {
+			rt.emitAudit(audit.Event{
+				Kind: audit.KindUpdatePlan, Actor: m.AppID, Action: string(m.Channel),
+				Outcome: "denied", Detail: err.Error(),
+				Metadata: map[string]any{"version": m.Version},
+			})
 			return updater.InstallPlan{}, err
 		}
 	}
 	plan, err := updater.PlanInstall(m, pub, artifact)
 	if err != nil {
+		rt.emitAudit(audit.Event{
+			Kind: audit.KindUpdatePlan, Actor: m.AppID, Action: string(m.Channel),
+			Outcome: "denied", Detail: err.Error(),
+			Metadata: map[string]any{"version": m.Version},
+		})
 		return updater.InstallPlan{}, err
 	}
 	if err := updater.ApplyInstall(plan, artifact, destPath); err != nil {
+		rt.emitAudit(audit.Event{
+			Kind: audit.KindUpdatePlan, Actor: plan.AppID, Action: string(plan.Channel),
+			Outcome: "error", Detail: err.Error(),
+			Metadata: map[string]any{"version": plan.Version},
+		})
 		return updater.InstallPlan{}, err
 	}
+	rt.emitAudit(audit.Event{
+		Kind: audit.KindUpdatePlan, Actor: plan.AppID, Action: string(plan.Channel),
+		Outcome: "allowed", Detail: destPath,
+		Metadata: map[string]any{"version": plan.Version, "sha256": plan.SHA256},
+	})
 	return plan, nil
 }
 
