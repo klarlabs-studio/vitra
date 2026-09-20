@@ -1,0 +1,9 @@
+# warden gate — https://github.com/klarlabs-studio/warden
+hooks: { pre_commit: true, pre_push: true }
+commands:
+  lint: "golangci-lint run --allow-parallel-runners ./..."
+  test: "go test -race ./..."
+steps:
+  pre_commit: [lint]
+  pre_push: [test, lint]
+parallel: true

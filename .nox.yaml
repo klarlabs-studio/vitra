@@ -1,0 +1,38 @@
+# nox security scanner configuration.
+# Reference: https://github.com/nox-hq/nox
+
+scan:
+  exclude:
+    # This config itself: exclusion comments name secret rules by design.
+    - ".nox.yaml"
+    # Baseline fingerprints are high-entropy hashes, not secrets.
+    - ".nox/**"
+    # Roady / project-management metadata.
+    - ".roady/**"
+    # go.sum digests look like API keys to entropy detectors.
+    - "go.sum"
+    - "**/go.sum"
+    # CI workflows: pinned SHAs + GITHUB_TOKEN references.
+    - ".github/workflows/*.yml"
+    # Documentation prose / examples collide with vendor API-key regexes.
+    # Both patterns needed: **/*.md misses root README.md.
+    - "*.md"
+    - "**/*.md"
+    # Runnable examples are living documentation with placeholder data.
+    - "example/**"
+    # Test identifiers match secret-looking regexes (not real secrets).
+    - "*_test.go"
+    - "**/*_test.go"
+    # Generated / local artifacts.
+    - "nox-out/"
+    - "coverage.out"
+    - "coverage.html"
+
+# nox owns code-level SAST here (source-to-sink taint: injection, SSRF, path
+# traversal). Declaring the plugin REQUIRED rather than leaning on the CI
+# install step means a registry outage surfaces as a degraded scan instead of
+# silently producing zero taint findings, which is indistinguishable from
+# clean. The shared go-ci gate fails on meta.degradations.
+plugins:
+  required:
+    - nox/taint-analysis

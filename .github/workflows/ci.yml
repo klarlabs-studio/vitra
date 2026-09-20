@@ -1,0 +1,26 @@
+# Thin caller for the shared klarlabs-studio Go CI bar.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "docs/**", "LICENSE"]
+  pull_request:
+    branches: [main]
+    # No paths-ignore: branch protection requires this workflow's status
+    # checks. Docs-only PRs must still report them.
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: klarlabs-studio/.github/.github/workflows/go-ci.yml@main
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+    secrets: inherit
+    with:
+      coverage: true
