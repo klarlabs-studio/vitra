@@ -50,3 +50,30 @@ func TestNavigateWithPolicy_DeniesUntrusted(t *testing.T) {
 		t.Fatalf("expected origin denial, got %v", err)
 	}
 }
+
+func TestEmitEvent_OnlyOpenSubscribers(t *testing.T) {
+	windows := inmemory.NewWindowRepo()
+	subs := inmemory.NewSubscriptionRepo()
+	open := &application.OpenWindowUseCase{Windows: windows}
+	subscribe := &application.SubscribeEventUseCase{Windows: windows, Subscriptions: subs}
+	emit := &application.EmitEventUseCase{Windows: windows, Subscriptions: subs}
+	closeUC := &application.CloseWindowUseCase{Windows: windows, Subscriptions: subs}
+
+	if _, err := open.Execute("main", domain.OriginPackagedLocal); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := subscribe.Execute("sub-1", "app.tick", "main"); err != nil {
+		t.Fatal(err)
+	}
+	deliveries, err := emit.Execute("app.tick", map[string]any{"n": 1})
+	if err != nil || len(deliveries) != 1 || deliveries[0].Window != "main" {
+		t.Fatalf("deliveries=%+v err=%v", deliveries, err)
+	}
+	if err := closeUC.Execute("main"); err != nil {
+		t.Fatal(err)
+	}
+	deliveries, err = emit.Execute("app.tick", nil)
+	if err != nil || len(deliveries) != 0 {
+		t.Fatalf("closed window must not receive: %+v err=%v", deliveries, err)
+	}
+}

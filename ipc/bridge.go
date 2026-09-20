@@ -59,6 +59,12 @@ type ErrorPayload struct {
 	Message string `json:"message"`
 }
 
+// EventPayload is a one-way host→frontend notification.
+type EventPayload struct {
+	Event   string          `json:"event"`
+	Payload json.RawMessage `json:"payload,omitempty"`
+}
+
 // HostIdentity is caller identity established at the native boundary.
 type HostIdentity struct {
 	Window domain.WindowID
@@ -137,6 +143,27 @@ func EncodeError(id string, code, message string) ([]byte, error) {
 		Kind:     KindError,
 		ID:       id,
 		Payload:  payload,
+	})
+}
+
+// EncodeEvent encodes a host→frontend event envelope (KindEvent).
+func EncodeEvent(name domain.EventName, payload any) ([]byte, error) {
+	var raw json.RawMessage
+	if payload != nil {
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		raw = b
+	}
+	body, err := json.Marshal(EventPayload{Event: string(name), Payload: raw})
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(Envelope{
+		Protocol: ProtocolVersion,
+		Kind:     KindEvent,
+		Payload:  body,
 	})
 }
 

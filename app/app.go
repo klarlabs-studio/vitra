@@ -146,6 +146,28 @@ func (a *App) Quit() {
 	a.host.Quit()
 }
 
+type eventMsg struct {
+	Type    string `json:"type"`
+	Event   string `json:"event"`
+	Payload any    `json:"payload,omitempty"`
+}
+
+// Emit pushes a host→frontend event to every open window subscribed to name.
+func (a *App) Emit(ctx context.Context, name domain.EventName, payload any) error {
+	deliveries, err := a.rt.EmitEvent(name, payload)
+	if err != nil {
+		return err
+	}
+	var first error
+	for _, d := range deliveries {
+		msg := mustJSON(eventMsg{Type: "event", Event: string(d.Event.Name), Payload: d.Event.Payload})
+		if err := a.host.PostMessage(ctx, d.Window, msg); err != nil && first == nil {
+			first = err
+		}
+	}
+	return first
+}
+
 type invokeMsg struct {
 	Type         string          `json:"type"`
 	ID           string          `json:"id"`

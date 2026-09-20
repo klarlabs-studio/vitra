@@ -75,6 +75,7 @@ type Runtime struct {
 	invoke          *application.InvokeCommandUseCase
 	inspect         *application.InspectCapabilitiesUseCase
 	subscribe       *application.SubscribeEventUseCase
+	emit            *application.EmitEventUseCase
 }
 
 // New constructs a Runtime with in-memory adapters.
@@ -157,6 +158,7 @@ func (rt *Runtime) wire() {
 	rt.invoke = &application.InvokeCommandUseCase{Invoker: rt.invoker}
 	rt.inspect = &application.InspectCapabilitiesUseCase{Grants: rt.grants, Windows: rt.windows}
 	rt.subscribe = &application.SubscribeEventUseCase{Windows: rt.windows, Subscriptions: rt.subscriptions}
+	rt.emit = &application.EmitEventUseCase{Windows: rt.windows, Subscriptions: rt.subscriptions}
 }
 
 // AppID returns the application id.
@@ -320,6 +322,12 @@ func (rt *Runtime) CloseWindow(_ context.Context, id domain.WindowID) error {
 // SubscribeEvent registers a window-owned event subscription.
 func (rt *Runtime) SubscribeEvent(id domain.SubscriptionID, event domain.EventName, window domain.WindowID) (*domain.Subscription, error) {
 	return rt.subscribe.Execute(id, event, window)
+}
+
+// EmitEvent resolves open window subscribers for a named event.
+// Hosts (e.g. app.App.Emit) deliver payloads to those windows via PostMessage.
+func (rt *Runtime) EmitEvent(event domain.EventName, payload any) ([]application.EventDelivery, error) {
+	return rt.emit.Execute(event, payload)
 }
 
 // NavigationPolicy returns the runtime navigation policy.

@@ -20,8 +20,14 @@ type fakeHost struct {
 	opened  bool
 	uri     string
 	preload string
+	posted  []postedMsg
 	quit    chan struct{}
 	ran     chan struct{}
+}
+
+type postedMsg struct {
+	Window  domain.WindowID
+	Message []byte
 }
 
 func (h *fakeHost) OS() platform.OS { return platform.OSLinux }
@@ -45,17 +51,21 @@ func (h *fakeHost) Open(spec platform.WindowSpec, uri, preload string) error {
 func (h *fakeHost) NavigateWindow(context.Context, domain.WindowID, domain.Origin) error {
 	return nil
 }
-func (h *fakeHost) PostMessage(context.Context, domain.WindowID, []byte) error { return nil }
-func (h *fakeHost) Eval(domain.WindowID, string) error                         { return nil }
-func (h *fakeHost) CloseWindow(context.Context, domain.WindowID) error         { return nil }
-func (h *fakeHost) ClipboardGet() (string, error)                              { return "clip", nil }
-func (h *fakeHost) ClipboardSet(string) error                                  { return nil }
-func (h *fakeHost) OpenFileDialog() (string, error)                            { return "/tmp/x", nil }
-func (h *fakeHost) SaveFileDialog() (string, error)                            { return "/tmp/y", nil }
-func (h *fakeHost) SetActionHandler(func(string))                              {}
-func (h *fakeHost) SetMenuBar(domain.WindowID, []platform.MenuItem) error      { return nil }
-func (h *fakeHost) SetTray(string, []platform.MenuItem) error                  { return nil }
-func (h *fakeHost) ClearTray()                                                 {}
+func (h *fakeHost) PostMessage(_ context.Context, id domain.WindowID, message []byte) error {
+	cp := append([]byte(nil), message...)
+	h.posted = append(h.posted, postedMsg{Window: id, Message: cp})
+	return nil
+}
+func (h *fakeHost) Eval(domain.WindowID, string) error                    { return nil }
+func (h *fakeHost) CloseWindow(context.Context, domain.WindowID) error    { return nil }
+func (h *fakeHost) ClipboardGet() (string, error)                         { return "clip", nil }
+func (h *fakeHost) ClipboardSet(string) error                             { return nil }
+func (h *fakeHost) OpenFileDialog() (string, error)                       { return "/tmp/x", nil }
+func (h *fakeHost) SaveFileDialog() (string, error)                       { return "/tmp/y", nil }
+func (h *fakeHost) SetActionHandler(func(string))                         {}
+func (h *fakeHost) SetMenuBar(domain.WindowID, []platform.MenuItem) error { return nil }
+func (h *fakeHost) SetTray(string, []platform.MenuItem) error             { return nil }
+func (h *fakeHost) ClearTray()                                            {}
 func (h *fakeHost) TrySingleInstance(string) (bool, func(), error) {
 	return true, func() {}, nil
 }
@@ -141,6 +151,23 @@ func TestApp_RunInvokeAndNavPolicy(t *testing.T) {
 	}
 	if got["ok"] != true {
 		t.Fatalf("invoke failed: %s", resp)
+	}
+
+	if _, err := rt.SubscribeEvent("sub-1", "demo.tick", "main"); err != nil {
+		t.Fatal(err)
+	}
+	if err := application.Emit(context.Background(), "demo.tick", map[string]any{"n": 1}); err != nil {
+		t.Fatal(err)
+	}
+	if len(host.posted) != 1 {
+		t.Fatalf("posted=%d", len(host.posted))
+	}
+	var ev map[string]any
+	if err := json.Unmarshal(host.posted[0].Message, &ev); err != nil {
+		t.Fatal(err)
+	}
+	if ev["type"] != "event" || ev["event"] != "demo.tick" {
+		t.Fatalf("event msg: %+v", ev)
 	}
 
 	application.Quit()

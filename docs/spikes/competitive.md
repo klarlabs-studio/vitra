@@ -24,6 +24,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | `vitra doctor/new/dev/build` | Done |
 | `platform/darwin`, `platform/windows` DesktopHost stubs | Explicit unsupported |
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |
+| Host→frontend events (`vitra.on` / `App.Emit`) | Done |
 
 ## Security invariants preserved
 
