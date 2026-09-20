@@ -4,6 +4,8 @@
 // Phase 2 adds desktop completeness on top of the secure kernel: multi-window
 // lifecycle, navigation policy, window-owned subscriptions, and capability-
 // gated desktop services (menu/tray/dialog/clipboard/shortcuts/deeplinks).
+// Phase 3 plugins register through RegisterPlugin; hosts BindExecutor for
+// contributed commands.
 //
 // Example:
 //
@@ -17,10 +19,13 @@ package vitra
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"go.klarlabs.de/vitra/application"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/inmemory"
+	"go.klarlabs.de/vitra/plugin"
 )
 
 // Version is the kernel API version. Generated frontend bindings should be
@@ -47,6 +52,7 @@ type Runtime struct {
 	subscriptions domain.SubscriptionRepository
 	executors     *inmemory.ExecutorRegistry
 	navPolicy     *domain.NavigationPolicy
+	plugins       *plugin.Registry
 
 	registerGrant   *application.RegisterGrantUseCase
 	registerCommand *application.RegisterCommandUseCase
@@ -68,6 +74,10 @@ func New(cfg Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	kernel, err := ParseKernelVersion(Version)
+	if err != nil {
+		return nil, err
+	}
 	rt := &Runtime{
 		appID:         cfg.AppID,
 		grants:        inmemory.NewGrantRepo(),
@@ -77,9 +87,25 @@ func New(cfg Config) (*Runtime, error) {
 		subscriptions: inmemory.NewSubscriptionRepo(),
 		executors:     inmemory.NewExecutorRegistry(),
 		navPolicy:     policy,
+		plugins:       plugin.NewRegistry(kernel),
 	}
 	rt.wire()
 	return rt, nil
+}
+
+// ParseKernelVersion parses a dotted major.minor.patch kernel version string.
+func ParseKernelVersion(v string) (plugin.SemVer, error) {
+	parts := strings.Split(v, ".")
+	if len(parts) != 3 {
+		return plugin.SemVer{}, &domain.ErrValidation{Message: "kernel version must be major.minor.patch"}
+	}
+	maj, err1 := strconv.Atoi(parts[0])
+	min, err2 := strconv.Atoi(parts[1])
+	pat, err3 := strconv.Atoi(parts[2])
+	if err1 != nil || err2 != nil || err3 != nil {
+		return plugin.SemVer{}, &domain.ErrValidation{Message: "kernel version must be numeric major.minor.patch"}
+	}
+	return plugin.SemVer{Major: maj, Minor: min, Patch: pat}, nil
 }
 
 func (rt *Runtime) wire() {
@@ -105,6 +131,9 @@ func (rt *Runtime) wire() {
 // AppID returns the application id.
 func (rt *Runtime) AppID() domain.AppID { return rt.appID }
 
+// Plugins returns the plugin registry.
+func (rt *Runtime) Plugins() *plugin.Registry { return rt.plugins }
+
 // RegisterGrant installs a capability grant.
 func (rt *Runtime) RegisterGrant(grant *domain.CapabilityGrant) error {
 	return rt.registerGrant.Execute(grant)
@@ -119,6 +148,37 @@ func (rt *Runtime) RegisterCommand(cmd *domain.CommandDefinition, exec domain.Co
 		return err
 	}
 	return rt.executors.Register(cmd.Name(), exec)
+}
+
+// RegisterPlugin validates and installs a plugin contribution.
+// Command definitions are registered without executors; call BindExecutor
+// (or RegisterCommand for app-owned commands) to attach host handlers.
+func (rt *Runtime) RegisterPlugin(ctx context.Context, p plugin.Plugin) error {
+	if err := rt.plugins.Register(ctx, p); err != nil {
+		return err
+	}
+	reg, err := rt.plugins.Get(p.Manifest().ID)
+	if err != nil {
+		return err
+	}
+	for _, cmd := range reg.Contribution.Commands {
+		if err := rt.registerCommand.Execute(cmd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// BindExecutor attaches a host executor to an already-registered command
+// (typically one contributed by a plugin).
+func (rt *Runtime) BindExecutor(name domain.CommandName, exec domain.CommandExecutor) error {
+	if exec == nil {
+		return &domain.ErrValidation{Message: "command executor is required"}
+	}
+	if _, err := rt.commands.Get(name); err != nil {
+		return err
+	}
+	return rt.executors.Register(name, exec)
 }
 
 // OpenWindow creates a window with no ambient privileges.
@@ -184,6 +244,11 @@ func (rt *Runtime) CallerFor(windowID domain.WindowID) (domain.Caller, error) {
 
 // FormatInspect renders a human-readable capability inspection report.
 func FormatInspect(appID domain.AppID, surfaces ...domain.EffectiveSurface) string {
+	return FormatInspectFull(appID, nil, surfaces...)
+}
+
+// FormatInspectFull renders capability and optional plugin ownership surfaces.
+func FormatInspectFull(appID domain.AppID, plugins []plugin.PermissionOwnership, surfaces ...domain.EffectiveSurface) string {
 	out := fmt.Sprintf("Application: %s\nKernel: %s\n", appID, Version)
 	out += "\nWindows\n"
 	for _, s := range surfaces {
@@ -210,6 +275,12 @@ func FormatInspect(appID domain.AppID, surfaces ...domain.EffectiveSurface) stri
 	}
 	if !anyPerm {
 		out += "  (none)\n"
+	}
+	if len(plugins) > 0 {
+		out += "\nPlugins (permission ownership)\n"
+		for _, o := range plugins {
+			out += fmt.Sprintf("  %s  owned by %s\n", o.Permission, o.Plugin)
+		}
 	}
 	return out
 }

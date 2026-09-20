@@ -12,7 +12,13 @@ Phase 3 stabilizes how privileged native surface enters a Vitra app: through
 | Registry + permission ownership | `plugin.Registry` |
 | Lifecycle hooks | `plugin.Lifecycle` |
 | Official `fs` / `dialog` contracts | `plugin/official/fs`, `plugin/official/dialog` |
+| Runtime wiring | `Runtime.RegisterPlugin` / `BindExecutor` / `Plugins()` |
 | TypeScript binding stub generator | `bindings.GenerateTypeScript` |
+
+Official plugins contribute **command definitions and permission ownership**.
+Hosts bind executors (`BindExecutor`) for commands they implement — e.g. the
+competitive demo binds `dialog.open`/`dialog.save` to native GTK dialogs and
+leaves `fs.*` unbound until a scoped FS host is provided.
 
 ## Security invariant 6
 

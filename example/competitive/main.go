@@ -15,6 +15,8 @@ import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/platform"
 	"go.klarlabs.de/vitra/platform/linux"
+	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
+	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 )
 
 //go:embed frontend/*
@@ -225,12 +227,22 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := register("dialog.open", "Open file dialog", desktop.PermDialogOpen, domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+
+	// Official plugins own dialog.* / fs.* permissions (invariant 6). Dialog
+	// executors are bound to the native host; fs stays unbound until a host
+	// provides scoped FS handlers.
+	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialfs.New()); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("dialog.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return dialogs.OpenFile(ctx, caller)
 	})); err != nil {
 		return err
 	}
-	if err := register("dialog.save", "Save file dialog", desktop.PermDialogSave, domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return dialogs.SaveFile(ctx, caller)
 	})); err != nil {
 		return err
