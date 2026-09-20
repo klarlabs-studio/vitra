@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"go.klarlabs.de/vitra"
+	"go.klarlabs.de/vitra/audit"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
@@ -388,6 +389,82 @@ func TestRuntime_ApplyUpdate_PolicyAndInstall(t *testing.T) {
 	got, err := os.ReadFile(dest)
 	if err != nil || string(got) != string(artifact) {
 		t.Fatalf("dest=%q err=%v", got, err)
+	}
+}
+
+func TestRuntime_AuditEmitsDecisions(t *testing.T) {
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sink := &audit.MemorySink{}
+	rt.SetAudit(sink)
+	if rt.Audit() != sink {
+		t.Fatal("Audit() should return installed sink")
+	}
+
+	ctx := context.Background()
+	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.RegisterPlugin(ctx, officialfs.New()); err != nil {
+		t.Fatal(err)
+	}
+
+	caller, _ := rt.CallerFor("main")
+	d := rt.Authorize(caller, "fs.read", "/x")
+	if d.Allowed {
+		t.Fatal("expected deny without grant")
+	}
+	_, _ = rt.Invoke(ctx, domain.InvocationRequest{Caller: caller, Command: "fs.read", ResourcePath: "/x"})
+
+	grant, err := domain.NewCapabilityGrant(
+		"files", "files",
+		[]domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{{Name: "shell.exec"}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.RegisterGrant(grant); err != nil {
+		t.Fatal(err)
+	}
+	eng, err := policy.NewEngine(policy.Document{
+		DenyPermissions: []domain.PermissionName{"shell.exec"},
+	}, policy.EnvProduction)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt.SetPolicy(eng)
+	d = rt.Authorize(caller, "shell.exec", "")
+	if d.Allowed {
+		t.Fatal("expected policy deny")
+	}
+
+	events := sink.List()
+	kinds := map[audit.Kind]int{}
+	for _, e := range events {
+		kinds[e.Kind]++
+	}
+	if kinds[audit.KindPluginRegister] < 1 {
+		t.Fatalf("missing plugin.register: %+v", events)
+	}
+	if kinds[audit.KindCapabilityDecision] < 2 {
+		t.Fatalf("missing capability.decision: %+v", events)
+	}
+	if kinds[audit.KindCommandInvoke] < 1 {
+		t.Fatalf("missing command.invoke: %+v", events)
+	}
+	if kinds[audit.KindPolicyOverride] < 1 {
+		t.Fatalf("missing policy.override: %+v", events)
+	}
+
+	rt.SetAudit(nil)
+	before := len(sink.List())
+	_ = rt.Authorize(caller, "shell.exec", "")
+	if len(sink.List()) != before {
+		t.Fatal("cleared audit sink should stop recording")
 	}
 }
 
