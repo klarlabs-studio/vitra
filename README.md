@@ -110,6 +110,7 @@ vitra new ./myapp
 vitra dev
 vitra build
 vitra generate typescript --out frontend/vitra-client.ts
+vitra update-apply --manifest m.json --artifact a.bin --pubkey <hex> --dest ./vitra-app
 vitra inspect capabilities
 ```
 

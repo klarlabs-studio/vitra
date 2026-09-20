@@ -2,6 +2,10 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"go/parser"
 	"go/token"
 	"io"
@@ -10,8 +14,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"go.klarlabs.de/vitra/packaging"
+	"go.klarlabs.de/vitra/updater"
 )
 
 func TestRun_VersionDoctorInspectHelp(t *testing.T) {
@@ -77,6 +83,60 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	}
 	if !strings.Contains(out, "generate typescript") {
 		t.Fatalf("help missing generate: %q", out)
+	}
+	if !strings.Contains(out, "update-apply") {
+		t.Fatalf("help missing update-apply: %q", out)
+	}
+}
+
+func TestRun_UpdateApply(t *testing.T) {
+	dir := t.TempDir()
+	pub, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact := []byte("binary-v2")
+	sum := sha256.Sum256(artifact)
+	m := updater.Manifest{
+		AppID: "com.vitra.t", Version: "2.0.0", Channel: updater.ChannelStable,
+		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
+		CreatedAt: time.Now().UTC(),
+	}
+	m, err = updater.SignManifest(m, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(dir, "manifest.json")
+	body, _ := json.Marshal(m)
+	if err := os.WriteFile(manifestPath, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	artifactPath := filepath.Join(dir, "app.bin")
+	if err := os.WriteFile(artifactPath, artifact, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(dir, "installed.bin")
+	out := capture(t, func() {
+		if err := run([]string{
+			"update-apply",
+			"--manifest", manifestPath,
+			"--artifact", artifactPath,
+			"--pubkey", hex.EncodeToString(pub),
+			"--dest", dest,
+			"--policy", "production",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "installed") || !strings.Contains(out, "2.0.0") {
+		t.Fatalf("stdout: %q", out)
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil || string(got) != string(artifact) {
+		t.Fatalf("dest=%q err=%v", got, err)
+	}
+	if err := run([]string{"update-apply"}); err == nil {
+		t.Fatal("expected usage error")
 	}
 }
 
