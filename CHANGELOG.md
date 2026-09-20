@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Linux deep-link argv parsing and unix-socket secondary-instance handoff.
 - Linux save-file dialog and flock-based single-instance lock on `platform/linux`.
 - `app.DesktopHost` now includes menu/tray/action/save/single-instance surface.
 - Competitive demo routes clipboard/dialogs/menu/tray through `desktop` permission services.

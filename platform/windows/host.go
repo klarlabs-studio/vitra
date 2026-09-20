@@ -62,7 +62,7 @@ func (h *Host) Features() platform.FeatureSet {
 		},
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: false,
-			Detail: "deep links pending native host",
+			Detail: "deep-link argv/socket handoff pending native host",
 		},
 		platform.FeatureTray: {
 			Feature: platform.FeatureTray, Available: false,
@@ -109,6 +109,12 @@ func (h *Host) SetTray(string) error { return h.err(platform.FeatureTray) }
 func (h *Host) ClearTray()           {}
 func (h *Host) TrySingleInstance(string) (bool, func(), error) {
 	return false, nil, h.err(platform.FeatureSingleInstance)
+}
+func (h *Host) StartDeepLinkBridge(string, func(string)) (func(), error) {
+	return nil, h.err(platform.FeatureDeepLink)
+}
+func (h *Host) ForwardToPrimary(string, []string) (bool, error) {
+	return false, h.err(platform.FeatureDeepLink)
 }
 func (h *Host) Run() error { return h.err(platform.FeatureWindowCreate) }
 func (h *Host) Quit()      {}

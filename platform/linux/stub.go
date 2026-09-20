@@ -57,8 +57,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "requires native linux host",
 		},
 		platform.FeatureDeepLink: {
-			Feature: platform.FeatureDeepLink, Available: false,
-			Detail: "xdg desktop file / argv handoff not wired yet",
+			Feature: platform.FeatureDeepLink, Available: true,
+			Detail: "argv + unix-socket secondary-instance handoff (no WebView required)",
 		},
 	}
 }

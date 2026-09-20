@@ -84,8 +84,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "global shortcuts are not reliable on Wayland; use in-window accelerators",
 		},
 		platform.FeatureDeepLink: {
-			Feature: platform.FeatureDeepLink, Available: false,
-			Detail: "xdg desktop file / argv handoff not wired yet",
+			Feature: platform.FeatureDeepLink, Available: true,
+			Detail: "argv + unix-socket secondary-instance handoff",
 		},
 	}
 }

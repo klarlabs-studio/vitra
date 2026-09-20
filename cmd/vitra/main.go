@@ -85,6 +85,7 @@ func doctor() error {
 		platform.FeatureMenuBar,
 		platform.FeatureTray,
 		platform.FeatureSingleInstance,
+		platform.FeatureDeepLink,
 	} {
 		s := host.Features()[f]
 		status := "missing"

@@ -34,6 +34,8 @@ type DesktopHost interface {
 	SetTray(tooltip string) error
 	ClearTray()
 	TrySingleInstance(appID string) (held bool, release func(), err error)
+	StartDeepLinkBridge(appID string, onLink func(raw string)) (stop func(), err error)
+	ForwardToPrimary(appID string, urls []string) (ok bool, err error)
 	Run() error
 	Quit()
 }

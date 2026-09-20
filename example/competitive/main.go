@@ -49,13 +49,26 @@ func run() error {
 		return err
 	}
 	host := linux.New()
+	const appID = "com.vitra.competitive"
 
-	held, release, err := host.TrySingleInstance("com.vitra.competitive")
+	held, release, err := host.TrySingleInstance(appID)
 	if err != nil {
 		return fmt.Errorf("single-instance: %w", err)
 	}
 	if !held {
-		return fmt.Errorf("another Vitra competitive instance is already running")
+		urls := linux.DeepLinksFromArgs(os.Args[1:])
+		if len(urls) == 0 {
+			return fmt.Errorf("another Vitra competitive instance is already running")
+		}
+		ok, err := host.ForwardToPrimary(appID, urls)
+		if err != nil {
+			return fmt.Errorf("deep-link handoff: %w", err)
+		}
+		if !ok {
+			return fmt.Errorf("primary instance is running but deep-link bridge is unavailable")
+		}
+		fmt.Println("forwarded deep link(s) to primary instance")
+		return nil
 	}
 	defer release()
 
@@ -72,6 +85,7 @@ func run() error {
 		desktop.PermClipboardRead:  {},
 		desktop.PermClipboardWrite: {},
 		desktop.PermSingleInstance: {},
+		desktop.PermDeepLinkHandle: {},
 	}
 
 	menus := &desktop.MenuService{
@@ -125,6 +139,34 @@ func run() error {
 		return err
 	} else if !ok {
 		return fmt.Errorf("single-instance acquire failed")
+	}
+
+	deepLinks := &desktop.DeepLinkService{
+		Gateway:  gw,
+		Host:     host,
+		Patterns: []domain.DeepLinkPattern{{Scheme: "vitra"}},
+	}
+	handleDeepLink := func(raw string) {
+		ok, err := deepLinks.Handle(caller, raw)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "deep link rejected: %v\n", err)
+			return
+		}
+		if !ok {
+			return
+		}
+		fmt.Println("deep link:", raw)
+		// Surface to the UI when the window is up.
+		js := fmt.Sprintf(`(function(){var el=document.getElementById("out");if(el){el.textContent=%q;}})()`, "deep link: "+raw)
+		_ = host.Eval("main", js)
+	}
+	stopBridge, err := host.StartDeepLinkBridge(appID, handleDeepLink)
+	if err != nil {
+		return fmt.Errorf("deep-link bridge: %w", err)
+	}
+	defer stopBridge()
+	for _, u := range linux.DeepLinksFromArgs(os.Args[1:]) {
+		handleDeepLink(u)
 	}
 
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet the user", "demo.greet")

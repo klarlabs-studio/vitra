@@ -59,6 +59,10 @@ func (h *fakeHost) ClearTray()                                                 {
 func (h *fakeHost) TrySingleInstance(string) (bool, func(), error) {
 	return true, func() {}, nil
 }
+func (h *fakeHost) StartDeepLinkBridge(string, func(string)) (func(), error) {
+	return func() {}, nil
+}
+func (h *fakeHost) ForwardToPrimary(string, []string) (bool, error) { return false, nil }
 func (h *fakeHost) Run() error {
 	close(h.ran)
 	<-h.quit
