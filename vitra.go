@@ -33,6 +33,7 @@ import (
 	"go.klarlabs.de/vitra/plugin"
 	"go.klarlabs.de/vitra/policy"
 	"go.klarlabs.de/vitra/updater"
+	"go.klarlabs.de/vitra/worker"
 )
 
 // Version is the kernel API version. Generated frontend bindings should be
@@ -62,6 +63,7 @@ type Runtime struct {
 	plugins       *plugin.Registry
 	policyEng     *policy.Engine
 	auditSink     audit.Sink
+	workers       *worker.Supervisor
 	invoker       *domain.InvocationService
 
 	registerGrant   *application.RegisterGrantUseCase
@@ -98,6 +100,7 @@ func New(cfg Config) (*Runtime, error) {
 		executors:     inmemory.NewExecutorRegistry(),
 		navPolicy:     policy,
 		plugins:       plugin.NewRegistry(kernel),
+		workers:       worker.NewSupervisor(),
 	}
 	rt.wire()
 	return rt, nil
@@ -119,6 +122,24 @@ func ParseKernelVersion(v string) (plugin.SemVer, error) {
 }
 
 func (rt *Runtime) wire() {
+	rt.workers.OnTransition = func(rec worker.Record) {
+		outcome := "allowed"
+		if rec.State == worker.StateCrashed {
+			outcome = "error"
+		}
+		rt.emitAudit(audit.Event{
+			Kind:    audit.KindWorkerLifecycle,
+			Actor:   string(rec.Spec.ID),
+			Action:  string(rec.State),
+			Outcome: outcome,
+			Detail:  rec.LastError,
+			Metadata: map[string]any{
+				"name":     rec.Spec.Name,
+				"elevated": rec.Spec.Elevated,
+				"restarts": rec.Restarts,
+			},
+		})
+	}
 	rt.invoker = &domain.InvocationService{
 		Commands:  rt.commands,
 		Grants:    rt.grants,
@@ -170,6 +191,48 @@ func (rt *Runtime) emitAudit(e audit.Event) {
 	}
 	_ = rt.auditSink.Append(e)
 }
+
+// StartWorker supervises an in-process worker (Phase 5). Elevated work belongs
+// here so the WebView host stays non-admin (invariant 8). OS process adapters
+// are out of scope for this facade.
+func (rt *Runtime) StartWorker(ctx context.Context, spec worker.Spec, run worker.Runner) error {
+	if err := rt.workers.Start(ctx, spec, run); err != nil {
+		rt.emitAudit(audit.Event{
+			Kind: audit.KindWorkerLifecycle, Actor: string(spec.ID), Action: "start",
+			Outcome: "error", Detail: err.Error(),
+		})
+		return err
+	}
+	rt.emitAudit(audit.Event{
+		Kind: audit.KindWorkerLifecycle, Actor: string(spec.ID), Action: "start",
+		Outcome: "allowed", Detail: spec.Name,
+		Metadata: map[string]any{"elevated": spec.Elevated},
+	})
+	return nil
+}
+
+// StopWorker requests a graceful stop.
+func (rt *Runtime) StopWorker(id worker.ID) error {
+	if err := rt.workers.Stop(id); err != nil {
+		rt.emitAudit(audit.Event{
+			Kind: audit.KindWorkerLifecycle, Actor: string(id), Action: "stop",
+			Outcome: "error", Detail: err.Error(),
+		})
+		return err
+	}
+	rt.emitAudit(audit.Event{
+		Kind: audit.KindWorkerLifecycle, Actor: string(id), Action: "stop", Outcome: "allowed",
+	})
+	return nil
+}
+
+// Worker returns inspectable bookkeeping for one worker.
+func (rt *Runtime) Worker(id worker.ID) (worker.Record, error) {
+	return rt.workers.Get(id)
+}
+
+// Workers lists all supervised worker records.
+func (rt *Runtime) Workers() []worker.Record { return rt.workers.List() }
 
 // RegisterGrant installs a capability grant.
 func (rt *Runtime) RegisterGrant(grant *domain.CapabilityGrant) error {
