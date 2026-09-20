@@ -59,6 +59,9 @@
       out.className = isErr ? "err" : "";
       out.textContent = typeof v === "string" ? v : JSON.stringify(v, null, 2);
     }
+    if (window.vitra && window.vitra.on) {
+      window.vitra.on("demo.tick", (payload) => show({ event: "demo.tick", payload }));
+    }
     document.getElementById("greet").onclick = async () => {
       try {
         const name = document.getElementById("name").value;

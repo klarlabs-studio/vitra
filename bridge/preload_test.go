@@ -9,7 +9,7 @@ import (
 
 func TestPreloadJS_DefinesSecureInvokeSurface(t *testing.T) {
 	js := bridge.PreloadJS
-	for _, want := range []string{"window.__vitra", "invoke", "__recv", "webkit.messageHandlers.vitra"} {
+	for _, want := range []string{"window.__vitra", "invoke", "on:", "__recv", "type === \"event\"", "webkit.messageHandlers.vitra"} {
 		if !strings.Contains(js, want) {
 			t.Fatalf("preload missing %q", want)
 		}

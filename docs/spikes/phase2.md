@@ -7,7 +7,8 @@ Phase 1’s capability boundary.
 
 | Area | Package / API |
 |------|----------------|
-| Window-owned events | `domain.Subscription`, `SubscribeEventUseCase` |
+| Window-owned events | `domain.Subscription`, `SubscribeEventUseCase`, `EmitEventUseCase` |
+| Host→frontend delivery | `Runtime.EmitEvent`, `app.App.Emit`, `bridge` `vitra.on` |
 | Subscription cleanup on close | `CloseWindowUseCase` releases subscriptions |
 | Navigation policy | `domain.NavigationPolicy`, `NavigateWithPolicyUseCase` |
 | Deep-link patterns | `domain.DeepLinkPattern` |

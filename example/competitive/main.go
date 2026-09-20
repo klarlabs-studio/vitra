@@ -335,6 +335,9 @@ func run() error {
 			{ID: "help.about", Label: "About Vitra"},
 			{ID: "tray.quit", Label: "Quit"},
 		})
+		if _, err := rt.SubscribeEvent("demo-tick", "demo.tick", "main"); err == nil {
+			_ = application.Emit(context.Background(), "demo.tick", map[string]any{"source": "competitive"})
+		}
 		if os.Getenv("VITRA_E2E") == "1" {
 			// Retry Eval until the preload bridge is live or the demo timer quits.
 			js := `(function(){function go(){if(!window.vitra||!window.vitra.invoke){setTimeout(go,200);return;}window.vitra.invoke("demo.greet","E2E").then(function(r){var el=document.getElementById("out");if(el){el.textContent=JSON.stringify(r,null,2);}}).catch(function(e){var el=document.getElementById("out");if(el){el.textContent=String(e);}}); } go();})();`

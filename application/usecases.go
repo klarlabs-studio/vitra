@@ -4,6 +4,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"go.klarlabs.de/vitra/domain"
 )
@@ -202,4 +203,51 @@ func (uc *NavigateWithPolicyUseCase) Execute(id domain.WindowID, origin domain.O
 		return err
 	}
 	return uc.Windows.Save(win)
+}
+
+// EmitEventUseCase resolves open window subscribers for a named event.
+type EmitEventUseCase struct {
+	Windows       domain.WindowRepository
+	Subscriptions domain.SubscriptionRepository
+}
+
+// EventDelivery is one window that should receive an emitted event.
+type EventDelivery struct {
+	Window domain.WindowID
+	Event  domain.Event
+}
+
+// Execute builds deliveries for every open window subscribed to the event.
+func (uc *EmitEventUseCase) Execute(name domain.EventName, payload any) ([]EventDelivery, error) {
+	if name == "" {
+		return nil, &domain.ErrValidation{Message: "event name is required"}
+	}
+	if uc.Subscriptions == nil {
+		return nil, &domain.ErrValidation{Message: "subscription repository is required"}
+	}
+	subs, err := uc.Subscriptions.ListByEvent(name)
+	if err != nil {
+		return nil, err
+	}
+	ev := domain.Event{Name: name, Payload: payload, EmittedAt: time.Now().UTC()}
+	out := make([]EventDelivery, 0, len(subs))
+	seen := map[domain.WindowID]struct{}{}
+	for _, sub := range subs {
+		if sub.IsClosed() {
+			continue
+		}
+		owner := sub.Owner()
+		if _, dup := seen[owner]; dup {
+			continue
+		}
+		if uc.Windows != nil {
+			win, err := uc.Windows.Get(owner)
+			if err != nil || !win.IsOpen() {
+				continue
+			}
+		}
+		seen[owner] = struct{}{}
+		out = append(out, EventDelivery{Window: owner, Event: ev})
+	}
+	return out, nil
 }

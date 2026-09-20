@@ -7,6 +7,7 @@ const PreloadJS = `
 (function() {
   if (window.__vitra) return;
   const pending = new Map();
+  const listeners = new Map();
   let seq = 0;
   function post(obj) {
     const payload = JSON.stringify(obj);
@@ -30,9 +31,28 @@ const PreloadJS = `
         });
       });
     },
+    on: function(event, handler) {
+      if (typeof event !== "string" || typeof handler !== "function") {
+        throw new Error("vitra.on requires event name and handler");
+      }
+      let list = listeners.get(event);
+      if (!list) { list = []; listeners.set(event, list); }
+      list.push(handler);
+      return function off() {
+        const cur = listeners.get(event) || [];
+        listeners.set(event, cur.filter(function(h) { return h !== handler; }));
+      };
+    },
     __recv: function(raw) {
       let msg;
       try { msg = typeof raw === "string" ? JSON.parse(raw) : raw; } catch (e) { return; }
+      if (msg && msg.type === "event") {
+        const hs = listeners.get(msg.event) || [];
+        for (let i = 0; i < hs.length; i++) {
+          try { hs[i](msg.payload); } catch (e) {}
+        }
+        return;
+      }
       const p = pending.get(msg.id);
       if (!p) return;
       pending.delete(msg.id);

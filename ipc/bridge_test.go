@@ -82,7 +82,22 @@ func TestEncodeResultAndError(t *testing.T) {
 		t.Fatal(err)
 	}
 	if env.Kind != ipc.KindError {
-		t.Fatalf("kind=%s", env.Kind)
+		t.Fatalf("%+v", env)
+	}
+
+	evBytes, err := ipc.EncodeEvent("fs.changed", map[string]any{"path": "/x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(evBytes, &env); err != nil {
+		t.Fatal(err)
+	}
+	if env.Kind != ipc.KindEvent {
+		t.Fatalf("%+v", env)
+	}
+	var payload ipc.EventPayload
+	if err := json.Unmarshal(env.Payload, &payload); err != nil || payload.Event != "fs.changed" {
+		t.Fatalf("payload=%+v err=%v", payload, err)
 	}
 }
 
