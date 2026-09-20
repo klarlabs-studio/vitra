@@ -141,7 +141,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Isolation / enterprise (Phase 5) | In-process contracts (no OS workers) |
 | **Competitive Linux WebView host** | **Done** (`-tags vitra_native`) |
 | Linux menu bar + tray menus | **Done** |
-| Invoke E2E (`make e2e`) | **Done** |
+| Invoke E2E (`make e2e`) | **Done** (also in CI: Native Linux E2E) |
 | Save dialog + single-instance lock | Linux native |
 | Deep-link argv / secondary handoff | Linux native |
 | Darwin WKWebView / Windows WebView2 | Stubs (explicit unsupported) |
