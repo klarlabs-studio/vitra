@@ -75,6 +75,35 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "vitra package") {
 		t.Fatalf("help missing package: %q", out)
 	}
+	if !strings.Contains(out, "generate typescript") {
+		t.Fatalf("help missing generate: %q", out)
+	}
+}
+
+func TestRun_GenerateTypeScript(t *testing.T) {
+	dir := t.TempDir()
+	outPath := filepath.Join(dir, "frontend", "vitra-client.ts")
+	out := capture(t, func() {
+		if err := run([]string{"generate", "typescript", "--out", outPath, "--module", "demo"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "wrote") {
+		t.Fatalf("generate stdout: %q", out)
+	}
+	body, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	for _, want := range []string{"kernel:", "fsRead", "dialogOpen", `invoke("fs.read"`} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("missing %q in:\n%s", want, text)
+		}
+	}
+	if err := run([]string{"generate"}); err == nil {
+		t.Fatal("expected usage error")
+	}
 }
 
 func TestRun_PackageStagesLinuxDir(t *testing.T) {
