@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Grant-scoped `desktop.FileService` bound to official `fs.read`/`fs.write` in the competitive demo (PathScope enforced).
 - Linux xdg URL-scheme registration (`Host.RegisterURLScheme`, `vitra register-scheme`); competitive demo honors `VITRA_REGISTER_SCHEME=1`.
 - Runtime plugin wiring: `RegisterPlugin` / `BindExecutor` / `Plugins()`; competitive demo and `vitra inspect` load official `fs` + `dialog` plugins (dialog executors bound; fs unbound until host provides handlers).
 - CI job **Native Linux E2E**: install WebKitGTK/GTK/xvfb, `make build-native`, and `make e2e` on `ubuntu-latest`.

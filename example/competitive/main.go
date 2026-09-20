@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"sync/atomic"
 	"time"
 
@@ -239,9 +240,7 @@ func run() error {
 		return err
 	}
 
-	// Official plugins own dialog.* / fs.* permissions (invariant 6). Dialog
-	// executors are bound to the native host; fs stays unbound until a host
-	// provides scoped FS handlers.
+	// Official plugins own dialog.* / fs.* permissions (invariant 6).
 	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
 		return err
 	}
@@ -255,6 +254,46 @@ func run() error {
 	}
 	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return dialogs.SaveFile(ctx, caller)
+	})); err != nil {
+		return err
+	}
+
+	demoRoot := filepath.Join(os.TempDir(), "vitra-competitive-fs")
+	if err := os.MkdirAll(demoRoot, 0o755); err != nil {
+		return err
+	}
+	fsGrant, err := domain.NewCapabilityGrant(
+		"demo-files",
+		"scoped demo filesystem",
+		[]domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{
+			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
+			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if err := rt.RegisterGrant(fsGrant); err != nil {
+		return err
+	}
+	files := &desktop.FileService{Gateway: rt}
+	if err := rt.BindExecutor("fs.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		path, _ := input.(string)
+		data, err := files.Read(ctx, caller, path)
+		if err != nil {
+			return nil, err
+		}
+		return string(data), nil
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("fs.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		m, _ := input.(map[string]any)
+		path, _ := m["path"].(string)
+		data, _ := m["data"].(string)
+		return nil, files.Write(ctx, caller, path, []byte(data))
 	})); err != nil {
 		return err
 	}
