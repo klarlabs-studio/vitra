@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"go.klarlabs.de/vitra"
+	"go.klarlabs.de/vitra/bindings"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/packaging"
 	"go.klarlabs.de/vitra/platform"
@@ -52,6 +53,8 @@ func run(args []string) error {
 		return runBuild(args[1:])
 	case "package":
 		return runPackage(args[1:])
+	case "generate":
+		return runGenerate(args[1:])
 	case "register-scheme":
 		return registerScheme(args[1:])
 	case "help", "-h", "--help":
@@ -73,6 +76,8 @@ Usage:
   vitra build [dir]          Build the app binary with the native host
   vitra package --out <dir> [--format dir|deb|appdir] [--bin path] [--app-id id] [--name name] [--version ver]
                              Stage Linux dir, build .deb, or write AppImage AppDir + provenance.json
+  vitra generate typescript [--out path] [--module name]
+                             Emit TypeScript client stubs for official plugin commands
   vitra register-scheme <scheme> [app-id] [exec]
                              Register an xdg URL scheme handler (Linux)
   vitra inspect capabilities Demo capability inspection against an in-memory runtime
@@ -343,6 +348,61 @@ func runBuild(args []string) error {
 	}
 	argsGo = append(argsGo, "-o", "vitra-app", ".")
 	return execGo(dir, argsGo...)
+}
+
+func runGenerate(args []string) error {
+	if len(args) == 0 || args[0] != "typescript" {
+		return fmt.Errorf("usage: vitra generate typescript [--out path] [--module name]")
+	}
+	outPath := ""
+	module := "vitra"
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--out":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--out requires a path")
+			}
+			outPath = args[i]
+		case "--module":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--module requires a name")
+			}
+			module = args[i]
+		default:
+			return fmt.Errorf("unknown generate flag %q", args[i])
+		}
+	}
+
+	rt, err := vitra.New(vitra.Config{AppID: "com.vitra.generate"})
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	if err := rt.RegisterPlugin(ctx, officialfs.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialdialog.New()); err != nil {
+		return err
+	}
+	var cmds []*domain.CommandDefinition
+	for _, reg := range rt.Plugins().List() {
+		cmds = append(cmds, reg.Contribution.Commands...)
+	}
+	body := bindings.GenerateTypeScript(module, vitra.Version, cmds)
+	if outPath == "" {
+		fmt.Print(body)
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(outPath, []byte(body), 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("wrote %s (%d commands)\n", outPath, len(cmds))
+	return nil
 }
 
 func runPackage(args []string) error {

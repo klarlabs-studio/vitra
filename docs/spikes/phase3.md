@@ -13,7 +13,7 @@ Phase 3 stabilizes how privileged native surface enters a Vitra app: through
 | Lifecycle hooks | `plugin.Lifecycle` |
 | Official `fs` / `dialog` contracts | `plugin/official/fs`, `plugin/official/dialog` |
 | Runtime wiring | `Runtime.RegisterPlugin` / `BindExecutor` / `Plugins()` |
-| TypeScript binding stub generator | `bindings.GenerateTypeScript` |
+| TypeScript binding stub generator | `bindings.GenerateTypeScript` + `vitra generate typescript` |
 
 Official plugins contribute **command definitions and permission ownership**.
 Hosts bind executors (`BindExecutor`) for commands they implement — e.g. the

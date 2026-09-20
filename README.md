@@ -109,6 +109,7 @@ vitra doctor
 vitra new ./myapp
 vitra dev
 vitra build
+vitra generate typescript --out frontend/vitra-client.ts
 vitra inspect capabilities
 ```
 
