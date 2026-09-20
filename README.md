@@ -136,7 +136,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Secure runtime kernel (Phase 1) | Done |
 | Platform spikes + IPC (Phase 0) | Contracts done |
 | Desktop completeness contracts (Phase 2) | Contracts done |
-| Plugin SDK (Phase 3) | Contracts + wired into Runtime (`RegisterPlugin`) |
+| Plugin SDK (Phase 3) | Contracts + Runtime wiring; competitive binds dialog + scoped FS |
 | Distribution (Phase 4) | Specs/verify only (no installers) |
 | Isolation / enterprise (Phase 5) | In-process contracts (no OS workers) |
 | **Competitive Linux WebView host** | **Done** (`-tags vitra_native`) |

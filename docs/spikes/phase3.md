@@ -18,7 +18,7 @@ Phase 3 stabilizes how privileged native surface enters a Vitra app: through
 Official plugins contribute **command definitions and permission ownership**.
 Hosts bind executors (`BindExecutor`) for commands they implement — e.g. the
 competitive demo binds `dialog.open`/`dialog.save` to native GTK dialogs and
-leaves `fs.*` unbound until a scoped FS host is provided.
+`fs.read`/`fs.write` to `desktop.FileService` with a PathScope grant.
 
 ## Security invariant 6
 

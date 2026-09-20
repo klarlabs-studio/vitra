@@ -224,10 +224,16 @@ func (s *DeepLinkService) Handle(caller domain.Caller, raw string) (bool, error)
 }
 
 func authorize(gw Gateway, caller domain.Caller, perm domain.PermissionName) error {
+	return authorizePath(gw, caller, perm, "")
+}
+
+var errGatewayRequired = errors.New("desktop gateway is required")
+
+func authorizePath(gw Gateway, caller domain.Caller, perm domain.PermissionName, resourcePath string) error {
 	if gw == nil {
-		return errors.New("desktop gateway is required")
+		return errGatewayRequired
 	}
-	d := gw.Authorize(caller, perm, "")
+	d := gw.Authorize(caller, perm, resourcePath)
 	if d.Allowed {
 		return nil
 	}
