@@ -151,6 +151,37 @@ func TestRuntime_CloseWindowAndNilExecutor(t *testing.T) {
 	}
 }
 
+func TestRuntime_AuthorizeSharesGateway(t *testing.T) {
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	caller, err := domain.NewCaller("main", domain.OriginPackagedLocal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := rt.Authorize(caller, "tray.set", "")
+	if d.Allowed {
+		t.Fatal("expected deny without grant")
+	}
+	grant, err := domain.NewCapabilityGrant(
+		"chrome", "chrome",
+		[]domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{{Name: "tray.set"}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.RegisterGrant(grant); err != nil {
+		t.Fatal(err)
+	}
+	d = rt.Authorize(caller, "tray.set", "")
+	if !d.Allowed {
+		t.Fatalf("expected allow after grant: %+v", d)
+	}
+}
+
 func mustInspect(t *testing.T, rt *vitra.Runtime, window domain.WindowID) string {
 	t.Helper()
 	surface, err := rt.InspectCapabilities(window)

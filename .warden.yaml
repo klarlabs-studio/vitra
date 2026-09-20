@@ -7,3 +7,7 @@ steps:
   pre_commit: [lint]
   pre_push: [test, lint]
 parallel: true
+
+# Provenance signing roster (warden key show).
+trusted_keys:
+  - 17cdac12241b88b2

@@ -25,7 +25,7 @@ import (
 
 // Version is the kernel API version. Generated frontend bindings should be
 // tied to this version (reliability invariant 8).
-const Version = "0.2.0"
+const Version = "0.3.0"
 
 // Config configures a Runtime.
 type Config struct {
@@ -152,6 +152,20 @@ func (rt *Runtime) NavigationPolicy() *domain.NavigationPolicy { return rt.navPo
 // Invoke runs a frontend command through the capability gateway.
 func (rt *Runtime) Invoke(ctx context.Context, req domain.InvocationRequest) (*domain.InvocationResult, error) {
 	return rt.invoke.Execute(ctx, req)
+}
+
+// Authorize evaluates a permission against registered grants.
+// Implements desktop.Gateway so host chrome can share the kernel gateway.
+func (rt *Runtime) Authorize(caller domain.Caller, permission domain.PermissionName, resourcePath string) domain.Decision {
+	grants, err := rt.grants.List()
+	if err != nil {
+		return domain.Decision{
+			Permission: permission,
+			Code:       domain.DenialNoGrant,
+			Reason:     err.Error(),
+		}
+	}
+	return domain.NewCapabilityGateway(grants...).Authorize(caller, permission, resourcePath)
 }
 
 // InspectCapabilities returns the effective privileged surface for a window.
