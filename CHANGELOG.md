@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 0 architecture spikes: versioned `ipc` bridge (host identity wins over
+  payload claims), `platform` feature matrix + `platform/null` stub host with
+  explicit unsupported errors, spike notes in `docs/spikes/phase0.md`.
 - Phase 1 secure runtime kernel: capability grants, gateway, explicit commands,
   invocation pipeline, window lifecycle, resource handles.
 - In-memory port adapters and `vitra.Runtime` facade.

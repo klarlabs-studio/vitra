@@ -109,8 +109,8 @@ kernel can enforce them today:
 
 | Phase | Focus |
 |-------|--------|
-| 0 | Architecture spikes (WebView + IPC per OS) |
-| **1** | **Secure runtime kernel (current)** |
+| 0 | Architecture spikes (WebView + IPC per OS) — see `docs/spikes/phase0.md` |
+| **1** | **Secure runtime kernel** |
 | 2 | Desktop completeness |
 | 3 | Plugin SDK and ecosystem |
 | 4 | Distribution excellence |
