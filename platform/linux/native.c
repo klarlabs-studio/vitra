@@ -191,6 +191,21 @@ char *vitra_open_dialog(void) {
 	return path;
 }
 
+
+char *vitra_save_dialog(void) {
+	GtkWidget *dialog = gtk_file_chooser_dialog_new(
+		"Save File", NULL, GTK_FILE_CHOOSER_ACTION_SAVE,
+		"_Cancel", GTK_RESPONSE_CANCEL,
+		"_Save", GTK_RESPONSE_ACCEPT, NULL);
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
+	char *path = NULL;
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+	}
+	gtk_widget_destroy(dialog);
+	return path;
+}
+
 static void on_tray_activate(GtkStatusIcon *icon, gpointer user_data) {
 	(void)icon;
 	(void)user_data;

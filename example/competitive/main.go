@@ -11,6 +11,7 @@ import (
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/app"
+	"go.klarlabs.de/vitra/desktop"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/platform"
 	"go.klarlabs.de/vitra/platform/linux"
@@ -18,6 +19,18 @@ import (
 
 //go:embed frontend/*
 var frontendRoot embed.FS
+
+type allowGateway map[domain.PermissionName]struct{}
+
+func (g allowGateway) Authorize(caller domain.Caller, permission domain.PermissionName, _ string) domain.Decision {
+	if caller.Origin != domain.OriginPackagedLocal {
+		return domain.Decision{Permission: permission, Code: domain.DenialOriginMismatch, Reason: "origin not trusted"}
+	}
+	if _, ok := g[permission]; ok {
+		return domain.Decision{Allowed: true, Permission: permission}
+	}
+	return domain.Decision{Permission: permission, Code: domain.DenialPermissionAbsent, Reason: "permission not granted to desktop gateway"}
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -37,7 +50,82 @@ func run() error {
 	}
 	host := linux.New()
 
+	held, release, err := host.TrySingleInstance("com.vitra.competitive")
+	if err != nil {
+		return fmt.Errorf("single-instance: %w", err)
+	}
+	if !held {
+		return fmt.Errorf("another Vitra competitive instance is already running")
+	}
+	defer release()
+
 	var e2eOK atomic.Bool
+	caller, err := domain.NewCaller("main", domain.OriginPackagedLocal)
+	if err != nil {
+		return err
+	}
+	gw := allowGateway{
+		desktop.PermMenuSet:        {},
+		desktop.PermTraySet:        {},
+		desktop.PermDialogOpen:     {},
+		desktop.PermDialogSave:     {},
+		desktop.PermClipboardRead:  {},
+		desktop.PermClipboardWrite: {},
+		desktop.PermSingleInstance: {},
+	}
+
+	menus := &desktop.MenuService{
+		Gateway: gw,
+		Host:    host,
+		OnSet: func(ctx context.Context, items []desktop.MenuItem) error {
+			native := make([]platform.MenuItem, 0, len(items))
+			for _, it := range items {
+				menu := it.Menu
+				if menu == "" {
+					menu = "App"
+				}
+				native = append(native, platform.MenuItem{Menu: menu, ID: it.ID, Label: it.Label})
+			}
+			return host.SetMenuBar("main", native)
+		},
+	}
+	trays := &desktop.TrayService{
+		Gateway: gw,
+		Host:    host,
+		OnSet: func(ctx context.Context, tooltip string, _ []desktop.MenuItem) error {
+			return host.SetTray(tooltip)
+		},
+	}
+	dialogs := &desktop.DialogService{
+		Gateway: gw,
+		Host:    host,
+		OnOpen: func(ctx context.Context) ([]string, error) {
+			path, err := host.OpenFileDialog()
+			if err != nil || path == "" {
+				return nil, err
+			}
+			return []string{path}, nil
+		},
+		OnSave: func(ctx context.Context) (string, error) {
+			return host.SaveFileDialog()
+		},
+	}
+	clips := &desktop.ClipboardService{
+		Gateway: gw,
+		Host:    host,
+		OnRead:  func(ctx context.Context) (string, error) { return host.ClipboardGet() },
+		OnWrite: func(ctx context.Context, text string) error { return host.ClipboardSet(text) },
+	}
+	single := &desktop.SingleInstanceService{
+		Gateway: gw,
+		Host:    host,
+		OnLock:  func(ctx context.Context) (bool, error) { return true, nil },
+	}
+	if ok, err := single.Acquire(context.Background(), caller); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("single-instance acquire failed")
+	}
 
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet the user", "demo.greet")
 	if err != nil {
@@ -73,29 +161,52 @@ func run() error {
 		return err
 	}
 
-	clipRead, _ := domain.NewCommandDefinition("clipboard.read", "Read clipboard", "clipboard.read")
-	_ = rt.RegisterCommand(clipRead, domain.CommandExecutorFunc(func(ctx context.Context, name domain.CommandName, input any) (any, error) {
-		if err := platform.Require(host, platform.FeatureClipboard); err != nil {
-			return nil, err
+	register := func(name, desc string, perm domain.PermissionName, exec domain.CommandExecutor) error {
+		def, err := domain.NewCommandDefinition(domain.CommandName(name), desc, perm)
+		if err != nil {
+			return err
 		}
-		return host.ClipboardGet()
-	}))
-	clipWrite, _ := domain.NewCommandDefinition("clipboard.write", "Write clipboard", "clipboard.write")
-	_ = rt.RegisterCommand(clipWrite, domain.CommandExecutorFunc(func(ctx context.Context, name domain.CommandName, input any) (any, error) {
-		if err := platform.Require(host, platform.FeatureClipboard); err != nil {
-			return nil, err
-		}
+		return rt.RegisterCommand(def, exec)
+	}
+	if err := register("clipboard.read", "Read clipboard", "clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return clips.Read(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	if err := register("clipboard.write", "Write clipboard", "clipboard.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		text, _ := input.(string)
-		return nil, host.ClipboardSet(text)
-	}))
-	clipGrant, _ := domain.NewCapabilityGrant(
-		"clipboard",
-		"clipboard access",
+		return nil, clips.Write(ctx, caller, text)
+	})); err != nil {
+		return err
+	}
+	if err := register("dialog.open", "Open file dialog", "dialog.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return dialogs.OpenFile(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	if err := register("dialog.save", "Save file dialog", "dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return dialogs.SaveFile(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	chromeGrant, err := domain.NewCapabilityGrant(
+		"desktop-chrome",
+		"clipboard and dialogs",
 		[]domain.WindowID{"main"},
 		[]domain.Origin{domain.OriginPackagedLocal},
-		[]domain.PermissionSpec{{Name: "clipboard.read"}, {Name: "clipboard.write"}},
+		[]domain.PermissionSpec{
+			{Name: "clipboard.read"},
+			{Name: "clipboard.write"},
+			{Name: "dialog.open"},
+			{Name: "dialog.save"},
+		},
 	)
-	_ = rt.RegisterGrant(clipGrant)
+	if err != nil {
+		return err
+	}
+	if err := rt.RegisterGrant(chromeGrant); err != nil {
+		return err
+	}
 
 	application, err := app.New(app.Options{
 		AppID:   "com.vitra.competitive",
@@ -118,11 +229,11 @@ func run() error {
 
 	go func() {
 		time.Sleep(500 * time.Millisecond)
-		_ = host.SetMenuBar("main", []linux.MenuItem{
+		_ = menus.SetMenu(context.Background(), caller, []desktop.MenuItem{
 			{Menu: "File", ID: "app.quit", Label: "Quit"},
 			{Menu: "Help", ID: "help.about", Label: "About Vitra"},
 		})
-		_ = host.SetTray("Vitra competitive demo")
+		_ = trays.SetTray(context.Background(), caller, "Vitra competitive demo", nil)
 		if os.Getenv("VITRA_E2E") == "1" {
 			js := `window.vitra.invoke("demo.greet","E2E").then(function(r){document.getElementById("out").textContent=JSON.stringify(r,null,2);}).catch(function(e){document.getElementById("out").textContent=String(e);});`
 			_ = host.Eval("main", js)

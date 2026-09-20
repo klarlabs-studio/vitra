@@ -142,6 +142,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | **Competitive Linux WebView host** | **Done** (`-tags vitra_native`) |
 | Linux menu bar + tray | **Done** |
 | Invoke E2E (`make e2e`) | **Done** |
+| Save dialog + single-instance lock | Linux native |
 | Darwin WKWebView / Windows WebView2 | Stubs (explicit unsupported) |
 
 ## Development

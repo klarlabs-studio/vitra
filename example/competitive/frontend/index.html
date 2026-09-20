@@ -48,6 +48,8 @@
       <input id="name" placeholder="Your name" value="Klarlabs" />
       <button id="greet">Invoke demo.greet</button>
       <button id="clip" class="secondary">Clipboard round-trip</button>
+      <button id="open" class="secondary">Open file</button>
+      <button id="save" class="secondary">Save file</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -74,6 +76,14 @@
       } catch (e) {
         show(String(e.message || e), true);
       }
+    };
+    document.getElementById("open").onclick = async () => {
+      try { show({ open: await window.vitra.invoke("dialog.open") }); }
+      catch (e) { show(String(e.message || e), true); }
+    };
+    document.getElementById("save").onclick = async () => {
+      try { show({ save: await window.vitra.invoke("dialog.save") }); }
+      catch (e) { show(String(e.message || e), true); }
     };
   </script>
 </body>

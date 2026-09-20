@@ -51,6 +51,14 @@ func (h *fakeHost) CloseWindow(context.Context, domain.WindowID) error         {
 func (h *fakeHost) ClipboardGet() (string, error)                              { return "clip", nil }
 func (h *fakeHost) ClipboardSet(string) error                                  { return nil }
 func (h *fakeHost) OpenFileDialog() (string, error)                            { return "/tmp/x", nil }
+func (h *fakeHost) SaveFileDialog() (string, error)                            { return "/tmp/y", nil }
+func (h *fakeHost) SetActionHandler(func(string))                              {}
+func (h *fakeHost) SetMenuBar(domain.WindowID, []platform.MenuItem) error      { return nil }
+func (h *fakeHost) SetTray(string) error                                       { return nil }
+func (h *fakeHost) ClearTray()                                                 {}
+func (h *fakeHost) TrySingleInstance(string) (bool, func(), error) {
+	return true, func() {}, nil
+}
 func (h *fakeHost) Run() error {
 	close(h.ran)
 	<-h.quit

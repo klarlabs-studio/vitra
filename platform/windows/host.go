@@ -48,6 +48,22 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureMenuBar, Available: false,
 			Detail: "native menu pending native host",
 		},
+		platform.FeatureDialogSave: {
+			Feature: platform.FeatureDialogSave, Available: false,
+			Detail: "save dialog pending native host",
+		},
+		platform.FeatureSingleInstance: {
+			Feature: platform.FeatureSingleInstance, Available: false,
+			Detail: "single-instance lock pending native host",
+		},
+		platform.FeatureGlobalShortcut: {
+			Feature: platform.FeatureGlobalShortcut, Available: false,
+			Detail: "global shortcuts pending native host",
+		},
+		platform.FeatureDeepLink: {
+			Feature: platform.FeatureDeepLink, Available: false,
+			Detail: "deep links pending native host",
+		},
 		platform.FeatureTray: {
 			Feature: platform.FeatureTray, Available: false,
 			Detail: "NotifyIcon pending native host",
@@ -81,6 +97,18 @@ func (h *Host) ClipboardGet() (string, error) {
 func (h *Host) ClipboardSet(string) error { return h.err(platform.FeatureClipboard) }
 func (h *Host) OpenFileDialog() (string, error) {
 	return "", h.err(platform.FeatureDialogOpen)
+}
+func (h *Host) SaveFileDialog() (string, error) {
+	return "", h.err(platform.FeatureDialogSave)
+}
+func (h *Host) SetActionHandler(func(string)) {}
+func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error {
+	return h.err(platform.FeatureMenuBar)
+}
+func (h *Host) SetTray(string) error { return h.err(platform.FeatureTray) }
+func (h *Host) ClearTray()           {}
+func (h *Host) TrySingleInstance(string) (bool, func(), error) {
+	return false, nil, h.err(platform.FeatureSingleInstance)
 }
 func (h *Host) Run() error { return h.err(platform.FeatureWindowCreate) }
 func (h *Host) Quit()      {}

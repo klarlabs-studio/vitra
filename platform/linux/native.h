@@ -28,6 +28,7 @@ void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *it
 char *vitra_clip_get(void);
 void vitra_clip_set(const char *text);
 char *vitra_open_dialog(void);
+char *vitra_save_dialog(void);
 
 void vitra_tray_set(const char *tooltip);
 void vitra_tray_clear(void);

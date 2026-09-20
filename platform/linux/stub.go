@@ -36,6 +36,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDialogOpen, Available: false,
 			Detail: "requires native linux host",
 		},
+		platform.FeatureDialogSave: {
+			Feature: platform.FeatureDialogSave, Available: false,
+			Detail: "requires native linux host",
+		},
 		platform.FeatureMenuBar: {
 			Feature: platform.FeatureMenuBar, Available: false,
 			Detail: "requires native linux host",
@@ -43,6 +47,18 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureTray: {
 			Feature: platform.FeatureTray, Available: false,
 			Detail: "requires native linux host",
+		},
+		platform.FeatureSingleInstance: {
+			Feature: platform.FeatureSingleInstance, Available: true,
+			Detail: "flock-based; available without native WebView",
+		},
+		platform.FeatureGlobalShortcut: {
+			Feature: platform.FeatureGlobalShortcut, Available: false,
+			Detail: "requires native linux host",
+		},
+		platform.FeatureDeepLink: {
+			Feature: platform.FeatureDeepLink, Available: false,
+			Detail: "xdg desktop file / argv handoff not wired yet",
 		},
 	}
 }
@@ -64,7 +80,8 @@ func (h *Host) CloseWindow(context.Context, domain.WindowID) error         { ret
 func (h *Host) ClipboardGet() (string, error)                              { return "", h.err() }
 func (h *Host) ClipboardSet(string) error                                  { return h.err() }
 func (h *Host) OpenFileDialog() (string, error)                            { return "", h.err() }
-func (h *Host) SetMenuBar(domain.WindowID, []MenuItem) error               { return h.err() }
+func (h *Host) SaveFileDialog() (string, error)                            { return "", h.err() }
+func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error      { return h.err() }
 func (h *Host) SetTray(string) error                                       { return h.err() }
 func (h *Host) ClearTray()                                                 {}
 func (h *Host) Run() error                                                 { return h.err() }
@@ -73,9 +90,5 @@ func (h *Host) err() error {
 	return errors.New("linux webview host requires CGO_ENABLED=1 -tags vitra_native and webkit2gtk-4.1")
 }
 
-// MenuItem matches the native host API for stub builds.
-type MenuItem struct {
-	Menu  string
-	ID    string
-	Label string
-}
+// MenuItem matches the portable chrome menu entry.
+type MenuItem = platform.MenuItem

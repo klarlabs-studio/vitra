@@ -38,3 +38,4 @@ findings.json
 .DS_Store
 /vitra
 /competitive
+.bin/

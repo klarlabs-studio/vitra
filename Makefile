@@ -16,10 +16,12 @@ test:
 	$(GO) test ./... -count=1
 
 demo:
-	CGO_ENABLED=1 VITRA_DEMO_SECONDS=3 xvfb-run -a $(GO) run -tags vitra_native ./example/competitive
+	CGO_ENABLED=1 $(GO) build -tags vitra_native -o .bin/competitive ./example/competitive
+	CGO_ENABLED=1 VITRA_DEMO_SECONDS=3 xvfb-run -a .bin/competitive
 
 e2e:
-	@out=$$(CGO_ENABLED=1 VITRA_DEMO_SECONDS=5 VITRA_E2E=1 xvfb-run -a $(GO) run -tags vitra_native ./example/competitive 2>&1); \
+	CGO_ENABLED=1 $(GO) build -tags vitra_native -o .bin/competitive ./example/competitive
+	@out=$$(CGO_ENABLED=1 VITRA_DEMO_SECONDS=5 VITRA_E2E=1 xvfb-run -a .bin/competitive 2>&1); \
 	echo "$$out"; \
 	echo "$$out" | grep -q VITRA_E2E_OK
 

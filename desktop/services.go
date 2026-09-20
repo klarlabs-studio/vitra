@@ -37,6 +37,7 @@ type MenuItem struct {
 	ID       string
 	Label    string
 	Shortcut string
+	Menu     string // optional top-level native menu label (e.g. "File")
 	Children []MenuItem
 }
 

@@ -4,11 +4,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/domain"
@@ -59,7 +61,7 @@ Usage:
   vitra version              Print kernel version
   vitra doctor               Diagnose WebView / CGO prerequisites
   vitra new <dir>            Scaffold a starter desktop app
-  vitra dev [dir]            Run the app with the native host (Linux: -tags vitra_native)
+  vitra dev [dir]            Watch + run the app with the native host (Linux: -tags vitra_native)
   vitra build [dir]          Build the app binary with the native host
   vitra inspect capabilities Demo capability inspection against an in-memory runtime
   vitra help                 Show this help`)
@@ -79,6 +81,10 @@ func doctor() error {
 		platform.FeatureWebViewMessage,
 		platform.FeatureClipboard,
 		platform.FeatureDialogOpen,
+		platform.FeatureDialogSave,
+		platform.FeatureMenuBar,
+		platform.FeatureTray,
+		platform.FeatureSingleInstance,
 	} {
 		s := host.Features()[f]
 		status := "missing"
@@ -137,13 +143,19 @@ func scaffoldNew(args []string) error {
 	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
 		return err
 	}
+	modPath := "example.com/" + filepath.Base(dir)
+	if modPath == "example.com/." {
+		modPath = "example.com/vitra-app"
+	}
 	files := map[string]string{
+		"go.mod": scaffoldGoMod(modPath),
 		"main.go": `package main
 
 import (
 	"context"
 	"embed"
 	"fmt"
+	"io/fs"
 	"io/fs"
 	"os"
 	"runtime"
@@ -246,12 +258,66 @@ func runDev(args []string) error {
 	if len(args) > 0 {
 		dir = args[0]
 	}
-	argsGo := []string{"run"}
-	if runtime.GOOS == "linux" {
-		argsGo = append(argsGo, "-tags", "vitra_native")
+	fmt.Println("vitra dev: watching for .go/.html/.css/.js changes (ctrl-c to stop)")
+	var (
+		cmd   *exec.Cmd
+		stamp = map[string]time.Time{}
+		first = true
+	)
+	restart := func() error {
+		if cmd != nil && cmd.Process != nil {
+			_ = cmd.Process.Kill()
+			_, _ = cmd.Process.Wait()
+		}
+		argsGo := []string{"run"}
+		if runtime.GOOS == "linux" {
+			argsGo = append(argsGo, "-tags", "vitra_native")
+		}
+		argsGo = append(argsGo, ".")
+		cmd = exec.Command("go", argsGo...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "CGO_ENABLED=1")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		fmt.Println("vitra dev: starting…")
+		return cmd.Start()
 	}
-	argsGo = append(argsGo, ".")
-	return execGo(dir, argsGo...)
+	for {
+		changed := first
+		first = false
+		_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				if d != nil && (d.Name() == ".git" || d.Name() == "node_modules") {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			ext := strings.ToLower(filepath.Ext(path))
+			switch ext {
+			case ".go", ".html", ".css", ".js", ".json":
+			default:
+				return nil
+			}
+			info, err := d.Info()
+			if err != nil {
+				return nil
+			}
+			prev, ok := stamp[path]
+			if !ok || info.ModTime().After(prev) {
+				stamp[path] = info.ModTime()
+				if ok {
+					changed = true
+				}
+			}
+			return nil
+		})
+		if changed {
+			if err := restart(); err != nil {
+				fmt.Fprintf(os.Stderr, "vitra dev: start failed: %v\n", err)
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 
 func runBuild(args []string) error {
@@ -265,6 +331,14 @@ func runBuild(args []string) error {
 	}
 	argsGo = append(argsGo, "-o", "vitra-app", ".")
 	return execGo(dir, argsGo...)
+}
+
+func scaffoldGoMod(modPath string) string {
+	body := "module " + modPath + "\n\ngo 1.26\n\nrequire go.klarlabs.de/vitra v0.0.0\n"
+	if root := os.Getenv("VITRA_MODULE_PATH"); root != "" {
+		body += "\nreplace go.klarlabs.de/vitra => " + root + "\n"
+	}
+	return body
 }
 
 func execGo(dir string, goArgs ...string) error {

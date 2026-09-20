@@ -74,9 +74,19 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureWindowNavigate: {Feature: platform.FeatureWindowNavigate, Available: true},
 		platform.FeatureWebViewMessage: {Feature: platform.FeatureWebViewMessage, Available: true},
 		platform.FeatureDialogOpen:     {Feature: platform.FeatureDialogOpen, Available: true},
+		platform.FeatureDialogSave:     {Feature: platform.FeatureDialogSave, Available: true},
 		platform.FeatureClipboard:      {Feature: platform.FeatureClipboard, Available: true},
 		platform.FeatureMenuBar:        {Feature: platform.FeatureMenuBar, Available: true},
 		platform.FeatureTray:           {Feature: platform.FeatureTray, Available: true},
+		platform.FeatureSingleInstance: {Feature: platform.FeatureSingleInstance, Available: true},
+		platform.FeatureGlobalShortcut: {
+			Feature: platform.FeatureGlobalShortcut, Available: false,
+			Detail: "global shortcuts are not reliable on Wayland; use in-window accelerators",
+		},
+		platform.FeatureDeepLink: {
+			Feature: platform.FeatureDeepLink, Available: false,
+			Detail: "xdg desktop file / argv handoff not wired yet",
+		},
 	}
 }
 
@@ -255,15 +265,27 @@ func (h *Host) OpenFileDialog() (string, error) {
 	return <-ch, nil
 }
 
-// MenuItem is a native menu entry.
-type MenuItem struct {
-	Menu  string // top-level menu label, e.g. "File"
-	ID    string
-	Label string
+// SaveFileDialog opens a native save-file chooser.
+func (h *Host) SaveFileDialog() (string, error) {
+	ch := make(chan string, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		p := C.vitra_save_dialog()
+		if p == nil {
+			ch <- ""
+			return
+		}
+		ch <- C.GoString(p)
+		C.g_free(C.gpointer(p))
+	})
+	return <-ch, nil
 }
 
+// MenuItem is an alias for the portable chrome menu entry.
+type MenuItem = platform.MenuItem
+
 // SetMenuBar replaces the application menu bar on the given window.
-func (h *Host) SetMenuBar(id domain.WindowID, items []MenuItem) error {
+func (h *Host) SetMenuBar(id domain.WindowID, items []platform.MenuItem) error {
 	errCh := make(chan error, 1)
 	h.dispatch(func() {
 		h.mu.Lock()
@@ -371,8 +393,27 @@ func goVitraMessage(windowID, msg *C.char) {
 	}
 	resp := h.onInvoke(id, origin, []byte(C.GoString(msg)))
 	if len(resp) > 0 {
-		_ = h.PostMessage(context.Background(), id, resp)
+		// Reply on this GTK thread directly. PostMessage/Eval → dispatch+wait
+		// would deadlock the main loop.
+		h.replyOnGTKThread(id, resp)
 	}
+}
+
+func (h *Host) replyOnGTKThread(id domain.WindowID, message []byte) {
+	enc, err := json.Marshal(string(message))
+	if err != nil {
+		return
+	}
+	js := "window.__vitra&&window.__vitra.__recv(" + string(enc) + ");"
+	h.mu.Lock()
+	w, ok := h.windows[id]
+	h.mu.Unlock()
+	if !ok || w == nil || w.ptr == nil {
+		return
+	}
+	cjs := C.CString(js)
+	defer C.free(unsafe.Pointer(cjs))
+	C.vitra_win_eval(w.ptr, cjs)
 }
 
 //export goVitraDestroy

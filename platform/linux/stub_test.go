@@ -49,9 +49,22 @@ func TestStubHost_ReportsNativeRequirement(t *testing.T) {
 	mustErr(h.ClipboardSet("x"))
 	_, err = h.OpenFileDialog()
 	mustErr(err)
-	mustErr(h.SetMenuBar("main", []MenuItem{{Menu: "File", ID: "quit", Label: "Quit"}}))
+	_, err = h.SaveFileDialog()
+	mustErr(err)
+	mustErr(h.SetMenuBar("main", []platform.MenuItem{{Menu: "File", ID: "quit", Label: "Quit"}}))
 	mustErr(h.SetTray("tip"))
 	h.ClearTray()
+	if held, release, err := h.TrySingleInstance("vitra-stub-test"); err != nil || !held {
+		t.Fatalf("single-instance: held=%v err=%v", held, err)
+	} else {
+		release()
+	}
+	if !fs.Available(platform.FeatureSingleInstance) {
+		t.Fatal("stub should expose single-instance via flock")
+	}
+	if fs.Available(platform.FeatureDialogSave) {
+		t.Fatal("stub should not claim dialog.save without native host")
+	}
 	h.Quit()
 	mustErr(h.Run())
 }

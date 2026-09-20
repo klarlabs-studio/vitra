@@ -24,10 +24,16 @@ type DesktopHost interface {
 	Open(spec platform.WindowSpec, uri, preload string) error
 	SetInvokeHandler(fn func(windowID domain.WindowID, origin domain.Origin, raw []byte) []byte)
 	SetNavPolicy(fn func(windowID domain.WindowID, uri string) bool)
+	SetActionHandler(fn func(id string))
 	Eval(id domain.WindowID, js string) error
 	ClipboardGet() (string, error)
 	ClipboardSet(text string) error
 	OpenFileDialog() (string, error)
+	SaveFileDialog() (string, error)
+	SetMenuBar(id domain.WindowID, items []platform.MenuItem) error
+	SetTray(tooltip string) error
+	ClearTray()
+	TrySingleInstance(appID string) (held bool, release func(), err error)
 	Run() error
 	Quit()
 }
