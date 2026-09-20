@@ -34,3 +34,22 @@ func TestEngine_ProductionForcesSignatureAndBlocksDevPerms(t *testing.T) {
 		t.Fatalf("expected overlay deny: %+v", d)
 	}
 }
+
+func TestEngine_AuthorizeUpdate(t *testing.T) {
+	eng, err := policy.NewEngine(policy.Document{
+		AllowedUpdateChannels: []updater.Channel{updater.ChannelStable},
+	}, policy.EnvProduction)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok := updater.Manifest{Channel: updater.ChannelStable, Signature: "deadbeef"}
+	if err := eng.AuthorizeUpdate(ok); err != nil {
+		t.Fatal(err)
+	}
+	if err := eng.AuthorizeUpdate(updater.Manifest{Channel: updater.ChannelBeta, Signature: "x"}); err == nil {
+		t.Fatal("expected beta channel deny")
+	}
+	if err := eng.AuthorizeUpdate(updater.Manifest{Channel: updater.ChannelStable}); err == nil {
+		t.Fatal("expected unsigned deny in production")
+	}
+}

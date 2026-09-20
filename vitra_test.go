@@ -2,9 +2,15 @@ package vitra_test
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/domain"
@@ -12,6 +18,7 @@ import (
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	"go.klarlabs.de/vitra/policy"
+	"go.klarlabs.de/vitra/updater"
 )
 
 type echoExec struct{}
@@ -330,6 +337,57 @@ func TestRuntime_RejectPluginPermissionCollision(t *testing.T) {
 	var conflict *domain.ErrConflict
 	if !errors.As(err, &conflict) {
 		t.Fatalf("expected conflict, got %v", err)
+	}
+}
+
+func TestRuntime_ApplyUpdate_PolicyAndInstall(t *testing.T) {
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pub, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact := []byte("demo-binary-v2")
+	sum := sha256.Sum256(artifact)
+	m := updater.Manifest{
+		AppID: "com.example.demo", Version: "2.0.0", Channel: updater.ChannelBeta,
+		Artifact: "demo", SHA256: hex.EncodeToString(sum[:]),
+		CreatedAt: time.Now().UTC(),
+	}
+	m, err = updater.SignManifest(m, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(t.TempDir(), "demo")
+
+	eng, err := policy.NewEngine(policy.Document{
+		AllowedUpdateChannels: []updater.Channel{updater.ChannelStable},
+	}, policy.EnvProduction)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt.SetPolicy(eng)
+	if _, err := rt.ApplyUpdate(m, pub, artifact, dest); err == nil {
+		t.Fatal("expected beta channel deny under production policy")
+	}
+	if _, err := os.Stat(dest); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("denied update must not write dest: %v", err)
+	}
+
+	m.Channel = updater.ChannelStable
+	m, err = updater.SignManifest(m, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := rt.ApplyUpdate(m, pub, artifact, dest)
+	if err != nil || plan.Version != "2.0.0" {
+		t.Fatalf("apply: plan=%+v err=%v", plan, err)
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil || string(got) != string(artifact) {
+		t.Fatalf("dest=%q err=%v", got, err)
 	}
 }
 

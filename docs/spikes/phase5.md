@@ -19,6 +19,7 @@ the WebView host’s privilege.
 
 - `Authorize` applies `OverlayDecision` after the capability gateway
 - `Invoke` applies the same overlay via `InvocationService.Overlay`
+- `ApplyUpdate` calls `AuthorizeUpdate` before signed install (channel + unsigned reject)
 
 Production engines force signed updates and strip development privileges
 (invariants 9 / 11). The competitive demo honors optional env hooks:
