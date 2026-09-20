@@ -66,6 +66,9 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "vitra new") {
 		t.Fatalf("help output: %q", out)
 	}
+	if !strings.Contains(out, "register-scheme") {
+		t.Fatalf("help missing register-scheme: %q", out)
+	}
 }
 
 func TestRun_NewScaffold(t *testing.T) {
