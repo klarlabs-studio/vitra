@@ -15,6 +15,7 @@ import (
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/bridge"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/ipc"
 	"go.klarlabs.de/vitra/platform"
 )
 
@@ -168,14 +169,6 @@ func (a *App) Emit(ctx context.Context, name domain.EventName, payload any) erro
 	return first
 }
 
-type invokeMsg struct {
-	Type         string          `json:"type"`
-	ID           string          `json:"id"`
-	Command      string          `json:"command"`
-	Input        json.RawMessage `json:"input"`
-	ResourcePath string          `json:"resource_path"`
-}
-
 type replyMsg struct {
 	ID     string `json:"id"`
 	OK     bool   `json:"ok"`
@@ -185,36 +178,16 @@ type replyMsg struct {
 }
 
 func (a *App) handleInvoke(windowID domain.WindowID, origin domain.Origin, raw []byte) []byte {
-	var msg invokeMsg
-	if err := json.Unmarshal(raw, &msg); err != nil {
-		return mustJSON(replyMsg{OK: false, Error: "invalid invoke payload", Code: "bad_request"})
-	}
-	if msg.Type != "invoke" {
-		return mustJSON(replyMsg{ID: msg.ID, OK: false, Error: "unsupported message type", Code: "bad_request"})
-	}
-	caller, err := domain.NewCaller(windowID, origin)
+	req, id, err := ipc.Bridge{Host: ipc.HostIdentity{Window: windowID, Origin: origin}}.DecodeInvoke(raw)
 	if err != nil {
-		return mustJSON(replyMsg{ID: msg.ID, OK: false, Error: err.Error(), Code: "bad_caller"})
+		return mustJSON(replyMsg{ID: id, OK: false, Error: err.Error(), Code: "bad_request"})
 	}
-	var input any
-	if len(msg.Input) > 0 && string(msg.Input) != "null" {
-		_ = json.Unmarshal(msg.Input, &input)
-	}
-	res, err := a.rt.Invoke(context.Background(), domain.InvocationRequest{
-		Caller:       caller,
-		Command:      domain.CommandName(msg.Command),
-		Input:        input,
-		ResourcePath: msg.ResourcePath,
-	})
+	res, err := a.rt.Invoke(context.Background(), req)
 	if err != nil {
-		code := "error"
-		var denied *domain.ErrDenied
-		if errors.As(err, &denied) {
-			code = string(denied.Code)
-		}
-		return mustJSON(replyMsg{ID: msg.ID, OK: false, Error: err.Error(), Code: code})
+		code := ipc.DenialCode(err)
+		return mustJSON(replyMsg{ID: id, OK: false, Error: err.Error(), Code: code})
 	}
-	return mustJSON(replyMsg{ID: msg.ID, OK: true, Result: res.Output})
+	return mustJSON(replyMsg{ID: id, OK: true, Result: res.Output})
 }
 
 func (a *App) allowNav(windowID domain.WindowID, uri string) bool {

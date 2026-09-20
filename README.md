@@ -135,7 +135,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Track | Status |
 |-------|--------|
 | Secure runtime kernel (Phase 1) | Done |
-| Platform spikes + IPC (Phase 0) | Contracts done |
+| Platform spikes + IPC (Phase 0) | Contracts done; competitive host uses versioned invoke envelopes |
 | Desktop completeness contracts (Phase 2) | Contracts done |
 | Plugin SDK (Phase 3) | Contracts + Runtime wiring; competitive binds dialog + scoped FS |
 | Distribution (Phase 4) | Specs + Linux stage / `.deb` / AppDir / `.AppImage` fold + signed update apply |
