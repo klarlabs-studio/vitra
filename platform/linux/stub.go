@@ -82,7 +82,7 @@ func (h *Host) ClipboardSet(string) error                                  { ret
 func (h *Host) OpenFileDialog() (string, error)                            { return "", h.err() }
 func (h *Host) SaveFileDialog() (string, error)                            { return "", h.err() }
 func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error      { return h.err() }
-func (h *Host) SetTray(string) error                                       { return h.err() }
+func (h *Host) SetTray(string, []platform.MenuItem) error                  { return h.err() }
 func (h *Host) ClearTray()                                                 {}
 func (h *Host) Run() error                                                 { return h.err() }
 func (h *Host) Quit()                                                      {}

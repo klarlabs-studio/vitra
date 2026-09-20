@@ -106,8 +106,10 @@ func (h *Host) SetActionHandler(func(string)) {}
 func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error {
 	return h.err(platform.FeatureMenuBar)
 }
-func (h *Host) SetTray(string) error { return h.err(platform.FeatureTray) }
-func (h *Host) ClearTray()           {}
+func (h *Host) SetTray(string, []platform.MenuItem) error {
+	return h.err(platform.FeatureTray)
+}
+func (h *Host) ClearTray() {}
 func (h *Host) TrySingleInstance(string) (bool, func(), error) {
 	return false, nil, h.err(platform.FeatureSingleInstance)
 }

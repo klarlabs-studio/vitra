@@ -54,7 +54,7 @@ func (h *fakeHost) OpenFileDialog() (string, error)                            {
 func (h *fakeHost) SaveFileDialog() (string, error)                            { return "/tmp/y", nil }
 func (h *fakeHost) SetActionHandler(func(string))                              {}
 func (h *fakeHost) SetMenuBar(domain.WindowID, []platform.MenuItem) error      { return nil }
-func (h *fakeHost) SetTray(string) error                                       { return nil }
+func (h *fakeHost) SetTray(string, []platform.MenuItem) error                  { return nil }
 func (h *fakeHost) ClearTray()                                                 {}
 func (h *fakeHost) TrySingleInstance(string) (bool, func(), error) {
 	return true, func() {}, nil

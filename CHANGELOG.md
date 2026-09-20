@@ -8,20 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Linux tray context menus on the status-icon; `DesktopHost.SetTray` accepts menu items.
+- Competitive demo chrome (menu/tray/dialogs/clipboard/deeplink) authorizes through the kernel gateway (`Runtime.Authorize`).
+- `vitra new` scaffold no longer emits a duplicate `io/fs` import.
+- Kernel version bumped to `0.3.0` (matches official plugin `MinKernel`).
 - Linux deep-link argv parsing and unix-socket secondary-instance handoff.
 - Linux save-file dialog and flock-based single-instance lock on `platform/linux`.
-- `app.DesktopHost` now includes menu/tray/action/save/single-instance surface.
+- `app.DesktopHost` now includes menu/tray/action/save/single-instance/deep-link surface.
 - Competitive demo routes clipboard/dialogs/menu/tray through `desktop` permission services.
 - `vitra new` emits `go.mod`; `vitra dev` watches source and restarts the app.
-
-
-### Added
-
 - Competitive desktop runtime: `app.App` binds the secure kernel to a native
   WebView host; `bridge` injects `window.vitra.invoke` with host-stamped identity.
 - Linux WebKitGTK host (`platform/linux`, build tag `vitra_native`) with
-  clipboard, open-file dialog, GTK menu bar, status-icon tray, navigation policy,
-  and GTK main loop.
+  clipboard, open/save dialogs, GTK menu bar, status-icon tray + context menu,
+  navigation policy, and GTK main loop.
 - Eval-driven E2E (`make e2e`) proving frontend invoke → capability gateway.
 - Darwin/Windows `DesktopHost` stubs with explicit `ErrUnsupported` feature matrices.
 - CLI DX: `vitra new`, `vitra dev`, `vitra build`, upgraded `vitra doctor`.

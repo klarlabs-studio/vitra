@@ -134,13 +134,13 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Track | Status |
 |-------|--------|
 | Secure runtime kernel (Phase 1) | Done |
-| Platform spikes + IPC (Phase 0) | Done |
-| Desktop completeness contracts (Phase 2) | Done |
-| Plugin SDK (Phase 3) | Done |
-| Distribution (Phase 4) | Done |
-| Isolation / enterprise (Phase 5) | Done |
+| Platform spikes + IPC (Phase 0) | Contracts done |
+| Desktop completeness contracts (Phase 2) | Contracts done |
+| Plugin SDK (Phase 3) | Contracts done (not wired into `app`) |
+| Distribution (Phase 4) | Specs/verify only (no installers) |
+| Isolation / enterprise (Phase 5) | In-process contracts (no OS workers) |
 | **Competitive Linux WebView host** | **Done** (`-tags vitra_native`) |
-| Linux menu bar + tray | **Done** |
+| Linux menu bar + tray menus | **Done** |
 | Invoke E2E (`make e2e`) | **Done** |
 | Save dialog + single-instance lock | Linux native |
 | Deep-link argv / secondary handoff | Linux native |

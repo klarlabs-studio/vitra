@@ -11,6 +11,7 @@ extern int goVitraNav(char *, char *);
 extern void goVitraAction(char *);
 
 static GtkStatusIcon *g_tray = NULL;
+static GtkWidget *g_tray_menu = NULL;
 
 static gboolean idle_cb(gpointer data) {
 	goVitraIdle(data);
@@ -212,10 +213,20 @@ static void on_tray_activate(GtkStatusIcon *icon, gpointer user_data) {
 	goVitraAction("tray.activate");
 }
 
+static void on_tray_popup(GtkStatusIcon *icon, guint button, guint32 activate_time, gpointer user_data) {
+	(void)user_data;
+	if (!g_tray_menu) {
+		return;
+	}
+	gtk_widget_show_all(g_tray_menu);
+	gtk_menu_popup(GTK_MENU(g_tray_menu), NULL, NULL, gtk_status_icon_position_menu, icon, button, activate_time);
+}
+
 void vitra_tray_set(const char *tooltip) {
 	if (!g_tray) {
 		g_tray = gtk_status_icon_new_from_icon_name("application-x-executable");
 		g_signal_connect(g_tray, "activate", G_CALLBACK(on_tray_activate), NULL);
+		g_signal_connect(g_tray, "popup-menu", G_CALLBACK(on_tray_popup), NULL);
 	}
 	gtk_status_icon_set_visible(g_tray, TRUE);
 	if (tooltip) {
@@ -223,7 +234,29 @@ void vitra_tray_set(const char *tooltip) {
 	}
 }
 
+void vitra_tray_clear_menu(void) {
+	if (g_tray_menu) {
+		gtk_widget_destroy(g_tray_menu);
+		g_tray_menu = NULL;
+	}
+}
+
+void vitra_tray_add_menu_item(const char *item_id, const char *item_label) {
+	if (!item_id || !item_label) {
+		return;
+	}
+	if (!g_tray_menu) {
+		g_tray_menu = gtk_menu_new();
+	}
+	GtkWidget *item = gtk_menu_item_new_with_label(item_label);
+	char *id_copy = g_strdup(item_id);
+	g_signal_connect_data(item, "activate", G_CALLBACK(on_action), id_copy, (GClosureNotify)g_free, 0);
+	gtk_menu_shell_append(GTK_MENU_SHELL(g_tray_menu), item);
+	gtk_widget_show_all(item);
+}
+
 void vitra_tray_clear(void) {
+	vitra_tray_clear_menu();
 	if (g_tray) {
 		gtk_status_icon_set_visible(g_tray, FALSE);
 	}

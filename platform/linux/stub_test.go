@@ -52,7 +52,7 @@ func TestStubHost_ReportsNativeRequirement(t *testing.T) {
 	_, err = h.SaveFileDialog()
 	mustErr(err)
 	mustErr(h.SetMenuBar("main", []platform.MenuItem{{Menu: "File", ID: "quit", Label: "Quit"}}))
-	mustErr(h.SetTray("tip"))
+	mustErr(h.SetTray("tip", []platform.MenuItem{{ID: "quit", Label: "Quit"}}))
 	h.ClearTray()
 	if held, release, err := h.TrySingleInstance("vitra-stub-test"); err != nil || !held {
 		t.Fatalf("single-instance: held=%v err=%v", held, err)

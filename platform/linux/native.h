@@ -31,6 +31,8 @@ char *vitra_open_dialog(void);
 char *vitra_save_dialog(void);
 
 void vitra_tray_set(const char *tooltip);
+void vitra_tray_clear_menu(void);
+void vitra_tray_add_menu_item(const char *item_id, const char *item_label);
 void vitra_tray_clear(void);
 
 #endif

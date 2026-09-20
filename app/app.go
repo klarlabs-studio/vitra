@@ -31,7 +31,7 @@ type DesktopHost interface {
 	OpenFileDialog() (string, error)
 	SaveFileDialog() (string, error)
 	SetMenuBar(id domain.WindowID, items []platform.MenuItem) error
-	SetTray(tooltip string) error
+	SetTray(tooltip string, items []platform.MenuItem) error
 	ClearTray()
 	TrySingleInstance(appID string) (held bool, release func(), err error)
 	StartDeepLinkBridge(appID string, onLink func(raw string)) (stop func(), err error)

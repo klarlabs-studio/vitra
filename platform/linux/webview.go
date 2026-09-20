@@ -310,14 +310,22 @@ func (h *Host) SetMenuBar(id domain.WindowID, items []platform.MenuItem) error {
 	return <-errCh
 }
 
-// SetTray shows a status-icon tray entry with tooltip.
-func (h *Host) SetTray(tooltip string) error {
+// SetTray shows a status-icon tray entry with tooltip and optional context menu.
+func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
 	done := make(chan struct{}, 1)
 	h.dispatch(func() {
 		h.ensureInit()
 		ct := C.CString(tooltip)
 		defer C.free(unsafe.Pointer(ct))
 		C.vitra_tray_set(ct)
+		C.vitra_tray_clear_menu()
+		for _, it := range items {
+			cid := C.CString(it.ID)
+			clabel := C.CString(it.Label)
+			C.vitra_tray_add_menu_item(cid, clabel)
+			C.free(unsafe.Pointer(cid))
+			C.free(unsafe.Pointer(clabel))
+		}
 		done <- struct{}{}
 	})
 	<-done

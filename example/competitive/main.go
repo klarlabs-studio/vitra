@@ -20,18 +20,6 @@ import (
 //go:embed frontend/*
 var frontendRoot embed.FS
 
-type allowGateway map[domain.PermissionName]struct{}
-
-func (g allowGateway) Authorize(caller domain.Caller, permission domain.PermissionName, _ string) domain.Decision {
-	if caller.Origin != domain.OriginPackagedLocal {
-		return domain.Decision{Permission: permission, Code: domain.DenialOriginMismatch, Reason: "origin not trusted"}
-	}
-	if _, ok := g[permission]; ok {
-		return domain.Decision{Allowed: true, Permission: permission}
-	}
-	return domain.Decision{Permission: permission, Code: domain.DenialPermissionAbsent, Reason: "permission not granted to desktop gateway"}
-}
-
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "competitive demo: %v\n", err)
@@ -77,19 +65,32 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	gw := allowGateway{
-		desktop.PermMenuSet:        {},
-		desktop.PermTraySet:        {},
-		desktop.PermDialogOpen:     {},
-		desktop.PermDialogSave:     {},
-		desktop.PermClipboardRead:  {},
-		desktop.PermClipboardWrite: {},
-		desktop.PermSingleInstance: {},
-		desktop.PermDeepLinkHandle: {},
+
+	chromeGrant, err := domain.NewCapabilityGrant(
+		"desktop-chrome",
+		"clipboard, dialogs, menu, tray, single-instance, deeplink",
+		[]domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{
+			{Name: desktop.PermClipboardRead},
+			{Name: desktop.PermClipboardWrite},
+			{Name: desktop.PermDialogOpen},
+			{Name: desktop.PermDialogSave},
+			{Name: desktop.PermMenuSet},
+			{Name: desktop.PermTraySet},
+			{Name: desktop.PermSingleInstance},
+			{Name: desktop.PermDeepLinkHandle},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if err := rt.RegisterGrant(chromeGrant); err != nil {
+		return err
 	}
 
 	menus := &desktop.MenuService{
-		Gateway: gw,
+		Gateway: rt,
 		Host:    host,
 		OnSet: func(ctx context.Context, items []desktop.MenuItem) error {
 			native := make([]platform.MenuItem, 0, len(items))
@@ -104,14 +105,18 @@ func run() error {
 		},
 	}
 	trays := &desktop.TrayService{
-		Gateway: gw,
+		Gateway: rt,
 		Host:    host,
-		OnSet: func(ctx context.Context, tooltip string, _ []desktop.MenuItem) error {
-			return host.SetTray(tooltip)
+		OnSet: func(ctx context.Context, tooltip string, items []desktop.MenuItem) error {
+			native := make([]platform.MenuItem, 0, len(items))
+			for _, it := range items {
+				native = append(native, platform.MenuItem{ID: it.ID, Label: it.Label})
+			}
+			return host.SetTray(tooltip, native)
 		},
 	}
 	dialogs := &desktop.DialogService{
-		Gateway: gw,
+		Gateway: rt,
 		Host:    host,
 		OnOpen: func(ctx context.Context) ([]string, error) {
 			path, err := host.OpenFileDialog()
@@ -125,13 +130,13 @@ func run() error {
 		},
 	}
 	clips := &desktop.ClipboardService{
-		Gateway: gw,
+		Gateway: rt,
 		Host:    host,
 		OnRead:  func(ctx context.Context) (string, error) { return host.ClipboardGet() },
 		OnWrite: func(ctx context.Context, text string) error { return host.ClipboardSet(text) },
 	}
 	single := &desktop.SingleInstanceService{
-		Gateway: gw,
+		Gateway: rt,
 		Host:    host,
 		OnLock:  func(ctx context.Context) (bool, error) { return true, nil },
 	}
@@ -142,7 +147,7 @@ func run() error {
 	}
 
 	deepLinks := &desktop.DeepLinkService{
-		Gateway:  gw,
+		Gateway:  rt,
 		Host:     host,
 		Patterns: []domain.DeepLinkPattern{{Scheme: "vitra"}},
 	}
@@ -156,7 +161,6 @@ func run() error {
 			return
 		}
 		fmt.Println("deep link:", raw)
-		// Surface to the UI when the window is up.
 		js := fmt.Sprintf(`(function(){var el=document.getElementById("out");if(el){el.textContent=%q;}})()`, "deep link: "+raw)
 		_ = host.Eval("main", js)
 	}
@@ -210,43 +214,25 @@ func run() error {
 		}
 		return rt.RegisterCommand(def, exec)
 	}
-	if err := register("clipboard.read", "Read clipboard", "clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := register("clipboard.read", "Read clipboard", desktop.PermClipboardRead, domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return clips.Read(ctx, caller)
 	})); err != nil {
 		return err
 	}
-	if err := register("clipboard.write", "Write clipboard", "clipboard.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := register("clipboard.write", "Write clipboard", desktop.PermClipboardWrite, domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		text, _ := input.(string)
 		return nil, clips.Write(ctx, caller, text)
 	})); err != nil {
 		return err
 	}
-	if err := register("dialog.open", "Open file dialog", "dialog.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := register("dialog.open", "Open file dialog", desktop.PermDialogOpen, domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return dialogs.OpenFile(ctx, caller)
 	})); err != nil {
 		return err
 	}
-	if err := register("dialog.save", "Save file dialog", "dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := register("dialog.save", "Save file dialog", desktop.PermDialogSave, domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return dialogs.SaveFile(ctx, caller)
 	})); err != nil {
-		return err
-	}
-	chromeGrant, err := domain.NewCapabilityGrant(
-		"desktop-chrome",
-		"clipboard and dialogs",
-		[]domain.WindowID{"main"},
-		[]domain.Origin{domain.OriginPackagedLocal},
-		[]domain.PermissionSpec{
-			{Name: "clipboard.read"},
-			{Name: "clipboard.write"},
-			{Name: "dialog.open"},
-			{Name: "dialog.save"},
-		},
-	)
-	if err != nil {
-		return err
-	}
-	if err := rt.RegisterGrant(chromeGrant); err != nil {
 		return err
 	}
 
@@ -264,7 +250,7 @@ func run() error {
 
 	host.SetActionHandler(func(id string) {
 		fmt.Println("native action:", id)
-		if id == "app.quit" || id == "tray.activate" {
+		if id == "app.quit" || id == "tray.quit" || id == "tray.activate" {
 			application.Quit()
 		}
 	})
@@ -275,7 +261,10 @@ func run() error {
 			{Menu: "File", ID: "app.quit", Label: "Quit"},
 			{Menu: "Help", ID: "help.about", Label: "About Vitra"},
 		})
-		_ = trays.SetTray(context.Background(), caller, "Vitra competitive demo", nil)
+		_ = trays.SetTray(context.Background(), caller, "Vitra competitive demo", []desktop.MenuItem{
+			{ID: "help.about", Label: "About Vitra"},
+			{ID: "tray.quit", Label: "Quit"},
+		})
 		if os.Getenv("VITRA_E2E") == "1" {
 			js := `window.vitra.invoke("demo.greet","E2E").then(function(r){document.getElementById("out").textContent=JSON.stringify(r,null,2);}).catch(function(e){document.getElementById("out").textContent=String(e);});`
 			_ = host.Eval("main", js)

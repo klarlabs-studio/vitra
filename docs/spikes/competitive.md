@@ -17,6 +17,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Desktop services wired through grants (menu/tray/clipboard/dialogs) | Done |
 | `vitra new` writes `go.mod`; `vitra dev` watches & restarts | Done |
 | Deep-link argv + secondary-instance socket handoff | Done |
+| Tray context menu (status-icon popup) | Done |
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done |
 | `vitra doctor/new/dev/build` | Done |
@@ -48,7 +49,7 @@ make e2e
 ## Honest gap vs Wails 3
 
 Vitra is now a **secure runtime you can run** on Linux, including menu bar,
-tray, save dialogs, single-instance locking, deep-link argv handoff, and grant-gated desktop services. Wails still leads on cross-OS host maturity (macOS/Windows adapters) and
+tray with context menu, save dialogs, single-instance locking, deep-link argv handoff, and grant-gated desktop services (chrome shares the kernel gateway). Wails still leads on cross-OS host maturity (macOS/Windows adapters) and
 template ecosystem. Vitra leads on capability-oriented authority and
 inspectable grants. Closing the remaining host gap is mechanical adapter work
 on the same `app.DesktopHost` contract.
