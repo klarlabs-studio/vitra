@@ -7,11 +7,11 @@ the WebView host’s privilege.
 
 | Area | Package |
 |------|---------|
-| Supervised workers | `worker.Supervisor` |
+| Supervised workers | `worker.Supervisor` + `Runtime.StartWorker` / `StopWorker` |
 | Crash-safe bookkeeping | worker records survive runner failures |
 | Audit log sink | `audit.MemorySink` (+ `Sink` port) |
 | Enterprise policy overlay | `policy.Engine` |
-| Live Runtime wiring | `Runtime.SetPolicy` / `SetAudit` on Authorize, Invoke, plugins, updates |
+| Live Runtime wiring | `Runtime.SetPolicy` / `SetAudit` / workers on Authorize, Invoke, plugins, updates |
 
 ## Runtime wiring
 
@@ -30,6 +30,10 @@ the WebView host’s privilege.
 | `command.invoke` | `Invoke` |
 | `plugin.register` | `RegisterPlugin` |
 | `update.plan` | `ApplyUpdate` |
+| `worker.lifecycle` | `StartWorker` / `StopWorker` / crash·stop transitions |
+
+`Runtime.StartWorker` supervises **in-process** runners only (invariant 8:
+elevated work stays off the WebView host). OS process spawn remains a future adapter.
 
 Production engines force signed updates and strip development privileges
 (invariants 9 / 11). The competitive demo honors optional env hooks:

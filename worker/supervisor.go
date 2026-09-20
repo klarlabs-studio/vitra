@@ -65,10 +65,11 @@ type Record struct {
 // Supervisor manages worker lifecycles without sharing mutable host state
 // that a crash could corrupt — bookkeeping lives in the supervisor.
 type Supervisor struct {
-	mu      sync.Mutex
-	records map[ID]*Record
-	cancels map[ID]context.CancelFunc
-	runners map[ID]Runner
+	mu           sync.Mutex
+	records      map[ID]*Record
+	cancels      map[ID]context.CancelFunc
+	runners      map[ID]Runner
+	OnTransition func(Record) // optional; called unlocked after terminal/restart transitions
 }
 
 // NewSupervisor constructs an empty supervisor.
@@ -77,6 +78,12 @@ func NewSupervisor() *Supervisor {
 		records: make(map[ID]*Record),
 		cancels: make(map[ID]context.CancelFunc),
 		runners: make(map[ID]Runner),
+	}
+}
+
+func (s *Supervisor) notify(rec Record) {
+	if s.OnTransition != nil {
+		s.OnTransition(rec)
 	}
 }
 
@@ -117,7 +124,9 @@ func (s *Supervisor) loop(ctx context.Context, id ID) {
 		if rec.State == StateStopping {
 			rec.State = StateStopped
 			rec.LastExitAt = time.Now().UTC()
+			cp := *rec
 			s.mu.Unlock()
+			s.notify(cp)
 			return
 		}
 		rec.State = StateRunning
@@ -135,7 +144,9 @@ func (s *Supervisor) loop(ctx context.Context, id ID) {
 		rec.LastExitAt = time.Now().UTC()
 		if ctx.Err() != nil || rec.State == StateStopping {
 			rec.State = StateStopped
+			cp := *rec
 			s.mu.Unlock()
+			s.notify(cp)
 			return
 		}
 		if err != nil {
@@ -144,12 +155,16 @@ func (s *Supervisor) loop(ctx context.Context, id ID) {
 		}
 		if restarts >= max {
 			rec.State = StateCrashed
+			cp := *rec
 			s.mu.Unlock()
+			s.notify(cp)
 			return
 		}
 		rec.Restarts++
 		rec.State = StateStarting
+		cp := *rec
 		s.mu.Unlock()
+		s.notify(cp)
 	}
 }
 

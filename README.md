@@ -138,7 +138,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Desktop completeness contracts (Phase 2) | Contracts done |
 | Plugin SDK (Phase 3) | Contracts + Runtime wiring; competitive binds dialog + scoped FS |
 | Distribution (Phase 4) | Specs + Linux stage / `.deb` / AppDir + signed update apply |
-| Isolation / enterprise (Phase 5) | Contracts + Runtime `SetPolicy` / `SetAudit` (no OS workers) |
+| Isolation / enterprise (Phase 5) | Contracts + Runtime policy/audit/workers (in-process; no OS spawn) |
 | **Competitive Linux WebView host** | **Done** (`-tags vitra_native`) |
 | Linux menu bar + tray menus | **Done** |
 | Invoke E2E (`make e2e`) | **Done** (also in CI: Native Linux E2E) |

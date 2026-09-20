@@ -20,6 +20,7 @@ import (
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	"go.klarlabs.de/vitra/policy"
 	"go.klarlabs.de/vitra/updater"
+	"go.klarlabs.de/vitra/worker"
 )
 
 type echoExec struct{}
@@ -465,6 +466,77 @@ func TestRuntime_AuditEmitsDecisions(t *testing.T) {
 	_ = rt.Authorize(caller, "shell.exec", "")
 	if len(sink.List()) != before {
 		t.Fatal("cleared audit sink should stop recording")
+	}
+}
+
+func TestRuntime_StartWorker_CrashAndStop(t *testing.T) {
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sink := &audit.MemorySink{}
+	rt.SetAudit(sink)
+	ctx := context.Background()
+
+	if err := rt.StartWorker(ctx, worker.Spec{ID: "crashy", Name: "crashy", MaxRestarts: 0, Elevated: true}, func(context.Context) error {
+		return errors.New("boom")
+	}); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	var crashed bool
+	for time.Now().Before(deadline) {
+		rec, err := rt.Worker("crashy")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rec.State == worker.StateCrashed {
+			crashed = true
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !crashed {
+		t.Fatal("expected crashed worker")
+	}
+
+	started := make(chan struct{})
+	if err := rt.StartWorker(ctx, worker.Spec{ID: "ok", Name: "ok", MaxRestarts: 0}, func(c context.Context) error {
+		close(started)
+		<-c.Done()
+		return c.Err()
+	}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("worker did not start")
+	}
+	if err := rt.StopWorker("ok"); err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		rec, _ := rt.Worker("ok")
+		if rec.State == worker.StateStopped {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if rec, _ := rt.Worker("ok"); rec.State != worker.StateStopped {
+		t.Fatalf("expected stopped, got %s", rec.State)
+	}
+	if n := len(rt.Workers()); n < 2 {
+		t.Fatalf("Workers() = %d", n)
+	}
+
+	kinds := map[audit.Kind]int{}
+	for _, e := range sink.List() {
+		kinds[e.Kind]++
+	}
+	if kinds[audit.KindWorkerLifecycle] < 3 {
+		t.Fatalf("expected worker.lifecycle audits, got %+v", sink.List())
 	}
 }
 
