@@ -118,6 +118,9 @@ func (h *Host) StartDeepLinkBridge(string, func(string)) (func(), error) {
 func (h *Host) ForwardToPrimary(string, []string) (bool, error) {
 	return false, h.err(platform.FeatureDeepLink)
 }
+func (h *Host) RegisterURLScheme(string, string, string) error {
+	return h.err(platform.FeatureDeepLink)
+}
 func (h *Host) Run() error { return h.err(platform.FeatureWindowCreate) }
 func (h *Host) Quit()      {}
 

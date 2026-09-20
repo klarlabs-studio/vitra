@@ -85,7 +85,7 @@ func (h *Host) Features() platform.FeatureSet {
 		},
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: true,
-			Detail: "argv + unix-socket secondary-instance handoff",
+			Detail: "argv + socket handoff + xdg URL-scheme registration",
 		},
 	}
 }

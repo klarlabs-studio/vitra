@@ -41,6 +41,17 @@ func run() error {
 	host := linux.New()
 	const appID = "com.vitra.competitive"
 
+	if os.Getenv("VITRA_REGISTER_SCHEME") == "1" {
+		execPath, err := os.Executable()
+		if err != nil {
+			return err
+		}
+		if err := host.RegisterURLScheme("vitra", appID, execPath); err != nil {
+			return fmt.Errorf("register URL scheme: %w", err)
+		}
+		fmt.Println("registered xdg handler for vitra://")
+	}
+
 	held, release, err := host.TrySingleInstance(appID)
 	if err != nil {
 		return fmt.Errorf("single-instance: %w", err)

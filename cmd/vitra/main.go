@@ -48,6 +48,8 @@ func run(args []string) error {
 		return runDev(args[1:])
 	case "build":
 		return runBuild(args[1:])
+	case "register-scheme":
+		return registerScheme(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return nil
@@ -65,6 +67,8 @@ Usage:
   vitra new <dir>            Scaffold a starter desktop app
   vitra dev [dir]            Watch + run the app with the native host (Linux: -tags vitra_native)
   vitra build [dir]          Build the app binary with the native host
+  vitra register-scheme <scheme> [app-id] [exec]
+                             Register an xdg URL scheme handler (Linux)
   vitra inspect capabilities Demo capability inspection against an in-memory runtime
   vitra help                 Show this help`)
 }
@@ -333,6 +337,36 @@ func runBuild(args []string) error {
 	}
 	argsGo = append(argsGo, "-o", "vitra-app", ".")
 	return execGo(dir, argsGo...)
+}
+
+func registerScheme(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: vitra register-scheme <scheme> [app-id] [exec]")
+	}
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("register-scheme is only implemented on Linux (xdg)")
+	}
+	scheme := args[0]
+	appID := "com.vitra.app"
+	if len(args) > 1 {
+		appID = args[1]
+	}
+	execPath := ""
+	if len(args) > 2 {
+		execPath = args[2]
+	} else {
+		var err error
+		execPath, err = os.Executable()
+		if err != nil {
+			return err
+		}
+	}
+	host := linux.New()
+	if err := host.RegisterURLScheme(scheme, appID, execPath); err != nil {
+		return err
+	}
+	fmt.Printf("registered xdg handler for %s:// → %s (%s)\n", scheme, execPath, appID)
+	return nil
 }
 
 func scaffoldGoMod(modPath string) string {

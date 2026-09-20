@@ -63,6 +63,7 @@ func (h *fakeHost) StartDeepLinkBridge(string, func(string)) (func(), error) {
 	return func() {}, nil
 }
 func (h *fakeHost) ForwardToPrimary(string, []string) (bool, error) { return false, nil }
+func (h *fakeHost) RegisterURLScheme(string, string, string) error  { return nil }
 func (h *fakeHost) Run() error {
 	close(h.ran)
 	<-h.quit
