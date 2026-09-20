@@ -1,9 +1,9 @@
 // Package vitra is the entry point for the Vitra runtime kernel — a secure,
 // capability-oriented desktop application runtime for Go + web frontends.
 //
-// Phase 1 focuses on the secure runtime kernel: explicit commands, typed
-// caller identity, and a capability gateway. Platform WebView adapters and
-// packaging land in later phases.
+// Phase 2 adds desktop completeness on top of the secure kernel: multi-window
+// lifecycle, navigation policy, window-owned subscriptions, and capability-
+// gated desktop services (menu/tray/dialog/clipboard/shortcuts/deeplinks).
 //
 // Example:
 //
@@ -25,11 +25,13 @@ import (
 
 // Version is the kernel API version. Generated frontend bindings should be
 // tied to this version (reliability invariant 8).
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // Config configures a Runtime.
 type Config struct {
-	AppID domain.AppID
+	AppID            domain.AppID
+	TrustedOrigins   []domain.Origin
+	AllowExternalNav bool
 }
 
 // Runtime is the fluent entry point for the Vitra kernel.
@@ -38,19 +40,23 @@ type Config struct {
 type Runtime struct {
 	appID domain.AppID
 
-	grants    domain.GrantRepository
-	windows   domain.WindowRepository
-	commands  domain.CommandRepository
-	resources domain.ResourceRepository
-	executors *inmemory.ExecutorRegistry
+	grants        domain.GrantRepository
+	windows       domain.WindowRepository
+	commands      domain.CommandRepository
+	resources     domain.ResourceRepository
+	subscriptions domain.SubscriptionRepository
+	executors     *inmemory.ExecutorRegistry
+	navPolicy     *domain.NavigationPolicy
 
 	registerGrant   *application.RegisterGrantUseCase
 	registerCommand *application.RegisterCommandUseCase
 	openWindow      *application.OpenWindowUseCase
 	navigateWindow  *application.NavigateWindowUseCase
+	navigatePolicy  *application.NavigateWithPolicyUseCase
 	closeWindow     *application.CloseWindowUseCase
 	invoke          *application.InvokeCommandUseCase
 	inspect         *application.InspectCapabilitiesUseCase
+	subscribe       *application.SubscribeEventUseCase
 }
 
 // New constructs a Runtime with in-memory adapters.
@@ -58,13 +64,19 @@ func New(cfg Config) (*Runtime, error) {
 	if cfg.AppID == "" {
 		return nil, &domain.ErrValidation{Message: "app id is required"}
 	}
+	policy, err := domain.NewNavigationPolicy(cfg.TrustedOrigins, cfg.AllowExternalNav)
+	if err != nil {
+		return nil, err
+	}
 	rt := &Runtime{
-		appID:     cfg.AppID,
-		grants:    inmemory.NewGrantRepo(),
-		windows:   inmemory.NewWindowRepo(),
-		commands:  inmemory.NewCommandRepo(),
-		resources: inmemory.NewResourceRepo(),
-		executors: inmemory.NewExecutorRegistry(),
+		appID:         cfg.AppID,
+		grants:        inmemory.NewGrantRepo(),
+		windows:       inmemory.NewWindowRepo(),
+		commands:      inmemory.NewCommandRepo(),
+		resources:     inmemory.NewResourceRepo(),
+		subscriptions: inmemory.NewSubscriptionRepo(),
+		executors:     inmemory.NewExecutorRegistry(),
+		navPolicy:     policy,
 	}
 	rt.wire()
 	return rt, nil
@@ -81,9 +93,13 @@ func (rt *Runtime) wire() {
 	rt.registerCommand = &application.RegisterCommandUseCase{Commands: rt.commands}
 	rt.openWindow = &application.OpenWindowUseCase{Windows: rt.windows}
 	rt.navigateWindow = &application.NavigateWindowUseCase{Windows: rt.windows}
-	rt.closeWindow = &application.CloseWindowUseCase{Windows: rt.windows, Resources: rt.resources}
+	rt.navigatePolicy = &application.NavigateWithPolicyUseCase{Windows: rt.windows, Policy: rt.navPolicy}
+	rt.closeWindow = &application.CloseWindowUseCase{
+		Windows: rt.windows, Resources: rt.resources, Subscriptions: rt.subscriptions,
+	}
 	rt.invoke = &application.InvokeCommandUseCase{Invoker: invoker}
 	rt.inspect = &application.InspectCapabilitiesUseCase{Grants: rt.grants, Windows: rt.windows}
+	rt.subscribe = &application.SubscribeEventUseCase{Windows: rt.windows, Subscriptions: rt.subscriptions}
 }
 
 // AppID returns the application id.
@@ -110,15 +126,28 @@ func (rt *Runtime) OpenWindow(_ context.Context, id domain.WindowID, origin doma
 	return rt.openWindow.Execute(id, origin)
 }
 
-// NavigateWindow changes a window origin (authority does not follow).
+// NavigateWindow changes a window origin without policy checks (authority does not follow).
 func (rt *Runtime) NavigateWindow(_ context.Context, id domain.WindowID, origin domain.Origin) error {
 	return rt.navigateWindow.Execute(id, origin)
 }
 
-// CloseWindow closes a window and releases owned resources.
+// NavigateWindowGuarded evaluates navigation policy before navigating.
+func (rt *Runtime) NavigateWindowGuarded(_ context.Context, id domain.WindowID, origin domain.Origin) error {
+	return rt.navigatePolicy.Execute(id, origin)
+}
+
+// CloseWindow closes a window and releases owned resources and subscriptions.
 func (rt *Runtime) CloseWindow(_ context.Context, id domain.WindowID) error {
 	return rt.closeWindow.Execute(id)
 }
+
+// SubscribeEvent registers a window-owned event subscription.
+func (rt *Runtime) SubscribeEvent(id domain.SubscriptionID, event domain.EventName, window domain.WindowID) (*domain.Subscription, error) {
+	return rt.subscribe.Execute(id, event, window)
+}
+
+// NavigationPolicy returns the runtime navigation policy.
+func (rt *Runtime) NavigationPolicy() *domain.NavigationPolicy { return rt.navPolicy }
 
 // Invoke runs a frontend command through the capability gateway.
 func (rt *Runtime) Invoke(ctx context.Context, req domain.InvocationRequest) (*domain.InvocationResult, error) {

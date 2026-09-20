@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 2 desktop completeness: navigation policy, window-owned event
+  subscriptions (cleaned up on window close), capability-gated `desktop`
+  services (menu/tray/dialog/clipboard/shortcuts/deeplinks/single-instance).
 - Phase 0 architecture spikes: versioned `ipc` bridge (host identity wins over
   payload claims), `platform` feature matrix + `platform/null` stub host with
   explicit unsupported errors, spike notes in `docs/spikes/phase0.md`.

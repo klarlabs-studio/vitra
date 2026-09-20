@@ -222,3 +222,67 @@ func (r *ExecutorRegistry) Get(name domain.CommandName) (domain.CommandExecutor,
 	e, ok := r.byName[name]
 	return e, ok
 }
+
+// SubscriptionRepo is a thread-safe SubscriptionRepository.
+type SubscriptionRepo struct {
+	mu   sync.RWMutex
+	byID map[domain.SubscriptionID]*domain.Subscription
+}
+
+// NewSubscriptionRepo constructs an empty subscription repository.
+func NewSubscriptionRepo() *SubscriptionRepo {
+	return &SubscriptionRepo{byID: make(map[domain.SubscriptionID]*domain.Subscription)}
+}
+
+// Save stores a subscription.
+func (r *SubscriptionRepo) Save(sub *domain.Subscription) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.byID[sub.ID()] = sub
+	return nil
+}
+
+// Get returns a subscription by id.
+func (r *SubscriptionRepo) Get(id domain.SubscriptionID) (*domain.Subscription, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	s, ok := r.byID[id]
+	if !ok {
+		return nil, &domain.ErrNotFound{Entity: "subscription", ID: string(id)}
+	}
+	return s, nil
+}
+
+// Delete removes a subscription.
+func (r *SubscriptionRepo) Delete(id domain.SubscriptionID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.byID, id)
+	return nil
+}
+
+// ListByOwner returns subscriptions owned by window.
+func (r *SubscriptionRepo) ListByOwner(window domain.WindowID) ([]*domain.Subscription, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*domain.Subscription, 0)
+	for _, s := range r.byID {
+		if s.Owner() == window {
+			out = append(out, s)
+		}
+	}
+	return out, nil
+}
+
+// ListByEvent returns open subscriptions for an event.
+func (r *SubscriptionRepo) ListByEvent(event domain.EventName) ([]*domain.Subscription, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*domain.Subscription, 0)
+	for _, s := range r.byID {
+		if s.Event() == event && !s.IsClosed() {
+			out = append(out, s)
+		}
+	}
+	return out, nil
+}

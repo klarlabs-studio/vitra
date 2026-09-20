@@ -58,13 +58,14 @@ func (uc *NavigateWindowUseCase) Execute(id domain.WindowID, origin domain.Origi
 	return uc.Windows.Save(win)
 }
 
-// CloseWindowUseCase closes a window and releases owned resources.
+// CloseWindowUseCase closes a window and releases owned resources/subscriptions.
 type CloseWindowUseCase struct {
-	Windows   domain.WindowRepository
-	Resources domain.ResourceRepository
+	Windows       domain.WindowRepository
+	Resources     domain.ResourceRepository
+	Subscriptions domain.SubscriptionRepository
 }
 
-// Execute closes the window and owned handles.
+// Execute closes the window and owned handles/subscriptions.
 func (uc *CloseWindowUseCase) Execute(id domain.WindowID) error {
 	win, err := uc.Windows.Get(id)
 	if err != nil {
@@ -81,6 +82,18 @@ func (uc *CloseWindowUseCase) Execute(id domain.WindowID) error {
 		for _, h := range handles {
 			h.Close()
 			if err := uc.Resources.Delete(h.ID()); err != nil {
+				return err
+			}
+		}
+	}
+	if uc.Subscriptions != nil {
+		subs, err := uc.Subscriptions.ListByOwner(id)
+		if err != nil {
+			return fmt.Errorf("list subscriptions: %w", err)
+		}
+		for _, s := range subs {
+			s.Close()
+			if err := uc.Subscriptions.Delete(s.ID()); err != nil {
 				return err
 			}
 		}
@@ -129,4 +142,64 @@ func (uc *InspectCapabilitiesUseCase) Execute(windowID domain.WindowID) (domain.
 	}
 	gw := domain.NewCapabilityGateway(grants...)
 	return gw.Inspect(win.ID(), win.Origin()), nil
+}
+
+// SubscribeEventUseCase registers a window-owned event subscription.
+type SubscribeEventUseCase struct {
+	Windows       domain.WindowRepository
+	Subscriptions domain.SubscriptionRepository
+}
+
+// Execute creates a subscription owned by the window.
+func (uc *SubscribeEventUseCase) Execute(id domain.SubscriptionID, event domain.EventName, window domain.WindowID) (*domain.Subscription, error) {
+	win, err := uc.Windows.Get(window)
+	if err != nil {
+		return nil, err
+	}
+	if !win.IsOpen() {
+		return nil, &domain.ErrDenied{
+			Window: window,
+			Origin: win.Origin(),
+			Code:   domain.DenialWindowClosed,
+			Reason: "cannot subscribe on a closed window",
+		}
+	}
+	sub, err := domain.NewSubscription(id, event, window)
+	if err != nil {
+		return nil, err
+	}
+	if err := uc.Subscriptions.Save(sub); err != nil {
+		return nil, err
+	}
+	return sub, nil
+}
+
+// NavigateWithPolicyUseCase navigates only when policy allows in-webview load.
+type NavigateWithPolicyUseCase struct {
+	Windows domain.WindowRepository
+	Policy  *domain.NavigationPolicy
+}
+
+// Execute evaluates navigation policy then navigates.
+func (uc *NavigateWithPolicyUseCase) Execute(id domain.WindowID, origin domain.Origin) error {
+	if uc.Policy == nil {
+		return &domain.ErrValidation{Message: "navigation policy is required"}
+	}
+	d := uc.Policy.AllowInWebView(origin)
+	if !d.Allowed {
+		return &domain.ErrDenied{
+			Window: id,
+			Origin: origin,
+			Code:   d.Code,
+			Reason: d.Reason,
+		}
+	}
+	win, err := uc.Windows.Get(id)
+	if err != nil {
+		return err
+	}
+	if err := win.Navigate(origin); err != nil {
+		return err
+	}
+	return uc.Windows.Save(win)
 }
