@@ -256,7 +256,8 @@ func run() error {
 	})
 
 	go func() {
-		time.Sleep(500 * time.Millisecond)
+		// Wait until the GTK loop is up; cold WebKit on CI can exceed 500ms.
+		time.Sleep(1500 * time.Millisecond)
 		_ = menus.SetMenu(context.Background(), caller, []desktop.MenuItem{
 			{Menu: "File", ID: "app.quit", Label: "Quit"},
 			{Menu: "Help", ID: "help.about", Label: "About Vitra"},
@@ -266,8 +267,12 @@ func run() error {
 			{ID: "tray.quit", Label: "Quit"},
 		})
 		if os.Getenv("VITRA_E2E") == "1" {
-			js := `window.vitra.invoke("demo.greet","E2E").then(function(r){document.getElementById("out").textContent=JSON.stringify(r,null,2);}).catch(function(e){document.getElementById("out").textContent=String(e);});`
-			_ = host.Eval("main", js)
+			// Retry Eval until the preload bridge is live or the demo timer quits.
+			js := `(function(){function go(){if(!window.vitra||!window.vitra.invoke){setTimeout(go,200);return;}window.vitra.invoke("demo.greet","E2E").then(function(r){var el=document.getElementById("out");if(el){el.textContent=JSON.stringify(r,null,2);}}).catch(function(e){var el=document.getElementById("out");if(el){el.textContent=String(e);}}); } go();})();`
+			for i := 0; i < 20 && !e2eOK.Load(); i++ {
+				_ = host.Eval("main", js)
+				time.Sleep(500 * time.Millisecond)
+			}
 		}
 	}()
 

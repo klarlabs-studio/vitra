@@ -22,7 +22,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | GTK menu bar + status-icon tray | Done |
 | `vitra doctor/new/dev/build` | Done |
 | `platform/darwin`, `platform/windows` DesktopHost stubs | Explicit unsupported |
-| Eval-driven invoke E2E (`make e2e`) | Done |
+| Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |
 
 ## Security invariants preserved
 

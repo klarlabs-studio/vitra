@@ -21,7 +21,7 @@ demo:
 
 e2e:
 	CGO_ENABLED=1 $(GO) build -tags vitra_native -o .bin/competitive ./example/competitive
-	@out=$$(CGO_ENABLED=1 VITRA_DEMO_SECONDS=5 VITRA_E2E=1 xvfb-run -a .bin/competitive 2>&1); \
+	@out=$$(CGO_ENABLED=1 VITRA_DEMO_SECONDS=20 VITRA_E2E=1 xvfb-run -a .bin/competitive 2>&1); \
 	echo "$$out"; \
 	echo "$$out" | grep -q VITRA_E2E_OK
 
