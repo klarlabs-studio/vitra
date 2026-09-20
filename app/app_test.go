@@ -142,7 +142,13 @@ func TestApp_RunInvokeAndNavPolicy(t *testing.T) {
 	}
 
 	raw, _ := json.Marshal(map[string]any{
-		"type": "invoke", "id": "1", "command": "demo.greet", "input": "Klar",
+		"protocol": "1",
+		"kind":     "invoke",
+		"id":       "1",
+		"payload": map[string]any{
+			"command": "demo.greet",
+			"input":   "Klar",
+		},
 	})
 	resp := host.invoke("main", domain.OriginPackagedLocal, raw)
 	var got map[string]any
@@ -224,9 +230,11 @@ func TestApp_HelpersAndBadInvoke(t *testing.T) {
 	if !strings.Contains(string(bad), "bad_request") && !strings.Contains(string(bad), "invalid") {
 		t.Fatalf("bad json: %s", bad)
 	}
-	wrongType, _ := json.Marshal(map[string]any{"type": "nope", "id": "1"})
+	wrongType, _ := json.Marshal(map[string]any{
+		"protocol": "1", "kind": "event", "id": "1", "payload": map[string]any{},
+	})
 	resp := host.invoke("main", domain.OriginPackagedLocal, wrongType)
-	if !strings.Contains(string(resp), "bad_request") && !strings.Contains(string(resp), "unsupported") {
+	if !strings.Contains(string(resp), "bad_request") && !strings.Contains(string(resp), "expected kind") {
 		t.Fatalf("wrong type: %s", resp)
 	}
 	application.Quit()

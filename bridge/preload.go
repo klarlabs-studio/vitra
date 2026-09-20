@@ -2,7 +2,9 @@
 package bridge
 
 // PreloadJS is injected at document start. Identity is never trusted from JS —
-// the host stamps window/origin when handling invokes.
+// the host stamps window/origin when handling invokes. Invoke traffic uses the
+// versioned ipc envelope (protocol "1"); replies keep the compact bridge shape
+// {id,ok,result|error} for __recv.
 const PreloadJS = `
 (function() {
   if (window.__vitra) return;
@@ -23,11 +25,14 @@ const PreloadJS = `
         const id = "c" + (++seq);
         pending.set(id, { resolve: resolve, reject: reject });
         post({
-          type: "invoke",
+          protocol: "1",
+          kind: "invoke",
           id: id,
-          command: command,
-          input: input === undefined ? null : input,
-          resource_path: resourcePath || ""
+          payload: {
+            command: command,
+            input: input === undefined ? null : input,
+            resource_path: resourcePath || ""
+          }
         });
       });
     },

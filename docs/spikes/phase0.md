@@ -10,8 +10,9 @@ shipping production WebView adapters.
 | Spike | Evidence |
 |-------|----------|
 | Packaged frontend messaging contract | `ipc` package — versioned envelope, invoke/result/error kinds |
-| JS→native / native→JS message shape | `ipc.Bridge`, `EncodeResult`, `EncodeError` |
+| JS→native / native→JS message shape | `ipc.Bridge`, `EncodeResult`, `EncodeError`; competitive `app` decode path |
 | Caller / origin / window identity at boundary | `Bridge.DecodeInvoke` discards payload-claimed identity; tests encode invariants 3 & 4 |
+| Live host wiring | `app.App.handleInvoke` uses `ipc.Bridge` + versioned preload envelopes |
 | Capability evaluation (kernel) | Phase 1 `domain.CapabilityGateway` (already landed) |
 | Platform feature discovery | `platform.FeatureSet` + `platform.Require` |
 | Unsupported → explicit error | `platform/null` returns `ErrUnsupported` for dialog/menu/tray/clipboard |
