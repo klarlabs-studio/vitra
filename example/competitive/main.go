@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"go.klarlabs.de/vitra/platform/linux"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
+	"go.klarlabs.de/vitra/policy"
 )
 
 //go:embed frontend/*
@@ -37,6 +39,9 @@ func run() error {
 	}
 	rt, err := vitra.New(vitra.Config{AppID: "com.vitra.competitive"})
 	if err != nil {
+		return err
+	}
+	if err := installOptionalPolicy(rt); err != nil {
 		return err
 	}
 	host := linux.New()
@@ -356,4 +361,40 @@ func run() error {
 
 	fmt.Println("starting competitive desktop runtime…")
 	return application.Run(context.Background())
+}
+
+// installOptionalPolicy wires Phase 5 enterprise overlay when VITRA_POLICY is set
+// to "production" or "development". Optional VITRA_POLICY_DENY is a comma-separated
+// permission list (e.g. shell.exec,clipboard.read).
+func installOptionalPolicy(rt *vitra.Runtime) error {
+	envName := os.Getenv("VITRA_POLICY")
+	if envName == "" {
+		return nil
+	}
+	var env policy.Environment
+	switch envName {
+	case string(policy.EnvProduction):
+		env = policy.EnvProduction
+	case string(policy.EnvDevelopment):
+		env = policy.EnvDevelopment
+	default:
+		return fmt.Errorf("VITRA_POLICY: want %q or %q, got %q", policy.EnvProduction, policy.EnvDevelopment, envName)
+	}
+	doc := policy.Document{}
+	if raw := os.Getenv("VITRA_POLICY_DENY"); raw != "" {
+		for _, p := range strings.Split(raw, ",") {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			doc.DenyPermissions = append(doc.DenyPermissions, domain.PermissionName(p))
+		}
+	}
+	eng, err := policy.NewEngine(doc, env)
+	if err != nil {
+		return err
+	}
+	rt.SetPolicy(eng)
+	fmt.Printf("enterprise policy: env=%s deny=%v\n", env, doc.DenyPermissions)
+	return nil
 }

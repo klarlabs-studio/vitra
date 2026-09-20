@@ -24,12 +24,15 @@ type InvocationResult struct {
 
 // InvocationService authorizes and executes commands.
 // Pipeline: identify caller → resolve command → evaluate capability →
-// execute → return typed result or structured denial.
+// optional enterprise overlay → execute → return typed result or structured denial.
 type InvocationService struct {
 	Commands  CommandRepository
 	Grants    GrantRepository
 	Windows   WindowRepository
 	Executors CommandExecutorLookup
+	// Overlay optionally tightens an allow decision (enterprise policy).
+	// Never used to loosen a denial.
+	Overlay func(permission PermissionName, d Decision) Decision
 }
 
 // Invoke runs the secure invocation pipeline.
@@ -78,6 +81,9 @@ func (s *InvocationService) Invoke(ctx context.Context, req InvocationRequest) (
 	}
 	gw := NewCapabilityGateway(grants...)
 	decision := gw.Authorize(req.Caller, cmd.Permission(), req.ResourcePath)
+	if s.Overlay != nil {
+		decision = s.Overlay(cmd.Permission(), decision)
+	}
 	if !decision.Allowed {
 		return &InvocationResult{
 				Command:    req.Command,
