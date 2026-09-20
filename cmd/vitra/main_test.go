@@ -153,6 +153,33 @@ func TestRun_PackageDeb(t *testing.T) {
 	}
 }
 
+func TestRun_PackageAppImage(t *testing.T) {
+	tmp := t.TempDir()
+	tool := filepath.Join(tmp, "fake-appimagetool")
+	if err := os.WriteFile(tool, []byte("#!/bin/sh\nprintf 'IMG' > \"$2\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VITRA_APPIMAGETOOL", tool)
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "appimage", "--out", out, "--bin", bin, "--app-id", "com.vitra.t", "--name", "Demo", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	img := filepath.Join(out, "demo-"+packaging.DefaultArch()+".AppImage")
+	raw, err := os.ReadFile(img)
+	if err != nil || string(raw) != "IMG" {
+		t.Fatalf("appimage=%q err=%v", raw, err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "provenance.json")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRun_NewScaffold(t *testing.T) {
 	dir := t.TempDir() + "/app"
 	out := capture(t, func() {

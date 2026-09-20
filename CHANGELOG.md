@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Final `.AppImage` fold: `packaging.BuildAppImage` / `FoldAppDir` via `appimagetool` (`VITRA_APPIMAGETOOL` override); `vitra package --format appimage`.
 - CLI `vitra generate typescript` emits official-plugin TypeScript client stubs (`bindings.GenerateTypeScript`).
 - Host→frontend events: `Runtime.EmitEvent`, `app.App.Emit`, `vitra.on` in preload, `ipc.EncodeEvent`; competitive demo emits `demo.tick`.
 - Runtime worker facade: `StartWorker` / `StopWorker` / `Workers` over in-process `worker.Supervisor` with `worker.lifecycle` audit transitions.

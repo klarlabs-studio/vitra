@@ -20,7 +20,12 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 |------------|--------|
 | `dir` (default) | Staged Linux app directory (`StageLinux`) |
 | `deb` | Pure-Go `.deb` (`BuildDeb`) |
-| `appdir` | AppImage-ready AppDir (`BuildAppDir`; fold with appimagetool separately) |
+| `appdir` | AppImage-ready AppDir (`BuildAppDir`) |
+| `appimage` | Final `.AppImage` (`BuildAppImage` → `appimagetool`) |
+
+`BuildAppImage` stages an AppDir then invokes `appimagetool` (or
+`VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold
+externally.
 
 ## Update apply
 
@@ -41,5 +46,4 @@ rename into place). No filesystem mutation occurs unless verification succeeds.
 ## Non-goals in this PR
 
 Hosted update CDN, notarization API clients, and full installer generators —
-those are adapters that consume these contracts. Final `.AppImage` folding still
-uses an external `appimagetool` on a `BuildAppDir` tree.
+those are adapters that consume these contracts.
