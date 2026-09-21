@@ -130,6 +130,63 @@ func TestBuildDeb_StagesIcon(t *testing.T) {
 	}
 }
 
+func TestBuildDeb_Copyright(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "payload")
+	if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "vitra.deb")
+	spec := packaging.Spec{
+		AppID: "com.vitra.demo", Version: "0.3.0", Name: "Vitra Demo",
+		Targets: []packaging.Target{packaging.TargetLinuxDeb},
+		Arch:    "amd64", License: "Apache-2.0", Homepage: "https://example.com/demo",
+		Maintainer: "Acme Labs <packaging@example.com>",
+	}
+	if _, err := packaging.BuildDeb(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	files := debDataFiles(t, out)
+	body := string(files["usr/share/doc/com-vitra-demo/copyright"])
+	for _, want := range []string{
+		"Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/",
+		"Upstream-Name: Vitra Demo",
+		"Upstream-Contact: Acme Labs <packaging@example.com>",
+		"Source: https://example.com/demo",
+		"Files: *",
+		"License: Apache-2.0",
+		"/usr/share/common-licenses/Apache-2.0",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q\n%s", want, body)
+		}
+	}
+
+	outDefault := filepath.Join(tmp, "vitra-default.deb")
+	spec.License = ""
+	spec.Homepage = ""
+	if _, err := packaging.BuildDeb(spec, bin, outDefault); err != nil {
+		t.Fatal(err)
+	}
+	files = debDataFiles(t, outDefault)
+	body = string(files["usr/share/doc/com-vitra-demo/copyright"])
+	if !strings.Contains(body, "License: "+packaging.DefaultLicense) {
+		t.Fatalf("default license missing\n%s", body)
+	}
+	if strings.Contains(body, "Source:") {
+		t.Fatalf("unexpected Source when Homepage empty\n%s", body)
+	}
+}
+
+func TestDebianCopyright_SPDXDefault(t *testing.T) {
+	body := packaging.DebianCopyright(packaging.Spec{
+		Name: "Demo", License: "MIT", Maintainer: "Demo <demo@example.com>",
+	})
+	if !strings.Contains(body, "https://spdx.org/licenses/MIT.html") {
+		t.Fatalf("spdx link missing\n%s", body)
+	}
+}
+
 func TestBuildDeb_CustomDescription(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "payload")
