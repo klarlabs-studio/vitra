@@ -45,6 +45,7 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		`<content_rating type="oars-1.1"/>`,
 		`<control>keyboard</control>`,
 		`<control>pointing</control>`,
+		`<display_length compare="ge">360</display_length>`,
 		`<release version="1.2.3"/>`,
 		`<binary>Demo---Co</binary>`,
 		`type="desktop-application"`,
@@ -81,6 +82,9 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 	}
 	if !strings.Contains(emptyXML, `<control>keyboard</control>`) || !strings.Contains(emptyXML, `<control>pointing</control>`) {
 		t.Fatalf("default recommends controls missing:\n%s", emptyXML)
+	}
+	if !strings.Contains(emptyXML, `<display_length compare="ge">360</display_length>`) {
+		t.Fatalf("default requires display_length missing:\n%s", emptyXML)
 	}
 	if !strings.Contains(emptyXML, `<release version="1"/>`) {
 		t.Fatalf("release from Version missing:\n%s", emptyXML)
@@ -123,6 +127,9 @@ func TestStageLinux_WritesAppStreamMetainfo(t *testing.T) {
 	}
 	if !strings.Contains(string(body), `<control>keyboard</control>`) || !strings.Contains(string(body), `<control>pointing</control>`) {
 		t.Fatalf("recommends controls missing:\n%s", body)
+	}
+	if !strings.Contains(string(body), `<display_length compare="ge">360</display_length>`) {
+		t.Fatalf("requires display_length missing:\n%s", body)
 	}
 	if !strings.Contains(string(body), `<release version="0.1.0"/>`) {
 		t.Fatalf("release missing:\n%s", body)
