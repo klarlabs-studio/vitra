@@ -30,6 +30,7 @@ import (
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
+	officialmenu "go.klarlabs.de/vitra/plugin/official/menu"
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	officialpath "go.klarlabs.de/vitra/plugin/official/path"
@@ -1686,6 +1687,9 @@ func scaffoldTypeScriptClient() (string, error) {
 	if err := rt.RegisterPlugin(ctx, officialwindow.New()); err != nil {
 		return "", err
 	}
+	if err := rt.RegisterPlugin(ctx, officialmenu.New()); err != nil {
+		return "", err
+	}
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
 	if err != nil {
 		return "", err
@@ -1723,8 +1727,9 @@ import (
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
-	officialos "go.klarlabs.de/vitra/plugin/official/os"
+	officialmenu "go.klarlabs.de/vitra/plugin/official/menu"
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
+	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	officialpath "go.klarlabs.de/vitra/plugin/official/path"
 	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
 )
@@ -1783,6 +1788,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialwindow.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialmenu.New()); err != nil {
 		return err
 	}
 	dialogs := &desktop.DialogService{
@@ -1981,6 +1989,30 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	menus := &desktop.MenuService{
+		Gateway: rt,
+		Host:    host,
+		OnSet: func(ctx context.Context, items []desktop.MenuItem) error {
+			native := make([]platform.MenuItem, 0, len(items))
+			for _, it := range items {
+				menu := it.Menu
+				if menu == "" {
+					menu = "App"
+				}
+				native = append(native, platform.MenuItem{Menu: menu, ID: it.ID, Label: it.Label, Shortcut: it.Shortcut})
+			}
+			return host.SetMenuBar("main", native)
+		},
+	}
+	if err := rt.BindExecutor("menu.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		items, err := desktop.ParseMenuItems(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, menus.SetMenu(ctx, caller, items)
+	})); err != nil {
+		return err
+	}
 
 	grant, _ := domain.NewCapabilityGrant(
 		"demo", "demo", []domain.WindowID{"main", "aux"},
@@ -1999,6 +2031,7 @@ func run() error {
 			{Name: desktop.PermWindowCreate},
 			{Name: desktop.PermWindowClose},
 			{Name: desktop.PermWindowChrome},
+			{Name: desktop.PermMenuSet},
 			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermPathOpen, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
@@ -2013,6 +2046,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	host.SetActionHandler(func(id string) {
+		_ = application.Emit(context.Background(), "menu.action", map[string]any{"id": id})
+		if id == "app.quit" {
+			application.Quit()
+		}
+	})
 	return application.Run(context.Background())
 }
 
@@ -2034,7 +2073,7 @@ func scaffoldIndexHTML() string {
 <html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
 <style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
 button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
-<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path + window plugins).</p>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path + window + menu plugins).</p>
 <button id="greet">demo.greet</button>
 <button id="open">dialog.open</button>
 <button id="opendir">dialog.openDirectory</button>
@@ -2044,6 +2083,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="notify">notifications.show</button>
 <button id="win">window.create</button>
 <button id="chrome">window.chrome</button>
+<button id="menu">menu.set</button>
 <pre id="out"></pre>
 <script>
 const out = document.getElementById("out");
@@ -2084,6 +2124,18 @@ document.getElementById("chrome").onclick = async () => {
   try { out.textContent = JSON.stringify(await invoke("window.chrome", { id: "main", title: "Vitra Chrome", width: 900, height: 600 }), null, 2); }
   catch (e) { out.textContent = String(e); }
 };
+document.getElementById("menu").onclick = async () => {
+  try {
+    await invoke("menu.set", [
+      { menu: "File", id: "app.quit", label: "Quit", shortcut: "Ctrl+Q" },
+      { menu: "Help", id: "help.about", label: "About Vitra" },
+    ]);
+    out.textContent = JSON.stringify({ menu: "set" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+if (window.vitra && window.vitra.on) {
+  window.vitra.on("menu.action", (payload) => { out.textContent = JSON.stringify({ event: "menu.action", payload }, null, 2); });
+}
 // Typed stubs: frontend/vitra-client.ts (vitra generate typescript)
 </script></body></html>
 `
@@ -2233,6 +2285,9 @@ func runGenerate(args []string) error {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialwindow.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialmenu.New()); err != nil {
 		return err
 	}
 	var cmds []*domain.CommandDefinition
@@ -2972,7 +3027,7 @@ func runPackage(args []string) error {
 // provenance (declared surface, not a claim that --bin embeds them).
 func officialPluginInventory() []provenance.PluginInfo {
 	out := make([]provenance.PluginInfo, 0, 7)
-	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New(), officialwindow.New()} {
+	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New(), officialwindow.New(), officialmenu.New()} {
 		m := p.Manifest()
 		perms := make([]string, 0, len(m.Permissions))
 		for _, perm := range m.Permissions {
@@ -3140,6 +3195,9 @@ func inspectDemo(args []string) error {
 	if err := rt.RegisterPlugin(ctx, officialwindow.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(ctx, officialmenu.New()); err != nil {
+		return err
+	}
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err
 	}
@@ -3165,6 +3223,7 @@ func inspectDemo(args []string) error {
 			{Name: "window.create"},
 			{Name: "window.close"},
 			{Name: "window.chrome"},
+			{Name: "menu.set"},
 		},
 	)
 	if err != nil {

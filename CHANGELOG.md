@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official `vitra.menu` plugin: declares `menu.set` + `menu.action` event; `desktop.ParseMenuItems` + scaffold/generate/provenance/competitive bind `MenuService` → `SetMenuBar`; native actions emit `menu.action` (Quit still handled host-side).
 - Official `vitra.window` plugin: declares `window.create` / `window.close` / `window.chrome`; `desktop.WindowService` Create/Close/Apply wrap `app.App` + `DesktopHost.ApplyWindowChrome`; scaffold/generate/provenance/competitive bind (grant includes `aux`).
 - Dialog open/save options: optional `title`, `defaultPath`, and `filters` (`[{ name, extensions }]`) on `dialog.open` / `dialog.save`; native hosts apply them (GTK filters, NSOpen/SavePanel allowedFileTypes, Win32 OFN filter); empty payload keeps prior unfiltered behavior.
 - `vitra new --template qwik`: Vite + Qwik CSR + TypeScript starter (`@builder.io/qwik`, `qwikVite({ csr: true })`, `component$` App) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.

@@ -17,7 +17,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin + Windows) |
 | Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem; Windows Shell_NotifyIcon) |
 | Navigation allowlist (local asset server only) | Done |
-| GTK menu bar + status-icon tray | Done |
+| GTK menu bar + status-icon tray | Done; official `vitra.menu` (`menu.set` + `menu.action`) + scaffold/`generate` stubs |
 | `vitra doctor/new/dev/build` | Done |
 | `platform/darwin` WKWebView host (`-tags vitra_native`) | DesktopHost complete for competitive parity |
 | Darwin global shortcuts (`shortcut.global`) | Done (`RegisterEventHotKey`; Ctrl→Command) |
@@ -34,7 +34,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Windows global shortcuts (`shortcut.global`) | Done (`RegisterHotKey` → action handler) |
 | Windows window chrome (`window.chrome`) | Done (Win32 title, size, maximize, fullscreen, topmost, minimize, hide, icon); official `vitra.window` plugin + scaffold/`generate` stubs |
 | Windows open/save/directory file dialogs | Done (GetOpenFileName / GetSaveFileName / IFileOpenDialog FOS_PICKFOLDERS) |
-| Windows menu bar + tray | Done (CreateMenu/HACCEL; Shell_NotifyIcon + TrackPopupMenu) |
+| Windows menu bar + tray | Done (CreateMenu/HACCEL; Shell_NotifyIcon + TrackPopupMenu); official `vitra.menu` plugin + scaffold/`generate` stubs |
 | Windows URL-scheme registration (`RegisterURLScheme`) | Done (HKCU Classes `.reg`) |
 | Windows MIME file associations (`RegisterFileAssociations`) | Done (HKCU ProgID + MIME `.reg`) |
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |

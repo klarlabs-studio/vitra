@@ -78,6 +78,22 @@ func TestMenuService_GrantFeatureAndHook(t *testing.T) {
 	if !called {
 		t.Fatal("expected OnSet")
 	}
+	items, err := desktop.ParseMenuItems([]any{
+		map[string]any{"id": "app.quit", "label": "Quit", "menu": "File", "shortcut": "Ctrl+Q"},
+		map[string]any{"id": "help.about", "label": "About", "menu": "Help"},
+	})
+	if err != nil || len(items) != 2 || items[0].ID != "app.quit" || items[0].Menu != "File" || items[0].Shortcut != "Ctrl+Q" || items[1].Label != "About" {
+		t.Fatalf("parse: %+v err=%v", items, err)
+	}
+	wrapped, err := desktop.ParseMenuItems(map[string]any{"items": []any{
+		map[string]any{"id": "x", "label": "X"},
+	}})
+	if err != nil || len(wrapped) != 1 || wrapped[0].ID != "x" {
+		t.Fatalf("parse wrapped: %+v err=%v", wrapped, err)
+	}
+	if _, err := desktop.ParseMenuItems(map[string]any{"id": "x"}); err == nil {
+		t.Fatal("expected validation error")
+	}
 }
 
 func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
