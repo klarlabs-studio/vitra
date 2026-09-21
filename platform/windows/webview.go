@@ -1,15 +1,14 @@
 //go:build windows && cgo && vitra_native
 
-// Package windows provides a Win32 desktop host scaffold toward WebView2.
+// Package windows provides a Win32 + WebView2 desktop host.
 // Build with: CGO_ENABLED=1 go build -tags vitra_native
 //
-// This first slice creates real HWND windows and a message loop. Navigate/Eval
-// messaging requires the WebView2 Evergreen Runtime + SDK (explicit unsupported
-// until that slice lands).
+// Requires WebView2Loader.dll and the Evergreen WebView2 Runtime at runtime for
+// Navigate/Eval/message. The HWND shell still opens when the loader is absent.
 package windows
 
 /*
-#cgo LDFLAGS: -luser32 -lgdi32 -lcomdlg32 -lshell32
+#cgo LDFLAGS: -luser32 -lgdi32 -lcomdlg32 -lshell32 -lole32
 #include "native.h"
 #include <stdlib.h>
 */
@@ -17,6 +16,7 @@ import "C"
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"runtime"
 	"strings"
@@ -79,12 +79,12 @@ func (h *Host) Features() platform.FeatureSet {
 	return platform.FeatureSet{
 		platform.FeatureWindowCreate: {Feature: platform.FeatureWindowCreate, Available: true, Detail: "Win32 HWND shell"},
 		platform.FeatureWindowNavigate: {
-			Feature: platform.FeatureWindowNavigate, Available: false,
-			Detail: "requires WebView2 Evergreen Runtime + SDK (next slice)",
+			Feature: platform.FeatureWindowNavigate, Available: true,
+			Detail: "WebView2 Navigate (requires WebView2Loader.dll + Evergreen Runtime)",
 		},
 		platform.FeatureWebViewMessage: {
-			Feature: platform.FeatureWebViewMessage, Available: false,
-			Detail: "requires WebView2 Evergreen Runtime + SDK (next slice)",
+			Feature: platform.FeatureWebViewMessage, Available: true,
+			Detail: "WebView2 ExecuteScript + chrome.webview.postMessage bridge",
 		},
 		platform.FeatureClipboard: {
 			Feature: platform.FeatureClipboard, Available: true,
@@ -304,16 +304,55 @@ func (h *Host) Open(spec platform.WindowSpec, uri, preload string) error {
 	return <-errCh
 }
 
+// NavigateWindow loads a URI and stores it as the window origin.
 func (h *Host) NavigateWindow(_ context.Context, id domain.WindowID, origin domain.Origin) error {
-	return h.err(platform.FeatureWindowNavigate)
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		curi := C.CString(string(origin))
+		defer C.free(unsafe.Pointer(curi))
+		C.vitra_win_navigate(w.ptr, curi)
+		h.origins[id] = origin
+		errCh <- nil
+	})
+	return <-errCh
 }
 
-func (h *Host) PostMessage(context.Context, domain.WindowID, []byte) error {
-	return h.err(platform.FeatureWebViewMessage)
+// PostMessage delivers a bridge payload to the frontend.
+func (h *Host) PostMessage(_ context.Context, id domain.WindowID, message []byte) error {
+	enc, err := json.Marshal(string(message))
+	if err != nil {
+		return err
+	}
+	return h.Eval(id, "window.__vitra&&window.__vitra.__recv("+string(enc)+");")
 }
 
-func (h *Host) Eval(domain.WindowID, string) error {
-	return h.err(platform.FeatureWebViewMessage)
+// Eval runs JavaScript in the given window via WebView2 ExecuteScript.
+func (h *Host) Eval(id domain.WindowID, js string) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		cjs := C.CString(js)
+		defer C.free(unsafe.Pointer(cjs))
+		if C.vitra_win_eval(w.ptr, cjs) == 0 {
+			errCh <- h.err(platform.FeatureWebViewMessage)
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
 }
 
 func (h *Host) CloseWindow(_ context.Context, id domain.WindowID) error {
@@ -560,6 +599,44 @@ func goVitraAction(actionID *C.char) {
 		return
 	}
 	h.onAction(C.GoString(actionID))
+}
+
+//export goVitraMessage
+func goVitraMessage(windowID, msg *C.char) {
+	activeMu.Lock()
+	h := active
+	activeMu.Unlock()
+	if h == nil || h.onInvoke == nil {
+		return
+	}
+	id := domain.WindowID(C.GoString(windowID))
+	h.mu.Lock()
+	origin := h.origins[id]
+	h.mu.Unlock()
+	if origin == "" {
+		origin = domain.OriginPackagedLocal
+	}
+	resp := h.onInvoke(id, origin, []byte(C.GoString(msg)))
+	if len(resp) > 0 {
+		h.replyOnUIThread(id, resp)
+	}
+}
+
+func (h *Host) replyOnUIThread(id domain.WindowID, message []byte) {
+	enc, err := json.Marshal(string(message))
+	if err != nil {
+		return
+	}
+	js := "window.__vitra&&window.__vitra.__recv(" + string(enc) + ");"
+	h.mu.Lock()
+	w, ok := h.windows[id]
+	h.mu.Unlock()
+	if !ok || w == nil || w.ptr == nil {
+		return
+	}
+	cjs := C.CString(js)
+	defer C.free(unsafe.Pointer(cjs))
+	C.vitra_win_eval(w.ptr, cjs)
 }
 
 //export goVitraDrop
