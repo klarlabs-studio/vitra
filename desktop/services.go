@@ -786,6 +786,17 @@ func (s *WindowService) Maximize(ctx context.Context, caller domain.Caller, wind
 	return s.Apply(ctx, caller, window, chrome)
 }
 
+// Fullscreen authorizes window.chrome then enters fullscreen via chrome.Fullscreen.
+func (s *WindowService) Fullscreen(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.Fullscreen = true
+	chrome.Minimized = false
+	return s.Apply(ctx, caller, window, chrome)
+}
+
 func (s *WindowService) setMinimized(ctx context.Context, caller domain.Caller, window domain.WindowID, minimized bool) error {
 	chrome, err := s.Read(ctx, caller, window)
 	if err != nil {

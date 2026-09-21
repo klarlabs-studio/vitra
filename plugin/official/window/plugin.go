@@ -1,8 +1,8 @@
 // Package window is the official Phase 3 multi-window plugin contract.
 // It declares window.create / window.close / window.chrome / window.getChrome /
 // window.focus / window.blur / window.hide / window.show / window.minimize /
-// window.maximize; native execution is bound by the host via desktop.WindowService
-// wrapping app.App / DesktopHost.
+// window.maximize / window.fullscreen; native execution is bound by the host via
+// desktop.WindowService wrapping app.App / DesktopHost.
 package window
 
 import (
@@ -25,7 +25,7 @@ func (windowPlugin) Manifest() plugin.Manifest {
 		ID:          PluginID,
 		Name:        "Windows",
 		Version:     plugin.SemVer{Major: 1},
-		Description: "Create, close, apply, read, focus, blur, hide, show, minimize, and maximize application windows",
+		Description: "Create, close, apply, read, focus, blur, hide, show, minimize, maximize, and fullscreen application windows",
 		Permissions: []domain.PermissionName{"window.create", "window.close", "window.chrome"},
 		MinKernel:   plugin.SemVer{Major: 0, Minor: 3},
 	}
@@ -82,5 +82,10 @@ func (windowPlugin) Contribute() (plugin.Contribution, error) {
 		return plugin.Contribution{}, err
 	}
 	maximize.WithPlugin(PluginID)
-	return plugin.Contribution{Commands: []*domain.CommandDefinition{create, closeCmd, chrome, getChrome, focus, blur, hide, show, minimize, maximize}}, nil
+	fullscreen, err := domain.NewCommandDefinition("window.fullscreen", "Enter fullscreen for an application window", "window.chrome")
+	if err != nil {
+		return plugin.Contribution{}, err
+	}
+	fullscreen.WithPlugin(PluginID)
+	return plugin.Contribution{Commands: []*domain.CommandDefinition{create, closeCmd, chrome, getChrome, focus, blur, hide, show, minimize, maximize, fullscreen}}, nil
 }

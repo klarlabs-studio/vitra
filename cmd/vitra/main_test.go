@@ -1040,7 +1040,7 @@ func TestRun_NewScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "dialog.openDirectory", "dialog.message", "fs.read", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close", "window.chrome", "window.getChrome", "window.focus", "window.blur", "window.hide", "window.show", "window.minimize", "window.maximize", "menu.set", "menu.clear", "tray.set", "tray.clear", "dragdrop.receive", "shortcut.register", "shortcut.unregister", "app.quit", "onMenuAction", "onTrayAction", "onDragdropDrop", "onDeeplinkOpen", "onShortcutAction", "createEvents"} {
+	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "dialog.openDirectory", "dialog.message", "fs.read", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close", "window.chrome", "window.getChrome", "window.focus", "window.blur", "window.hide", "window.show", "window.minimize", "window.maximize", "window.fullscreen", "menu.set", "menu.clear", "tray.set", "tray.clear", "dragdrop.receive", "shortcut.register", "shortcut.unregister", "app.quit", "onMenuAction", "onTrayAction", "onDragdropDrop", "onDeeplinkOpen", "onShortcutAction", "createEvents"} {
 		if !strings.Contains(string(client), want) {
 			t.Fatalf("vitra-client.ts missing %q", want)
 		}

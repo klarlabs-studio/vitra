@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official window fullscreen: `window.fullscreen` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Fullscreen` (read chrome → set `Fullscreen` → `Apply`); scaffold/competitive bind.
 - Official window minimize/maximize: `window.minimize` / `window.maximize` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Minimize` / `Maximize` (read chrome → set `Minimized`/`Maximized` → `Apply`); scaffold/competitive bind.
 - `vitra new --template dojo`: Vite + Dojo Framework 8 + TypeScript starter (`WidgetBase` with `v`/`w` virtual DOM) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - `vitra new --template polymer`: Vite + Polymer 3 + TypeScript starter (`vitra-app` PolymerElement, `[[out]]` / `on-click`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.

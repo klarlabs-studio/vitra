@@ -568,7 +568,7 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 			}
 			return platform.WindowChrome{
 				Title: "Vitra", Width: 800, Height: 600,
-				Minimized: sized.Minimized, Maximized: sized.Maximized,
+				Minimized: sized.Minimized, Maximized: sized.Maximized, Fullscreen: sized.Fullscreen,
 			}, nil
 		},
 		OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
@@ -584,6 +584,9 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	}
 	if err := minmax.Maximize(ctx, caller, "main"); err != nil || !sized.Maximized || sized.Minimized {
 		t.Fatalf("maximize: %+v err=%v", sized, err)
+	}
+	if err := minmax.Fullscreen(ctx, caller, "main"); err != nil || !sized.Fullscreen || sized.Minimized {
+		t.Fatalf("fullscreen: %+v err=%v", sized, err)
 	}
 	if err := minmax.Minimize(ctx, caller, ""); err == nil {
 		t.Fatal("expected empty window validation for minimize")
