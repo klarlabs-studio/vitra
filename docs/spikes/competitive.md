@@ -9,7 +9,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 
 | Surface | Status |
 |---------|--------|
-| `app.App` — assets + WebView + invoke→gateway | Done (multi-window `OpenWindow` / `CloseWindow`; quit on last native destroy) |
+| `app.App` — assets + WebView + invoke→gateway | Done (multi-window `OpenWindow` / `CloseWindow`; quit on last native destroy); official `vitra.app` (`app.quit`) + scaffold/`generate` stubs |
 | `bridge.PreloadJS` — `window.vitra.invoke` | Done |
 | `platform/linux` WebKitGTK host (`-tags vitra_native`) | Done |
 | Clipboard + open/save/directory/message dialogs | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste, Windows PowerShell); dialogs Linux GTK + Darwin NSOpen/SavePanel/NSAlert + Windows GetOpen/SaveFileName/IFileOpenDialog/MessageBox; open/save accept title/defaultPath/filters |

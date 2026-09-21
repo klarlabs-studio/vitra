@@ -26,6 +26,7 @@ import (
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
 	"go.klarlabs.de/vitra/plugin"
+	officialapp "go.klarlabs.de/vitra/plugin/official/app"
 	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
@@ -1702,6 +1703,9 @@ func scaffoldTypeScriptClient() (string, error) {
 	if err := rt.RegisterPlugin(ctx, officialshortcut.New()); err != nil {
 		return "", err
 	}
+	if err := rt.RegisterPlugin(ctx, officialapp.New()); err != nil {
+		return "", err
+	}
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
 	if err != nil {
 		return "", err
@@ -1735,6 +1739,7 @@ import (
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
+	officialapp "go.klarlabs.de/vitra/plugin/official/app"
 	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
@@ -1815,6 +1820,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialshortcut.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialapp.New()); err != nil {
 		return err
 	}
 	dialogs := &desktop.DialogService{
@@ -2089,6 +2097,21 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	appSvc := &desktop.AppService{
+		Gateway: rt,
+		OnQuit: func(ctx context.Context) error {
+			if application == nil {
+				return fmt.Errorf("app is not ready")
+			}
+			application.Quit()
+			return nil
+		},
+	}
+	if err := rt.BindExecutor("app.quit", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return nil, appSvc.Quit(ctx, caller)
+	})); err != nil {
+		return err
+	}
 
 	grant, _ := domain.NewCapabilityGrant(
 		"demo", "demo", []domain.WindowID{"main", "aux"},
@@ -2111,6 +2134,7 @@ func run() error {
 			{Name: desktop.PermTraySet},
 			{Name: desktop.PermDragDrop},
 			{Name: desktop.PermShortcutRegister},
+			{Name: desktop.PermAppQuit},
 			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermPathOpen, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
@@ -2161,7 +2185,7 @@ func scaffoldIndexHTML() string {
 <html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
 <style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
 button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
-<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path + window + menu + tray + dragdrop + shortcut plugins).</p>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path + window + menu + tray + dragdrop + shortcut + app plugins).</p>
 <button id="greet">demo.greet</button>
 <button id="open">dialog.open</button>
 <button id="opendir">dialog.openDirectory</button>
@@ -2175,6 +2199,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="tray">tray.set</button>
 <button id="drop">dragdrop.receive</button>
 <button id="shortcut">shortcut.register</button>
+<button id="quit">app.quit</button>
 <pre id="out"></pre>
 <script>
 const out = document.getElementById("out");
@@ -2246,6 +2271,12 @@ document.getElementById("shortcut").onclick = async () => {
   try {
     await invoke("shortcut.register", { accelerator: "Ctrl+Shift+Q", action: "app.quit" });
     out.textContent = JSON.stringify({ shortcut: "registered" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("quit").onclick = async () => {
+  try {
+    await invoke("app.quit");
+    out.textContent = JSON.stringify({ quit: true }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
 if (window.vitra && window.vitra.on) {
@@ -2415,6 +2446,9 @@ func runGenerate(args []string) error {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialshortcut.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialapp.New()); err != nil {
 		return err
 	}
 	var cmds []*domain.CommandDefinition
@@ -3154,7 +3188,7 @@ func runPackage(args []string) error {
 // provenance (declared surface, not a claim that --bin embeds them).
 func officialPluginInventory() []provenance.PluginInfo {
 	out := make([]provenance.PluginInfo, 0, 7)
-	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New(), officialwindow.New(), officialmenu.New(), officialtray.New(), officialdragdrop.New(), officialshortcut.New()} {
+	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New(), officialwindow.New(), officialmenu.New(), officialtray.New(), officialdragdrop.New(), officialshortcut.New(), officialapp.New()} {
 		m := p.Manifest()
 		perms := make([]string, 0, len(m.Permissions))
 		for _, perm := range m.Permissions {
@@ -3334,6 +3368,9 @@ func inspectDemo(args []string) error {
 	if err := rt.RegisterPlugin(ctx, officialshortcut.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(ctx, officialapp.New()); err != nil {
+		return err
+	}
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err
 	}
@@ -3363,6 +3400,7 @@ func inspectDemo(args []string) error {
 			{Name: "tray.set"},
 			{Name: "dragdrop.receive"},
 			{Name: "shortcut.register"},
+			{Name: "app.quit"},
 		},
 	)
 	if err != nil {

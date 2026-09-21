@@ -61,6 +61,7 @@
       <button id="tray" class="secondary">Set tray</button>
       <button id="drop" class="secondary">Enable file drops</button>
       <button id="shortcut" class="secondary">Register shortcut</button>
+      <button id="quit" class="secondary">Quit app</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -228,6 +229,14 @@
           action: "app.quit",
         });
         show({ shortcut: "registered" });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("quit").onclick = async () => {
+      try {
+        await window.vitra.invoke("app.quit");
+        show({ quit: true });
       } catch (e) {
         show(String(e.message || e), true);
       }

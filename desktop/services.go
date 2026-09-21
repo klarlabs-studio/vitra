@@ -38,6 +38,7 @@ const (
 	PermOsInfo              domain.PermissionName = "os.info"
 	PermNotificationShow    domain.PermissionName = "notifications.show"
 	PermPathOpen            domain.PermissionName = "path.open"
+	PermAppQuit             domain.PermissionName = "app.quit"
 )
 
 // Gateway evaluates desktop permissions for a caller.
@@ -367,6 +368,23 @@ func (s *ShortcutService) Register(ctx context.Context, caller domain.Caller, ac
 		return &platform.ErrUnsupported{Feature: platform.FeatureGlobalShortcut, OS: s.Host.OS(), Detail: "no shortcut adapter bound"}
 	}
 	return s.OnRegister(ctx, accelerator, actionID)
+}
+
+// AppService provides grant-gated application lifecycle commands.
+type AppService struct {
+	Gateway Gateway
+	OnQuit  func(ctx context.Context) error
+}
+
+// Quit authorizes app.quit then requests application shutdown.
+func (s *AppService) Quit(ctx context.Context, caller domain.Caller) error {
+	if err := authorize(s.Gateway, caller, PermAppQuit); err != nil {
+		return err
+	}
+	if s.OnQuit == nil {
+		return &domain.ErrValidation{Message: "no app quit adapter bound"}
+	}
+	return s.OnQuit(ctx)
 }
 
 // SingleInstanceService enforces single-instance behaviour.
