@@ -69,6 +69,11 @@ func AppStreamMetainfoXML(spec Spec) string {
 		}
 		b.WriteString("  </keywords>\n")
 	}
+	if ver := strings.TrimSpace(spec.Version); ver != "" {
+		b.WriteString("  <releases>\n")
+		fmt.Fprintf(&b, "    <release version=\"%s\"/>\n", xmlEscape(ver))
+		b.WriteString("  </releases>\n")
+	}
 	b.WriteString("</component>\n")
 	return b.String()
 }
