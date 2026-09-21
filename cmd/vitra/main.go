@@ -83,7 +83,7 @@ Usage:
   vitra new <dir>            Scaffold a starter desktop app
   vitra dev [dir]            Watch + run the app with the native host (Linux: -tags vitra_native)
   vitra build [dir]          Build the app binary with the native host
-  vitra package --out <dir> [--format dir|deb|appdir|appimage] [--bin path] [--app-id id] [--name name] [--version ver]
+  vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir] [--bin path] [--app-id id] [--name name] [--version ver]
                              Stage Linux dir, build .deb / AppDir / .AppImage + provenance.json
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
@@ -528,12 +528,13 @@ func runPackage(args []string) error {
 	name := "Vitra App"
 	version := vitra.Version
 	format := "dir"
+	usage := "usage: vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir] [--bin path] [--app-id id] [--name name] [--version ver]"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("usage: vitra package --out <dir> [--format dir|deb|appdir|appimage] [--bin path] [--app-id id] [--name name] [--version ver]")
+				return fmt.Errorf("%s", usage)
 			}
 			outDir = args[i]
 		case "--bin":
@@ -563,7 +564,7 @@ func runPackage(args []string) error {
 		case "--format":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("--format requires dir, deb, appdir, or appimage")
+				return fmt.Errorf("--format requires dir, deb, appdir, appimage, win-dir, wix, or nsis-dir")
 			}
 			format = args[i]
 		default:
@@ -571,7 +572,7 @@ func runPackage(args []string) error {
 		}
 	}
 	if outDir == "" {
-		return fmt.Errorf("usage: vitra package --out <dir> [--format dir|deb|appdir|appimage] [--bin path] [--app-id id] [--name name] [--version ver]")
+		return fmt.Errorf("%s", usage)
 	}
 	if _, err := os.Stat(bin); err != nil {
 		return fmt.Errorf("binary %q: %w (run vitra build first)", bin, err)
@@ -585,8 +586,14 @@ func runPackage(args []string) error {
 		target = packaging.TargetLinuxDeb
 	case "appdir", "appimage":
 		target = packaging.TargetLinuxAppImage
+	case "win-dir":
+		target = packaging.TargetWindowsDir
+	case "wix":
+		target = packaging.TargetWindowsMSI
+	case "nsis-dir":
+		target = packaging.TargetWindowsNSIS
 	default:
-		return fmt.Errorf("unknown format %q (want dir, deb, appdir, or appimage)", format)
+		return fmt.Errorf("unknown format %q (want dir, deb, appdir, appimage, win-dir, wix, or nsis-dir)", format)
 	}
 	spec := packaging.Spec{
 		AppID:   appID,
@@ -617,6 +624,12 @@ func runPackage(args []string) error {
 			debPath = filepath.Join(outDir, fmt.Sprintf("%s_%s_%s.deb", pkg, version, packaging.DefaultArch()))
 		}
 		art, err = packaging.BuildDeb(spec, bin, debPath)
+	case "win-dir":
+		art, err = packaging.StageWindows(spec, bin, outDir)
+	case "wix":
+		art, err = packaging.BuildWiXDir(spec, bin, outDir)
+	case "nsis-dir":
+		art, err = packaging.BuildNSISDir(spec, bin, outDir)
 	}
 	if err != nil {
 		return err

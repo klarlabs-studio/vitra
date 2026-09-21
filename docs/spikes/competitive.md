@@ -74,5 +74,7 @@ in-window accelerators only (Wayland has no portable global hotkey API).
 
 Wails still leads on template ecosystem and packaging polish. Vitra leads on
 capability-oriented authority and inspectable grants. Remaining work is
-distribution polish (MSI/NSIS), enterprise SIEM/MDM hooks, and optional X11-only
-global shortcuts — not core DesktopHost parity.
+final MSI/NSIS fold tooling on Windows hosts, enterprise SIEM/MDM hooks, and
+optional X11-only global shortcuts — not core DesktopHost parity. Windows
+installer *staging* (`win-dir` / `wix` / `nsis-dir`) ships; candle/light/makensis
+fold is host-side.
