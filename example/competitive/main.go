@@ -26,6 +26,7 @@ import (
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
+	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	"go.klarlabs.de/vitra/policy"
 )
 
@@ -114,7 +115,7 @@ func run() error {
 
 	chromeGrant, err := domain.NewCapabilityGrant(
 		"desktop-chrome",
-		"clipboard, dialogs, menu, tray, shortcuts, single-instance, deeplink, drag-drop, window chrome, open url",
+		"clipboard, dialogs, menu, tray, shortcuts, single-instance, deeplink, drag-drop, window chrome, open url, os info",
 		[]domain.WindowID{"main"},
 		[]domain.Origin{domain.OriginPackagedLocal},
 		[]domain.PermissionSpec{
@@ -131,6 +132,7 @@ func run() error {
 			{Name: desktop.PermDragDrop},
 			{Name: desktop.PermWindowChrome},
 			{Name: desktop.PermOpenURL},
+			{Name: desktop.PermOsInfo},
 		},
 	)
 	if err != nil {
@@ -277,7 +279,7 @@ func run() error {
 	}
 	_ = register // kept for local demo commands if needed
 
-	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* permissions (invariant 6).
+	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* / os.* permissions (invariant 6).
 	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
 		return err
 	}
@@ -288,6 +290,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialbrowser.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialos.New()); err != nil {
 		return err
 	}
 	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
@@ -311,6 +316,12 @@ func run() error {
 	if err := rt.BindExecutor("browser.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		rawURL, _ := input.(string)
 		return nil, browserSvc.OpenURL(ctx, caller, rawURL)
+	})); err != nil {
+		return err
+	}
+	osSvc := &desktop.OsService{Gateway: rt}
+	if err := rt.BindExecutor("os.info", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return osSvc.Info(ctx, caller)
 	})); err != nil {
 		return err
 	}

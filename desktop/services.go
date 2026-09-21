@@ -8,6 +8,8 @@ package desktop
 import (
 	"context"
 	"errors"
+	"os"
+	"runtime"
 	"strings"
 
 	"go.klarlabs.de/vitra/domain"
@@ -29,6 +31,7 @@ const (
 	PermDragDrop         domain.PermissionName = "dragdrop.receive"
 	PermWindowChrome     domain.PermissionName = "window.chrome"
 	PermOpenURL          domain.PermissionName = "browser.open"
+	PermOsInfo           domain.PermissionName = "os.info"
 )
 
 // Gateway evaluates desktop permissions for a caller.
@@ -329,6 +332,54 @@ func (s *BrowserService) OpenURL(ctx context.Context, caller domain.Caller, rawU
 		return &platform.ErrUnsupported{Feature: platform.FeatureOpenURL, OS: s.Host.OS(), Detail: "no browser opener bound"}
 	}
 	return s.OnOpen(ctx, rawURL)
+}
+
+// OsInfo is read-only host platform metadata for os.info.
+type OsInfo struct {
+	OS      string `json:"os"`
+	Arch    string `json:"arch"`
+	Family  string `json:"family"`
+	Version string `json:"version,omitempty"`
+	Locale  string `json:"locale,omitempty"`
+}
+
+// OsService returns host platform information when permitted.
+// Default fill-in uses the Go runtime (no platform.Feature / CGO).
+type OsService struct {
+	Gateway Gateway
+	OnInfo  func(ctx context.Context) (OsInfo, error)
+}
+
+// Info authorizes os.info then returns host platform metadata.
+func (s *OsService) Info(ctx context.Context, caller domain.Caller) (OsInfo, error) {
+	if err := authorize(s.Gateway, caller, PermOsInfo); err != nil {
+		return OsInfo{}, err
+	}
+	if s.OnInfo != nil {
+		return s.OnInfo(ctx)
+	}
+	return DefaultOsInfo(), nil
+}
+
+// DefaultOsInfo fills OsInfo from the Go runtime and common locale env vars.
+func DefaultOsInfo() OsInfo {
+	family := "unix"
+	switch runtime.GOOS {
+	case "windows":
+		family = "windows"
+	case "js", "wasip1":
+		family = runtime.GOOS
+	}
+	locale := strings.TrimSpace(os.Getenv("LC_ALL"))
+	if locale == "" {
+		locale = strings.TrimSpace(os.Getenv("LANG"))
+	}
+	return OsInfo{
+		OS:     runtime.GOOS,
+		Arch:   runtime.GOARCH,
+		Family: family,
+		Locale: locale,
+	}
 }
 
 func authorize(gw Gateway, caller domain.Caller, perm domain.PermissionName) error {

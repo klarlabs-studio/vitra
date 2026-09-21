@@ -9,6 +9,7 @@ import (
 	"go.klarlabs.de/vitra/plugin/official/clipboard"
 	"go.klarlabs.de/vitra/plugin/official/dialog"
 	"go.klarlabs.de/vitra/plugin/official/fs"
+	officialos "go.klarlabs.de/vitra/plugin/official/os"
 )
 
 func TestOfficialPlugins_RegisterCleanly(t *testing.T) {
@@ -25,6 +26,9 @@ func TestOfficialPlugins_RegisterCleanly(t *testing.T) {
 	if err := reg.Register(context.Background(), browser.New()); err != nil {
 		t.Fatal(err)
 	}
+	if err := reg.Register(context.Background(), officialos.New()); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := reg.Get(fs.PluginID); err != nil {
 		t.Fatal(err)
 	}
@@ -34,8 +38,11 @@ func TestOfficialPlugins_RegisterCleanly(t *testing.T) {
 	if _, err := reg.Get(browser.PluginID); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := reg.Get(officialos.PluginID); err != nil {
+		t.Fatal(err)
+	}
 	surface := reg.InspectSurface()
-	if len(surface) < 7 {
-		t.Fatalf("expected fs+dialog+clipboard+browser permissions, got %v", surface)
+	if len(surface) < 8 {
+		t.Fatalf("expected fs+dialog+clipboard+browser+os permissions, got %v", surface)
 	}
 }
