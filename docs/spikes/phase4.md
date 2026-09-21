@@ -22,6 +22,8 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 |------------|--------|
 | `dir` (default) | Staged Linux app directory (`StageLinux`) |
 | `deb` | Pure-Go `.deb` (`BuildDeb`) |
+| `rpm-dir` | rpmbuild `_topdir` + `SPECS/*.spec` (`BuildRPMDir`) |
+| `rpm` | Final `.rpm` (`BuildRPM` → `rpmbuild` or `VITRA_RPMBUILD`) |
 | `appdir` | AppImage-ready AppDir (`BuildAppDir`) |
 | `appimage` | Final `.AppImage` (`BuildAppImage` → `appimagetool`) |
 | `win-dir` | Staged Windows `bin/<Name>.exe` (`StageWindows`) |
@@ -44,11 +46,13 @@ desktop blurb).
 
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold
-externally. `BuildMSI` / `BuildNSIS` likewise stage then fold; without WiX/NSIS
-tools, use `--format wix` / `nsis-dir` and fold on a Windows host. `BuildDMG`
-stages a `.app` then folds with `hdiutil`; without it, use `--format app-dir`
-and fold on macOS. `vitra doctor` reports whether those fold tools are on PATH
-(or set via `VITRA_APPIMAGETOOL` / `VITRA_CANDLE` / `VITRA_LIGHT` /
+externally. `BuildRPM` stages an rpmbuild tree then invokes `rpmbuild` (or
+`VITRA_RPMBUILD`); without it, use `--format rpm-dir`. `BuildMSI` / `BuildNSIS`
+likewise stage then fold; without WiX/NSIS tools, use `--format wix` /
+`nsis-dir` and fold on a Windows host. `BuildDMG` stages a `.app` then folds
+with `hdiutil`; without it, use `--format app-dir` and fold on macOS.
+`vitra doctor` reports whether those fold tools are on PATH (or set via
+`VITRA_APPIMAGETOOL` / `VITRA_RPMBUILD` / `VITRA_CANDLE` / `VITRA_LIGHT` /
 `VITRA_MAKENSIS` / `VITRA_HDIUTIL`).
 
 ## Update apply
@@ -82,9 +86,10 @@ Still out of scope on main (do not claim otherwise):
   `SigningIdentityRef` are validated refs only — `env:` / `keychain:` /
   `file:` / `secret:` prefixes; stage/fold never invoke `codesign` /
   `signtool` / notary)
-- Extra Linux targets (`.rpm`, Flatpak, Snap)
+- Extra Linux targets (Flatpak, Snap) — `.rpm` stage+fold ships via
+  `BuildRPMDir` / `BuildRPM`
 - Wails-class multi-framework project templates
 
-Installer **generators** (stage scripts + fold to `.deb` / `.AppImage` /
+Installer **generators** (stage scripts + fold to `.deb` / `.rpm` / `.AppImage` /
 `.msi` / NSIS setup / `.dmg`) are delivered; fold still needs host tools
-(`appimagetool`, candle/light, makensis, `hdiutil`) or env overrides.
+(`appimagetool`, `rpmbuild`, candle/light, makensis, `hdiutil`) or env overrides.

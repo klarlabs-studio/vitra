@@ -18,6 +18,7 @@ const (
 	TargetWindowsNSIS   Target = "windows-nsis"
 	TargetLinuxAppImage Target = "linux-appimage"
 	TargetLinuxDeb      Target = "linux-deb"
+	TargetLinuxRPM      Target = "linux-rpm"
 )
 
 // Spec describes a package to build.
