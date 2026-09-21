@@ -116,6 +116,9 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "notary-setup") {
 		t.Fatalf("help missing notary-setup: %q", out)
 	}
+	if !strings.Contains(out, "update-stage") {
+		t.Fatalf("help missing update-stage: %q", out)
+	}
 }
 
 func TestRun_UpdateApply(t *testing.T) {
@@ -301,6 +304,52 @@ func TestRun_NotarySetup(t *testing.T) {
 	}
 	if err := run([]string{"notary-setup", "--nope"}); err == nil {
 		t.Fatal("expected unknown flag error")
+	}
+}
+
+func TestRun_UpdateStage(t *testing.T) {
+	dir := t.TempDir()
+	_, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact := []byte("stage-cli-bin")
+	sum := sha256.Sum256(artifact)
+	m := updater.Manifest{
+		AppID: "com.vitra.stage", Version: "3.1.0", Channel: updater.ChannelStable,
+		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
+		CreatedAt: time.Now().UTC(),
+	}
+	m, err = updater.SignManifest(m, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(dir, "manifest.json")
+	body, _ := json.Marshal(m)
+	if err := os.WriteFile(manifestPath, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	artifactPath := filepath.Join(dir, "app.bin")
+	if err := os.WriteFile(artifactPath, artifact, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outDir := filepath.Join(dir, "cdn")
+	out := capture(t, func() {
+		if err := run([]string{
+			"update-stage", "--out", outDir,
+			"--manifest", manifestPath, "--artifact", artifactPath,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "staged update channel") || !strings.Contains(out, "3.1.0") {
+		t.Fatalf("stdout: %q", out)
+	}
+	if _, err := os.Stat(filepath.Join(outDir, "com.vitra.stage", "stable", "manifest.json")); err != nil {
+		t.Fatal(err)
+	}
+	if err := run([]string{"update-stage"}); err == nil {
+		t.Fatal("expected usage error")
 	}
 }
 

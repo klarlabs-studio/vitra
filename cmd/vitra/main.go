@@ -68,6 +68,8 @@ func run(args []string) error {
 		return runUpdateApply(args[1:])
 	case "update-check":
 		return runUpdateCheck(args[1:])
+	case "update-stage":
+		return runUpdateStage(args[1:])
 	case "notary-setup":
 		return runNotarySetup(args[1:])
 	case "register-scheme":
@@ -98,6 +100,8 @@ Usage:
                              Emit TypeScript client stubs for official plugin commands
   vitra update-check --base-url <url> --app-id <id> --channel <name> --pubkey <hex>
                              Fetch + verify a signed channel manifest (HTTP(S) client; does not install)
+  vitra update-stage --out <dir> --manifest <json> --artifact <path>
+                             Stage {out}/{app}/{channel}/manifest.json + artifact for static CDN upload
   vitra update-apply (--manifest <json> --artifact <path> | --base-url <url> --app-id <id> [--channel name]) --pubkey <hex> --dest <path> [--policy production|development]
                              Verify a signed update and atomically install it (local files or HTTP channel fetch)
   vitra notary-setup [--profile name]
@@ -1730,6 +1734,56 @@ func runNotarySetup(args []string) error {
 		}
 	}
 	fmt.Print(packaging.PlanNotaryCredentials(profile).String())
+	return nil
+}
+
+func runUpdateStage(args []string) error {
+	outDir, manifestPath, artifactPath := "", "", ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--out":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--out requires a directory")
+			}
+			outDir = args[i]
+		case "--manifest":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--manifest requires a path")
+			}
+			manifestPath = args[i]
+		case "--artifact":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--artifact requires a path")
+			}
+			artifactPath = args[i]
+		default:
+			return fmt.Errorf("unknown update-stage flag %q", args[i])
+		}
+	}
+	if outDir == "" || manifestPath == "" || artifactPath == "" {
+		return fmt.Errorf("usage: vitra update-stage --out <dir> --manifest <json> --artifact <path>")
+	}
+	rawManifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return err
+	}
+	var m updater.Manifest
+	if err := json.Unmarshal(rawManifest, &m); err != nil {
+		return fmt.Errorf("manifest: %w", err)
+	}
+	artifact, err := os.ReadFile(artifactPath)
+	if err != nil {
+		return err
+	}
+	stage, err := updater.StageChannel(outDir, m, artifact)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("staged update channel\n  root:     %s\n  manifest: %s\n  artifact: %s\n  version:  %s (%s)\n",
+		stage.Root, stage.ManifestPath, stage.ArtifactPath, m.Version, m.Channel)
 	return nil
 }
 

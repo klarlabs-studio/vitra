@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Update channel stage: `updater.StageChannel` + `vitra update-stage --out` writes `{out}/{app}/{channel}/manifest.json` + artifact for static CDN upload (digest-checked, signed manifests only).
 - `vitra new --template lit`: Vite + Lit 3 + TypeScript starter (`vitra-app` LitElement, experimentalDecorators) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Flatpak portal policy: staged `metadata` `[Context]` / `[Session Bus Policy]` and `manifest.yml` finish-args talk to xdg-desktop-portal (FileChooser/Documents/OpenURI/Notifications) instead of `--filesystem=home`.
 - Darwin notary credential bootstrap plan: `PlanNotaryCredentials` / `vitra notary-setup [--profile]` prints `notarytool store-credentials` argv (env placeholders only; never executed); Darwin `PlanSign` includes it as prep.
