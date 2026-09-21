@@ -105,8 +105,8 @@ func printUsage() {
 Usage:
   vitra version              Print kernel version
   vitra doctor               Diagnose WebView / CGO prerequisites
-  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm]
-                             Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik/mithril/riot/inferno/stencil/marko/ember/aurelia/stimulus/petite-vue/hyperapp/knockout/backbone/nerv/polymer/dojo/elm add Vite frontends)
+  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript]
+                             Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik/mithril/riot/inferno/stencil/marko/ember/aurelia/stimulus/petite-vue/hyperapp/knockout/backbone/nerv/polymer/dojo/elm/rescript add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--keywords list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
@@ -254,7 +254,7 @@ func scaffoldNew(args []string) error {
 		case "--template":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, dojo, or elm")
+				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, dojo, elm, or rescript")
 			}
 			tmpl = args[i]
 		default:
@@ -262,18 +262,18 @@ func scaffoldNew(args []string) error {
 				return fmt.Errorf("unknown new flag %q", args[i])
 			}
 			if dir != "" {
-				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm]")
+				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript]")
 			}
 			dir = args[i]
 		}
 	}
 	if dir == "" {
-		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm]")
+		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript]")
 	}
 	switch tmpl {
-	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm":
+	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm", "rescript":
 	default:
-		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, dojo, or elm)", tmpl)
+		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, dojo, elm, or rescript)", tmpl)
 	}
 
 	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
@@ -344,6 +344,8 @@ func scaffoldNew(args []string) error {
 		files = scaffoldDojoFiles(modPath, tsClient)
 	case "elm":
 		files = scaffoldElmFiles(modPath, tsClient)
+	case "rescript":
+		files = scaffoldRescriptFiles(modPath, tsClient)
 	default:
 		files = scaffoldVanillaFiles(modPath, tsClient)
 	}
@@ -358,7 +360,7 @@ func scaffoldNew(args []string) error {
 	}
 	fmt.Printf("created %s (template=%s)\n", dir, tmpl)
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm", "rescript":
 		fmt.Println("next: cd", dir, "&& (optional: cd frontend && npm install && npm run build) && vitra dev")
 	default:
 		fmt.Println("next: cd", dir, "&& vitra dev")
@@ -2781,6 +2783,167 @@ main =
 `
 }
 
+func scaffoldRescriptFiles(modPath, tsClient string) map[string]string {
+	return map[string]string{
+		"go.mod":                     scaffoldGoMod(modPath),
+		"main.go":                    scaffoldMainGo("all:frontend/dist", "frontend/dist"),
+		"frontend/package.json":      scaffoldRescriptPackageJSON(),
+		"frontend/rescript.json":     scaffoldRescriptJSON(),
+		"frontend/vite.config.js":    scaffoldViteConfig("rescript"),
+		"frontend/tsconfig.json":     scaffoldViteTSConfig("react"),
+		"frontend/index.html":        scaffoldViteIndexHTML("main.tsx"),
+		"frontend/src/main.tsx":      scaffoldRescriptMainTSX(),
+		"frontend/src/App.res":       scaffoldRescriptAppRes(),
+		"frontend/src/vite-env.d.ts": "/// <reference types=\"vite/client\" />\n",
+		"frontend/vitra-client.ts":   tsClient,
+		"frontend/dist/index.html":   scaffoldIndexHTML(),
+		".gitignore":                 "frontend/node_modules/\nfrontend/lib/\nvitra-app\n",
+		"README.md":                  scaffoldREADME("rescript"),
+	}
+}
+
+func scaffoldRescriptPackageJSON() string {
+	return `{
+  "name": "vitra-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "rescript && vite build",
+    "preview": "vite preview",
+    "res:build": "rescript",
+    "res:watch": "rescript -w"
+  },
+  "dependencies": {
+    "@rescript/react": "^0.13.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@jihchi/vite-plugin-rescript": "^5.6.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "rescript": "^11.1.4",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0"
+  }
+}
+`
+}
+
+func scaffoldRescriptJSON() string {
+	return `{
+  "name": "vitra-frontend",
+  "sources": {
+    "dir": "src",
+    "subdirs": true
+  },
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.js",
+  "bs-dependencies": [
+    "@rescript/react"
+  ],
+  "jsx": {
+    "version": 4
+  }
+}
+`
+}
+
+func scaffoldRescriptMainTSX() string {
+	return `import React, { useState } from "react";
+import { createRoot } from "react-dom/client";
+import { make as App } from "./App.res.js";
+import { createClient } from "../vitra-client";
+
+declare global {
+  interface Window {
+    vitra: { invoke: (cmd: string, input?: unknown) => Promise<unknown> };
+  }
+}
+
+const client = createClient(window.vitra.invoke);
+
+function Root() {
+  const [out, setOut] = useState("");
+
+  const onAction = async (cmd: string) => {
+    try {
+      const run = async () => {
+        switch (cmd) {
+          case "demo.greet":
+            return client.demoGreet("Vitra");
+          case "dialog.open":
+            return client.dialogOpen();
+          case "clipboard.read":
+            return client.clipboardRead();
+          case "browser.open":
+            return client.browserOpen("https://go.klarlabs.de/vitra");
+          case "os.info":
+            return client.osInfo();
+          case "notifications.show":
+            return client.notificationsShow({ title: "Vitra", body: "Hello from scaffold" });
+          default:
+            throw new Error("unknown command: " + cmd);
+        }
+      };
+      setOut(JSON.stringify(await run(), null, 2));
+    } catch (e) {
+      setOut(String(e));
+    }
+  };
+
+  return <App out={out} onAction={onAction} />;
+}
+
+const root = document.getElementById("app");
+if (root) {
+  createRoot(root).render(<Root />);
+}
+`
+}
+
+func scaffoldRescriptAppRes() string {
+	return `@react.component
+let make = (~out: string, ~onAction: string => unit) => {
+  <div
+    style={ReactDOM.Style.make(
+      ~fontFamily="Georgia, serif",
+      ~margin="2rem",
+      ~background="#111",
+      ~color="#eee",
+      ~minHeight="100vh",
+      (),
+    )}>
+    <h1> {React.string("Vitra")} </h1>
+    <p>
+      {React.string(
+        "Vite + ReScript starter (official fs + dialog + clipboard + browser + os + notification + path plugins).",
+      )}
+    </p>
+    <button onClick={_ => onAction("demo.greet")}> {React.string("demo.greet")} </button>
+    {React.string(" ")}
+    <button onClick={_ => onAction("dialog.open")}> {React.string("dialog.open")} </button>
+    {React.string(" ")}
+    <button onClick={_ => onAction("clipboard.read")}> {React.string("clipboard.read")} </button>
+    {React.string(" ")}
+    <button onClick={_ => onAction("browser.open")}> {React.string("browser.open")} </button>
+    {React.string(" ")}
+    <button onClick={_ => onAction("os.info")}> {React.string("os.info")} </button>
+    {React.string(" ")}
+    <button onClick={_ => onAction("notifications.show")}>
+      {React.string("notifications.show")}
+    </button>
+    <pre> {React.string(out)} </pre>
+  </div>
+}
+`
+}
+
 func scaffoldAngularFiles(modPath, tsClient string) map[string]string {
 	return map[string]string{
 		"go.mod":                        scaffoldGoMod(modPath),
@@ -3006,7 +3169,7 @@ vitra package --out dist/ --format dir
 ` + "```" + `
 `
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm", "rescript":
 		label := "Vite"
 		switch tmpl {
 		case "react":
@@ -3061,6 +3224,8 @@ vitra package --out dist/ --format dir
 			label = "Vite + Dojo"
 		case "elm":
 			label = "Vite + Elm"
+		case "rescript":
+			label = "Vite + ReScript"
 		}
 		body += `
 ## ` + label + ` frontend
@@ -3274,6 +3439,20 @@ import elm from "vite-plugin-elm";
 
 export default defineConfig({
   plugins: [elm()],
+  root: ".",
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+  },
+});
+`
+	case "rescript":
+		return `import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import createReScriptPlugin from "@jihchi/vite-plugin-rescript";
+
+export default defineConfig({
+  plugins: [react(), createReScriptPlugin()],
   root: ".",
   build: {
     outDir: "dist",

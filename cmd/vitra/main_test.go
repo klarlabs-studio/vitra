@@ -2702,6 +2702,75 @@ func TestRun_NewScaffoldElm(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldRescript(t *testing.T) {
+	dir := t.TempDir() + "/rescript-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "rescript"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=rescript") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/rescript.json", "frontend/vite.config.js",
+		"frontend/src/main.tsx", "frontend/src/App.res", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"@rescript/react"`, `"rescript"`, `"@jihchi/vite-plugin-rescript"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/App.res")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"@react.component", "onAction", "demo.greet", "dialog.open", "Vitra"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("App.res missing %q: %s", want, app)
+		}
+	}
+	mainTS, err := os.ReadFile(dir + "/frontend/src/main.tsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "App.res.js", "onAction"} {
+		if !strings.Contains(string(mainTS), want) {
+			t.Fatalf("main.tsx missing %q: %s", want, mainTS)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "@jihchi/vite-plugin-rescript") || !strings.Contains(string(cfg), "createReScriptPlugin") {
+		t.Fatalf("vite.config missing rescript plugin: %s", cfg)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("rescript embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + ReScript") {
+		t.Fatalf("rescript README should mention Vite + ReScript: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
