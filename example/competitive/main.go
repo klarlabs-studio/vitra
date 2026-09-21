@@ -612,6 +612,15 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.setAlwaysOnTop", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, onTop, err := desktop.ParseWindowAlwaysOnTop(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.SetAlwaysOnTop(ctx, caller, id, onTop)
+	})); err != nil {
+		return err
+	}
 	if err := rt.BindExecutor("menu.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		items, err := desktop.ParseMenuItems(input)
 		if err != nil {

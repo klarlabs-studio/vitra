@@ -4587,6 +4587,15 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.setAlwaysOnTop", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, onTop, err := desktop.ParseWindowAlwaysOnTop(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.SetAlwaysOnTop(ctx, caller, id, onTop)
+	})); err != nil {
+		return err
+	}
 	menus := &desktop.MenuService{
 		Gateway: rt,
 		Host:    host,
@@ -4828,6 +4837,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="minimize">window.minimize</button>
 <button id="maximize">window.maximize</button>
 <button id="fullscreen">window.fullscreen</button>
+<button id="alwaysOnTop">window.setAlwaysOnTop</button>
 <button id="menu">menu.set</button>
 <button id="menuClear">menu.clear</button>
 <button id="tray">tray.set</button>
@@ -4921,6 +4931,12 @@ document.getElementById("fullscreen").onclick = async () => {
   try {
     await invoke("window.fullscreen", { id: "main" });
     out.textContent = JSON.stringify({ fullscreen: "main" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("alwaysOnTop").onclick = async () => {
+  try {
+    await invoke("window.setAlwaysOnTop", { id: "main", alwaysOnTop: true });
+    out.textContent = JSON.stringify({ setAlwaysOnTop: true, id: "main" }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
 document.getElementById("menu").onclick = async () => {
