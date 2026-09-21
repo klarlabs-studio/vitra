@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template qwik`: Vite + Qwik CSR + TypeScript starter (`@builder.io/qwik`, `qwikVite({ csr: true })`, `component$` App) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Native directory dialogs: `dialog.openDirectory` via `desktop.DialogService.OpenDirectory`, official dialog plugin, and Linux/Darwin/Windows hosts (GTK SELECT_FOLDER / NSOpenPanel directories / IFileOpenDialog FOS_PICKFOLDERS); scaffold + competitive bind the executor.
 - Official `vitra.path` plugin: declares `path.open`; `desktop.PathService` opens absolute local paths via OS default handler (Linux `xdg-open`, Darwin `open`, Windows `explorer`); PathScope-gated; scaffold/generate/provenance/competitive bind.
 - `vitra new --template angular`: Vite + Angular 19 + TypeScript starter (`@analogjs/vite-plugin-angular`, standalone `vitra-app` component) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.

@@ -87,7 +87,7 @@ credential bootstrap). Vitra leads on capability-oriented authority and
 inspectable grants. Core DesktopHost, installer stage+fold (`deb` / `.rpm` /
 `.snap` / `.flatpak` / AppImage / WiX·MSI / NSIS / `.app`·DMG), SIEM/MDM ports,
 and X11 global-shortcut parity are on main — Wayland global hotkeys remain
-intentionally unsupported. `vitra new --template vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular`
+intentionally unsupported. `vitra new --template vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik`
 scaffolds Vite frontends; `vitra
 dev` / `vitra build` enable `-tags vitra_native` on Linux, Darwin, and Windows.
 Fold still needs host tools (`appimagetool`, `rpmbuild`, `snapcraft`,

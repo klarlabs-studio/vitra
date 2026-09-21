@@ -1624,6 +1624,82 @@ func TestRun_NewScaffoldAngular(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldQwik(t *testing.T) {
+	dir := t.TempDir() + "/qwik-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "qwik"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=qwik") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.tsx", "frontend/src/app.tsx", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"@builder.io/qwik"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/app.tsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"@builder.io/qwik", "component$", "createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "onClick$"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("app.tsx missing %q: %s", want, app)
+		}
+	}
+	mainTS, err := os.ReadFile(dir + "/frontend/src/main.tsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"render", "jsx", "App", "getElementById"} {
+		if !strings.Contains(string(mainTS), want) {
+			t.Fatalf("main.tsx missing %q: %s", want, mainTS)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "qwikVite") || !strings.Contains(string(cfg), "csr: true") {
+		t.Fatalf("vite.config missing qwik CSR plugin: %s", cfg)
+	}
+	tscfg, err := os.ReadFile(dir + "/frontend/tsconfig.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(tscfg), `"jsxImportSource": "@builder.io/qwik"`) {
+		t.Fatalf("tsconfig missing qwik jsxImportSource: %s", tscfg)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("qwik embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Qwik") {
+		t.Fatalf("qwik README should mention Vite + Qwik: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
