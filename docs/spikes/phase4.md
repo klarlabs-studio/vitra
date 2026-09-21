@@ -88,7 +88,8 @@ Still out of scope on main (do not claim otherwise):
   only — stage/fold never invoke `codesign` / `signtool` / notary)
 - Extra Linux targets (Flatpak, Snap) — `.rpm` stage+fold ships via
   `BuildRPMDir` / `BuildRPM`
-- Wails-class multi-framework project templates
+- Wails-class multi-framework project templates (React/Svelte/…) — `vitra new`
+  ships `vanilla` + `vite` starters; richer frameworks still out
 
 Installer **generators** (stage scripts + fold to `.deb` / `.rpm` / `.AppImage` /
 `.msi` / NSIS setup / `.dmg`) are delivered; fold still needs host tools
