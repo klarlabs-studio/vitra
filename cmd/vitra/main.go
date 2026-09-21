@@ -70,6 +70,10 @@ func run(args []string) error {
 		return runUpdateCheck(args[1:])
 	case "update-stage":
 		return runUpdateStage(args[1:])
+	case "update-sign":
+		return runUpdateSign(args[1:])
+	case "update-keygen":
+		return runUpdateKeygen(args[1:])
 	case "notary-setup":
 		return runNotarySetup(args[1:])
 	case "register-scheme":
@@ -98,6 +102,11 @@ Usage:
                              Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints PlanSign; --sign-execute runs host tools; --publish prints store PlanPublish
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
+  vitra update-keygen [--out <dir>]
+                             Generate an ed25519 update-signing key pair (writes priv.key + pub.key hex)
+  vitra update-sign --artifact <path> --app-id <id> --version <ver> --privkey <ref> --out <manifest.json>
+                     [--channel stable|beta] [--artifact-name name]
+                             Digest + sign an update manifest (privkey: env:/file:/secret:; bare hex rejected)
   vitra update-check --base-url <url> --app-id <id> --channel <name> --pubkey <hex>
                              Fetch + verify a signed channel manifest (HTTP(S) client; does not install)
   vitra update-stage --out <dir> --manifest <json> --artifact <path>
@@ -1784,6 +1793,122 @@ func runUpdateStage(args []string) error {
 	}
 	fmt.Printf("staged update channel\n  root:     %s\n  manifest: %s\n  artifact: %s\n  version:  %s (%s)\n",
 		stage.Root, stage.ManifestPath, stage.ArtifactPath, m.Version, m.Channel)
+	return nil
+}
+
+func runUpdateKeygen(args []string) error {
+	outDir := ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--out":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--out requires a directory")
+			}
+			outDir = args[i]
+		default:
+			return fmt.Errorf("unknown update-keygen flag %q", args[i])
+		}
+	}
+	kp, err := updater.GenerateKeyPair()
+	if err != nil {
+		return err
+	}
+	if outDir == "" {
+		fmt.Printf("update signing key pair\n  public:  %s\n  private: %s\n", kp.PublicHex, kp.PrivateHex)
+		fmt.Println("store the private key via env:/file:/secret: refs; never pass bare hex to --privkey")
+		return nil
+	}
+	privPath, pubPath, err := updater.WriteKeyPair(outDir, kp)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("wrote update signing key pair\n  private: %s\n  public:  %s\n", privPath, pubPath)
+	return nil
+}
+
+func runUpdateSign(args []string) error {
+	artifactPath, appID, version, privRef, outPath, artifactName := "", "", "", "", "", ""
+	channel := string(updater.ChannelStable)
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--artifact":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--artifact requires a path")
+			}
+			artifactPath = args[i]
+		case "--app-id":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--app-id requires an id")
+			}
+			appID = args[i]
+		case "--version":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--version requires a version")
+			}
+			version = args[i]
+		case "--privkey":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--privkey requires env:/file:/secret: ref")
+			}
+			privRef = args[i]
+		case "--out":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--out requires a path")
+			}
+			outPath = args[i]
+		case "--channel":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--channel requires a name")
+			}
+			channel = args[i]
+		case "--artifact-name":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--artifact-name requires a name")
+			}
+			artifactName = args[i]
+		default:
+			return fmt.Errorf("unknown update-sign flag %q", args[i])
+		}
+	}
+	if artifactPath == "" || appID == "" || version == "" || privRef == "" || outPath == "" {
+		return fmt.Errorf("usage: vitra update-sign --artifact <path> --app-id <id> --version <ver> --privkey <ref> --out <manifest.json> [--channel stable|beta] [--artifact-name name]")
+	}
+	if artifactName == "" {
+		artifactName = filepath.Base(artifactPath)
+	}
+	artifact, err := os.ReadFile(artifactPath)
+	if err != nil {
+		return err
+	}
+	priv, err := updater.LoadPrivateKeyRef(privRef)
+	if err != nil {
+		return err
+	}
+	m, err := updater.BuildSignedManifest(appID, version, updater.Channel(channel), artifactName, artifact, priv)
+	if err != nil {
+		return err
+	}
+	body, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return err
+	}
+	body = append(body, '\n')
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(outPath, body, 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("signed update manifest\n  out:      %s\n  app:      %s\n  version:  %s (%s)\n  artifact: %s\n  sha256:   %s\n",
+		outPath, m.AppID, m.Version, m.Channel, m.Artifact, m.SHA256)
 	return nil
 }
 

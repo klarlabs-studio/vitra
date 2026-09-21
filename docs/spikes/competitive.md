@@ -99,6 +99,7 @@ executed). `--publish` prints a Snap Store / Flathub `PlanPublish` (plan only).
 Flatpak stage prefers xdg-desktop-portal talk-names over `--filesystem=home`.
 Update channel *client* fetch
 (`updater.Fetcher` / `vitra update-check` / `update-apply --base-url`) verifies
-signed HTTP(S) manifests and can fetch + install artifacts; hosted CDN remains
-out of scope. Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM JSON
+signed HTTP(S) manifests and can fetch + install artifacts; publish-side
+`vitra update-keygen` / `update-sign` / `update-stage` complete the operator
+loop without hosting a CDN. Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM JSON
 policy documents (`policy.LoadDocument`) plug into Phase 5 ports.

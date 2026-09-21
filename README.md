@@ -115,6 +115,8 @@ vitra build
 vitra package --out dist/ [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish]
 vitra generate typescript --out frontend/vitra-client.ts
 vitra notary-setup [--profile name]
+vitra update-keygen [--out keys/]
+vitra update-sign --artifact a.bin --app-id com.example.app --version 1.0.0 --privkey file:keys/priv.key --out m.json
 vitra update-stage --out dist/updates --manifest m.json --artifact a.bin
 vitra update-check --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex>
 vitra update-apply --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex> --dest ./vitra-app

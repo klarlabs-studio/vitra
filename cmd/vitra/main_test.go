@@ -119,6 +119,12 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "update-stage") {
 		t.Fatalf("help missing update-stage: %q", out)
 	}
+	if !strings.Contains(out, "update-sign") {
+		t.Fatalf("help missing update-sign: %q", out)
+	}
+	if !strings.Contains(out, "update-keygen") {
+		t.Fatalf("help missing update-keygen: %q", out)
+	}
 }
 
 func TestRun_UpdateApply(t *testing.T) {
@@ -350,6 +356,81 @@ func TestRun_UpdateStage(t *testing.T) {
 	}
 	if err := run([]string{"update-stage"}); err == nil {
 		t.Fatal("expected usage error")
+	}
+}
+
+func TestRun_UpdateKeygenAndSign(t *testing.T) {
+	dir := t.TempDir()
+	keyDir := filepath.Join(dir, "keys")
+	out := capture(t, func() {
+		if err := run([]string{"update-keygen", "--out", keyDir}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "wrote update signing key pair") {
+		t.Fatalf("keygen stdout: %q", out)
+	}
+	privPath := filepath.Join(keyDir, "priv.key")
+	pubPath := filepath.Join(keyDir, "pub.key")
+	pubHex, err := os.ReadFile(pubPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifactPath := filepath.Join(dir, "app.bin")
+	if err := os.WriteFile(artifactPath, []byte("v4-bytes"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(dir, "manifest.json")
+	out = capture(t, func() {
+		if err := run([]string{
+			"update-sign",
+			"--artifact", artifactPath,
+			"--app-id", "com.vitra.sign",
+			"--version", "4.0.0",
+			"--channel", "beta",
+			"--privkey", "file:" + privPath,
+			"--out", manifestPath,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "signed update manifest") || !strings.Contains(out, "4.0.0") {
+		t.Fatalf("sign stdout: %q", out)
+	}
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m updater.Manifest
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	pubBytes, err := hex.DecodeString(strings.TrimSpace(string(pubHex)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := updater.VerifyManifest(m, ed25519.PublicKey(pubBytes)); err != nil {
+		t.Fatal(err)
+	}
+	stageOut := filepath.Join(dir, "cdn")
+	if err := run([]string{
+		"update-stage", "--out", stageOut,
+		"--manifest", manifestPath, "--artifact", artifactPath,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := run([]string{"update-sign"}); err == nil {
+		t.Fatal("expected usage error")
+	}
+	if err := run([]string{
+		"update-sign",
+		"--artifact", artifactPath,
+		"--app-id", "com.vitra.sign",
+		"--version", "4.0.1",
+		"--privkey", strings.Repeat("ab", 32),
+		"--out", filepath.Join(dir, "bad.json"),
+	}); err == nil {
+		t.Fatal("expected bare hex privkey reject")
 	}
 }
 
