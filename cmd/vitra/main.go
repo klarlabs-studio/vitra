@@ -2322,6 +2322,9 @@ func run() error {
 			}
 			return host.SetMenuBar("main", native)
 		},
+		OnClear: func(ctx context.Context) error {
+			return host.SetMenuBar("main", nil)
+		},
 	}
 	if err := rt.BindExecutor("menu.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		items, err := desktop.ParseMenuItems(input)
@@ -2329,6 +2332,11 @@ func run() error {
 			return nil, err
 		}
 		return nil, menus.SetMenu(ctx, caller, items)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("menu.clear", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return nil, menus.ClearMenu(ctx, caller)
 	})); err != nil {
 		return err
 	}
@@ -2535,6 +2543,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="chrome">window.chrome</button>
 <button id="getChrome">window.getChrome</button>
 <button id="menu">menu.set</button>
+<button id="menuClear">menu.clear</button>
 <button id="tray">tray.set</button>
 <button id="trayClear">tray.clear</button>
 <button id="drop">dragdrop.receive</button>
@@ -2592,6 +2601,12 @@ document.getElementById("menu").onclick = async () => {
       { menu: "Help", id: "help.about", label: "About Vitra" },
     ]);
     out.textContent = JSON.stringify({ menu: "set" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("menuClear").onclick = async () => {
+  try {
+    await invoke("menu.clear");
+    out.textContent = JSON.stringify({ menu: "cleared" }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
 document.getElementById("tray").onclick = async () => {
