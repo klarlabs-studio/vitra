@@ -32,6 +32,7 @@ const (
 	FeatureTray            Feature = "tray"
 	FeatureDialogOpen      Feature = "dialog.open"
 	FeatureDialogSave      Feature = "dialog.save"
+	FeatureDialogMessage   Feature = "dialog.message"
 	FeatureClipboard       Feature = "clipboard"
 	FeatureGlobalShortcut  Feature = "shortcut.global"
 	FeatureDeepLink        Feature = "deeplink"

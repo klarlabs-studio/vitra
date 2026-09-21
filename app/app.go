@@ -35,6 +35,7 @@ type DesktopHost interface {
 	ClipboardSet(text string) error
 	OpenFileDialog() (string, error)
 	SaveFileDialog() (string, error)
+	MessageDialog(title, message, kind string) (bool, error)
 	SetMenuBar(id domain.WindowID, items []platform.MenuItem) error
 	SetTray(tooltip string, items []platform.MenuItem) error
 	ClearTray()

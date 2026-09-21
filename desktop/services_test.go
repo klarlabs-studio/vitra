@@ -119,6 +119,30 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	if _, err := bare.SaveFile(ctx, caller); err == nil {
 		t.Fatal("expected missing save adapter")
 	}
+	msgHost := withFeatures(platform.OSLinux, platform.FeatureDialogMessage)
+	msgDlg := &desktop.DialogService{
+		Gateway: allowAll{}, Host: msgHost,
+		OnMessage: func(_ context.Context, title, message, kind string) (bool, error) {
+			if title != "T" || message != "M" || kind != "confirm" {
+				t.Fatalf("args %q %q %q", title, message, kind)
+			}
+			return true, nil
+		},
+	}
+	confirmed, err := msgDlg.Message(ctx, caller, "T", "M", "confirm")
+	if err != nil || !confirmed {
+		t.Fatalf("message: %v %v", confirmed, err)
+	}
+	if _, err := msgDlg.Message(ctx, caller, "T", "", "info"); err == nil {
+		t.Fatal("expected empty message validation")
+	}
+	if _, err := msgDlg.Message(ctx, caller, "T", "M", "warn"); err == nil {
+		t.Fatal("expected bad kind validation")
+	}
+	bareMsg := &desktop.DialogService{Gateway: allowAll{}, Host: msgHost}
+	if _, err := bareMsg.Message(ctx, caller, "T", "M", "info"); err == nil {
+		t.Fatal("expected missing message adapter")
+	}
 
 	clip := &desktop.ClipboardService{
 		Gateway: allowAll{}, Host: host,

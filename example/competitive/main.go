@@ -122,6 +122,7 @@ func run() error {
 			{Name: desktop.PermClipboardWrite},
 			{Name: desktop.PermDialogOpen},
 			{Name: desktop.PermDialogSave},
+			{Name: desktop.PermDialogMessage},
 			{Name: desktop.PermMenuSet},
 			{Name: desktop.PermTraySet},
 			{Name: desktop.PermShortcutRegister},
@@ -177,6 +178,9 @@ func run() error {
 		},
 		OnSave: func(ctx context.Context) (string, error) {
 			return host.SaveFileDialog()
+		},
+		OnMessage: func(ctx context.Context, title, message, kind string) (bool, error) {
+			return host.MessageDialog(title, message, kind)
 		},
 	}
 	clips := &desktop.ClipboardService{
@@ -317,6 +321,22 @@ func run() error {
 	}
 	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return dialogs.SaveFile(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("dialog.message", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		title, message, kind := "", "", "info"
+		switch v := input.(type) {
+		case string:
+			message = v
+		case map[string]any:
+			title, _ = v["title"].(string)
+			message, _ = v["message"].(string)
+			if k, ok := v["kind"].(string); ok {
+				kind = k
+			}
+		}
+		return dialogs.Message(ctx, caller, title, message, kind)
 	})); err != nil {
 		return err
 	}

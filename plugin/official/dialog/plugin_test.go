@@ -16,7 +16,7 @@ func TestDialogPlugin_Contribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.Commands) != 2 {
+	if len(c.Commands) != 3 {
 		t.Fatalf("commands: %d", len(c.Commands))
 	}
 }
