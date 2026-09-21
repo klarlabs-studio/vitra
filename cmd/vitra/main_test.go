@@ -936,6 +936,66 @@ func TestRun_NewScaffoldVue(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldSolid(t *testing.T) {
+	dir := t.TempDir() + "/solid-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "solid"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=solid") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.tsx", "frontend/src/App.tsx", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"solid-js"`, `"vite-plugin-solid"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/App.tsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "createSignal"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("App.tsx missing %q: %s", want, app)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "vite-plugin-solid") && !strings.Contains(string(cfg), "plugins: [solid()]") {
+		t.Fatalf("vite config missing solid plugin: %s", cfg)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "//go:embed all:frontend/dist") {
+		t.Fatalf("solid embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Solid") {
+		t.Fatalf("solid README should mention Vite + Solid: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {

@@ -91,7 +91,7 @@ Runnable walkthrough: `go run ./example/quickstart`
 
 ```bash
 vitra new myapp
-# or: vitra new myapp --template vite|react|svelte|vue
+# or: vitra new myapp --template vite|react|svelte|vue|solid
 cd myapp
 CGO_ENABLED=1 go run -tags vitra_native .
 # or: vitra doctor && vitra dev
@@ -109,7 +109,7 @@ VITRA_DEMO_SECONDS=3 xvfb-run -a make demo
 vitra version
 vitra doctor
 vitra new ./myapp
-# vitra new ./myapp --template vite|react|svelte|vue
+# vitra new ./myapp --template vite|react|svelte|vue|solid
 vitra dev
 vitra build
 vitra package --out dist/ [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref]
