@@ -194,9 +194,9 @@ func (rt *Runtime) emitAudit(e audit.Event) {
 	_ = rt.auditSink.Append(e)
 }
 
-// StartWorker supervises an in-process worker (Phase 5). Elevated work belongs
-// here so the WebView host stays non-admin (invariant 8). OS process adapters
-// are out of scope for this facade.
+// StartWorker supervises an in-process or OS worker (Phase 5). Elevated work
+// belongs here so the WebView host stays non-admin (invariant 8). Attach
+// worker.StdioIPC / PipePair sessions for host↔worker messaging.
 func (rt *Runtime) StartWorker(ctx context.Context, spec worker.Spec, run worker.Runner) error {
 	if err := rt.workers.Start(ctx, spec, run); err != nil {
 		rt.emitAudit(audit.Event{
