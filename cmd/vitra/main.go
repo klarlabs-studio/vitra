@@ -90,8 +90,8 @@ Usage:
                              Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
-  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref]
-                             Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints PlanSign; --sign-execute runs host tools
+  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish]
+                             Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints PlanSign; --sign-execute runs host tools; --publish prints store PlanPublish
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
   vitra update-check --base-url <url> --app-id <id> --channel <name> --pubkey <hex>
@@ -1496,8 +1496,9 @@ func runPackage(args []string) error {
 	sign := false
 	signExecute := false
 	signFollowUps := false
+	publish := false
 	signingIdentity := ""
-	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref]"
+	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish]"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
@@ -1555,6 +1556,8 @@ func runPackage(args []string) error {
 			signExecute = true
 		case "--sign-follow-ups":
 			signFollowUps = true
+		case "--publish":
+			publish = true
 		case "--signing-identity":
 			i++
 			if i >= len(args) {
@@ -1747,6 +1750,13 @@ func runPackage(args []string) error {
 			}
 			fmt.Printf("signed %s with %s\n", art.Path, plan.Tool)
 		}
+	}
+	if publish {
+		pubPlan, err := packaging.PlanPublish(spec, art.Path)
+		if err != nil {
+			return err
+		}
+		fmt.Print(pubPlan.String())
 	}
 	return nil
 }

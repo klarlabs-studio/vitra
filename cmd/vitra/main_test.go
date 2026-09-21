@@ -439,6 +439,30 @@ func TestRun_PackageSignExecute(t *testing.T) {
 	}
 }
 
+func TestRun_PackagePublish(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("elf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "snap-stage")
+	printed := capture(t, func() {
+		if err := run([]string{
+			"package", "--format", "snap-dir", "--out", out, "--bin", bin,
+			"--app-id", "com.vitra.t", "--name", "Demo App", "--version", "0.1.0",
+			"--publish",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(printed, "publish plan") || !strings.Contains(printed, "Snap Store") {
+		t.Fatalf("expected publish plan: %q", printed)
+	}
+	if !strings.Contains(printed, "snapcraft upload") || !strings.Contains(printed, "plan only") {
+		t.Fatalf("expected snapcraft upload plan: %q", printed)
+	}
+}
+
 func TestRun_PackageDMG(t *testing.T) {
 	tmp := t.TempDir()
 	tool := filepath.Join(tmp, "fake-hdiutil")

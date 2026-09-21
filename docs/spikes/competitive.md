@@ -79,11 +79,11 @@ Wayland keeps in-window accelerators only (no portable global hotkey API).
 
 Wails still leads on **template ecosystem** and **release polish** (richer
 presets beyond Vitra’s `vanilla`/`vite`/`react`/`svelte`/`vue`/`solid`
-starters; Flathub/Snap Store publishing; turnkey notarize credential
-bootstrap). Vitra leads on capability-oriented authority and inspectable
-grants. Core DesktopHost, installer stage+fold (`deb` / `.rpm` / `.snap` /
-`.flatpak` / AppImage / WiX·MSI / NSIS / `.app`·DMG), SIEM/MDM ports, and
-X11 global-shortcut parity are on main — Wayland global hotkeys remain
+starters; interactive Flathub/Snap Store login automation; turnkey notarize
+credential bootstrap). Vitra leads on capability-oriented authority and
+inspectable grants. Core DesktopHost, installer stage+fold (`deb` / `.rpm` /
+`.snap` / `.flatpak` / AppImage / WiX·MSI / NSIS / `.app`·DMG), SIEM/MDM ports,
+and X11 global-shortcut parity are on main — Wayland global hotkeys remain
 intentionally unsupported. `vitra new --template vite|react|svelte|vue|solid`
 scaffolds Vite frontends; `vitra
 dev` / `vitra build` enable `-tags vitra_native` on Linux, Darwin, and Windows.
@@ -92,8 +92,9 @@ Fold still needs host tools (`appimagetool`, `rpmbuild`, `snapcraft`,
 `Spec.Sign` / `SigningIdentityRef` validate refs and `vitra package --sign`
 prints a plan (`PlanSign`); `--sign-execute` runs host tools via
 `ExecuteSign` (Darwin codesign + optional notarytool/stapler follow-ups,
-Windows signtool, Linux dpkg-sig/rpmsign/snapcraft/gpg). Update channel *client* fetch (`updater.Fetcher` / `vitra update-check` /
-`update-apply --base-url`) verifies signed HTTP(S) manifests and can fetch +
-install artifacts; hosted CDN remains out of scope. Audit SIEM exporters
-(`JSONLSink` / `CEFSink`) and MDM JSON policy documents (`policy.LoadDocument`)
-plug into Phase 5 ports.
+Windows signtool, Linux dpkg-sig/rpmsign/snapcraft/gpg). `--publish` prints a
+Snap Store / Flathub `PlanPublish` (plan only). Update channel *client* fetch
+(`updater.Fetcher` / `vitra update-check` / `update-apply --base-url`) verifies
+signed HTTP(S) manifests and can fetch + install artifacts; hosted CDN remains
+out of scope. Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM JSON
+policy documents (`policy.LoadDocument`) plug into Phase 5 ports.
