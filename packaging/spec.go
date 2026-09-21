@@ -46,6 +46,14 @@ type Spec struct {
 	// Description is a short package summary used as the Debian control extended
 	// Description and FreeDesktop Comment=. Empty defaults to DefaultDescription.
 	Description string
+	// Homepage is an optional project URL (Debian Homepage, AppStream <url type="homepage">).
+	Homepage string
+	// Categories are FreeDesktop/AppStream categories (e.g. Utility, Development).
+	// Empty defaults to []string{"Utility"}.
+	Categories []string
+	// License is the AppStream <project_license> SPDX id or LicenseRef-*.
+	// Empty defaults to DefaultLicense.
+	License string
 }
 
 // DefaultMaintainer is used when Spec.Maintainer is empty for .deb packages.
@@ -53,6 +61,12 @@ const DefaultMaintainer = "Vitra Packaging <vitra@klarlabs.de>"
 
 // DefaultDescription is used when Spec.Description is empty.
 const DefaultDescription = "Secure Go + web desktop application packaged by Vitra."
+
+// DefaultLicense is used when Spec.License is empty.
+const DefaultLicense = "LicenseRef-proprietary"
+
+// DefaultCategories is used when Spec.Categories is empty.
+var DefaultCategories = []string{"Utility"}
 
 // EffectiveMaintainer returns Spec.Maintainer or DefaultMaintainer.
 func (s Spec) EffectiveMaintainer() string {
@@ -77,6 +91,35 @@ func (s Spec) EffectiveDescription() string {
 		return d
 	}
 	return DefaultDescription
+}
+
+// EffectiveLicense returns Spec.License or DefaultLicense.
+func (s Spec) EffectiveLicense() string {
+	if l := strings.TrimSpace(s.License); l != "" {
+		return l
+	}
+	return DefaultLicense
+}
+
+// EffectiveCategories returns Spec.Categories or DefaultCategories.
+func (s Spec) EffectiveCategories() []string {
+	out := make([]string, 0, len(s.Categories))
+	for _, c := range s.Categories {
+		c = strings.TrimSpace(c)
+		if c != "" {
+			out = append(out, c)
+		}
+	}
+	if len(out) == 0 {
+		return append([]string(nil), DefaultCategories...)
+	}
+	return out
+}
+
+// DesktopCategories returns a FreeDesktop Categories= value (trailing semicolon).
+func (s Spec) DesktopCategories() string {
+	cats := s.EffectiveCategories()
+	return strings.Join(cats, ";") + ";"
 }
 
 // Validate checks packaging invariants.

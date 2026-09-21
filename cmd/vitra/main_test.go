@@ -519,6 +519,47 @@ func TestRun_PackageStagesLinuxDir(t *testing.T) {
 	}
 }
 
+func TestRun_PackageHomepageCategoriesLicense(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("elf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist")
+	capture(t, func() {
+		if err := run([]string{
+			"package", "--out", out, "--bin", bin,
+			"--app-id", "com.vitra.meta", "--name", "Meta", "--version", "0.2.0",
+			"--homepage", "https://example.com/meta",
+			"--categories", "Utility,Development",
+			"--license", "MIT",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	desktop, err := os.ReadFile(filepath.Join(out, "com.vitra.meta.desktop"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(desktop), "Categories=Utility;Development;") {
+		t.Fatalf("desktop=%s", desktop)
+	}
+	meta, err := os.ReadFile(filepath.Join(out, "usr", "share", "metainfo", "com.vitra.meta.metainfo.xml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(meta)
+	for _, want := range []string{
+		`<project_license>MIT</project_license>`,
+		`<url type="homepage">https://example.com/meta</url>`,
+		`<category>Development</category>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q in %s", want, body)
+		}
+	}
+}
+
 func TestRun_PackageSignPlan(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "vitra-app")

@@ -25,12 +25,14 @@ func AppStreamMetainfoXML(spec Spec) string {
 	name := xmlEscape(spec.Name)
 	summary := xmlEscape(spec.EffectiveDescription())
 	developer := xmlEscape(spec.EffectivePublisher())
+	license := xmlEscape(spec.EffectiveLicense())
 	desktopID := id + ".desktop"
-	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+	var b strings.Builder
+	fmt.Fprintf(&b, `<?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>%s</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>LicenseRef-proprietary</project_license>
+  <project_license>%s</project_license>
   <name>%s</name>
   <summary>%s</summary>
   <description>
@@ -38,11 +40,16 @@ func AppStreamMetainfoXML(spec Spec) string {
   </description>
   <launchable type="desktop-id">%s</launchable>
   <developer_name>%s</developer_name>
-  <categories>
-    <category>Utility</category>
-  </categories>
-</component>
-`, id, name, summary, summary, desktopID, developer)
+`, id, license, name, summary, summary, desktopID, developer)
+	if home := strings.TrimSpace(spec.Homepage); home != "" {
+		fmt.Fprintf(&b, "  <url type=\"homepage\">%s</url>\n", xmlEscape(home))
+	}
+	b.WriteString("  <categories>\n")
+	for _, cat := range spec.EffectiveCategories() {
+		fmt.Fprintf(&b, "    <category>%s</category>\n", xmlEscape(cat))
+	}
+	b.WriteString("  </categories>\n</component>\n")
+	return b.String()
 }
 
 // writeAppStreamMetainfo writes metainfo XML under root/relPath.
