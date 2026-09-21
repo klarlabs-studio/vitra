@@ -1774,6 +1774,82 @@ func TestRun_NewScaffoldMithril(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldRiot(t *testing.T) {
+	dir := t.TempDir() + "/riot-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "riot"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=riot") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/src/app.riot", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"riot"`, `"rollup-plugin-riot"`, `"@riotjs/compiler"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	mainTS, err := os.ReadFile(dir + "/frontend/src/main.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"riot", "component", "app.riot"} {
+		if !strings.Contains(string(mainTS), want) {
+			t.Fatalf("main.ts missing %q: %s", want, mainTS)
+		}
+	}
+	appRiot, err := os.ReadFile(dir + "/frontend/src/app.riot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow"} {
+		if !strings.Contains(string(appRiot), want) {
+			t.Fatalf("app.riot missing %q: %s", want, appRiot)
+		}
+	}
+	index, err := os.ReadFile(dir + "/frontend/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(index), `id="app"`) || !strings.Contains(string(index), "/src/main.ts") {
+		t.Fatalf("index.html missing app mount: %s", index)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("riot embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Riot") {
+		t.Fatalf("riot README should mention Vite + Riot: %s", readme)
+	}
+	viteCfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(viteCfg), "rollup-plugin-riot") {
+		t.Fatalf("vite.config missing riot plugin: %s", viteCfg)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
