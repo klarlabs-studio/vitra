@@ -218,6 +218,9 @@ func run() error {
 		OnRegister: func(_ context.Context, accelerator, actionID string) error {
 			return host.RegisterGlobalShortcut(accelerator, actionID)
 		},
+		OnUnregister: func(_ context.Context, accelerator string) error {
+			return host.UnregisterGlobalShortcut(accelerator)
+		},
 	}
 	single := &desktop.SingleInstanceService{
 		Gateway: rt,
@@ -569,6 +572,15 @@ func run() error {
 			return nil, err
 		}
 		return nil, shortcuts.Register(ctx, caller, acc, action)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("shortcut.unregister", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		acc, err := desktop.ParseShortcutUnregister(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, shortcuts.Unregister(ctx, caller, acc)
 	})); err != nil {
 		return err
 	}

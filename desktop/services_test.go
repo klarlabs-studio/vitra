@@ -238,9 +238,14 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	unregistered := ""
 	sc := &desktop.ShortcutService{
 		Gateway: allowAll{}, Host: host,
 		OnRegister: func(context.Context, string, string) error { return nil },
+		OnUnregister: func(_ context.Context, accelerator string) error {
+			unregistered = accelerator
+			return nil
+		},
 	}
 	if err := sc.Register(ctx, caller, "Ctrl+Shift+P", "app.palette"); err != nil {
 		t.Fatal(err)
@@ -251,6 +256,15 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	if err := sc.Register(ctx, caller, "Ctrl+Shift+P", ""); err == nil {
 		t.Fatal("expected empty action validation")
 	}
+	if err := sc.Unregister(ctx, caller, "Ctrl+Shift+P"); err != nil {
+		t.Fatal(err)
+	}
+	if unregistered != "Ctrl+Shift+P" {
+		t.Fatalf("unregister: %q", unregistered)
+	}
+	if err := sc.Unregister(ctx, caller, ""); err == nil {
+		t.Fatal("expected empty accelerator validation on unregister")
+	}
 	acc, act, err := desktop.ParseShortcutRegister(map[string]any{
 		"accelerator": "Ctrl+Shift+Q", "action": "app.quit",
 	})
@@ -260,6 +274,18 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	_, _, err = desktop.ParseShortcutRegister(map[string]any{"accelerator": "Ctrl+A"})
 	if err == nil {
 		t.Fatal("expected missing action validation")
+	}
+	acc, err = desktop.ParseShortcutUnregister(map[string]any{"accelerator": "Ctrl+Shift+Q"})
+	if err != nil || acc != "Ctrl+Shift+Q" {
+		t.Fatalf("parse unregister object: %s err=%v", acc, err)
+	}
+	acc, err = desktop.ParseShortcutUnregister("Ctrl+B")
+	if err != nil || acc != "Ctrl+B" {
+		t.Fatalf("parse unregister string: %s err=%v", acc, err)
+	}
+	_, err = desktop.ParseShortcutUnregister(map[string]any{})
+	if err == nil {
+		t.Fatal("expected missing accelerator validation")
 	}
 
 	si := &desktop.SingleInstanceService{
