@@ -118,8 +118,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "not yet implemented on Darwin WKWebView host",
 		},
 		platform.FeatureWindowChrome: {
-			Feature: platform.FeatureWindowChrome, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureWindowChrome, Available: true,
+			Detail: "NSWindow title, size, zoom, fullscreen, floating, miniaturize, hide, miniwindow icon",
 		},
 		platform.FeatureOpenURL: {
 			Feature: platform.FeatureOpenURL, Available: true,
@@ -157,14 +157,78 @@ func (h *Host) EnableDragDrop(domain.WindowID, bool) error {
 // InjectFileDrop is a no-op until drag-drop lands on Darwin.
 func (h *Host) InjectFileDrop(domain.WindowID, []string) {}
 
-// ApplyWindowChrome is not yet implemented on Darwin.
-func (h *Host) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error {
-	return h.err(platform.FeatureWindowChrome)
+// ApplyWindowChrome sets title, size, and presentation hints on a native window.
+func (h *Host) ApplyWindowChrome(id domain.WindowID, chrome platform.WindowChrome) error {
+	if chrome.Width <= 0 || chrome.Height <= 0 {
+		return &domain.ErrValidation{Message: "window width and height must be positive"}
+	}
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		ctitle := C.CString(chrome.Title)
+		defer C.free(unsafe.Pointer(ctitle))
+		cicon := C.CString(chrome.IconPath)
+		defer C.free(unsafe.Pointer(cicon))
+		maxed, full, above, mini, hid := C.int(0), C.int(0), C.int(0), C.int(0), C.int(0)
+		if chrome.Maximized {
+			maxed = 1
+		}
+		if chrome.Fullscreen {
+			full = 1
+		}
+		if chrome.AlwaysOnTop {
+			above = 1
+		}
+		if chrome.Minimized {
+			mini = 1
+		}
+		if chrome.Hidden {
+			hid = 1
+		}
+		C.vitra_win_apply_chrome(w.ptr, ctitle, C.int(chrome.Width), C.int(chrome.Height), maxed, full, above, mini, hid, cicon)
+		errCh <- nil
+	})
+	return <-errCh
 }
 
-// ReadWindowChrome is not yet implemented on Darwin.
-func (h *Host) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, error) {
-	return platform.WindowChrome{}, h.err(platform.FeatureWindowChrome)
+// ReadWindowChrome returns the window presentation last applied / observed.
+func (h *Host) ReadWindowChrome(id domain.WindowID) (platform.WindowChrome, error) {
+	type result struct {
+		chrome platform.WindowChrome
+		err    error
+	}
+	ch := make(chan result, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			ch <- result{err: &domain.ErrNotFound{Entity: "window", ID: string(id)}}
+			return
+		}
+		raw := C.vitra_win_chrome(w.ptr)
+		defer C.free(unsafe.Pointer(raw.title))
+		defer C.free(unsafe.Pointer(raw.icon_path))
+		ch <- result{chrome: platform.WindowChrome{
+			Title:       C.GoString(raw.title),
+			Width:       int(raw.width),
+			Height:      int(raw.height),
+			Maximized:   raw.maximized != 0,
+			Fullscreen:  raw.fullscreen != 0,
+			AlwaysOnTop: raw.above != 0,
+			Minimized:   raw.minimized != 0,
+			Hidden:      raw.hidden != 0,
+			IconPath:    C.GoString(raw.icon_path),
+		}}
+	})
+	got := <-ch
+	return got.chrome, got.err
 }
 
 // CreateWindow implements platform.Host.

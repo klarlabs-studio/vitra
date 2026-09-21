@@ -31,5 +31,8 @@ func TestHost_ExplicitUnsupported(t *testing.T) {
 	if _, err := h.SaveFileDialog(); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureDialogSave {
 		t.Fatalf("save dialog: %v", err)
 	}
+	if err := h.ApplyWindowChrome("main", platform.WindowChrome{Width: 100, Height: 100}); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureWindowChrome {
+		t.Fatalf("chrome: %v", err)
+	}
 	h.Quit()
 }
