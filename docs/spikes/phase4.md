@@ -32,6 +32,10 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`) |
 | `dmg` | Final `.dmg` (`BuildDMG` → hdiutil or `VITRA_HDIUTIL`) |
 
+Optional `--icon <path>` copies a `.png` / `.svg` / `.icns` / `.ico` / `.xpm` into
+Linux stages (next to the `.desktop`, `Icon=<name>`) and Darwin
+`Contents/Resources` (`CFBundleIconFile`).
+
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold
 externally. `BuildMSI` / `BuildNSIS` likewise stage then fold; without WiX/NSIS

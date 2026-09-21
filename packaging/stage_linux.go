@@ -60,6 +60,11 @@ func StageLinux(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	}
 	sum := hex.EncodeToString(h.Sum(nil))
 
+	iconKey := safeName
+	if _, _, err := stageIconFile(spec.IconPath, outDir, safeName); err != nil {
+		return Artifact{}, err
+	}
+
 	desktop := filepath.Join(outDir, sanitizeFileName(spec.AppID)+".desktop")
 	body := fmt.Sprintf(`[Desktop Entry]
 Type=Application
@@ -68,7 +73,7 @@ Exec=%s
 Icon=%s
 Categories=Utility;
 StartupNotify=true
-`, spec.Name, destPath, safeName)
+`, spec.Name, destPath, iconKey)
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}

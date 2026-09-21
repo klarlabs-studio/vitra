@@ -29,6 +29,9 @@ type Spec struct {
 	Sign    bool
 	// SigningIdentityRef is a keychain/CI secret reference — never a raw secret.
 	SigningIdentityRef string
+	// IconPath is an optional filesystem path to an app icon (.png / .svg / .icns).
+	// Empty leaves packages without a staged icon file.
+	IconPath string
 }
 
 // Validate checks packaging invariants.

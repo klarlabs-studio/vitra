@@ -48,6 +48,10 @@ func BuildAppDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	if err := os.WriteFile(appRun, []byte("#!/bin/sh\nexec \"$(dirname \"$0\")/usr/bin/"+binName+"\" \"$@\"\n"), 0o755); err != nil {
 		return Artifact{}, err
 	}
+	iconKey := binName
+	if _, _, err := stageIconFile(spec.IconPath, outDir, binName); err != nil {
+		return Artifact{}, err
+	}
 	desktop := filepath.Join(outDir, binName+".desktop")
 	body := fmt.Sprintf(`[Desktop Entry]
 Type=Application
@@ -56,7 +60,7 @@ Exec=AppRun
 Icon=%s
 Categories=Utility;
 Terminal=false
-`, spec.Name, binName)
+`, spec.Name, iconKey)
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}

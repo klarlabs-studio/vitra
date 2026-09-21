@@ -64,6 +64,19 @@ func StageDarwinApp(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	}
 	sum := hex.EncodeToString(h.Sum(nil))
 
+	resources := filepath.Join(bundlePath, "Contents", "Resources")
+	iconExtra := ""
+	if _, fileName, err := stageIconFile(spec.IconPath, resources, safeName); err != nil {
+		return Artifact{}, err
+	} else if fileName != "" {
+		// CFBundleIconFile: strip .icns (classic); keep other extensions.
+		iconRef := fileName
+		if strings.EqualFold(filepath.Ext(fileName), ".icns") {
+			iconRef = strings.TrimSuffix(fileName, filepath.Ext(fileName))
+		}
+		iconExtra = fmt.Sprintf("\t<key>CFBundleIconFile</key>\n\t<string>%s</string>\n", xmlEscapeText(iconRef))
+	}
+
 	plist := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -88,9 +101,9 @@ func StageDarwinApp(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	<string>11.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
-</dict>
+%s</dict>
 </plist>
-`, xmlEscapeText(safeName), xmlEscapeText(spec.AppID), xmlEscapeText(spec.Name), xmlEscapeText(spec.Version), xmlEscapeText(spec.Version))
+`, xmlEscapeText(safeName), xmlEscapeText(spec.AppID), xmlEscapeText(spec.Name), xmlEscapeText(spec.Version), xmlEscapeText(spec.Version), iconExtra)
 	if err := os.WriteFile(filepath.Join(bundlePath, "Contents", "Info.plist"), []byte(plist), 0o644); err != nil {
 		return Artifact{}, err
 	}
