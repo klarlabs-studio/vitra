@@ -26,6 +26,7 @@ import (
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
 	"go.klarlabs.de/vitra/plugin"
+	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	"go.klarlabs.de/vitra/policy"
@@ -263,6 +264,9 @@ func scaffoldTypeScriptClient() (string, error) {
 	if err := rt.RegisterPlugin(ctx, officialdialog.New()); err != nil {
 		return "", err
 	}
+	if err := rt.RegisterPlugin(ctx, officialclipboard.New()); err != nil {
+		return "", err
+	}
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
 	if err != nil {
 		return "", err
@@ -295,6 +299,7 @@ import (
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
+	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 )
@@ -336,6 +341,9 @@ func run() error {
 	if err := rt.RegisterPlugin(context.Background(), officialfs.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(context.Background(), officialclipboard.New()); err != nil {
+		return err
+	}
 	dialogs := &desktop.DialogService{
 		Gateway: rt,
 		Host:    host,
@@ -357,6 +365,23 @@ func run() error {
 	}
 	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return dialogs.SaveFile(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	clips := &desktop.ClipboardService{
+		Gateway: rt,
+		Host:    host,
+		OnRead:  func(ctx context.Context) (string, error) { return host.ClipboardGet() },
+		OnWrite: func(ctx context.Context, text string) error { return host.ClipboardSet(text) },
+	}
+	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return clips.Read(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("clipboard.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		text, _ := input.(string)
+		return nil, clips.Write(ctx, caller, text)
 	})); err != nil {
 		return err
 	}
@@ -392,6 +417,8 @@ func run() error {
 			{Name: "demo.greet"},
 			{Name: desktop.PermDialogOpen},
 			{Name: desktop.PermDialogSave},
+			{Name: desktop.PermClipboardRead},
+			{Name: desktop.PermClipboardWrite},
 			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 		},
@@ -426,9 +453,10 @@ func scaffoldIndexHTML() string {
 <html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
 <style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
 button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
-<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog plugins).</p>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard plugins).</p>
 <button id="greet">demo.greet</button>
 <button id="open">dialog.open</button>
+<button id="clip">clipboard.read</button>
 <pre id="out"></pre>
 <script>
 const out = document.getElementById("out");
@@ -439,6 +467,10 @@ document.getElementById("greet").onclick = async () => {
 };
 document.getElementById("open").onclick = async () => {
   try { out.textContent = JSON.stringify(await invoke("dialog.open"), null, 2); }
+  catch (e) { out.textContent = String(e); }
+};
+document.getElementById("clip").onclick = async () => {
+  try { out.textContent = JSON.stringify(await invoke("clipboard.read"), null, 2); }
   catch (e) { out.textContent = String(e); }
 };
 // Typed stubs: frontend/vitra-client.ts (vitra generate typescript)
@@ -572,6 +604,9 @@ func runGenerate(args []string) error {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialdialog.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialclipboard.New()); err != nil {
 		return err
 	}
 	var cmds []*domain.CommandDefinition
@@ -887,8 +922,8 @@ func runPackage(args []string) error {
 // officialPluginInventory returns Manifest-derived plugin rows for packaging
 // provenance (declared surface, not a claim that --bin embeds them).
 func officialPluginInventory() []provenance.PluginInfo {
-	out := make([]provenance.PluginInfo, 0, 2)
-	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New()} {
+	out := make([]provenance.PluginInfo, 0, 3)
+	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New()} {
 		m := p.Manifest()
 		perms := make([]string, 0, len(m.Permissions))
 		for _, perm := range m.Permissions {
@@ -1038,6 +1073,9 @@ func inspectDemo(args []string) error {
 	if err := rt.RegisterPlugin(ctx, officialdialog.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(ctx, officialclipboard.New()); err != nil {
+		return err
+	}
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err
 	}
@@ -1055,6 +1093,7 @@ func inspectDemo(args []string) error {
 				},
 			},
 			{Name: "dialog.open"},
+			{Name: "clipboard.read"},
 		},
 	)
 	if err != nil {
