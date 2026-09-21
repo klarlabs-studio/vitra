@@ -862,6 +862,16 @@ func (s *WindowService) Maximize(ctx context.Context, caller domain.Caller, wind
 	return s.Apply(ctx, caller, window, chrome)
 }
 
+// Unmaximize authorizes window.chrome then clears chrome.Maximized.
+func (s *WindowService) Unmaximize(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.Maximized = false
+	return s.Apply(ctx, caller, window, chrome)
+}
+
 // Fullscreen authorizes window.chrome then enters fullscreen via chrome.Fullscreen.
 func (s *WindowService) Fullscreen(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
 	chrome, err := s.Read(ctx, caller, window)

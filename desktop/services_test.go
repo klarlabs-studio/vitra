@@ -586,6 +586,9 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	if err := minmax.Maximize(ctx, caller, "main"); err != nil || !sized.Maximized || sized.Minimized {
 		t.Fatalf("maximize: %+v err=%v", sized, err)
 	}
+	if err := minmax.Unmaximize(ctx, caller, "main"); err != nil || sized.Maximized {
+		t.Fatalf("unmaximize: %+v err=%v", sized, err)
+	}
 	if err := minmax.Fullscreen(ctx, caller, "main"); err != nil || !sized.Fullscreen || sized.Minimized {
 		t.Fatalf("fullscreen: %+v err=%v", sized, err)
 	}

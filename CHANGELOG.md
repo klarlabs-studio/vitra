@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official window unmaximize: `window.unmaximize` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Unmaximize` (clears `Maximized`); scaffold/competitive bind.
 - AppStream contribute URL: `Spec.Homepage` / `vitra package --homepage` also flow into metainfo `<url type="contribute">` alongside homepage/help/bugtracker/vcs-browser/donation/contact/faq (omitted when empty).
 - `vitra new --template sinuous`: Vite + Sinuous + TypeScript starter (`h` / `observable` + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream faq URL: `Spec.Homepage` / `vitra package --homepage` also flow into metainfo `<url type="faq">` alongside homepage/help/bugtracker/vcs-browser/donation/contact (omitted when empty).
