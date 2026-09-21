@@ -26,8 +26,9 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Darwin MIME file associations (`RegisterFileAssociations`) | Done (helper `.app` CFBundleDocumentTypes) |
 | Linux file drag-drop (`dragdrop.receive`) | Done (GTK URI drops + inject helper) |
 | Darwin file drag-drop (`dragdrop.receive`) | Done (NSFilenamesPboardType + inject helper) |
+| Windows file drag-drop (`dragdrop.receive`) | Done (WM_DROPFILES + inject helper) |
 | In-window menu accelerators (`MenuItem.Shortcut`) | Done (Linux GTK; Darwin NSMenu Ctrl→Command; Windows HACCEL) |
-| `platform/windows` DesktopHost | Win32 shell + chrome + dialogs + menu/tray + OpenURL/clipboard/single-instance/deep-link/scheme/files; WebView2 Eval TBD |
+| `platform/windows` DesktopHost | Win32 shell + chrome + dialogs + menu/tray + drag-drop + OpenURL/clipboard/single-instance/deep-link/scheme/files; WebView2 Eval TBD |
 | Windows window chrome (`window.chrome`) | Done (Win32 title, size, maximize, fullscreen, topmost, minimize, hide, icon) |
 | Windows open/save file dialogs | Done (GetOpenFileName / GetSaveFileName) |
 | Windows menu bar + tray | Done (CreateMenu/HACCEL; Shell_NotifyIcon + TrackPopupMenu) |
