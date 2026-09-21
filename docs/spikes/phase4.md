@@ -7,6 +7,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
+| Sign dry-run plan (no host execution) | `packaging.PlanSign` + `vitra package --sign` |
 | Linux staged app directory | `packaging.StageLinux` + `vitra package` |
 | Windows staged dir + WiX/NSIS scripts | `StageWindows` / `BuildWiXDir` / `BuildNSISDir` |
 | Darwin staged `.app` bundle | `StageDarwinApp` + `vitra package --format app-dir` |
@@ -83,9 +84,8 @@ Still out of scope on main (do not claim otherwise):
 
 - Hosted update CDN / auto-update channel hosting
 - Notarization / codesign / Authenticode *execution* (`Spec.Sign` +
-  `SigningIdentityRef` are validated refs only — `env:` / `keychain:` /
-  `file:` / `secret:` prefixes; stage/fold never invoke `codesign` /
-  `signtool` / notary)
+  `SigningIdentityRef` validate refs; `PlanSign` / `--sign` print argv plans
+  only — stage/fold never invoke `codesign` / `signtool` / notary)
 - Extra Linux targets (Flatpak, Snap) — `.rpm` stage+fold ships via
   `BuildRPMDir` / `BuildRPM`
 - Wails-class multi-framework project templates
