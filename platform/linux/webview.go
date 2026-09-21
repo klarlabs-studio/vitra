@@ -27,17 +27,18 @@ func init() { runtime.LockOSThread() }
 
 // Host is a WebKitGTK desktop host.
 type Host struct {
-	mu       sync.Mutex
-	windows  map[domain.WindowID]*nativeWindow
-	origins  map[domain.WindowID]domain.Origin
-	onInvoke func(domain.WindowID, domain.Origin, []byte) []byte
-	onNav    func(domain.WindowID, string) bool
-	onAction func(id string)
-	onDrop   func(windowID domain.WindowID, paths []string)
-	looping  bool
-	inited   bool
-	jobs     sync.Map // uint64 -> func()
-	jobSeq   uint64
+	mu        sync.Mutex
+	windows   map[domain.WindowID]*nativeWindow
+	origins   map[domain.WindowID]domain.Origin
+	onInvoke  func(domain.WindowID, domain.Origin, []byte) []byte
+	onNav     func(domain.WindowID, string) bool
+	onAction  func(id string)
+	onDrop    func(windowID domain.WindowID, paths []string)
+	onDestroy func(windowID domain.WindowID)
+	looping   bool
+	inited    bool
+	jobs      sync.Map // uint64 -> func()
+	jobSeq    uint64
 }
 
 type nativeWindow struct{ ptr *C.VitraWin }
@@ -122,6 +123,12 @@ func (h *Host) SetActionHandler(fn func(id string)) { h.onAction = fn }
 // SetDragDropHandler registers file-drop callbacks (absolute paths).
 func (h *Host) SetDragDropHandler(fn func(windowID domain.WindowID, paths []string)) {
 	h.onDrop = fn
+}
+
+// SetDestroyHandler registers callbacks when a native window is destroyed
+// (e.g. titlebar close). The handler runs after the host map entry is removed.
+func (h *Host) SetDestroyHandler(fn func(windowID domain.WindowID)) {
+	h.onDestroy = fn
 }
 
 // EnableDragDrop toggles GTK URI drop targets on a window's WebView.
@@ -598,7 +605,19 @@ func goVitraDestroy(windowID *C.char) {
 		delete(h.windows, id)
 		delete(h.origins, id)
 	}
+	onDestroy := h.onDestroy
+	empty := len(h.windows) == 0
 	h.mu.Unlock()
+	if empty {
+		activeMu.Lock()
+		if active == h {
+			active = nil
+		}
+		activeMu.Unlock()
+	}
+	if onDestroy != nil {
+		onDestroy(id)
+	}
 }
 
 //export goVitraNav
