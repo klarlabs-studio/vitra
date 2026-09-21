@@ -209,9 +209,72 @@ func scaffoldNew(args []string) error {
 	if modPath == "example.com/." {
 		modPath = "example.com/vitra-app"
 	}
+	tsClient, err := scaffoldTypeScriptClient()
+	if err != nil {
+		return err
+	}
 	files := map[string]string{
-		"go.mod": scaffoldGoMod(modPath),
-		"main.go": `package main
+		"go.mod":                   scaffoldGoMod(modPath),
+		"main.go":                  scaffoldMainGo(),
+		"frontend/index.html":      scaffoldIndexHTML(),
+		"frontend/vitra-client.ts": tsClient,
+		"README.md": `# Vitra app
+
+` + "```bash" + `
+# Native DesktopHost (Linux WebKitGTK / Darwin WKWebView / Windows WebView2)
+vitra dev
+# or
+CGO_ENABLED=1 go run -tags vitra_native .
+
+# Refresh typed frontend stubs after changing commands/plugins
+vitra generate typescript --out frontend/vitra-client.ts
+
+# Stage a package (optional)
+vitra package --out dist/ --format dir
+` + "```" + `
+`,
+	}
+	for name, body := range files {
+		path := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			return err
+		}
+	}
+	fmt.Printf("created %s\n", dir)
+	fmt.Println("next: cd", dir, "&& vitra dev")
+	return nil
+}
+
+func scaffoldTypeScriptClient() (string, error) {
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.app"})
+	if err != nil {
+		return "", err
+	}
+	ctx := context.Background()
+	if err := rt.RegisterPlugin(ctx, officialfs.New()); err != nil {
+		return "", err
+	}
+	if err := rt.RegisterPlugin(ctx, officialdialog.New()); err != nil {
+		return "", err
+	}
+	greet, err := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
+	if err != nil {
+		return "", err
+	}
+	cmds := []*domain.CommandDefinition{greet}
+	var events []domain.EventName
+	for _, reg := range rt.Plugins().List() {
+		cmds = append(cmds, reg.Contribution.Commands...)
+		events = append(events, reg.Contribution.Events...)
+	}
+	return bindings.GenerateTypeScript("vitra", vitra.Version, cmds, events), nil
+}
+
+func scaffoldMainGo() string {
+	return `package main
 
 import (
 	"context"
@@ -219,14 +282,18 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/app"
+	"go.klarlabs.de/vitra/desktop"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
+	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
+	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 )
 
 //go:embed frontend/*
@@ -248,6 +315,9 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	host := desktopHost()
+	caller := domain.Caller{WindowID: "main", Origin: domain.OriginPackagedLocal}
+
 	greet, _ := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
 	_ = rt.RegisterCommand(greet, domain.CommandExecutorFunc(func(ctx context.Context, name domain.CommandName, input any) (any, error) {
 		who, _ := input.(string)
@@ -256,14 +326,75 @@ func run() error {
 		}
 		return map[string]any{"message": "Hello, " + who}, nil
 	}))
+
+	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialfs.New()); err != nil {
+		return err
+	}
+	dialogs := &desktop.DialogService{
+		Gateway: rt,
+		Host:    host,
+		OnOpen: func(ctx context.Context) ([]string, error) {
+			path, err := host.OpenFileDialog()
+			if err != nil || path == "" {
+				return nil, err
+			}
+			return []string{path}, nil
+		},
+		OnSave: func(ctx context.Context) (string, error) {
+			return host.SaveFileDialog()
+		},
+	}
+	if err := rt.BindExecutor("dialog.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return dialogs.OpenFile(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return dialogs.SaveFile(ctx, caller)
+	})); err != nil {
+		return err
+	}
+
+	demoRoot := filepath.Join(os.TempDir(), "vitra-scaffold-fs")
+	if err := os.MkdirAll(demoRoot, 0o755); err != nil {
+		return err
+	}
+	files := &desktop.FileService{Gateway: rt}
+	if err := rt.BindExecutor("fs.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		path, _ := input.(string)
+		data, err := files.Read(ctx, caller, path)
+		if err != nil {
+			return nil, err
+		}
+		return string(data), nil
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("fs.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		m, _ := input.(map[string]any)
+		path, _ := m["path"].(string)
+		data, _ := m["data"].(string)
+		return nil, files.Write(ctx, caller, path, []byte(data))
+	})); err != nil {
+		return err
+	}
+
 	grant, _ := domain.NewCapabilityGrant(
 		"demo", "demo", []domain.WindowID{"main"},
 		[]domain.Origin{domain.OriginPackagedLocal},
-		[]domain.PermissionSpec{{Name: "demo.greet"}},
+		[]domain.PermissionSpec{
+			{Name: "demo.greet"},
+			{Name: desktop.PermDialogOpen},
+			{Name: desktop.PermDialogSave},
+			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
+			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
+		},
 	)
 	_ = rt.RegisterGrant(grant)
 
-	host := desktopHost()
 	application, err := app.New(app.Options{
 		AppID: "com.example.app", Title: "Vitra App", Assets: assets, Host: host, Runtime: rt,
 		Window: app.WindowOptions{ID: "main", Width: 960, Height: 640},
@@ -284,34 +415,32 @@ func desktopHost() app.DesktopHost {
 		return linux.New()
 	}
 }
-`,
-		"frontend/index.html": `<!DOCTYPE html>
+`
+}
+
+func scaffoldIndexHTML() string {
+	return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
 <style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
-button{padding:.75rem 1rem;cursor:pointer}</style></head>
-<body><h1>Vitra</h1><p>Secure desktop runtime starter.</p>
-<button id="go">Invoke demo.greet</button><pre id="out"></pre>
+button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog plugins).</p>
+<button id="greet">demo.greet</button>
+<button id="open">dialog.open</button>
+<pre id="out"></pre>
 <script>
-document.getElementById("go").onclick=async()=>{
-  try{document.getElementById("out").textContent=JSON.stringify(await window.vitra.invoke("demo.greet","Vitra"),null,2)}
-  catch(e){document.getElementById("out").textContent=String(e)}
+const out = document.getElementById("out");
+const invoke = (cmd, input) => window.vitra.invoke(cmd, input);
+document.getElementById("greet").onclick = async () => {
+  try { out.textContent = JSON.stringify(await invoke("demo.greet", "Vitra"), null, 2); }
+  catch (e) { out.textContent = String(e); }
 };
+document.getElementById("open").onclick = async () => {
+  try { out.textContent = JSON.stringify(await invoke("dialog.open"), null, 2); }
+  catch (e) { out.textContent = String(e); }
+};
+// Typed stubs: frontend/vitra-client.ts (vitra generate typescript)
 </script></body></html>
-`,
-		"README.md": "# Vitra app\n\n```bash\n# Native DesktopHost (Linux WebKitGTK / Darwin WKWebView / Windows WebView2)\nCGO_ENABLED=1 go run -tags vitra_native .\n# or\nvitra dev\n```\n",
-	}
-	for name, body := range files {
-		path := filepath.Join(dir, name)
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return err
-		}
-		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
-			return err
-		}
-	}
-	fmt.Printf("created %s\n", dir)
-	fmt.Println("next: cd", dir, "&& vitra dev")
-	return nil
+`
 }
 
 func runDev(args []string) error {

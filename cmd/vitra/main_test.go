@@ -387,7 +387,7 @@ func TestRun_NewScaffold(t *testing.T) {
 	if !strings.Contains(out, "created") {
 		t.Fatalf("new output: %q", out)
 	}
-	for _, name := range []string{"main.go", "frontend/index.html", "README.md", "go.mod"} {
+	for _, name := range []string{"main.go", "frontend/index.html", "frontend/vitra-client.ts", "README.md", "go.mod"} {
 		if _, err := os.Stat(dir + "/" + name); err != nil {
 			t.Fatal(err)
 		}
@@ -412,8 +412,24 @@ func TestRun_NewScaffold(t *testing.T) {
 		}
 		seen[path] = true
 	}
-	if !seen["io/fs"] {
-		t.Fatal("scaffold missing io/fs import")
+	for _, want := range []string{
+		"io/fs",
+		"go.klarlabs.de/vitra/desktop",
+		"go.klarlabs.de/vitra/plugin/official/dialog",
+		"go.klarlabs.de/vitra/plugin/official/fs",
+	} {
+		if !seen[want] {
+			t.Fatalf("scaffold missing import %q", want)
+		}
+	}
+	client, err := os.ReadFile(dir + "/frontend/vitra-client.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "fs.read"} {
+		if !strings.Contains(string(client), want) {
+			t.Fatalf("vitra-client.ts missing %q", want)
+		}
 	}
 	readme, err := os.ReadFile(dir + "/README.md")
 	if err != nil {
@@ -421,6 +437,9 @@ func TestRun_NewScaffold(t *testing.T) {
 	}
 	if !strings.Contains(string(readme), "vitra_native") || !strings.Contains(string(readme), "vitra dev") {
 		t.Fatalf("scaffold README should mention native tag and vitra dev: %s", readme)
+	}
+	if !strings.Contains(string(readme), "generate typescript") {
+		t.Fatalf("scaffold README should mention generate typescript: %s", readme)
 	}
 	if !strings.Contains(out, "vitra dev") {
 		t.Fatalf("new next-step should suggest vitra dev: %q", out)
