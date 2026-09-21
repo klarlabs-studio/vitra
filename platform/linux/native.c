@@ -4,6 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef GDK_WINDOWING_X11
+#include <gdk/gdkx.h>
+#include <X11/Xlib.h>
+#endif
+
 extern void goVitraIdle(void *);
 extern void goVitraMessage(char *, char *);
 extern void goVitraDestroy(char *);
@@ -510,4 +515,189 @@ void vitra_win_set_drag_drop(VitraWin *w, int enabled) {
 	gtk_drag_dest_set(view, GTK_DEST_DEFAULT_ALL, NULL, 0, GDK_ACTION_COPY);
 	gtk_drag_dest_add_uri_targets(view);
 	g_signal_connect(view, "drag-data-received", G_CALLBACK(on_drag_data), w->id);
+}
+
+#define VITRA_MAX_HOTKEYS 64
+
+#ifdef GDK_WINDOWING_X11
+
+#define VITRA_IGNORED_MODS (LockMask | Mod2Mask)
+
+typedef struct {
+	char *accel;
+	char *action;
+	KeyCode keycode;
+	guint mods; /* X11 modifier mask */
+} HotkeyEntry;
+
+static HotkeyEntry g_hotkeys[VITRA_MAX_HOTKEYS];
+static int g_hotkey_n = 0;
+static int g_hotkey_filter = 0;
+
+static guint gdk_mods_to_x(GdkModifierType mods) {
+	guint x = 0;
+	if (mods & GDK_CONTROL_MASK) {
+		x |= ControlMask;
+	}
+	if (mods & GDK_SHIFT_MASK) {
+		x |= ShiftMask;
+	}
+	if (mods & GDK_MOD1_MASK) {
+		x |= Mod1Mask;
+	}
+	if (mods & (GDK_SUPER_MASK | GDK_META_MASK | GDK_MOD4_MASK)) {
+		x |= Mod4Mask;
+	}
+	return x;
+}
+
+static void x_ungrab_key(Display *dpy, Window root, KeyCode keycode, guint mods) {
+	guint masks[] = {0, LockMask, Mod2Mask, LockMask | Mod2Mask};
+	for (size_t i = 0; i < sizeof(masks) / sizeof(masks[0]); i++) {
+		XUngrabKey(dpy, keycode, mods | masks[i], root);
+	}
+}
+
+static int x_grab_key(Display *dpy, Window root, KeyCode keycode, guint mods) {
+	guint masks[] = {0, LockMask, Mod2Mask, LockMask | Mod2Mask};
+	gdk_x11_display_error_trap_push(gdk_display_get_default());
+	for (size_t i = 0; i < sizeof(masks) / sizeof(masks[0]); i++) {
+		XGrabKey(dpy, keycode, mods | masks[i], root, True, GrabModeAsync, GrabModeAsync);
+	}
+	XSync(dpy, False);
+	return gdk_x11_display_error_trap_pop(gdk_display_get_default()) == 0;
+}
+
+static GdkFilterReturn hotkey_filter(GdkXEvent *xevent, GdkEvent *event, gpointer data) {
+	(void)event;
+	(void)data;
+	XEvent *ev = (XEvent *)xevent;
+	if (!ev || ev->type != KeyPress) {
+		return GDK_FILTER_CONTINUE;
+	}
+	guint state = (guint)(ev->xkey.state & ~(VITRA_IGNORED_MODS));
+	for (int i = 0; i < g_hotkey_n; i++) {
+		if (g_hotkeys[i].keycode == ev->xkey.keycode && g_hotkeys[i].mods == state && g_hotkeys[i].action) {
+			goVitraAction(g_hotkeys[i].action);
+			return GDK_FILTER_REMOVE;
+		}
+	}
+	return GDK_FILTER_CONTINUE;
+}
+
+static void ensure_hotkey_filter(void) {
+	if (g_hotkey_filter) {
+		return;
+	}
+	gdk_window_add_filter(NULL, hotkey_filter, NULL);
+	g_hotkey_filter = 1;
+}
+
+#endif /* GDK_WINDOWING_X11 */
+
+int vitra_hotkey_supported(void) {
+	GdkDisplay *d = gdk_display_get_default();
+	if (!d) {
+		return 0;
+	}
+#ifdef GDK_WINDOWING_X11
+	return GDK_IS_X11_DISPLAY(d) ? 1 : 0;
+#else
+	(void)d;
+	return 0;
+#endif
+}
+
+int vitra_register_hotkey(const char *accelerator, const char *action_id) {
+#ifndef GDK_WINDOWING_X11
+	(void)accelerator;
+	(void)action_id;
+	return 0;
+#else
+	if (!accelerator || !action_id || accelerator[0] == '\0' || action_id[0] == '\0') {
+		return 0;
+	}
+	if (!vitra_hotkey_supported()) {
+		return 0;
+	}
+	char *norm = normalize_accel(accelerator);
+	if (!norm) {
+		return 0;
+	}
+	guint keyval = 0;
+	GdkModifierType gmods = 0;
+	gtk_accelerator_parse(norm, &keyval, &gmods);
+	g_free(norm);
+	if (keyval == 0 || gmods == 0) {
+		/* Require at least one modifier for global hotkeys. */
+		return 0;
+	}
+	guint xmods = gdk_mods_to_x(gmods);
+	if (xmods == 0) {
+		return 0;
+	}
+	Display *dpy = GDK_DISPLAY_XDISPLAY(gdk_display_get_default());
+	Window root = DefaultRootWindow(dpy);
+	KeyCode keycode = XKeysymToKeycode(dpy, (KeySym)keyval);
+	if (keycode == 0) {
+		return 0;
+	}
+
+	/* Replace existing binding for the same accelerator string. */
+	for (int i = 0; i < g_hotkey_n; i++) {
+		if (g_hotkeys[i].accel && strcmp(g_hotkeys[i].accel, accelerator) == 0) {
+			x_ungrab_key(dpy, root, g_hotkeys[i].keycode, g_hotkeys[i].mods);
+			g_free(g_hotkeys[i].action);
+			g_hotkeys[i].action = g_strdup(action_id);
+			g_hotkeys[i].keycode = keycode;
+			g_hotkeys[i].mods = xmods;
+			if (!x_grab_key(dpy, root, keycode, xmods)) {
+				return 0;
+			}
+			ensure_hotkey_filter();
+			return 1;
+		}
+	}
+	if (g_hotkey_n >= VITRA_MAX_HOTKEYS) {
+		return 0;
+	}
+	if (!x_grab_key(dpy, root, keycode, xmods)) {
+		return 0;
+	}
+	g_hotkeys[g_hotkey_n].accel = g_strdup(accelerator);
+	g_hotkeys[g_hotkey_n].action = g_strdup(action_id);
+	g_hotkeys[g_hotkey_n].keycode = keycode;
+	g_hotkeys[g_hotkey_n].mods = xmods;
+	g_hotkey_n++;
+	ensure_hotkey_filter();
+	return 1;
+#endif
+}
+
+int vitra_unregister_hotkey(const char *accelerator) {
+#ifndef GDK_WINDOWING_X11
+	(void)accelerator;
+	return 0;
+#else
+	if (!accelerator || !vitra_hotkey_supported()) {
+		return 0;
+	}
+	Display *dpy = GDK_DISPLAY_XDISPLAY(gdk_display_get_default());
+	Window root = DefaultRootWindow(dpy);
+	for (int i = 0; i < g_hotkey_n; i++) {
+		if (g_hotkeys[i].accel && strcmp(g_hotkeys[i].accel, accelerator) == 0) {
+			x_ungrab_key(dpy, root, g_hotkeys[i].keycode, g_hotkeys[i].mods);
+			g_free(g_hotkeys[i].accel);
+			g_free(g_hotkeys[i].action);
+			g_hotkeys[i] = g_hotkeys[g_hotkey_n - 1];
+			g_hotkeys[g_hotkey_n - 1].accel = NULL;
+			g_hotkeys[g_hotkey_n - 1].action = NULL;
+			g_hotkeys[g_hotkey_n - 1].keycode = 0;
+			g_hotkeys[g_hotkey_n - 1].mods = 0;
+			g_hotkey_n--;
+			return 1;
+		}
+	}
+	return 0;
+#endif
 }

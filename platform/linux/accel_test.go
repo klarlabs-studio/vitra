@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -19,8 +20,12 @@ func TestNativeMenuAccelerator(t *testing.T) {
 	runtime.LockOSThread()
 
 	h := New()
-	if h.Features().Available(platform.FeatureGlobalShortcut) {
-		t.Fatal("Linux must not claim global shortcuts")
+	if os.Getenv("WAYLAND_DISPLAY") != "" || strings.EqualFold(os.Getenv("XDG_SESSION_TYPE"), "wayland") {
+		if h.Features().Available(platform.FeatureGlobalShortcut) {
+			t.Fatal("Linux must not claim global shortcuts on Wayland")
+		}
+	} else if os.Getenv("DISPLAY") != "" && !h.Features().Available(platform.FeatureGlobalShortcut) {
+		t.Fatal("X11 session should claim FeatureGlobalShortcut")
 	}
 	var got atomic.Value
 	h.SetActionHandler(func(id string) {
