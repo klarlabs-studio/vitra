@@ -33,7 +33,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `deb` | Pure-Go `.deb` (`BuildDeb`; includes DEP-5 `usr/share/doc/<pkg>/copyright`) |
 | `rpm-dir` | rpmbuild `_topdir` + `SPECS/*.spec` (`BuildRPMDir`) |
 | `rpm` | Final `.rpm` (`BuildRPM` → `rpmbuild` or `VITRA_RPMBUILD`) |
-| `snap-dir` | Snap prime dir + `meta/snap.yaml` (`BuildSnapDir`) |
+| `snap-dir` | Snap prime dir + `meta/snap.yaml` (`BuildSnapDir`; license/website/contact/keywords) |
 | `snap` | Final `.snap` (`BuildSnap` → `snapcraft pack` or `VITRA_SNAPCRAFT`) |
 | `flatpak-dir` | Flatpak stage (`files/` + `metadata` + `manifest.yml`; `BuildFlatpakDir`) |
 | `flatpak` | Final `.flatpak` (`BuildFlatpak` → `VITRA_FLATPAK_BUILDER` / `flatpak-builder`) |
@@ -54,8 +54,8 @@ Linux stages (root + `usr/share/icons/hicolor/…/apps/`, `Icon=<name>`), AppDir
 (WiX `ARPPRODUCTICON` + NSIS shortcut icon). Optional `--homepage` sets Debian
 `Homepage`, AppStream/RPM/snap URLs, and Windows ARP support URL
 (`URLInfoAbout` / `ARPURLINFOABOUT`) when provided. Optional `--maintainer` sets Debian
-`Maintainer` and, when provided, WiX `Manufacturer` / NSIS `PRODUCT_PUBLISHER`
-(otherwise WiX/NSIS use `Name`). Optional `--description` sets the Debian
+`Maintainer`, snap `contact:`, DEP-5 Upstream-Contact, and, when provided, WiX
+`Manufacturer` / NSIS `PRODUCT_PUBLISHER` (otherwise WiX/NSIS use `Name`). Optional `--description` sets the Debian
 extended Description, FreeDesktop `Comment=`, and Windows ARP Comments /
 `ARPCOMMENTS` (default: secure Go + web desktop blurb). Optional `--license`
 sets AppStream/RPM/snap license fields and Debian DEP-5

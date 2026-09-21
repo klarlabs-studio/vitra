@@ -40,8 +40,9 @@ type Spec struct {
 	// IconPath is an optional filesystem path to an app icon (.png / .svg / .icns).
 	// Empty leaves packages without a staged icon file.
 	IconPath string
-	// Maintainer is the Debian control Maintainer field (and Windows publisher when set).
-	// Empty defaults to DefaultMaintainer for .deb; WiX/NSIS fall back to Name.
+	// Maintainer is the Debian control Maintainer field, snap contact:, DEP-5
+	// Upstream-Contact, and Windows publisher when set.
+	// Empty defaults to DefaultMaintainer for .deb/snap/copyright; WiX/NSIS fall back to Name.
 	Maintainer string
 	// Description is a short package summary used as the Debian control extended
 	// Description, FreeDesktop Comment=, and Windows ARP Comments / ARPCOMMENTS.
