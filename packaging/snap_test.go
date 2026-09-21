@@ -54,7 +54,7 @@ func TestBuildSnapDir_Layout(t *testing.T) {
 		`version: "0.3.0"`,
 		"Demo Snap",
 		"license: Apache-2.0",
-		"website: https://example.com/demo",
+		`website: "https://example.com/demo"`,
 		"command: usr/bin/Vitra-Demo",
 		"desktop: usr/share/applications/com.vitra.demo.desktop",
 		"confinement: strict",
