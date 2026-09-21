@@ -48,6 +48,7 @@
       <input id="name" placeholder="Your name" value="Klarlabs" />
       <button id="greet">Invoke demo.greet</button>
       <button id="clip" class="secondary">Clipboard round-trip</button>
+      <button id="browser" class="secondary">Open vitra docs</button>
       <button id="open" class="secondary">Open file</button>
       <button id="save" class="secondary">Save file</button>
     </div>
@@ -77,6 +78,14 @@
         await window.vitra.invoke("clipboard.write", "vitra-clipboard-" + Date.now());
         const text = await window.vitra.invoke("clipboard.read");
         show({ clipboard: text });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("browser").onclick = async () => {
+      try {
+        await window.vitra.invoke("browser.open", "https://go.klarlabs.de/vitra");
+        show({ opened: "https://go.klarlabs.de/vitra" });
       } catch (e) {
         show(String(e.message || e), true);
       }

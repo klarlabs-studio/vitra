@@ -70,7 +70,7 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "project-files") {
 		t.Fatalf("inspect output: %q", out)
 	}
-	if !strings.Contains(out, "vitra.fs") || !strings.Contains(out, "vitra.dialog") || !strings.Contains(out, "vitra.clipboard") {
+	if !strings.Contains(out, "vitra.fs") || !strings.Contains(out, "vitra.dialog") || !strings.Contains(out, "vitra.clipboard") || !strings.Contains(out, "vitra.browser") {
 		t.Fatalf("inspect missing plugin ownership: %q", out)
 	}
 
@@ -450,7 +450,7 @@ func TestRun_GenerateTypeScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(body)
-	for _, want := range []string{"kernel:", "fsRead", "dialogOpen", "clipboardRead", `invoke("fs.read"`, "onFsChanged", `on("fs.changed"`, "createEvents"} {
+	for _, want := range []string{"kernel:", "fsRead", "dialogOpen", "clipboardRead", "browserOpen", `invoke("fs.read"`, "onFsChanged", `on("fs.changed"`, "createEvents"} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("missing %q in:\n%s", want, text)
 		}
@@ -512,7 +512,7 @@ func TestRun_PackageStagesLinuxDir(t *testing.T) {
 		t.Fatalf("expected modules from build info, got %s", raw)
 	}
 	s := string(raw)
-	for _, want := range []string{"vitra.fs", "vitra.dialog", "vitra.clipboard", "fs.read", "dialog.open", "clipboard.read"} {
+	for _, want := range []string{"vitra.fs", "vitra.dialog", "vitra.clipboard", "vitra.browser", "fs.read", "dialog.open", "clipboard.read", "browser.open"} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("provenance missing %q: %s", want, s)
 		}
@@ -969,6 +969,7 @@ func TestRun_NewScaffold(t *testing.T) {
 	for _, want := range []string{
 		"io/fs",
 		"go.klarlabs.de/vitra/desktop",
+		"go.klarlabs.de/vitra/plugin/official/browser",
 		"go.klarlabs.de/vitra/plugin/official/clipboard",
 		"go.klarlabs.de/vitra/plugin/official/dialog",
 		"go.klarlabs.de/vitra/plugin/official/fs",
@@ -984,7 +985,7 @@ func TestRun_NewScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "fs.read", "clipboard.read"} {
+	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "fs.read", "clipboard.read", "browser.open"} {
 		if !strings.Contains(string(client), want) {
 			t.Fatalf("vitra-client.ts missing %q", want)
 		}
@@ -1037,7 +1038,7 @@ func TestRun_NewScaffoldVite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead"} {
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen"} {
 		if !strings.Contains(string(mainTS), want) {
 			t.Fatalf("main.ts missing %q: %s", want, mainTS)
 		}
@@ -1096,7 +1097,7 @@ func TestRun_NewScaffoldReact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "useState"} {
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "useState"} {
 		if !strings.Contains(string(app), want) {
 			t.Fatalf("App.tsx missing %q: %s", want, app)
 		}
@@ -1142,7 +1143,7 @@ func TestRun_NewScaffoldSvelte(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "$state"} {
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "$state"} {
 		if !strings.Contains(string(app), want) {
 			t.Fatalf("App.svelte missing %q: %s", want, app)
 		}
@@ -1188,7 +1189,7 @@ func TestRun_NewScaffoldVue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "ref(", "<script setup"} {
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "ref(", "<script setup"} {
 		if !strings.Contains(string(app), want) {
 			t.Fatalf("App.vue missing %q: %s", want, app)
 		}
@@ -1248,7 +1249,7 @@ func TestRun_NewScaffoldSolid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "createSignal"} {
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "createSignal"} {
 		if !strings.Contains(string(app), want) {
 			t.Fatalf("App.tsx missing %q: %s", want, app)
 		}
@@ -1308,7 +1309,7 @@ func TestRun_NewScaffoldPreact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "preact/hooks"} {
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "preact/hooks"} {
 		if !strings.Contains(string(app), want) {
 			t.Fatalf("App.tsx missing %q: %s", want, app)
 		}
@@ -1361,7 +1362,7 @@ func TestRun_NewScaffoldLit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"LitElement", "createClient", "demoGreet", "dialogOpen", "clipboardRead", "@customElement"} {
+	for _, want := range []string{"LitElement", "createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "@customElement"} {
 		if !strings.Contains(string(app), want) {
 			t.Fatalf("vitra-app.ts missing %q: %s", want, app)
 		}
@@ -1421,7 +1422,7 @@ func TestRun_NewScaffoldAlpine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"alpinejs", "createClient", "demoGreet", "dialogOpen", "clipboardRead", "Alpine.start"} {
+	for _, want := range []string{"alpinejs", "createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "Alpine.start"} {
 		if !strings.Contains(string(mainTS), want) {
 			t.Fatalf("main.ts missing %q: %s", want, mainTS)
 		}
