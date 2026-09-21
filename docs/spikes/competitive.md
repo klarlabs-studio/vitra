@@ -78,13 +78,13 @@ desktop services. Global OS hotkeys ship on Windows, Darwin, and Linux/X11;
 Wayland keeps in-window accelerators only (no portable global hotkey API).
 
 Wails still leads on **template ecosystem** and **release polish** (richer
-presets beyond Vitra’s `vanilla`/`vite`/`react`/`svelte` starters; turnkey
+presets beyond Vitra’s `vanilla`/`vite`/`react`/`svelte`/`vue` starters; turnkey
 codesign/notarization execution; Flathub/Snap Store publishing). Vitra leads on
 capability-oriented authority and inspectable grants. Core DesktopHost,
 installer stage+fold (`deb` / `.rpm` / `.snap` / `.flatpak` / AppImage /
 WiX·MSI / NSIS / `.app`·DMG), SIEM/MDM ports, and X11 global-shortcut parity
 are on main — Wayland global hotkeys remain intentionally unsupported.
-`vitra new --template vite|react|svelte` scaffolds Vite frontends; `vitra
+`vitra new --template vite|react|svelte|vue` scaffolds Vite frontends; `vitra
 dev` / `vitra build` enable `-tags vitra_native` on Linux, Darwin, and Windows.
 Fold still needs host tools (`appimagetool`, `rpmbuild`, `snapcraft`,
 `flatpak-builder`, candle/light, makensis, `hdiutil`) or env overrides;
