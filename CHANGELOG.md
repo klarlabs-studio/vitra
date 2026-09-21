@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- AppStream supports: metainfo always emits `<supports><control>touch</control></supports>` (touch input capability for software centers).
 - `vitra new --template solid-element`: Vite + solid-element + Solid + TypeScript starter (`customElement` / `createSignal` web component + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Darwin CFBundleSpokenName: `Spec.Name` flows into Info.plist `CFBundleSpokenName` (alongside `CFBundleName` / `CFBundleDisplayName`) for VoiceOver spoken app name.
 - `vitra new --template moon`: Vite + Moon + TypeScript starter (`Moon` reactive UI + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
