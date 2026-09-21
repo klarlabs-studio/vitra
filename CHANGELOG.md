@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template moon`: Vite + Moon + TypeScript starter (`Moon` reactive UI + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream requires: metainfo always emits `<requires><display_length compare="ge">360</display_length></requires>` (desktop minimum display size for software centers).
 - `vitra new --template ractive`: Vite + Ractive + TypeScript starter (`Ractive` / mustache templates + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream recommends: metainfo always emits `<recommends>` with `<control>keyboard</control>` and `<control>pointing</control>` (desktop input defaults for software centers).
