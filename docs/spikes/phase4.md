@@ -16,6 +16,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Darwin staged `.app` bundle | `StageDarwinApp` + `vitra package --format app-dir` |
 | Darwin DMG fold | `BuildDMG` / `FoldDMG` (`hdiutil` or `VITRA_HDIUTIL`) |
 | Signed update manifests (ed25519) | `updater` |
+| Update keygen + sign CLI | `updater.GenerateKeyPair` / `BuildSignedManifest` / `LoadPrivateKeyRef` + `vitra update-keygen` / `update-sign` |
 | HTTP(S) channel fetch (client only) | `updater.ChannelSource` / `Fetcher` + `vitra update-check` |
 | Channel tree for static CDN upload | `updater.StageChannel` + `vitra update-stage` |
 | Install plans only after verify | `updater.PlanInstall` |
@@ -97,6 +98,9 @@ stage, err := updater.StageChannel("dist/updates", signedManifest, artifactBytes
 CLI:
 
 ```bash
+vitra update-keygen --out keys/
+vitra update-sign --artifact app.bin --app-id com.example.app --version 1.2.0 \
+  --privkey file:keys/priv.key --out update.json
 vitra update-stage --out dist/updates --manifest update.json --artifact app.bin
 vitra update-check --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex>
 vitra update-apply --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex> --dest ./vitra-app
@@ -115,7 +119,8 @@ Still out of scope on main (do not claim otherwise):
 
 - Hosted update CDN / auto-update channel *hosting* (HTTP(S) *client* fetch
   via `ChannelSource` / `Fetcher` / `vitra update-check` ships; `StageChannel`
-  / `vitra update-stage` writes a static tree for upload to any host)
+  / `vitra update-stage` writes a static tree for upload to any host;
+  `update-keygen` / `update-sign` complete the publish-side sign loop)
 - Interactive notarization credential entry beyond the
   `PlanNotaryCredentials` / `vitra notary-setup` dry-run (`store-credentials`
   argv with `${APPLE_ID}` / `${APPLE_TEAM_ID}` / `${APP_SPECIFIC_PASSWORD}`;

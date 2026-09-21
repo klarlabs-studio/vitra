@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -48,6 +49,31 @@ func (m Manifest) payloadBytes() ([]byte, error) {
 		AppID: m.AppID, Version: m.Version, Channel: m.Channel,
 		Artifact: m.Artifact, SHA256: m.SHA256, CreatedAt: m.CreatedAt.UTC(),
 	})
+}
+
+// BuildSignedManifest constructs a manifest for artifact, digests it, and signs.
+func BuildSignedManifest(appID, version string, channel Channel, artifactName string, artifact []byte, priv ed25519.PrivateKey) (Manifest, error) {
+	if strings.TrimSpace(appID) == "" || strings.TrimSpace(version) == "" {
+		return Manifest{}, errors.New("app_id and version are required")
+	}
+	if channel == "" {
+		channel = ChannelStable
+	}
+	if channel != ChannelStable && channel != ChannelBeta {
+		return Manifest{}, fmt.Errorf("unsupported channel %q (use stable or beta)", channel)
+	}
+	if strings.TrimSpace(artifactName) == "" {
+		return Manifest{}, errors.New("artifact name is required")
+	}
+	m := Manifest{
+		AppID:     appID,
+		Version:   version,
+		Channel:   channel,
+		Artifact:  artifactName,
+		SHA256:    DigestArtifact(artifact),
+		CreatedAt: time.Now().UTC(),
+	}
+	return SignManifest(m, priv)
 }
 
 // SignManifest signs a manifest with an ed25519 private key.
