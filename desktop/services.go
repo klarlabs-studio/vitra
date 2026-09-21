@@ -640,6 +640,46 @@ func ParseWindowAlwaysOnTop(input any) (domain.WindowID, bool, error) {
 	return domain.WindowID(id), onTop, nil
 }
 
+// ParseWindowSetTitle extracts window id + title from an invoke payload.
+// Requires { id, title: string } (title may be empty).
+func ParseWindowSetTitle(input any) (domain.WindowID, string, error) {
+	m, ok := input.(map[string]any)
+	if !ok || m == nil {
+		return "", "", &domain.ErrValidation{Message: "window.setTitle input must be an object"}
+	}
+	id, _ := m["id"].(string)
+	if id == "" {
+		return "", "", &domain.ErrValidation{Message: "window id is required"}
+	}
+	title, ok := m["title"].(string)
+	if !ok {
+		return "", "", &domain.ErrValidation{Message: "title string is required"}
+	}
+	return domain.WindowID(id), title, nil
+}
+
+// ParseWindowSetSize extracts window id + width/height from an invoke payload.
+// Requires { id, width, height } with positive integers.
+func ParseWindowSetSize(input any) (domain.WindowID, int, int, error) {
+	m, ok := input.(map[string]any)
+	if !ok || m == nil {
+		return "", 0, 0, &domain.ErrValidation{Message: "window.setSize input must be an object"}
+	}
+	id, _ := m["id"].(string)
+	if id == "" {
+		return "", 0, 0, &domain.ErrValidation{Message: "window id is required"}
+	}
+	width, ok := asPositiveInt(m["width"])
+	if !ok {
+		return "", 0, 0, &domain.ErrValidation{Message: "width must be a positive integer"}
+	}
+	height, ok := asPositiveInt(m["height"])
+	if !ok {
+		return "", 0, 0, &domain.ErrValidation{Message: "height must be a positive integer"}
+	}
+	return domain.WindowID(id), width, height, nil
+}
+
 // ParseWindowChromeApply extracts window id + chrome from an invoke payload.
 func ParseWindowChromeApply(input any) (domain.WindowID, platform.WindowChrome, error) {
 	m, ok := input.(map[string]any)
@@ -834,6 +874,30 @@ func (s *WindowService) Restore(ctx context.Context, caller domain.Caller, windo
 	chrome.Minimized = false
 	chrome.Maximized = false
 	chrome.Fullscreen = false
+	return s.Apply(ctx, caller, window, chrome)
+}
+
+// SetTitle authorizes window.chrome then updates chrome.Title.
+func (s *WindowService) SetTitle(ctx context.Context, caller domain.Caller, window domain.WindowID, title string) error {
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.Title = title
+	return s.Apply(ctx, caller, window, chrome)
+}
+
+// SetSize authorizes window.chrome then updates chrome.Width/Height.
+func (s *WindowService) SetSize(ctx context.Context, caller domain.Caller, window domain.WindowID, width, height int) error {
+	if width <= 0 || height <= 0 {
+		return &domain.ErrValidation{Message: "window width and height must be positive"}
+	}
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.Width = width
+	chrome.Height = height
 	return s.Apply(ctx, caller, window, chrome)
 }
 
