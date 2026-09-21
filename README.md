@@ -152,11 +152,11 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Linux menu accelerators | **Done** (in-window `MenuItem.Shortcut`; not global) |
 | Linux OpenURL | **Done** (grant-gated `xdg-open` for http(s)/mailto) |
 | Deep-link argv / secondary handoff | Linux + Darwin + Windows |
-| Save dialog + single-instance lock | Linux + Darwin dialogs; single-instance Linux + Darwin + Windows |
+| Save dialog + single-instance lock | Linux + Darwin + Windows dialogs; single-instance Linux + Darwin + Windows |
 | Linux xdg URL-scheme registration | Linux + Darwin + Windows (`vitra register-scheme`) |
 | Linux xdg MIME file associations | Linux + Darwin + Windows (`vitra register-files`) |
 | Darwin WKWebView | Competitive DesktopHost parity (`-tags vitra_native`; global shortcuts TBD) |
-| Windows WebView2 | Win32 shell + chrome + OpenURL/clipboard/SI/deep-link/scheme/files; WebView2 Eval TBD |
+| Windows WebView2 | Win32 shell + chrome + dialogs + OpenURL/clipboard/SI/deep-link/scheme/files; WebView2 Eval TBD |
 
 ## Development
 
