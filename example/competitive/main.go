@@ -478,6 +478,9 @@ func run() error {
 		OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
 			return host.ApplyWindowChrome(window, chrome)
 		},
+		OnRead: func(_ context.Context, window domain.WindowID) (platform.WindowChrome, error) {
+			return host.ReadWindowChrome(window)
+		},
 		OnCreate: func(ctx context.Context, opts desktop.WindowCreateOptions) error {
 			if application == nil {
 				return fmt.Errorf("app is not ready")
@@ -521,6 +524,15 @@ func run() error {
 			return nil, err
 		}
 		return nil, winSvc.Apply(ctx, caller, id, chrome)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.getChrome", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return winSvc.Read(ctx, caller, id)
 	})); err != nil {
 		return err
 	}

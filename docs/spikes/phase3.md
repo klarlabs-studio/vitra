@@ -22,8 +22,8 @@ competitive demo binds `dialog.open`/`dialog.save`/`dialog.openDirectory`/`dialo
 `browser.open` to `desktop.BrowserService`, `os.info` to `desktop.OsService`,
 `notifications.show` to `desktop.NotificationService`,
 `path.open` to `desktop.PathService`,
-`window.create`/`window.close`/`window.chrome` to `desktop.WindowService`
-(via `app.App` / `DesktopHost.ApplyWindowChrome`),
+`window.create`/`window.close`/`window.chrome`/`window.getChrome` to `desktop.WindowService`
+(via `app.App` / `DesktopHost` chrome APIs),
 `menu.set` to `desktop.MenuService` (via `DesktopHost.SetMenuBar`; actions emit `menu.action`),
 `tray.set` to `desktop.TrayService` (via `DesktopHost.SetTray`; actions emit `tray.action`),
 `dragdrop.receive` to `desktop.DragDropService` (via `EnableDragDrop`; drops emit `dragdrop.drop`),

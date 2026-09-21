@@ -607,6 +607,7 @@ type WindowService struct {
 	Gateway  Gateway
 	Host     platform.Host
 	OnApply  func(ctx context.Context, window domain.WindowID, chrome platform.WindowChrome) error
+	OnRead   func(ctx context.Context, window domain.WindowID) (platform.WindowChrome, error)
 	OnCreate func(ctx context.Context, opts WindowCreateOptions) error
 	OnClose  func(ctx context.Context, window domain.WindowID) error
 }
@@ -629,6 +630,23 @@ func (s *WindowService) Apply(ctx context.Context, caller domain.Caller, window 
 		return &platform.ErrUnsupported{Feature: platform.FeatureWindowChrome, OS: s.Host.OS(), Detail: "no window chrome adapter bound"}
 	}
 	return s.OnApply(ctx, window, chrome)
+}
+
+// Read authorizes window.chrome then returns the current window presentation.
+func (s *WindowService) Read(ctx context.Context, caller domain.Caller, window domain.WindowID) (platform.WindowChrome, error) {
+	if window == "" {
+		return platform.WindowChrome{}, &domain.ErrValidation{Message: "window id is required"}
+	}
+	if err := authorize(s.Gateway, caller, PermWindowChrome); err != nil {
+		return platform.WindowChrome{}, err
+	}
+	if err := platform.Require(s.Host, platform.FeatureWindowChrome); err != nil {
+		return platform.WindowChrome{}, err
+	}
+	if s.OnRead == nil {
+		return platform.WindowChrome{}, &platform.ErrUnsupported{Feature: platform.FeatureWindowChrome, OS: s.Host.OS(), Detail: "no window chrome reader bound"}
+	}
+	return s.OnRead(ctx, window)
 }
 
 // Create authorizes window.create then opens a window via the bound adapter.
