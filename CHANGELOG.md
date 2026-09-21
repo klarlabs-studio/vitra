@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Linux Snap packaging: `vitra package --format snap-dir|snap` stages a snap prime tree (`BuildSnapDir`: FreeDesktop payload + `meta/snap.yaml`) and folds via `snapcraft pack` (`VITRA_SNAPCRAFT`); `vitra doctor` reports `snapcraft`.
 - `vitra new --template vanilla|vite`: default remains vanilla HTML; `vite` scaffolds a Vite+TypeScript frontend (`package.json`, `src/main.ts`) embedding `frontend/dist` with a starter dist so `vitra dev` works before the first `npm run build`.
 - Packaging sign dry-run: `vitra package --sign --signing-identity <ref>` prints a `PlanSign` argv plan (codesign / signtool) without executing tools or leaking secret values; `vitra doctor` reports `codesign` / `signtool` / `notarytool`.
 - Linux RPM packaging: `vitra package --format rpm-dir|rpm` stages an rpmbuild `_topdir` (`BuildRPMDir`: FreeDesktop payload + `SPECS/*.spec`) and folds via `rpmbuild` (`VITRA_RPMBUILD`); `vitra doctor` reports `rpmbuild`.

@@ -46,7 +46,7 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "packaging fold tools:") {
 		t.Fatalf("doctor missing packaging tools: %q", out)
 	}
-	for _, tool := range []string{"appimagetool:", "rpmbuild:", "candle:", "light:", "makensis:", "hdiutil:"} {
+	for _, tool := range []string{"appimagetool:", "rpmbuild:", "snapcraft:", "candle:", "light:", "makensis:", "hdiutil:"} {
 		if !strings.Contains(out, tool) {
 			t.Fatalf("doctor missing %q: %q", tool, out)
 		}
@@ -424,6 +424,40 @@ printf 'RPM' > "$top/RPMS/x86_64/out.rpm"
 		}
 	})
 	if _, err := os.Stat(filepath.Join(stage, "SPECS", "com-vitra-t.spec")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRun_PackageSnap(t *testing.T) {
+	tmp := t.TempDir()
+	tool := filepath.Join(tmp, "fake-snapcraft")
+	if err := os.WriteFile(tool, []byte("#!/bin/sh\nout=\"\"\nprev=\"\"\nfor a in \"$@\"; do\n  if [ \"$prev\" = \"--output\" ]; then out=\"$a\"; fi\n  prev=\"$a\"\ndone\nprintf 'SNAP' > \"$out\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VITRA_SNAPCRAFT", tool)
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "snap", "--out", out, "--bin", bin, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	snap := filepath.Join(out, fmt.Sprintf("com-vitra-t_0.1.0_%s.snap", packaging.DefaultArch()))
+	raw, err := os.ReadFile(snap)
+	if err != nil || string(raw) != "SNAP" {
+		entries, _ := os.ReadDir(out)
+		t.Fatalf("snap=%v raw=%q entries=%v", err, raw, entries)
+	}
+	stage := filepath.Join(tmp, "snap-stage")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "snap-dir", "--out", stage, "--bin", bin, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if _, err := os.Stat(filepath.Join(stage, "meta", "snap.yaml")); err != nil {
 		t.Fatal(err)
 	}
 }
