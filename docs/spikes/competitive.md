@@ -15,7 +15,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Clipboard + open/save file dialogs | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste, Windows PowerShell); dialogs Linux GTK + Darwin NSOpen/SavePanel + Windows GetOpen/SaveFileName |
 | Single-instance lock (flock) | Done (Linux + Darwin) |
 | Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin) |
-| Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem) |
+| Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem; Windows Shell_NotifyIcon) |
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done |
 | `vitra doctor/new/dev/build` | Done |
@@ -26,10 +26,11 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Darwin MIME file associations (`RegisterFileAssociations`) | Done (helper `.app` CFBundleDocumentTypes) |
 | Linux file drag-drop (`dragdrop.receive`) | Done (GTK URI drops + inject helper) |
 | Darwin file drag-drop (`dragdrop.receive`) | Done (NSFilenamesPboardType + inject helper) |
-| In-window menu accelerators (`MenuItem.Shortcut`) | Done (Linux GTK; Darwin NSMenu Ctrl→Command) |
-| `platform/windows` DesktopHost | Win32 shell + chrome + dialogs + OpenURL/clipboard/single-instance/deep-link/scheme/files; WebView2 Eval TBD |
+| In-window menu accelerators (`MenuItem.Shortcut`) | Done (Linux GTK; Darwin NSMenu Ctrl→Command; Windows HACCEL) |
+| `platform/windows` DesktopHost | Win32 shell + chrome + dialogs + menu/tray + OpenURL/clipboard/single-instance/deep-link/scheme/files; WebView2 Eval TBD |
 | Windows window chrome (`window.chrome`) | Done (Win32 title, size, maximize, fullscreen, topmost, minimize, hide, icon) |
 | Windows open/save file dialogs | Done (GetOpenFileName / GetSaveFileName) |
+| Windows menu bar + tray | Done (CreateMenu/HACCEL; Shell_NotifyIcon + TrackPopupMenu) |
 | Windows URL-scheme registration (`RegisterURLScheme`) | Done (HKCU Classes `.reg`) |
 | Windows MIME file associations (`RegisterFileAssociations`) | Done (HKCU ProgID + MIME `.reg`) |
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |

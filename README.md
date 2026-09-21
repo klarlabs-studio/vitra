@@ -156,7 +156,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Linux xdg URL-scheme registration | Linux + Darwin + Windows (`vitra register-scheme`) |
 | Linux xdg MIME file associations | Linux + Darwin + Windows (`vitra register-files`) |
 | Darwin WKWebView | Competitive DesktopHost parity (`-tags vitra_native`; global shortcuts TBD) |
-| Windows WebView2 | Win32 shell + chrome + dialogs + OpenURL/clipboard/SI/deep-link/scheme/files; WebView2 Eval TBD |
+| Windows WebView2 | Win32 shell + chrome + dialogs + menu/tray + OpenURL/clipboard/SI/deep-link/scheme/files; WebView2 Eval TBD |
 
 ## Development
 

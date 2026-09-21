@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Windows menu bar + tray: `SetMenuBar` / `ActivateMenuAccel` via Win32 menus + HACCEL; `SetTray` / `ClearTray` via Shell_NotifyIcon + TrackPopupMenu under `-tags vitra_native`; stub remains explicit unsupported.
 - Windows file dialogs: native `OpenFileDialog` / `SaveFileDialog` via GetOpenFileName / GetSaveFileName under `-tags vitra_native`; stub remains explicit unsupported.
 - Windows window chrome: `ApplyWindowChrome` / `ReadWindowChrome` on the Win32 shell (title, size, maximize, fullscreen, topmost, minimize, hide, icon).
 - Windows URL-scheme and file-association registration: HKCU Classes `.reg` helpers under LOCALAPPDATA with best-effort `reg import`; `vitra register-scheme` / `register-files` work on Windows.
