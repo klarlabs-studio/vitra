@@ -146,6 +146,8 @@ Categories=%s
 	dataFiles[desktopPath] = fileEntry{data: []byte(desktopBody), mode: 0o644}
 	metaPath := AppStreamMetainfoRel("usr/share", spec.AppID)
 	dataFiles[metaPath] = fileEntry{data: []byte(AppStreamMetainfoXML(spec)), mode: 0o644}
+	copyrightPath := "usr/share/doc/" + pkgName + "/copyright"
+	dataFiles[copyrightPath] = fileEntry{data: []byte(DebianCopyright(spec)), mode: 0o644}
 
 	installedSize := (payloadSize + 1023) / 1024
 	// Debian Description: synopsis on first line, extended body indented with a space.
@@ -303,4 +305,49 @@ func writeAr(w io.Writer, members []arMember) error {
 		}
 	}
 	return nil
+}
+
+// DebianCopyright returns a machine-readable DEP-5 copyright file body for
+// usr/share/doc/<package>/copyright, derived from Spec.Name, EffectiveMaintainer,
+// optional Homepage, and EffectiveLicense.
+func DebianCopyright(spec Spec) string {
+	license := spec.EffectiveLicense()
+	var b strings.Builder
+	b.WriteString("Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n")
+	b.WriteString("Upstream-Name: " + spec.Name + "\n")
+	b.WriteString("Upstream-Contact: " + spec.EffectiveMaintainer() + "\n")
+	if home := strings.TrimSpace(spec.Homepage); home != "" {
+		b.WriteString("Source: " + home + "\n")
+	}
+	b.WriteString("\n")
+	b.WriteString("Files: *\n")
+	b.WriteString("Copyright: " + spec.EffectiveMaintainer() + "\n")
+	b.WriteString("License: " + license + "\n")
+	b.WriteString("\n")
+	b.WriteString("License: " + license + "\n")
+	b.WriteString(debianLicenseText(license))
+	return b.String()
+}
+
+func debianLicenseText(license string) string {
+	switch {
+	case strings.EqualFold(license, "Apache-2.0"):
+		return " Licensed under the Apache License, Version 2.0 (the \"License\");\n" +
+			" you may not use this file except in compliance with the License.\n" +
+			" You may obtain a copy of the License at\n" +
+			" .\n" +
+			"     https://www.apache.org/licenses/LICENSE-2.0\n" +
+			" .\n" +
+			" On Debian systems, the complete text of the Apache License version 2.0\n" +
+			" can be found in \"/usr/share/common-licenses/Apache-2.0\".\n"
+	case strings.HasPrefix(license, "LicenseRef-"):
+		return " Copyright held by the upstream authors. All rights reserved.\n" +
+			" .\n" +
+			" This package is distributed under a proprietary or custom license\n" +
+			" identified as " + license + ". Redistribution may be restricted by\n" +
+			" the upstream license terms.\n"
+	default:
+		return " See https://spdx.org/licenses/" + license + ".html for the full\n" +
+			" license text corresponding to SPDX identifier " + license + ".\n"
+	}
 }

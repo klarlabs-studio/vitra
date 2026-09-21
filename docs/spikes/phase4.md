@@ -7,7 +7,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
-| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`); Homepage / Categories / License / Description via Spec (also RPM/snap, Windows ARP `URLInfoAbout` / `ARPURLINFOABOUT` / `Comments` / `ARPCOMMENTS`) |
+| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`); Homepage / Categories / License / Description via Spec (also RPM/snap, Debian `copyright`, Windows ARP URL/Comments) |
 | Sign dry-run plan | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
 | Notary credential bootstrap plan | `PlanNotaryCredentials` + `vitra notary-setup` (store-credentials argv; not executed) |
 | Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}` and `<secret:…>`→`VITRA_SECRET_*`; sets `Artifact.Signed`) |
@@ -30,7 +30,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `--format` | Output |
 |------------|--------|
 | `dir` (default) | Staged Linux app directory (`StageLinux`) |
-| `deb` | Pure-Go `.deb` (`BuildDeb`) |
+| `deb` | Pure-Go `.deb` (`BuildDeb`; includes DEP-5 `usr/share/doc/<pkg>/copyright`) |
 | `rpm-dir` | rpmbuild `_topdir` + `SPECS/*.spec` (`BuildRPMDir`) |
 | `rpm` | Final `.rpm` (`BuildRPM` → `rpmbuild` or `VITRA_RPMBUILD`) |
 | `snap-dir` | Snap prime dir + `meta/snap.yaml` (`BuildSnapDir`) |
@@ -57,7 +57,9 @@ Linux stages (root + `usr/share/icons/hicolor/…/apps/`, `Icon=<name>`), AppDir
 `Maintainer` and, when provided, WiX `Manufacturer` / NSIS `PRODUCT_PUBLISHER`
 (otherwise WiX/NSIS use `Name`). Optional `--description` sets the Debian
 extended Description, FreeDesktop `Comment=`, and Windows ARP Comments /
-`ARPCOMMENTS` (default: secure Go + web desktop blurb).
+`ARPCOMMENTS` (default: secure Go + web desktop blurb). Optional `--license`
+sets AppStream/RPM/snap license fields and Debian DEP-5
+`usr/share/doc/<pkg>/copyright` (default: `LicenseRef-proprietary`).
 
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold

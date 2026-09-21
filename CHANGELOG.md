@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Debian copyright: `Spec.License` / `vitra package --license` (via `EffectiveLicense`) write DEP-5 `usr/share/doc/<pkg>/copyright` in `BuildDeb` (Upstream-Name/Contact, optional Source from Homepage).
 - Windows ARP Comments: `Spec.Description` / `vitra package --description` (via `EffectiveDescription`) flow into NSIS `Comments` and WiX `ARPCOMMENTS` / Package Description+Comments.
 - Windows ARP support URL: `Spec.Homepage` / `vitra package --homepage` flow into NSIS `URLInfoAbout` and WiX `ARPURLINFOABOUT` (omitted when empty).
 - Official shortcut unregister: `shortcut.unregister` on `vitra.shortcut` (same `shortcut.register` grant) via `desktop.ShortcutService.Unregister` → `DesktopHost.UnregisterGlobalShortcut`; scaffold/competitive bind (Wayland remains `ErrUnsupported`).
@@ -29,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Official `vitra.notification` plugin: declares `notifications.show`; `desktop.NotificationService` + Linux/Darwin/Windows hosts (D-Bus Notifications / NSUserNotification / tray balloon); scaffold, generate, provenance, and competitive demo bind title+body only.
 - RPM/snap package metadata: `Spec.License` / `Homepage` flow into RPM `License:` / `URL:` and snap `license:` / `website:` (defaults match AppStream via `EffectiveLicense()`).
 - Official `vitra.os` plugin: declares `os.info`; `desktop.OsService` returns GOOS/GOARCH/family/locale (stdlib default); scaffold, `vitra generate typescript`, packaging provenance inventory, and competitive demo register + bind alongside `fs`/`dialog`/`clipboard`/`browser`.
-- Package metadata: `Spec.Homepage` / `Categories` / `Keywords` / `License` (+ `vitra package --homepage` / `--categories` / `--keywords` / `--license`) flow into FreeDesktop `.desktop` Categories/Keywords, AppStream metainfo (`<url>`, `<category>`, `<keyword>`, `<project_license>`), Debian `Homepage`, snap website/keywords, and Windows ARP `URLInfoAbout` / `ARPURLINFOABOUT`.
+- Package metadata: `Spec.Homepage` / `Categories` / `Keywords` / `License` (+ `vitra package --homepage` / `--categories` / `--keywords` / `--license`) flow into FreeDesktop `.desktop` Categories/Keywords, AppStream metainfo (`<url>`, `<category>`, `<keyword>`, `<project_license>`), Debian `Homepage` + DEP-5 `copyright`, snap website/keywords, and Windows ARP `URLInfoAbout` / `ARPURLINFOABOUT`.
 - `vitra new --template htmx`: Vite + HTMX + TypeScript starter (`htmx.org`, `hx-on:click` helpers) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream metainfo: Linux stages (dir/AppDir/deb/rpm/snap/flatpak) emit `usr/share/metainfo/<appid>.metainfo.xml` (or Flatpak `files/share/metainfo/`) for software centers; Flathub PR automation still out of scope.
 - Native message dialogs: `dialog.message` (info/confirm) via `desktop.DialogService.Message`, official dialog plugin, and Linux/Darwin/Windows hosts (GTK MessageDialog / NSAlert / MessageBox); scaffold + competitive bind the executor.
