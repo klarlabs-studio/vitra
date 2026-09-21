@@ -34,5 +34,8 @@ func TestHost_ExplicitUnsupported(t *testing.T) {
 	if err := h.ApplyWindowChrome("main", platform.WindowChrome{Width: 100, Height: 100}); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureWindowChrome {
 		t.Fatalf("chrome: %v", err)
 	}
+	if err := h.SetMenuBar("main", []platform.MenuItem{{Menu: "File", ID: "quit", Label: "Quit"}}); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureMenuBar {
+		t.Fatalf("menu: %v", err)
+	}
 	h.Quit()
 }

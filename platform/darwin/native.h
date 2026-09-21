@@ -31,6 +31,9 @@ void vitra_win_close(VitraWin *w);
 void vitra_win_free(VitraWin *w);
 void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden, const char *icon_path);
 VitraChrome vitra_win_chrome(VitraWin *w);
+void vitra_win_clear_menu(VitraWin *w);
+void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut);
+int vitra_win_activate_accel(VitraWin *w, const char *shortcut);
 
 char *vitra_open_dialog(void);
 char *vitra_save_dialog(void);

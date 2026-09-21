@@ -10,11 +10,26 @@ extern void goVitraIdle(void *);
 extern void goVitraMessage(char *, char *);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
+extern void goVitraAction(char *);
 
 @interface VitraWinDelegate : NSObject <WKScriptMessageHandler, WKNavigationDelegate, NSWindowDelegate> {
 	char *windowID;
 }
 - (instancetype)initWithWindowID:(char *)wid;
+@end
+
+@interface VitraMenuTarget : NSObject
+- (void)onAction:(id)sender;
+@end
+
+@implementation VitraMenuTarget
+- (void)onAction:(id)sender {
+	NSMenuItem *item = (NSMenuItem *)sender;
+	NSString *actionID = item.representedObject;
+	if ([actionID isKindOfClass:[NSString class]] && actionID.length > 0) {
+		goVitraAction((char *)[actionID UTF8String]);
+	}
+}
 @end
 
 @implementation VitraWinDelegate
@@ -72,6 +87,7 @@ struct VitraWin {
 	NSWindow *window;
 	WKWebView *view;
 	VitraWinDelegate *delegate;
+	VitraMenuTarget *menuTarget;
 	char *id;
 	int maximized;
 	int fullscreen;
@@ -123,6 +139,7 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 	w->req_width = width > 0 ? width : 1024;
 	w->req_height = height > 0 ? height : 768;
 	w->delegate = [[VitraWinDelegate alloc] initWithWindowID:w->id];
+	w->menuTarget = [[VitraMenuTarget alloc] init];
 
 	WKUserContentController *ucc = [[WKUserContentController alloc] init];
 	[ucc addScriptMessageHandler:w->delegate name:@"vitra"];
@@ -213,6 +230,10 @@ void vitra_win_free(VitraWin *w) {
 	if (w->delegate) {
 		[w->delegate release];
 		w->delegate = nil;
+	}
+	if (w->menuTarget) {
+		[w->menuTarget release];
+		w->menuTarget = nil;
 	}
 	free(w->icon_path);
 	free(w->id);
@@ -312,6 +333,134 @@ VitraChrome vitra_win_chrome(VitraWin *w) {
 	c.minimized = win.miniaturized ? 1 : 0;
 	c.hidden = (!win.visible) ? 1 : 0;
 	return c;
+}
+
+static void parse_shortcut(const char *shortcut, NSString **keyOut, NSEventModifierFlags *modsOut) {
+	*keyOut = @"";
+	*modsOut = 0;
+	if (!shortcut || shortcut[0] == '\0') {
+		return;
+	}
+	NSString *raw = [NSString stringWithUTF8String:shortcut];
+	NSArray *parts = [raw componentsSeparatedByString:@"+"];
+	NSEventModifierFlags mods = 0;
+	NSString *key = @"";
+	for (NSString *part in parts) {
+		NSString *p = [[part stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] lowercaseString];
+		if (p.length == 0) {
+			continue;
+		}
+		if ([p isEqualToString:@"ctrl"] || [p isEqualToString:@"control"]) {
+			/* Map Ctrl → Command for macOS menu conventions. */
+			mods |= NSEventModifierFlagCommand;
+		} else if ([p isEqualToString:@"cmd"] || [p isEqualToString:@"command"] || [p isEqualToString:@"meta"] || [p isEqualToString:@"super"]) {
+			mods |= NSEventModifierFlagCommand;
+		} else if ([p isEqualToString:@"shift"]) {
+			mods |= NSEventModifierFlagShift;
+		} else if ([p isEqualToString:@"alt"] || [p isEqualToString:@"option"]) {
+			mods |= NSEventModifierFlagOption;
+		} else if (p.length >= 1) {
+			key = [p substringToIndex:1];
+		}
+	}
+	*keyOut = key;
+	*modsOut = mods;
+}
+
+static NSMenuItem *find_or_create_top(NSMenu *main, const char *menu_label) {
+	NSString *title = [NSString stringWithUTF8String:menu_label ? menu_label : ""];
+	for (NSMenuItem *item in main.itemArray) {
+		if ([item.title isEqualToString:title]) {
+			if (!item.submenu) {
+				NSMenu *sub = [[NSMenu alloc] initWithTitle:title];
+				item.submenu = sub;
+				[sub release];
+			}
+			return item;
+		}
+	}
+	NSMenuItem *top = [[NSMenuItem alloc] initWithTitle:title action:NULL keyEquivalent:@""];
+	NSMenu *sub = [[NSMenu alloc] initWithTitle:title];
+	top.submenu = sub;
+	[sub release];
+	[main addItem:top];
+	[top release];
+	return top;
+}
+
+void vitra_win_clear_menu(VitraWin *w) {
+	(void)w;
+	NSMenu *main = [[NSMenu alloc] initWithTitle:@"MainMenu"];
+	[NSApp setMainMenu:main];
+	[main release];
+}
+
+void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut) {
+	if (!w || !menu_label || !item_id || !item_label) {
+		return;
+	}
+	NSMenu *main = [NSApp mainMenu];
+	if (!main) {
+		main = [[NSMenu alloc] initWithTitle:@"MainMenu"];
+		[NSApp setMainMenu:main];
+		[main release];
+		main = [NSApp mainMenu];
+	}
+	NSMenuItem *top = find_or_create_top(main, menu_label);
+	NSString *key = @"";
+	NSEventModifierFlags mods = 0;
+	parse_shortcut(shortcut, &key, &mods);
+	NSMenuItem *item = [[NSMenuItem alloc]
+	    initWithTitle:[NSString stringWithUTF8String:item_label]
+		   action:@selector(onAction:)
+	    keyEquivalent:key];
+	item.keyEquivalentModifierMask = mods;
+	item.target = w->menuTarget;
+	item.representedObject = [NSString stringWithUTF8String:item_id];
+	[top.submenu addItem:item];
+	[item release];
+}
+
+static int shortcut_matches(NSMenuItem *item, NSString *key, NSEventModifierFlags mods) {
+	if (!item || key.length == 0) {
+		return 0;
+	}
+	if (![item.keyEquivalent.lowercaseString isEqualToString:key.lowercaseString]) {
+		return 0;
+	}
+	/* Ignore device-dependent bits; compare standard modifier flags. */
+	NSEventModifierFlags mask = NSEventModifierFlagCommand | NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagControl;
+	return (item.keyEquivalentModifierMask & mask) == (mods & mask);
+}
+
+static int activate_in_menu(NSMenu *menu, NSString *key, NSEventModifierFlags mods) {
+	if (!menu) {
+		return 0;
+	}
+	for (NSMenuItem *item in menu.itemArray) {
+		if (item.hasSubmenu) {
+			if (activate_in_menu(item.submenu, key, mods)) {
+				return 1;
+			}
+			continue;
+		}
+		if (shortcut_matches(item, key, mods) && item.target && item.action) {
+			[item.target performSelector:item.action withObject:item];
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int vitra_win_activate_accel(VitraWin *w, const char *shortcut) {
+	(void)w;
+	NSString *key = @"";
+	NSEventModifierFlags mods = 0;
+	parse_shortcut(shortcut, &key, &mods);
+	if (key.length == 0) {
+		return 0;
+	}
+	return activate_in_menu([NSApp mainMenu], key, mods);
 }
 
 char *vitra_open_dialog(void) {
