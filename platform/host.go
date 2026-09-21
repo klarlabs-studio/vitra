@@ -50,6 +50,9 @@ type WindowChrome struct {
 	Maximized   bool
 	Fullscreen  bool
 	AlwaysOnTop bool
+	Minimized   bool
+	// Hidden hides the window when true; the zero value keeps it visible.
+	Hidden bool
 }
 
 // Support describes whether a feature is available on the current host.

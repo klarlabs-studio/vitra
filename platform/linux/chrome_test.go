@@ -82,6 +82,47 @@ func TestNativeWindowChrome(t *testing.T) {
 		t.Fatalf("fullscreen: %+v", got)
 	}
 
+	mini := want
+	mini.Minimized = true
+	mini.AlwaysOnTop = false
+	mini.Fullscreen = false
+	if err := h.ApplyWindowChrome("main", mini); err != nil {
+		t.Fatal(err)
+	}
+	got, err = h.ReadWindowChrome("main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Minimized || got.Hidden {
+		t.Fatalf("minimize: %+v", got)
+	}
+
+	hidden := want
+	hidden.Hidden = true
+	hidden.AlwaysOnTop = false
+	if err := h.ApplyWindowChrome("main", hidden); err != nil {
+		t.Fatal(err)
+	}
+	got, err = h.ReadWindowChrome("main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Hidden {
+		t.Fatalf("hidden: %+v", got)
+	}
+	shown := want
+	shown.AlwaysOnTop = false
+	if err := h.ApplyWindowChrome("main", shown); err != nil {
+		t.Fatal(err)
+	}
+	got, err = h.ReadWindowChrome("main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Hidden || got.Minimized {
+		t.Fatalf("shown: %+v", got)
+	}
+
 	if err := h.ApplyWindowChrome("missing", want); err == nil {
 		t.Fatal("expected missing window")
 	} else if _, ok := err.(*domain.ErrNotFound); !ok {

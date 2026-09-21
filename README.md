@@ -146,7 +146,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Invoke E2E (`make e2e`) | **Done** (also in CI: Native Linux E2E) |
 | Host→frontend events | **Done** (`vitra.on` / `App.Emit`) |
 | Linux file drag-drop | **Done** (grant-gated GTK URI drops) |
-| Linux window chrome | **Done** (title, size, maximize, fullscreen, keep-above) |
+| Linux window chrome | **Done** (title, size, maximize, fullscreen, keep-above, minimize, hide) |
 | Linux menu accelerators | **Done** (in-window `MenuItem.Shortcut`; not global) |
 | Linux OpenURL | **Done** (grant-gated `xdg-open` for http(s)/mailto) |
 | Save dialog + single-instance lock | Linux native |
