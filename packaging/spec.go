@@ -52,7 +52,8 @@ type Spec struct {
 	// AppStream <url type="homepage">, Windows ARP URLInfoAbout / ARPURLINFOABOUT).
 	Homepage string
 	// Categories are FreeDesktop/AppStream categories (e.g. Utility, Development).
-	// Empty defaults to []string{"Utility"}.
+	// Empty defaults to []string{"Utility"}. The first mapped category also
+	// selects the Debian control Section: (see DebianSection).
 	Categories []string
 	// Keywords are optional FreeDesktop/AppStream search terms (desktop Keywords=,
 	// AppStream <keyword>, snap keywords). Empty omits them.
@@ -127,6 +128,38 @@ func (s Spec) EffectiveCategories() []string {
 func (s Spec) DesktopCategories() string {
 	cats := s.EffectiveCategories()
 	return strings.Join(cats, ";") + ";"
+}
+
+// DebianSection returns the Debian control Section: derived from
+// EffectiveCategories. Unknown categories fall back to "utils".
+func (s Spec) DebianSection() string {
+	for _, cat := range s.EffectiveCategories() {
+		switch strings.ToLower(strings.TrimSpace(cat)) {
+		case "audiovideo", "video":
+			return "video"
+		case "audio":
+			return "sound"
+		case "development":
+			return "devel"
+		case "education":
+			return "education"
+		case "game":
+			return "games"
+		case "graphics":
+			return "graphics"
+		case "network":
+			return "net"
+		case "office":
+			return "text"
+		case "science":
+			return "science"
+		case "settings", "system":
+			return "admin"
+		case "utility":
+			return "utils"
+		}
+	}
+	return "utils"
 }
 
 // EffectiveKeywords returns trimmed Spec.Keywords (no default; empty means omit).

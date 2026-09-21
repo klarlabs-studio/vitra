@@ -158,14 +158,14 @@ Categories=%s
 	}
 	control := fmt.Sprintf(`Package: %s
 Version: %s
-Section: utils
+Section: %s
 Priority: optional
 Architecture: %s
 Maintainer: %s
 Installed-Size: %d
 %sDescription: %s
 %s
-`, pkgName, spec.Version, arch, spec.EffectiveMaintainer(), installedSize, homepageLine, spec.Name, extDesc)
+`, pkgName, spec.Version, spec.DebianSection(), arch, spec.EffectiveMaintainer(), installedSize, homepageLine, spec.Name, extDesc)
 
 	controlTGZ, err := tarGz(map[string]fileEntry{
 		"control": {data: []byte(control), mode: 0o644},

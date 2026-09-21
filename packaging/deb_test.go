@@ -130,6 +130,56 @@ func TestBuildDeb_StagesIcon(t *testing.T) {
 	}
 }
 
+func TestBuildDeb_SectionFromCategories(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "payload")
+	if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "vitra.deb")
+	spec := packaging.Spec{
+		AppID: "com.vitra.demo", Version: "0.3.0", Name: "Vitra Demo",
+		Targets: []packaging.Target{packaging.TargetLinuxDeb},
+		Arch:    "amd64", Categories: []string{"Development", "Utility"},
+	}
+	if _, err := packaging.BuildDeb(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	control := debControlFile(t, out)
+	if !strings.Contains(control, "Section: devel\n") {
+		t.Fatalf("expected Section: devel\n%s", control)
+	}
+
+	outDefault := filepath.Join(tmp, "vitra-default.deb")
+	spec.Categories = nil
+	if _, err := packaging.BuildDeb(spec, bin, outDefault); err != nil {
+		t.Fatal(err)
+	}
+	control = debControlFile(t, outDefault)
+	if !strings.Contains(control, "Section: utils\n") {
+		t.Fatalf("expected default Section: utils\n%s", control)
+	}
+}
+
+func TestSpec_DebianSection(t *testing.T) {
+	cases := []struct {
+		cats []string
+		want string
+	}{
+		{nil, "utils"},
+		{[]string{"Utility"}, "utils"},
+		{[]string{"Development"}, "devel"},
+		{[]string{"Network", "Utility"}, "net"},
+		{[]string{"UnknownCat"}, "utils"},
+	}
+	for _, tc := range cases {
+		got := packaging.Spec{Categories: tc.cats}.DebianSection()
+		if got != tc.want {
+			t.Fatalf("cats=%v: got %q want %q", tc.cats, got, tc.want)
+		}
+	}
+}
+
 func TestBuildDeb_Copyright(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "payload")
