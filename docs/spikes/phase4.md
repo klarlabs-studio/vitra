@@ -7,7 +7,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
-| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`); Homepage / Categories / License / Description via Spec (also RPM/snap, Debian `copyright`, Windows ARP URL/Comments) |
+| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`); Homepage / Categories / License / Description via Spec (also RPM/snap, Debian `copyright`, Windows ARP URL/Comments/LegalCopyright) |
 | Sign dry-run plan | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
 | Notary credential bootstrap plan | `PlanNotaryCredentials` + `vitra notary-setup` (store-credentials argv; not executed) |
 | Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}` and `<secret:…>`→`VITRA_SECRET_*`; sets `Artifact.Signed`) |
@@ -40,8 +40,8 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `appdir` | AppImage-ready AppDir (`BuildAppDir`) |
 | `appimage` | Final `.AppImage` (`BuildAppImage` → `appimagetool`) |
 | `win-dir` | Staged Windows `bin/<Name>.exe` (`StageWindows`) |
-| `wix` | Windows stage + `product.wxs` (`BuildWiXDir`; Start Menu + Desktop shortcuts + stable UpgradeCode + ARP URL/comments) |
-| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP + Desktop/Start Menu shortcuts + URLInfoAbout/Comments) |
+| `wix` | Windows stage + `product.wxs` (`BuildWiXDir`; Start Menu + Desktop shortcuts + stable UpgradeCode + ARP URL/comments/copyright) |
+| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP + Desktop/Start Menu shortcuts + URLInfoAbout/Comments/LegalCopyright) |
 | `msi` | Final `.msi` (`BuildMSI` → candle/light or `VITRA_CANDLE`/`VITRA_LIGHT`) |
 | `nsis` | Final setup `.exe` (`BuildNSIS` → makensis or `VITRA_MAKENSIS`) |
 | `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`) |
@@ -58,8 +58,9 @@ Linux stages (root + `usr/share/icons/hicolor/…/apps/`, `Icon=<name>`), AppDir
 `Manufacturer` / NSIS `PRODUCT_PUBLISHER` (otherwise WiX/NSIS use `Name`). Optional `--description` sets the Debian
 extended Description, FreeDesktop `Comment=`, and Windows ARP Comments /
 `ARPCOMMENTS` (default: secure Go + web desktop blurb). Optional `--license`
-sets AppStream/RPM/snap license fields and Debian DEP-5
-`usr/share/doc/<pkg>/copyright` (default: `LicenseRef-proprietary`). Optional
+sets AppStream/RPM/snap license fields, Debian DEP-5
+`usr/share/doc/<pkg>/copyright`, and Windows ARP `LegalCopyright` /
+`ARPCOPYRIGHT` (default: `LicenseRef-proprietary`). Optional
 `--categories` sets FreeDesktop/AppStream categories, Debian control
 `Section:` via `DebianSection`, and RPM `Group:` via `RPMGroup`
 (default Utility→utils / Applications/System).
