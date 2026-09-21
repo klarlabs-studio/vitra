@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Packaging sign execution: `packaging.ExecuteSign` runs PlanSign argv (expands `${ENV}`, rejects `secret:` refs); `vitra package --sign-execute` [--sign-follow-ups] invokes host tools; `vitra doctor` reports `stapler`.
 - Update channel HTTP client: `updater.ChannelSource` / `Fetcher` fetch `{base}/{app}/{channel}/manifest.json` (+ artifact); `vitra update-check` verifies the signed manifest without installing. Hosted CDN remains out of scope.
 - `vitra new --template vue`: Vite + Vue 3 + TypeScript starter (`App.vue` script setup, `@vitejs/plugin-vue`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Linux package sign dry-run: `PlanSign` supports `.deb` (`dpkg-sig`), `.rpm` (`rpmsign`), `.snap` (`snapcraft upload`), and AppImage/Flatpak (`gpg --detach-sign`); `vitra doctor` reports `gpg` / `dpkg-sig` / `rpmsign`.
