@@ -126,6 +126,7 @@ Icon=%s
 StartupWMClass=%s
 Categories=%s
 %sTerminal=false
+X-GNOME-UsesNotifications=true
 `, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories(), spec.DesktopKeywordsLine())
 	desktopAbs := filepath.Join(payload, filepath.FromSlash(desktopRel))
 	if err := os.MkdirAll(filepath.Dir(desktopAbs), 0o755); err != nil {

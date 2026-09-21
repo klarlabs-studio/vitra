@@ -62,6 +62,7 @@ Icon=%s
 StartupWMClass=%s
 Categories=%s
 %sTerminal=false
+X-GNOME-UsesNotifications=true
 `, spec.Name, spec.EffectiveDescription(), iconKey, binName, spec.DesktopCategories(), spec.DesktopKeywordsLine())
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
@@ -142,6 +143,7 @@ Icon=%s
 StartupWMClass=%s
 Categories=%s
 %sTerminal=false
+X-GNOME-UsesNotifications=true
 `, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories(), spec.DesktopKeywordsLine())
 	dataFiles[desktopPath] = fileEntry{data: []byte(desktopBody), mode: 0o644}
 	metaPath := AppStreamMetainfoRel("usr/share", spec.AppID)

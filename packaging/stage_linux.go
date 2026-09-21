@@ -75,6 +75,7 @@ Icon=%s
 StartupWMClass=%s
 Categories=%s
 %sStartupNotify=true
+X-GNOME-UsesNotifications=true
 `, spec.Name, spec.EffectiveDescription(), destPath, iconKey, safeName, spec.DesktopCategories(), spec.DesktopKeywordsLine())
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err

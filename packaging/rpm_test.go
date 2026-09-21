@@ -75,6 +75,9 @@ func TestBuildRPMDir_Layout(t *testing.T) {
 	if !strings.Contains(string(desktop), "StartupWMClass=Vitra-Demo") {
 		t.Fatalf("desktop=%s", desktop)
 	}
+	if !strings.Contains(string(desktop), "X-GNOME-UsesNotifications=true") {
+		t.Fatalf("desktop missing X-GNOME-UsesNotifications=%s", desktop)
+	}
 }
 
 func TestBuildRPMDir_DefaultLicenseOmitsURL(t *testing.T) {
