@@ -25,6 +25,7 @@ func AppStreamMetainfoXML(spec Spec) string {
 	name := xmlEscape(spec.Name)
 	summary := xmlEscape(spec.EffectiveDescription())
 	developer := xmlEscape(spec.EffectivePublisher())
+	contact := xmlEscape(spec.EffectiveMaintainer())
 	license := xmlEscape(spec.EffectiveLicense())
 	desktopID := id + ".desktop"
 	var b strings.Builder
@@ -40,7 +41,8 @@ func AppStreamMetainfoXML(spec Spec) string {
   </description>
   <launchable type="desktop-id">%s</launchable>
   <developer_name>%s</developer_name>
-`, id, license, name, summary, summary, desktopID, developer)
+  <update_contact>%s</update_contact>
+`, id, license, name, summary, summary, desktopID, developer, contact)
 	if home := strings.TrimSpace(spec.Homepage); home != "" {
 		fmt.Fprintf(&b, "  <url type=\"homepage\">%s</url>\n", xmlEscape(home))
 	}

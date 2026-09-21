@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- AppStream update_contact: `Spec.Maintainer` / `vitra package --maintainer` (via `EffectiveMaintainer`) flow into metainfo `<update_contact>` (defaults to `DefaultMaintainer`, matching snap `contact:`).
 - `vitra new --template nerv`: Vite + Nerv.js 1.5 + TypeScript starter (`App.tsx` class component, esbuild `jsxFactory: h`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Official window blur: `window.blur` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Blur` → `DesktopHost.BlurWindow` (GTK clear-focus + lower, NSWindow `resignKeyWindow`/`orderBack`, Win32 `HWND_BOTTOM`); scaffold/competitive bind.
 - `vitra new --template backbone`: Vite + Backbone 1.6 + Underscore + TypeScript starter (`Backbone.View` with `data-action` events) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.

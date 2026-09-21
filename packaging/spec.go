@@ -41,8 +41,9 @@ type Spec struct {
 	// Empty leaves packages without a staged icon file.
 	IconPath string
 	// Maintainer is the Debian control Maintainer field, snap contact:, DEP-5
-	// Upstream-Contact, and Windows publisher when set.
-	// Empty defaults to DefaultMaintainer for .deb/snap/copyright; WiX/NSIS fall back to Name.
+	// Upstream-Contact, AppStream <update_contact>, and Windows publisher when set.
+	// Empty defaults to DefaultMaintainer for .deb/snap/copyright/AppStream;
+	// WiX/NSIS fall back to Name.
 	Maintainer string
 	// Description is a short package summary used as the Debian control extended
 	// Description, FreeDesktop Comment=, Windows ARP Comments / ARPCOMMENTS, and
