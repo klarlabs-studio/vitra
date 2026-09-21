@@ -112,6 +112,7 @@ func doctor() error {
 		platform.FeatureTray,
 		platform.FeatureSingleInstance,
 		platform.FeatureDeepLink,
+		platform.FeatureDragDrop,
 	} {
 		s := host.Features()[f]
 		status := "missing"

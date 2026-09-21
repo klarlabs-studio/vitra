@@ -61,6 +61,7 @@
     }
     if (window.vitra && window.vitra.on) {
       window.vitra.on("demo.tick", (payload) => show({ event: "demo.tick", payload }));
+      window.vitra.on("dragdrop.drop", (payload) => show({ event: "dragdrop.drop", payload }));
     }
     document.getElementById("greet").onclick = async () => {
       try {

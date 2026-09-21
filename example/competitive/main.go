@@ -89,7 +89,7 @@ func run() error {
 
 	chromeGrant, err := domain.NewCapabilityGrant(
 		"desktop-chrome",
-		"clipboard, dialogs, menu, tray, single-instance, deeplink",
+		"clipboard, dialogs, menu, tray, single-instance, deeplink, drag-drop",
 		[]domain.WindowID{"main"},
 		[]domain.Origin{domain.OriginPackagedLocal},
 		[]domain.PermissionSpec{
@@ -101,6 +101,7 @@ func run() error {
 			{Name: desktop.PermTraySet},
 			{Name: desktop.PermSingleInstance},
 			{Name: desktop.PermDeepLinkHandle},
+			{Name: desktop.PermDragDrop},
 		},
 	)
 	if err != nil {
@@ -323,6 +324,20 @@ func run() error {
 			application.Quit()
 		}
 	})
+	host.SetDragDropHandler(func(windowID domain.WindowID, paths []string) {
+		fmt.Println("file drop:", windowID, paths)
+		_ = application.Emit(context.Background(), "dragdrop.drop", map[string]any{
+			"window": string(windowID),
+			"paths":  paths,
+		})
+	})
+	drops := &desktop.DragDropService{
+		Gateway: rt,
+		Host:    host,
+		OnEnable: func(_ context.Context, window domain.WindowID, enabled bool) error {
+			return host.EnableDragDrop(window, enabled)
+		},
+	}
 
 	go func() {
 		// Wait until the GTK loop is up; cold WebKit on CI can exceed 500ms.
@@ -335,6 +350,13 @@ func run() error {
 			{ID: "help.about", Label: "About Vitra"},
 			{ID: "tray.quit", Label: "Quit"},
 		})
+		if err := drops.Enable(context.Background(), caller, "main", true); err != nil {
+			fmt.Fprintf(os.Stderr, "drag-drop enable: %v\n", err)
+		} else if _, err := rt.SubscribeEvent("drop-sub", "dragdrop.drop", "main"); err == nil {
+			if os.Getenv("VITRA_INJECT_DROP") == "1" {
+				host.InjectFileDrop("main", []string{"/tmp/vitra-demo-drop.txt"})
+			}
+		}
 		if _, err := rt.SubscribeEvent("demo-tick", "demo.tick", "main"); err == nil {
 			_ = application.Emit(context.Background(), "demo.tick", map[string]any{"source": "competitive"})
 		}

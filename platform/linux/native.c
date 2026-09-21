@@ -9,6 +9,7 @@ extern void goVitraMessage(char *, char *);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
 extern void goVitraAction(char *);
+extern void goVitraDrop(char *, char *);
 
 static GtkStatusIcon *g_tray = NULL;
 static GtkWidget *g_tray_menu = NULL;
@@ -260,4 +261,52 @@ void vitra_tray_clear(void) {
 	if (g_tray) {
 		gtk_status_icon_set_visible(g_tray, FALSE);
 	}
+}
+
+static void on_drag_data(GtkWidget *widget, GdkDragContext *ctx, gint x, gint y,
+	GtkSelectionData *data, guint info, guint time, gpointer user_data) {
+	(void)widget;
+	(void)x;
+	(void)y;
+	(void)info;
+	gchar **uris = gtk_selection_data_get_uris(data);
+	if (!uris) {
+		gtk_drag_finish(ctx, FALSE, FALSE, time);
+		return;
+	}
+	GString *paths = g_string_new(NULL);
+	for (int i = 0; uris[i] != NULL; i++) {
+		gchar *path = g_filename_from_uri(uris[i], NULL, NULL);
+		if (!path) {
+			continue;
+		}
+		if (paths->len > 0) {
+			g_string_append_c(paths, '\n');
+		}
+		g_string_append(paths, path);
+		g_free(path);
+	}
+	g_strfreev(uris);
+	if (paths->len > 0) {
+		goVitraDrop((char *)user_data, paths->str);
+		gtk_drag_finish(ctx, TRUE, FALSE, time);
+	} else {
+		gtk_drag_finish(ctx, FALSE, FALSE, time);
+	}
+	g_string_free(paths, TRUE);
+}
+
+void vitra_win_set_drag_drop(VitraWin *w, int enabled) {
+	if (!w || !w->view) {
+		return;
+	}
+	GtkWidget *view = GTK_WIDGET(w->view);
+	g_signal_handlers_disconnect_by_func(view, G_CALLBACK(on_drag_data), w->id);
+	if (!enabled) {
+		gtk_drag_dest_unset(view);
+		return;
+	}
+	gtk_drag_dest_set(view, GTK_DEST_DEFAULT_ALL, NULL, 0, GDK_ACTION_COPY);
+	gtk_drag_dest_add_uri_targets(view);
+	g_signal_connect(view, "drag-data-received", G_CALLBACK(on_drag_data), w->id);
 }

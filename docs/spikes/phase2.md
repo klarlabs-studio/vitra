@@ -12,7 +12,7 @@ Phase 1’s capability boundary.
 | Subscription cleanup on close | `CloseWindowUseCase` releases subscriptions |
 | Navigation policy | `domain.NavigationPolicy`, `NavigateWithPolicyUseCase` |
 | Deep-link patterns | `domain.DeepLinkPattern` |
-| Capability-gated desktop services | `desktop` — menu, tray, dialog, clipboard, shortcuts, single-instance, deeplinks |
+| Capability-gated desktop services | `desktop` — menu, tray, dialog, clipboard, shortcuts, single-instance, deeplinks, drag-drop |
 | Explicit unsupported features | services call `platform.Require` before native hooks |
 
 ## Security / reliability invariants covered

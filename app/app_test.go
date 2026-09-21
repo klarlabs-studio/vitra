@@ -56,16 +56,20 @@ func (h *fakeHost) PostMessage(_ context.Context, id domain.WindowID, message []
 	h.posted = append(h.posted, postedMsg{Window: id, Message: cp})
 	return nil
 }
-func (h *fakeHost) Eval(domain.WindowID, string) error                    { return nil }
-func (h *fakeHost) CloseWindow(context.Context, domain.WindowID) error    { return nil }
-func (h *fakeHost) ClipboardGet() (string, error)                         { return "clip", nil }
-func (h *fakeHost) ClipboardSet(string) error                             { return nil }
-func (h *fakeHost) OpenFileDialog() (string, error)                       { return "/tmp/x", nil }
-func (h *fakeHost) SaveFileDialog() (string, error)                       { return "/tmp/y", nil }
-func (h *fakeHost) SetActionHandler(func(string))                         {}
-func (h *fakeHost) SetMenuBar(domain.WindowID, []platform.MenuItem) error { return nil }
-func (h *fakeHost) SetTray(string, []platform.MenuItem) error             { return nil }
-func (h *fakeHost) ClearTray()                                            {}
+func (h *fakeHost) Eval(domain.WindowID, string) error                 { return nil }
+func (h *fakeHost) CloseWindow(context.Context, domain.WindowID) error { return nil }
+func (h *fakeHost) ClipboardGet() (string, error)                      { return "clip", nil }
+func (h *fakeHost) ClipboardSet(string) error                          { return nil }
+func (h *fakeHost) OpenFileDialog() (string, error)                    { return "/tmp/x", nil }
+func (h *fakeHost) SaveFileDialog() (string, error)                    { return "/tmp/y", nil }
+func (h *fakeHost) SetActionHandler(func(string))                      {}
+func (h *fakeHost) SetDragDropHandler(func(domain.WindowID, []string)) {}
+func (h *fakeHost) EnableDragDrop(domain.WindowID, bool) error         { return nil }
+func (h *fakeHost) SetMenuBar(domain.WindowID, []platform.MenuItem) error {
+	return nil
+}
+func (h *fakeHost) SetTray(string, []platform.MenuItem) error { return nil }
+func (h *fakeHost) ClearTray()                                {}
 func (h *fakeHost) TrySingleInstance(string) (bool, func(), error) {
 	return true, func() {}, nil
 }

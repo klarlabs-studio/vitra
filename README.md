@@ -145,6 +145,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Linux menu bar + tray menus | **Done** |
 | Invoke E2E (`make e2e`) | **Done** (also in CI: Native Linux E2E) |
 | Host→frontend events | **Done** (`vitra.on` / `App.Emit`) |
+| Linux file drag-drop | **Done** (grant-gated GTK URI drops) |
 | Save dialog + single-instance lock | Linux native |
 | Deep-link argv / secondary handoff | Linux native |
 | Linux xdg URL-scheme registration | Linux native (`vitra register-scheme`) |
