@@ -44,7 +44,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP + Desktop/Start Menu shortcuts + URLInfoAbout/Comments/LegalCopyright) |
 | `msi` | Final `.msi` (`BuildMSI` → candle/light or `VITRA_CANDLE`/`VITRA_LIGHT`) |
 | `nsis` | Final setup `.exe` (`BuildNSIS` → makensis or `VITRA_MAKENSIS`) |
-| `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`; Info.plist + `NSHumanReadableCopyright`) |
+| `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`; Info.plist + `NSHumanReadableCopyright` + `LSApplicationCategoryType`) |
 | `dmg` | Final `.dmg` (`BuildDMG` → hdiutil or `VITRA_HDIUTIL`; includes Applications symlink) |
 
 Optional `--icon <path>` copies a `.png` / `.svg` / `.icns` / `.ico` / `.xpm` into
@@ -63,8 +63,9 @@ sets AppStream/RPM/snap license fields, Debian DEP-5
 `ARPCOPYRIGHT`, and Darwin Info.plist `NSHumanReadableCopyright`
 (default: `LicenseRef-proprietary`). Optional
 `--categories` sets FreeDesktop/AppStream categories, Debian control
-`Section:` via `DebianSection`, and RPM `Group:` via `RPMGroup`
-(default Utility→utils / Applications/System).
+`Section:` via `DebianSection`, RPM `Group:` via `RPMGroup`, and Darwin
+Info.plist `LSApplicationCategoryType` via `LSApplicationCategoryType`
+(default Utility→utils / Applications/System / public.app-category.utilities).
 
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold
