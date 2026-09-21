@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -28,18 +29,19 @@ func init() { runtime.LockOSThread() }
 
 // Host is a WebKitGTK desktop host.
 type Host struct {
-	mu        sync.Mutex
-	windows   map[domain.WindowID]*nativeWindow
-	origins   map[domain.WindowID]domain.Origin
-	onInvoke  func(domain.WindowID, domain.Origin, []byte) []byte
-	onNav     func(domain.WindowID, string) bool
-	onAction  func(id string)
-	onDrop    func(windowID domain.WindowID, paths []string)
-	onDestroy func(windowID domain.WindowID)
-	looping   bool
-	inited    bool
-	jobs      sync.Map // uint64 -> func()
-	jobSeq    uint64
+	mu          sync.Mutex
+	windows     map[domain.WindowID]*nativeWindow
+	origins     map[domain.WindowID]domain.Origin
+	onInvoke    func(domain.WindowID, domain.Origin, []byte) []byte
+	onNav       func(domain.WindowID, string) bool
+	onAction    func(id string)
+	onDrop      func(windowID domain.WindowID, paths []string)
+	onDestroy   func(windowID domain.WindowID)
+	looping     bool
+	inited      bool
+	programName string   // WM_CLASS / StartupWMClass; empty → filepath.Base(os.Args[0])
+	jobs        sync.Map // uint64 -> func()
+	jobSeq      uint64
 }
 
 type nativeWindow struct{ ptr *C.VitraWin }
@@ -61,11 +63,49 @@ func New() *Host {
 	return h
 }
 
-func (h *Host) ensureInit() {
-	if !h.inited {
-		C.vitra_gtk_init()
-		h.inited = true
+// SetProgramName sets the GTK/GDK program name used for WM_CLASS so docks
+// can match FreeDesktop StartupWMClass. Must be called before the first
+// window/event-loop call. Empty keeps the default (basename of os.Args[0]).
+func (h *Host) SetProgramName(name string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.inited {
+		return
 	}
+	h.programName = strings.TrimSpace(name)
+}
+
+func (h *Host) ensureInit() {
+	if h.inited {
+		return
+	}
+	h.mu.Lock()
+	if h.inited {
+		h.mu.Unlock()
+		return
+	}
+	name := h.programName
+	h.inited = true
+	h.mu.Unlock()
+	if name == "" && len(os.Args) > 0 {
+		name = filepath.Base(os.Args[0])
+	}
+	var cname *C.char
+	if name != "" {
+		cname = C.CString(name)
+		defer C.free(unsafe.Pointer(cname))
+	}
+	C.vitra_gtk_init(cname)
+}
+
+// ProgramName returns the GTK program name after init (empty before).
+func (h *Host) ProgramName() string {
+	h.ensureInit()
+	p := C.vitra_get_prgname()
+	if p == nil {
+		return ""
+	}
+	return C.GoString(p)
 }
 
 // OS returns linux.
