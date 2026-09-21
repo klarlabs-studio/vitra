@@ -64,6 +64,9 @@ func AppStreamMetainfoXML(spec Spec) string {
 	b.WriteString("  <requires>\n")
 	b.WriteString("    <display_length compare=\"ge\">360</display_length>\n")
 	b.WriteString("  </requires>\n")
+	b.WriteString("  <supports>\n")
+	b.WriteString("    <control>touch</control>\n")
+	b.WriteString("  </supports>\n")
 	b.WriteString("  <categories>\n")
 	for _, cat := range spec.EffectiveCategories() {
 		fmt.Fprintf(&b, "    <category>%s</category>\n", xmlEscape(cat))
