@@ -92,7 +92,8 @@ Fold still needs host tools (`appimagetool`, `rpmbuild`, `snapcraft`,
 `Spec.Sign` / `SigningIdentityRef` validate refs and `vitra package --sign`
 prints a plan (`PlanSign`); `--sign-execute` runs host tools via
 `ExecuteSign` (Darwin codesign + optional notarytool/stapler follow-ups,
-Windows signtool, Linux dpkg-sig/rpmsign/snapcraft/gpg). `--publish` prints a
+Windows signtool, Linux dpkg-sig/rpmsign/snapcraft/gpg; `secret:` refs expand
+from `VITRA_SECRET_*` without leaking into plans). `--publish` prints a
 Snap Store / Flathub `PlanPublish` (plan only). Update channel *client* fetch
 (`updater.Fetcher` / `vitra update-check` / `update-apply --base-url`) verifies
 signed HTTP(S) manifests and can fetch + install artifacts; hosted CDN remains

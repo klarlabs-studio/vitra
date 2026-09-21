@@ -8,7 +8,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
 | Sign dry-run plan | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
-| Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}`; rejects `secret:`) |
+| Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}` and `<secret:…>`→`VITRA_SECRET_*`) |
 | Store publish dry-run | `packaging.PlanPublish` + `vitra package --publish` (Snap Store / Flathub step plans) |
 | Linux staged app directory | `packaging.StageLinux` + `vitra package` |
 | Windows staged dir + WiX/NSIS scripts | `StageWindows` / `BuildWiXDir` / `BuildNSISDir` |
@@ -106,9 +106,9 @@ Still out of scope on main (do not claim otherwise):
 
 - Hosted update CDN / auto-update channel *hosting* (HTTP(S) *client* fetch
   via `ChannelSource` / `Fetcher` / `vitra update-check` ships)
-- Turnkey notarization credential bootstrap / CI secret stores beyond
-  `env:`/`file:`/`keychain:` refs (`ExecuteSign` runs host tools when present;
-  `secret:` refs stay plan-only until mapped)
+- Turnkey notarization credential bootstrap beyond `env:`/`file:`/`keychain:`/
+  `secret:`→`VITRA_SECRET_*` mapping (`ExecuteSign` expands secrets from env;
+  interactive `notarytool store-credentials` remains operator-owned)
 - Extra Linux store polish beyond publish *plans* (Flathub PR automation,
   portal policy tuning, interactive store login) — `PlanPublish` /
   `--publish` prints Snap Store / Flathub argv guidance; `.rpm` / `.snap` /

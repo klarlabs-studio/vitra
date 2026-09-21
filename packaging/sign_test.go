@@ -300,7 +300,47 @@ func TestExecuteSign_FollowUpsAndSecretReject(t *testing.T) {
 
 	secretPlan := plan
 	secretPlan.IdentityRef = "secret:ci/apple"
-	if err := packaging.ExecuteSign(secretPlan, packaging.ExecuteSignOptions{}); err == nil || !strings.Contains(err.Error(), "secret:") {
-		t.Fatalf("expected secret reject, got %v", err)
+	secretPlan.Args = []string{"--sign", "<secret:ci/apple>", "/tmp/Demo.dmg"}
+	_ = os.Unsetenv("VITRA_SECRET_CI_APPLE")
+	if err := packaging.ExecuteSign(secretPlan, packaging.ExecuteSignOptions{}); err == nil || !strings.Contains(err.Error(), "VITRA_SECRET_CI_APPLE") {
+		t.Fatalf("expected unset secret reject, got %v", err)
+	}
+	t.Setenv("VITRA_SECRET_CI_APPLE", "Developer ID Application: FromSecret")
+	if err := os.Remove(logPath); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	if err := packaging.ExecuteSign(secretPlan, packaging.ExecuteSignOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got2, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got2), "Developer ID Application: FromSecret") {
+		t.Fatalf("secret not expanded: %s", got2)
+	}
+	if strings.Contains(string(got2), "<secret:") {
+		t.Fatalf("placeholder leaked into argv: %s", got2)
+	}
+}
+
+func TestSecretEnvKey(t *testing.T) {
+	// Exercised via PlanSign note + ExecuteSign; keep display opaque in plans.
+	spec := packaging.Spec{
+		AppID: "com.example.app", Version: "1.0.0", Name: "Demo",
+		Targets:            []packaging.Target{packaging.TargetLinuxDeb},
+		Sign:               true,
+		SigningIdentityRef: "secret:ci/gpg-key",
+	}
+	plan, err := packaging.PlanSign(spec, "/tmp/demo.deb")
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(plan.Args, " ")
+	if !strings.Contains(joined, "<secret:ci/gpg-key>") {
+		t.Fatalf("expected opaque placeholder in argv: %v", plan.Args)
+	}
+	if !strings.Contains(plan.String(), "VITRA_SECRET_CI_GPG_KEY") {
+		t.Fatalf("IdentityNote should mention env key: %s", plan.String())
 	}
 }

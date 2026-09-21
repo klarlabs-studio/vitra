@@ -137,18 +137,15 @@ func PlanSign(spec Spec, artifactPath string) (SignPlan, error) {
 	return plan, nil
 }
 
-// ExecuteSign resolves host tools, expands ${ENV} placeholders in argv, and
-// runs the primary sign command. secret: identity refs are rejected (map to
-// env: in CI). Follow-ups (notarytool/stapler) run only when opts.FollowUps.
+// ExecuteSign resolves host tools, expands ${ENV} and <secret:…> placeholders
+// in argv (secret:NAME → VITRA_SECRET_<NAME>), and runs the primary sign
+// command. Follow-ups (notarytool/stapler) run only when opts.FollowUps.
 func ExecuteSign(plan SignPlan, opts ExecuteSignOptions) error {
 	if !plan.Supported {
 		return fmt.Errorf("sign plan is not supported for target %s", plan.Target)
 	}
 	if plan.Tool == "" {
 		return fmt.Errorf("sign plan has no tool")
-	}
-	if strings.HasPrefix(strings.TrimSpace(plan.IdentityRef), "secret:") {
-		return fmt.Errorf("secret: identity refs cannot be executed; map to env:/file:/keychain: first")
 	}
 	if !plan.IdentityOK {
 		return fmt.Errorf("signing identity is not resolvable: %s", plan.IdentityNote)
@@ -206,7 +203,10 @@ func resolvePlanTool(name string) (string, error) {
 	}
 }
 
-var envPlaceholder = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
+var (
+	envPlaceholder    = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
+	secretPlaceholder = regexp.MustCompile(`<secret:([^>]+)>`)
+)
 
 func expandPlanArgs(args []string) ([]string, error) {
 	out := make([]string, len(args))
@@ -215,8 +215,9 @@ func expandPlanArgs(args []string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		if strings.Contains(expanded, "<secret:") {
-			return nil, fmt.Errorf("argument still contains unresolved secret placeholder")
+		expanded, err = expandSecretPlaceholders(expanded)
+		if err != nil {
+			return nil, err
 		}
 		out[i] = expanded
 	}
@@ -238,6 +239,42 @@ func expandEnvPlaceholders(s string) (string, error) {
 		return val
 	})
 	return out, firstErr
+}
+
+// expandSecretPlaceholders maps <secret:name> to VITRA_SECRET_<NAME>
+// (non-alnum → _). Plan output keeps the opaque placeholder (invariant 10).
+func expandSecretPlaceholders(s string) (string, error) {
+	var firstErr error
+	out := secretPlaceholder.ReplaceAllStringFunc(s, func(match string) string {
+		if firstErr != nil {
+			return match
+		}
+		name := secretPlaceholder.FindStringSubmatch(match)[1]
+		envName := secretEnvKey(name)
+		val, set := lookupEnv(envName)
+		if !set || val == "" {
+			firstErr = fmt.Errorf("secret %q unset: set %s (or use env:/file:/keychain:)", name, envName)
+			return match
+		}
+		return val
+	})
+	return out, firstErr
+}
+
+func secretEnvKey(name string) string {
+	var b strings.Builder
+	b.WriteString("VITRA_SECRET_")
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r - 'a' + 'A')
+		case r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		default:
+			b.WriteByte('_')
+		}
+	}
+	return b.String()
 }
 
 func (p SignPlan) String() string {
@@ -303,7 +340,8 @@ func resolveIdentityStatus(ref string) (ok bool, note string) {
 	case strings.HasPrefix(ref, "keychain:"):
 		return true, "keychain identity (not probed)"
 	case strings.HasPrefix(ref, "secret:"):
-		return true, "secret ref (not probed; inject via CI)"
+		key := secretEnvKey(strings.TrimPrefix(ref, "secret:"))
+		return true, "secret ref (ExecuteSign reads " + key + "; value never printed)"
 	default:
 		return false, "unrecognized ref"
 	}
