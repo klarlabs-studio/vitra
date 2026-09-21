@@ -17,6 +17,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Darwin DMG fold | `BuildDMG` / `FoldDMG` (`hdiutil` or `VITRA_HDIUTIL`) |
 | Signed update manifests (ed25519) | `updater` |
 | HTTP(S) channel fetch (client only) | `updater.ChannelSource` / `Fetcher` + `vitra update-check` |
+| Channel tree for static CDN upload | `updater.StageChannel` + `vitra update-stage` |
 | Install plans only after verify | `updater.PlanInstall` |
 | Atomic install after plan | `updater.ApplyInstall` / `Runtime.ApplyUpdate` |
 | SBOM / plugin / capability inventory | `provenance` |
@@ -87,9 +88,16 @@ m, err := (&updater.Fetcher{}).FetchManifest(ctx, src)
 // VerifyManifest / PlanInstall / ApplyUpdate as usual
 ```
 
+Stage a tree for static hosting:
+
+```go
+stage, err := updater.StageChannel("dist/updates", signedManifest, artifactBytes)
+```
+
 CLI:
 
 ```bash
+vitra update-stage --out dist/updates --manifest update.json --artifact app.bin
 vitra update-check --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex>
 vitra update-apply --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex> --dest ./vitra-app
 vitra update-apply --manifest update.json --artifact app.bin --pubkey <hex> --dest ./vitra-app --policy production
@@ -106,7 +114,8 @@ vitra update-apply --manifest update.json --artifact app.bin --pubkey <hex> --de
 Still out of scope on main (do not claim otherwise):
 
 - Hosted update CDN / auto-update channel *hosting* (HTTP(S) *client* fetch
-  via `ChannelSource` / `Fetcher` / `vitra update-check` ships)
+  via `ChannelSource` / `Fetcher` / `vitra update-check` ships; `StageChannel`
+  / `vitra update-stage` writes a static tree for upload to any host)
 - Interactive notarization credential entry beyond the
   `PlanNotaryCredentials` / `vitra notary-setup` dry-run (`store-credentials`
   argv with `${APPLE_ID}` / `${APPLE_TEAM_ID}` / `${APP_SPECIFIC_PASSWORD}`;
