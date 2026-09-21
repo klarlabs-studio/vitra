@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `app.DesktopHost` includes `RegisterFileAssociations` and `InjectFileDrop` (all OS adapters already implemented); competitive demo uses the shared interface.
 - Windows package icons: `Spec.IconPath` / `--icon` stages into `bin/` for `win-dir`; WiX emits `Icon`/`ARPPRODUCTICON`, NSIS shortcuts use the icon file.
 - TypeScript bindings: `vitra generate typescript` emits `createEvents` / `on*` helpers from plugin `Contribution.Events` (e.g. `onFsChanged`); Darwin/Windows stub `ErrUnsupported` details no longer point at Linux-only hosts.
 - Package icons: optional `Spec.IconPath` / `vitra package --icon` stages `.png`/`.svg`/`.icns` into Linux dir/AppDir and Darwin `.app` Resources (`CFBundleIconFile`).

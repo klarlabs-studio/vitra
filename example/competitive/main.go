@@ -52,7 +52,7 @@ func run() error {
 	if err := installOptionalAudit(rt); err != nil {
 		return err
 	}
-	host := newCompetitiveHost()
+	host := newDesktopHost()
 	const appID = "com.vitra.competitive"
 
 	if os.Getenv("VITRA_REGISTER_SCHEME") == "1" {
@@ -563,15 +563,8 @@ func openAuditWriter(path string) (io.Writer, string, error) {
 	return f, path, nil
 }
 
-// competitiveHost is the DesktopHost surface plus demo-only helpers shared by
-// Linux / Darwin / Windows adapters.
-type competitiveHost interface {
-	app.DesktopHost
-	RegisterFileAssociations(appID, execPath, name string, mimeTypes []string) error
-	InjectFileDrop(id domain.WindowID, paths []string)
-}
-
-func newCompetitiveHost() competitiveHost {
+// newDesktopHost selects the OS DesktopHost adapter (Linux / Darwin / Windows).
+func newDesktopHost() app.DesktopHost {
 	switch runtime.GOOS {
 	case "darwin":
 		return darwin.New()

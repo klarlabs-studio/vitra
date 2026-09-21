@@ -91,6 +91,10 @@ func (h *fakeHost) StartDeepLinkBridge(string, func(string)) (func(), error) {
 }
 func (h *fakeHost) ForwardToPrimary(string, []string) (bool, error) { return false, nil }
 func (h *fakeHost) RegisterURLScheme(string, string, string) error  { return nil }
+func (h *fakeHost) RegisterFileAssociations(string, string, string, []string) error {
+	return nil
+}
+func (h *fakeHost) InjectFileDrop(domain.WindowID, []string) {}
 func (h *fakeHost) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error {
 	return nil
 }
