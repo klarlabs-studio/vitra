@@ -56,6 +56,7 @@
       <button id="notify" class="secondary">Notify</button>
       <button id="path" class="secondary">Open temp dir</button>
       <button id="win" class="secondary">Open aux window</button>
+      <button id="chrome" class="secondary">Apply window.chrome</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -163,6 +164,19 @@
             height: 360,
           }),
         });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("chrome").onclick = async () => {
+      try {
+        await window.vitra.invoke("window.chrome", {
+          id: "main",
+          title: "Vitra Chrome",
+          width: 900,
+          height: 600,
+        });
+        show({ chrome: { id: "main", title: "Vitra Chrome", width: 900, height: 600 } });
       } catch (e) {
         show(String(e.message || e), true);
       }

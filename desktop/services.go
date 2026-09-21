@@ -425,6 +425,52 @@ func ParseWindowID(input any) (domain.WindowID, error) {
 	}
 }
 
+// ParseWindowChromeApply extracts window id + chrome from an invoke payload.
+func ParseWindowChromeApply(input any) (domain.WindowID, platform.WindowChrome, error) {
+	m, ok := input.(map[string]any)
+	if !ok || m == nil {
+		return "", platform.WindowChrome{}, &domain.ErrValidation{Message: "window.chrome input must be an object"}
+	}
+	id, _ := m["id"].(string)
+	if id == "" {
+		return "", platform.WindowChrome{}, &domain.ErrValidation{Message: "window id is required"}
+	}
+	var chrome platform.WindowChrome
+	if t, ok := m["title"].(string); ok {
+		chrome.Title = t
+	}
+	if w, ok := asPositiveInt(m["width"]); ok {
+		chrome.Width = w
+	}
+	if h, ok := asPositiveInt(m["height"]); ok {
+		chrome.Height = h
+	}
+	if v, ok := asBool(m["maximized"]); ok {
+		chrome.Maximized = v
+	}
+	if v, ok := asBool(m["fullscreen"]); ok {
+		chrome.Fullscreen = v
+	}
+	if v, ok := asBool(m["alwaysOnTop"]); ok {
+		chrome.AlwaysOnTop = v
+	}
+	if v, ok := asBool(m["minimized"]); ok {
+		chrome.Minimized = v
+	}
+	if v, ok := asBool(m["hidden"]); ok {
+		chrome.Hidden = v
+	}
+	if p, ok := m["iconPath"].(string); ok {
+		chrome.IconPath = p
+	}
+	return domain.WindowID(id), chrome, nil
+}
+
+func asBool(v any) (bool, bool) {
+	b, ok := v.(bool)
+	return b, ok
+}
+
 // WindowService applies native window presentation and lifecycle when permitted.
 type WindowService struct {
 	Gateway  Gateway

@@ -1932,6 +1932,9 @@ func run() error {
 	winSvc := &desktop.WindowService{
 		Gateway: rt,
 		Host:    host,
+		OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
+			return host.ApplyWindowChrome(window, chrome)
+		},
 		OnCreate: func(ctx context.Context, opts desktop.WindowCreateOptions) error {
 			if application == nil {
 				return fmt.Errorf("app is not ready")
@@ -1969,6 +1972,15 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.chrome", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, chrome, err := desktop.ParseWindowChromeApply(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Apply(ctx, caller, id, chrome)
+	})); err != nil {
+		return err
+	}
 
 	grant, _ := domain.NewCapabilityGrant(
 		"demo", "demo", []domain.WindowID{"main", "aux"},
@@ -1986,6 +1998,7 @@ func run() error {
 			{Name: desktop.PermNotificationShow},
 			{Name: desktop.PermWindowCreate},
 			{Name: desktop.PermWindowClose},
+			{Name: desktop.PermWindowChrome},
 			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermPathOpen, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
@@ -2030,6 +2043,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="os">os.info</button>
 <button id="notify">notifications.show</button>
 <button id="win">window.create</button>
+<button id="chrome">window.chrome</button>
 <pre id="out"></pre>
 <script>
 const out = document.getElementById("out");
@@ -2064,6 +2078,10 @@ document.getElementById("notify").onclick = async () => {
 };
 document.getElementById("win").onclick = async () => {
   try { out.textContent = JSON.stringify(await invoke("window.create", { id: "aux", title: "Aux", width: 480, height: 360 }), null, 2); }
+  catch (e) { out.textContent = String(e); }
+};
+document.getElementById("chrome").onclick = async () => {
+  try { out.textContent = JSON.stringify(await invoke("window.chrome", { id: "main", title: "Vitra Chrome", width: 900, height: 600 }), null, 2); }
   catch (e) { out.textContent = String(e); }
 };
 // Typed stubs: frontend/vitra-client.ts (vitra generate typescript)
@@ -3146,6 +3164,7 @@ func inspectDemo(args []string) error {
 			{Name: "path.open", PathScope: &domain.PathScope{Allow: []string{"${PROJECT_DIR}/**"}}},
 			{Name: "window.create"},
 			{Name: "window.close"},
+			{Name: "window.chrome"},
 		},
 	)
 	if err != nil {
