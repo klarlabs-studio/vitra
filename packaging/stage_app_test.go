@@ -52,6 +52,7 @@ func TestStageDarwinApp_LayoutAndPlist(t *testing.T) {
 		"com.vitra.demo", "Demo App", "1.2.3", "Demo-App", "CFBundleExecutable", "APPL",
 		"NSHumanReadableCopyright", DefaultLicense,
 		"LSApplicationCategoryType", "public.app-category.utilities",
+		"CFBundleGetInfoString", DefaultDescription,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("plist missing %q\n%s", want, body)
@@ -100,6 +101,46 @@ func TestStageDarwinApp_LicenseCopyright(t *testing.T) {
 	wantDefault := "<key>NSHumanReadableCopyright</key>\n\t<string>" + DefaultLicense + "</string>"
 	if !strings.Contains(string(raw), wantDefault) {
 		t.Fatalf("missing default copyright\n%s", raw)
+	}
+}
+
+func TestStageDarwinApp_GetInfoString(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "stage")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetDarwinApp}, Description: "Demo desktop app",
+	}
+	art, err := StageDarwinApp(spec, bin, out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(art.Path, "Contents", "Info.plist"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "<key>CFBundleGetInfoString</key>\n\t<string>Demo desktop app</string>"
+	if !strings.Contains(string(raw), want) {
+		t.Fatalf("missing GetInfoString\n%s", raw)
+	}
+
+	outDefault := filepath.Join(tmp, "stage-default")
+	spec.Description = ""
+	art, err = StageDarwinApp(spec, bin, outDefault)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err = os.ReadFile(filepath.Join(art.Path, "Contents", "Info.plist"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantDefault := "<key>CFBundleGetInfoString</key>\n\t<string>" + DefaultDescription + "</string>"
+	if !strings.Contains(string(raw), wantDefault) {
+		t.Fatalf("missing default GetInfoString\n%s", raw)
 	}
 }
 

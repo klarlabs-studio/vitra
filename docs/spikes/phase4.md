@@ -44,7 +44,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP + Desktop/Start Menu shortcuts + URLInfoAbout/Comments/LegalCopyright) |
 | `msi` | Final `.msi` (`BuildMSI` → candle/light or `VITRA_CANDLE`/`VITRA_LIGHT`) |
 | `nsis` | Final setup `.exe` (`BuildNSIS` → makensis or `VITRA_MAKENSIS`) |
-| `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`; Info.plist + `NSHumanReadableCopyright` + `LSApplicationCategoryType`) |
+| `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`; Info.plist + `NSHumanReadableCopyright` + `LSApplicationCategoryType` + `CFBundleGetInfoString`) |
 | `dmg` | Final `.dmg` (`BuildDMG` → hdiutil or `VITRA_HDIUTIL`; includes Applications symlink) |
 
 Optional `--icon <path>` copies a `.png` / `.svg` / `.icns` / `.ico` / `.xpm` into
@@ -56,8 +56,9 @@ Linux stages (root + `usr/share/icons/hicolor/…/apps/`, `Icon=<name>`), AppDir
 (`URLInfoAbout` / `ARPURLINFOABOUT`) when provided. Optional `--maintainer` sets Debian
 `Maintainer`, snap `contact:`, DEP-5 Upstream-Contact, and, when provided, WiX
 `Manufacturer` / NSIS `PRODUCT_PUBLISHER` (otherwise WiX/NSIS use `Name`). Optional `--description` sets the Debian
-extended Description, FreeDesktop `Comment=`, and Windows ARP Comments /
-`ARPCOMMENTS` (default: secure Go + web desktop blurb). Optional `--license`
+extended Description, FreeDesktop `Comment=`, Windows ARP Comments /
+`ARPCOMMENTS`, and Darwin Info.plist `CFBundleGetInfoString`
+(default: secure Go + web desktop blurb). Optional `--license`
 sets AppStream/RPM/snap license fields, Debian DEP-5
 `usr/share/doc/<pkg>/copyright`, Windows ARP `LegalCopyright` /
 `ARPCOPYRIGHT`, and Darwin Info.plist `NSHumanReadableCopyright`
