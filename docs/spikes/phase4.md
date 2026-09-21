@@ -8,7 +8,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
 | Sign dry-run plan | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
-| Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}` and `<secret:…>`→`VITRA_SECRET_*`) |
+| Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}` and `<secret:…>`→`VITRA_SECRET_*`; sets `Artifact.Signed`) |
 | Store publish dry-run | `packaging.PlanPublish` + `vitra package --publish` (Snap Store / Flathub step plans) |
 | Linux staged app directory | `packaging.StageLinux` + `vitra package` |
 | Windows staged dir + WiX/NSIS scripts | `StageWindows` / `BuildWiXDir` / `BuildNSISDir` |
