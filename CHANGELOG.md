@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- WiX Desktop shortcut: `BuildWiXDir` emits a `DesktopFolder` shortcut (with optional `Icon` when `--icon` is set), matching NSIS Desktop UX.
 - NSIS desktop shortcut: `BuildNSISDir` creates `$DESKTOP\<Name>.lnk` (with icon when `--icon` is set) and removes it on uninstall.
 - `vitra doctor` reports packaging fold-tool availability (`appimagetool`, `candle`/`light`, `makensis`, `hdiutil`) with `VITRA_*` override hints.
 - WiX Start Menu shortcut: `BuildWiXDir` emits `ProgramMenuFolder` shortcut + uninstall `RemoveFolder`, and a deterministic `UpgradeCode` GUID from `AppID` (optional shortcut `Icon` when `--icon` is set).

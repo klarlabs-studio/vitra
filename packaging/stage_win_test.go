@@ -154,6 +154,7 @@ func TestBuildWiXDir_WritesProductWXS(t *testing.T) {
 		"ProgramMenuFolder", "ApplicationProgramsFolder",
 		"AppStartMenuShortcut", `Target="[INSTALLFOLDER]Demo.exe"`,
 		"RemoveAppProgramsFolder",
+		"DesktopFolder", "AppDesktopShortcut", "DesktopShortcut",
 		"UpgradeCode=\"{",
 	} {
 		if !strings.Contains(body, want) {
