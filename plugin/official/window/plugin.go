@@ -1,8 +1,8 @@
 // Package window is the official Phase 3 multi-window plugin contract.
 // It declares window.create / window.close / window.chrome / window.getChrome /
 // window.focus / window.blur / window.hide / window.show / window.minimize /
-// window.maximize / window.fullscreen / window.setAlwaysOnTop / window.restore /
-// window.setTitle / window.setSize / window.setIcon / window.unmaximize;
+// window.maximize / window.unmaximize / window.fullscreen / window.setAlwaysOnTop / window.restore /
+// window.setTitle / window.setSize / window.setIcon;
 // native execution is bound by the host via desktop.WindowService wrapping
 // app.App / DesktopHost.
 package window
