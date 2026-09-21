@@ -125,8 +125,8 @@ Exec=/usr/bin/%s
 Icon=%s
 StartupWMClass=%s
 Categories=%s
-Terminal=false
-`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories())
+%sTerminal=false
+`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories(), spec.DesktopKeywordsLine())
 	desktopAbs := filepath.Join(payload, filepath.FromSlash(desktopRel))
 	if err := os.MkdirAll(filepath.Dir(desktopAbs), 0o755); err != nil {
 		return Artifact{}, err

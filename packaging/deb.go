@@ -61,8 +61,8 @@ Exec=AppRun
 Icon=%s
 StartupWMClass=%s
 Categories=%s
-Terminal=false
-`, spec.Name, spec.EffectiveDescription(), iconKey, binName, spec.DesktopCategories())
+%sTerminal=false
+`, spec.Name, spec.EffectiveDescription(), iconKey, binName, spec.DesktopCategories(), spec.DesktopKeywordsLine())
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}
@@ -141,8 +141,8 @@ Exec=/usr/bin/%s
 Icon=%s
 StartupWMClass=%s
 Categories=%s
-Terminal=false
-`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories())
+%sTerminal=false
+`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories(), spec.DesktopKeywordsLine())
 	dataFiles[desktopPath] = fileEntry{data: []byte(desktopBody), mode: 0o644}
 	metaPath := AppStreamMetainfoRel("usr/share", spec.AppID)
 	dataFiles[metaPath] = fileEntry{data: []byte(AppStreamMetainfoXML(spec)), mode: 0o644}

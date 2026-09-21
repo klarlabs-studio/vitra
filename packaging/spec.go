@@ -52,6 +52,9 @@ type Spec struct {
 	// Categories are FreeDesktop/AppStream categories (e.g. Utility, Development).
 	// Empty defaults to []string{"Utility"}.
 	Categories []string
+	// Keywords are optional FreeDesktop/AppStream search terms (desktop Keywords=,
+	// AppStream <keyword>, snap keywords). Empty omits them.
+	Keywords []string
 	// License is the SPDX id or LicenseRef-* used for AppStream <project_license>,
 	// RPM License:, and snap license:. Empty defaults to DefaultLicense.
 	License string
@@ -121,6 +124,35 @@ func (s Spec) EffectiveCategories() []string {
 func (s Spec) DesktopCategories() string {
 	cats := s.EffectiveCategories()
 	return strings.Join(cats, ";") + ";"
+}
+
+// EffectiveKeywords returns trimmed Spec.Keywords (no default; empty means omit).
+func (s Spec) EffectiveKeywords() []string {
+	out := make([]string, 0, len(s.Keywords))
+	for _, k := range s.Keywords {
+		k = strings.TrimSpace(k)
+		if k != "" {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+// DesktopKeywords returns a FreeDesktop Keywords= value (trailing semicolon), or "".
+func (s Spec) DesktopKeywords() string {
+	kws := s.EffectiveKeywords()
+	if len(kws) == 0 {
+		return ""
+	}
+	return strings.Join(kws, ";") + ";"
+}
+
+// DesktopKeywordsLine returns "Keywords=…\n" when keywords are set, else "".
+func (s Spec) DesktopKeywordsLine() string {
+	if kw := s.DesktopKeywords(); kw != "" {
+		return "Keywords=" + kw + "\n"
+	}
+	return ""
 }
 
 // Validate checks packaging invariants.

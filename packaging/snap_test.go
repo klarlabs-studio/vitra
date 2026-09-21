@@ -27,6 +27,7 @@ func TestBuildSnapDir_Layout(t *testing.T) {
 		Description: "Demo Snap",
 		Homepage:    "https://example.com/demo",
 		License:     "Apache-2.0",
+		Keywords:    []string{"desktop", "secure"},
 	}
 	art, err := packaging.BuildSnapDir(spec, bin, out)
 	if err != nil {
@@ -55,6 +56,9 @@ func TestBuildSnapDir_Layout(t *testing.T) {
 		"Demo Snap",
 		"license: Apache-2.0",
 		`website: "https://example.com/demo"`,
+		"keywords:",
+		"- desktop",
+		"- secure",
 		"command: usr/bin/Vitra-Demo",
 		"desktop: usr/share/applications/com.vitra.demo.desktop",
 		"confinement: strict",

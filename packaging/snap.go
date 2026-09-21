@@ -85,8 +85,8 @@ Exec=%s
 Icon=%s
 StartupWMClass=%s
 Categories=%s
-Terminal=false
-`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories())
+%sTerminal=false
+`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories(), spec.DesktopKeywordsLine())
 	desktopAbs := filepath.Join(outDir, filepath.FromSlash(desktopRel))
 	if err := os.MkdirAll(filepath.Dir(desktopAbs), 0o755); err != nil {
 		return Artifact{}, err
@@ -107,13 +107,22 @@ Terminal=false
 	if home := strings.TrimSpace(spec.Homepage); home != "" {
 		websiteLine = "website: " + yamlScalar(home) + "\n"
 	}
+	keywordsBlock := ""
+	if kws := spec.EffectiveKeywords(); len(kws) > 0 {
+		var kb strings.Builder
+		kb.WriteString("keywords:\n")
+		for _, kw := range kws {
+			kb.WriteString("  - " + yamlScalar(kw) + "\n")
+		}
+		keywordsBlock = kb.String()
+	}
 	yaml := fmt.Sprintf(`name: %s
 version: %q
 summary: %s
 description: |
 %s
 license: %s
-%sarchitectures:
+%s%sarchitectures:
   - %s
 base: core22
 confinement: strict
@@ -122,7 +131,7 @@ apps:
   %s:
     command: usr/bin/%s
     desktop: %s
-`, snapName, spec.Version, yamlScalar(spec.Name), desc, yamlScalar(spec.EffectiveLicense()), websiteLine, arch, snapName, binName, desktopRel)
+`, snapName, spec.Version, yamlScalar(spec.Name), desc, yamlScalar(spec.EffectiveLicense()), websiteLine, keywordsBlock, arch, snapName, binName, desktopRel)
 	if err := os.WriteFile(filepath.Join(metaDir, "snap.yaml"), []byte(yaml), 0o644); err != nil {
 		return Artifact{}, err
 	}

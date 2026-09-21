@@ -532,6 +532,7 @@ func TestRun_PackageHomepageCategoriesLicense(t *testing.T) {
 			"--app-id", "com.vitra.meta", "--name", "Meta", "--version", "0.2.0",
 			"--homepage", "https://example.com/meta",
 			"--categories", "Utility,Development",
+			"--keywords", "desktop,secure",
 			"--license", "MIT",
 		}); err != nil {
 			t.Fatal(err)
@@ -541,8 +542,12 @@ func TestRun_PackageHomepageCategoriesLicense(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(desktop), "Categories=Utility;Development;") {
+	desk := string(desktop)
+	if !strings.Contains(desk, "Categories=Utility;Development;") {
 		t.Fatalf("desktop=%s", desktop)
+	}
+	if !strings.Contains(desk, "Keywords=desktop;secure;") {
+		t.Fatalf("desktop keywords missing: %s", desktop)
 	}
 	meta, err := os.ReadFile(filepath.Join(out, "usr", "share", "metainfo", "com.vitra.meta.metainfo.xml"))
 	if err != nil {
@@ -553,6 +558,8 @@ func TestRun_PackageHomepageCategoriesLicense(t *testing.T) {
 		`<project_license>MIT</project_license>`,
 		`<url type="homepage">https://example.com/meta</url>`,
 		`<category>Development</category>`,
+		`<keyword>desktop</keyword>`,
+		`<keyword>secure</keyword>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in %s", want, body)

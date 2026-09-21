@@ -16,6 +16,7 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		Maintainer:  "Klarlabs <dev@klarlabs.de>",
 		Homepage:    "https://example.com/demo",
 		Categories:  []string{"Utility", "Development"},
+		Keywords:    []string{"desktop", "secure"},
 		License:     "Apache-2.0",
 		Targets:     []packaging.Target{packaging.TargetLinuxDir},
 	}
@@ -28,6 +29,8 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		`<url type="homepage">https://example.com/demo</url>`,
 		`<category>Utility</category>`,
 		`<category>Development</category>`,
+		`<keyword>desktop</keyword>`,
+		`<keyword>secure</keyword>`,
 		`<launchable type="desktop-id">com.example.Demo.desktop</launchable>`,
 		`<developer_name>Klarlabs &lt;dev@klarlabs.de&gt;</developer_name>`,
 		`type="desktop-application"`,
@@ -42,12 +45,18 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 	if spec.DesktopCategories() != "Utility;Development;" {
 		t.Fatalf("desktop cats=%q", spec.DesktopCategories())
 	}
+	if spec.DesktopKeywords() != "desktop;secure;" || spec.DesktopKeywordsLine() != "Keywords=desktop;secure;\n" {
+		t.Fatalf("desktop keywords=%q line=%q", spec.DesktopKeywords(), spec.DesktopKeywordsLine())
+	}
 	empty := packaging.Spec{AppID: "a", Version: "1", Name: "A", Targets: []packaging.Target{packaging.TargetLinuxDir}}
 	if empty.EffectiveLicense() != packaging.DefaultLicense {
 		t.Fatal(empty.EffectiveLicense())
 	}
 	if empty.DesktopCategories() != "Utility;" {
 		t.Fatal(empty.DesktopCategories())
+	}
+	if empty.DesktopKeywordsLine() != "" {
+		t.Fatalf("expected empty keywords line, got %q", empty.DesktopKeywordsLine())
 	}
 }
 
