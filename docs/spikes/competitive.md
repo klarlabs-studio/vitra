@@ -76,8 +76,10 @@ Wayland keeps in-window accelerators only (no portable global hotkey API).
 Wails still leads on template ecosystem and packaging polish. Vitra leads on
 capability-oriented authority and inspectable grants. Core DesktopHost,
 installer-script, SIEM/MDM port, and X11 global-shortcut parity are in place —
-Wayland global hotkeys remain intentionally unsupported. Windows MSI/NSIS
+Wayland global hotkeys remain intentionally unsupported. `vitra dev` / `vitra build`
+enable `-tags vitra_native` on Linux, Darwin, and Windows. Windows MSI/NSIS
 staging and fold (`win-dir` / `wix` / `nsis-dir` / `msi` / `nsis`) ship; fold
 requires candle/light/makensis on the host (overridable via env). Audit SIEM
 exporters (`JSONLSink` / `CEFSink`) and MDM JSON policy documents
-(`policy.LoadDocument`) plug into Phase 5 ports.
+(`policy.LoadDocument`) plug into Phase 5 ports. Darwin `.app` / DMG staging
+remains a packaging follow-on.
