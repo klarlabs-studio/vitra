@@ -2100,6 +2100,74 @@ func TestRun_NewScaffoldEmber(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldAurelia(t *testing.T) {
+	dir := t.TempDir() + "/aurelia-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "aurelia"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=aurelia") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/src/my-app.ts", "frontend/src/my-app.html",
+		"frontend/src/resource.d.ts", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"aurelia"`, `"@aurelia/vite-plugin"`, `"vite-plugin-node-polyfills"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/my-app.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "MyApp"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("my-app.ts missing %q: %s", want, app)
+		}
+	}
+	html, err := os.ReadFile(dir + "/frontend/src/my-app.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), "click.trigger") || !strings.Contains(string(html), "Aurelia") {
+		t.Fatalf("my-app.html missing aurelia bindings: %s", html)
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "@aurelia/vite-plugin") || !strings.Contains(string(cfg), "aurelia({ useDev: true })") {
+		t.Fatalf("vite.config missing aurelia plugin: %s", cfg)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("aurelia embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Aurelia") {
+		t.Fatalf("aurelia README should mention Vite + Aurelia: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {

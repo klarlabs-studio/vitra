@@ -105,8 +105,8 @@ func printUsage() {
 Usage:
   vitra version              Print kernel version
   vitra doctor               Diagnose WebView / CGO prerequisites
-  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember]
-                             Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik/mithril/riot/inferno/stencil/marko add Vite frontends)
+  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia]
+                             Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik/mithril/riot/inferno/stencil/marko/ember/aurelia add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--keywords list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
@@ -254,7 +254,7 @@ func scaffoldNew(args []string) error {
 		case "--template":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, or marko")
+				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, or aurelia")
 			}
 			tmpl = args[i]
 		default:
@@ -262,18 +262,18 @@ func scaffoldNew(args []string) error {
 				return fmt.Errorf("unknown new flag %q", args[i])
 			}
 			if dir != "" {
-				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember]")
+				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia]")
 			}
 			dir = args[i]
 		}
 	}
 	if dir == "" {
-		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember]")
+		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia]")
 	}
 	switch tmpl {
-	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember":
+	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia":
 	default:
-		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, or ember)", tmpl)
+		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, or aurelia)", tmpl)
 	}
 
 	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
@@ -324,6 +324,8 @@ func scaffoldNew(args []string) error {
 		files = scaffoldMarkoFiles(modPath, tsClient)
 	case "ember":
 		files = scaffoldEmberFiles(modPath, tsClient)
+	case "aurelia":
+		files = scaffoldAureliaFiles(modPath, tsClient)
 	default:
 		files = scaffoldVanillaFiles(modPath, tsClient)
 	}
@@ -338,7 +340,7 @@ func scaffoldNew(args []string) error {
 	}
 	fmt.Printf("created %s (template=%s)\n", dir, tmpl)
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia":
 		fmt.Println("next: cd", dir, "&& (optional: cd frontend && npm install && npm run build) && vitra dev")
 	default:
 		fmt.Println("next: cd", dir, "&& vitra dev")
@@ -1404,6 +1406,148 @@ module.exports = {
 `
 }
 
+func scaffoldAureliaFiles(modPath, tsClient string) map[string]string {
+	return map[string]string{
+		"go.mod":                     scaffoldGoMod(modPath),
+		"main.go":                    scaffoldMainGo("all:frontend/dist", "frontend/dist"),
+		"frontend/package.json":      scaffoldAureliaPackageJSON(),
+		"frontend/vite.config.js":    scaffoldViteConfig("aurelia"),
+		"frontend/tsconfig.json":     scaffoldViteTSConfig("aurelia"),
+		"frontend/index.html":        scaffoldAureliaIndexHTML(),
+		"frontend/src/main.ts":       scaffoldAureliaMainTS(),
+		"frontend/src/my-app.ts":     scaffoldAureliaMyAppTS(),
+		"frontend/src/my-app.html":   scaffoldAureliaMyAppHTML(),
+		"frontend/src/resource.d.ts": scaffoldAureliaResourceDTS(),
+		"frontend/vitra-client.ts":   tsClient,
+		"frontend/dist/index.html":   scaffoldIndexHTML(),
+		".gitignore":                 "frontend/node_modules/\nvitra-app\n",
+		"README.md":                  scaffoldREADME("aurelia"),
+	}
+}
+
+func scaffoldAureliaPackageJSON() string {
+	return `{
+  "name": "vitra-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "aurelia": "2.0.0-rc.2"
+  },
+  "devDependencies": {
+    "@aurelia/vite-plugin": "2.0.0-rc.2",
+    "typescript": "^5.6.0",
+    "vite": "^7.0.0",
+    "vite-plugin-node-polyfills": "^0.25.0"
+  }
+}
+`
+}
+
+func scaffoldAureliaMainTS() string {
+	return `import Aurelia from "aurelia";
+import { MyApp } from "./my-app";
+
+Aurelia.app(MyApp).start();
+`
+}
+
+func scaffoldAureliaMyAppTS() string {
+	return `import { createClient } from "../vitra-client";
+
+const client = createClient(window.vitra.invoke);
+
+export class MyApp {
+  public out = "";
+
+  private async run(fn: () => Promise<unknown>): Promise<void> {
+    try {
+      this.out = JSON.stringify(await fn(), null, 2);
+    } catch (e) {
+      this.out = String(e);
+    }
+  }
+
+  greet(): Promise<void> {
+    return this.run(() => client.demoGreet("Vitra"));
+  }
+
+  openDialog(): Promise<void> {
+    return this.run(() => client.dialogOpen());
+  }
+
+  readClipboard(): Promise<void> {
+    return this.run(() => client.clipboardRead());
+  }
+
+  openDocs(): Promise<void> {
+    return this.run(() => client.browserOpen("https://go.klarlabs.de/vitra"));
+  }
+
+  showOs(): Promise<void> {
+    return this.run(() => client.osInfo());
+  }
+
+  notify(): Promise<void> {
+    return this.run(() =>
+      client.notificationsShow({ title: "Vitra", body: "Hello from scaffold" }),
+    );
+  }
+}
+`
+}
+
+func scaffoldAureliaMyAppHTML() string {
+	return `<div style="font-family: Georgia, serif; margin: 2rem; background: #111; color: #eee; min-height: 100vh">
+  <h1>Vitra</h1>
+  <p>Vite + Aurelia starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
+  <button click.trigger="greet()">demo.greet</button>
+  <button click.trigger="openDialog()">dialog.open</button>
+  <button click.trigger="readClipboard()">clipboard.read</button>
+  <button click.trigger="openDocs()">browser.open</button>
+  <button click.trigger="showOs()">os.info</button>
+  <button click.trigger="notify()">notifications.show</button>
+  <pre>${out}</pre>
+</div>
+`
+}
+
+func scaffoldAureliaIndexHTML() string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Vitra App</title>
+  <base href="/"/>
+</head>
+<body>
+  <my-app></my-app>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
+`
+}
+
+func scaffoldAureliaResourceDTS() string {
+	return `declare module "*.html" {
+  import type { IContainer, PartialBindableDefinition } from "aurelia";
+  export const name: string;
+  export const template: string;
+  export default template;
+  export const dependencies: string[];
+  export const containerless: boolean | undefined;
+  export const bindables: Record<string, PartialBindableDefinition>;
+  export const shadowOptions: { mode: "open" | "closed" } | undefined;
+  export function register(container: IContainer): void;
+}
+`
+}
+
 func scaffoldAngularFiles(modPath, tsClient string) map[string]string {
 	return map[string]string{
 		"go.mod":                        scaffoldGoMod(modPath),
@@ -1629,7 +1773,7 @@ vitra package --out dist/ --format dir
 ` + "```" + `
 `
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia":
 		label := "Vite"
 		switch tmpl {
 		case "react":
@@ -1664,6 +1808,8 @@ vitra package --out dist/ --format dir
 			label = "Vite + Marko"
 		case "ember":
 			label = "Vite + Ember"
+		case "aurelia":
+			label = "Vite + Aurelia"
 		}
 		body += `
 ## ` + label + ` frontend
@@ -1902,6 +2048,23 @@ export default defineConfig({
   },
 });
 `
+	case "aurelia":
+		return `import { defineConfig } from "vite";
+import aurelia from "@aurelia/vite-plugin";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
+
+export default defineConfig({
+  esbuild: { target: "es2022" },
+  plugins: [
+    aurelia({ useDev: true }),
+    nodePolyfills(),
+  ],
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+  },
+});
+`
 
 	default:
 		return `import { defineConfig } from "vite";
@@ -1970,6 +2133,8 @@ func scaffoldViteTSConfig(framework string) string {
 		include = `"src", "vitra-client.ts", "stencil.config.ts"`
 	case "marko":
 		include = `"src/**/*.ts", "src/**/*.marko", "vitra-client.ts"`
+	case "aurelia":
+		include = `"src/**/*.ts", "src/**/*.html", "vitra-client.ts"`
 	}
 	return `{
   "compilerOptions": {
