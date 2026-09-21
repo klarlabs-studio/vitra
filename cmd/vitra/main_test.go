@@ -46,7 +46,7 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "packaging fold tools:") {
 		t.Fatalf("doctor missing packaging tools: %q", out)
 	}
-	for _, tool := range []string{"appimagetool:", "rpmbuild:", "snapcraft:", "candle:", "light:", "makensis:", "hdiutil:"} {
+	for _, tool := range []string{"appimagetool:", "rpmbuild:", "snapcraft:", "flatpak-builder:", "candle:", "light:", "makensis:", "hdiutil:"} {
 		if !strings.Contains(out, tool) {
 			t.Fatalf("doctor missing %q: %q", tool, out)
 		}
@@ -458,6 +458,43 @@ func TestRun_PackageSnap(t *testing.T) {
 		}
 	})
 	if _, err := os.Stat(filepath.Join(stage, "meta", "snap.yaml")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRun_PackageFlatpak(t *testing.T) {
+	tmp := t.TempDir()
+	tool := filepath.Join(tmp, "fake-flatpak")
+	if err := os.WriteFile(tool, []byte("#!/bin/sh\nprintf 'FLATPAK' > \"$2\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VITRA_FLATPAK_BUILDER", tool)
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "flatpak", "--out", out, "--bin", bin, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	fp := filepath.Join(out, "com-vitra-t-0.1.0.flatpak")
+	raw, err := os.ReadFile(fp)
+	if err != nil || string(raw) != "FLATPAK" {
+		entries, _ := os.ReadDir(out)
+		t.Fatalf("flatpak=%v raw=%q entries=%v", err, raw, entries)
+	}
+	stage := filepath.Join(tmp, "flatpak-stage")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "flatpak-dir", "--out", stage, "--bin", bin, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if _, err := os.Stat(filepath.Join(stage, "metadata")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(stage, "manifest.yml")); err != nil {
 		t.Fatal(err)
 	}
 }

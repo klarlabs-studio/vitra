@@ -88,8 +88,8 @@ Usage:
                              Scaffold a starter desktop app (default: vanilla HTML; vite adds a Vite+TS frontend)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
-  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign --signing-identity ref]
-                             Stage Linux dir, build .deb / .rpm / .snap / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints a dry-run plan only
+  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign --signing-identity ref]
+                             Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints a dry-run plan only
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
   vitra update-apply --manifest <json> --artifact <path> --pubkey <hex> --dest <path> [--policy production|development]
@@ -161,6 +161,7 @@ func doctor() error {
 	reportPackagingTool("appimagetool", packaging.ResolveAppImageTool, "VITRA_APPIMAGETOOL")
 	reportPackagingTool("rpmbuild", packaging.ResolveRpmbuild, "VITRA_RPMBUILD")
 	reportPackagingTool("snapcraft", packaging.ResolveSnapcraft, "VITRA_SNAPCRAFT")
+	reportPackagingTool("flatpak-builder", packaging.ResolveFlatpakBuilder, "VITRA_FLATPAK_BUILDER")
 	reportPackagingTool("candle", packaging.ResolveCandle, "VITRA_CANDLE")
 	reportPackagingTool("light", packaging.ResolveLight, "VITRA_LIGHT")
 	reportPackagingTool("makensis", packaging.ResolveMakensis, "VITRA_MAKENSIS")
@@ -913,7 +914,7 @@ func runPackage(args []string) error {
 	description := ""
 	sign := false
 	signingIdentity := ""
-	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign --signing-identity ref]"
+	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign --signing-identity ref]"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
@@ -975,7 +976,7 @@ func runPackage(args []string) error {
 		case "--format":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("--format requires dir, deb, rpm-dir, rpm, snap-dir, snap, appdir, appimage, win-dir, wix, nsis-dir, msi, nsis, app-dir, or dmg")
+				return fmt.Errorf("--format requires dir, deb, rpm-dir, rpm, snap-dir, snap, flatpak-dir, flatpak, appdir, appimage, win-dir, wix, nsis-dir, msi, nsis, app-dir, or dmg")
 			}
 			format = args[i]
 		default:
@@ -1004,6 +1005,8 @@ func runPackage(args []string) error {
 		target = packaging.TargetLinuxRPM
 	case "snap-dir", "snap":
 		target = packaging.TargetLinuxSnap
+	case "flatpak-dir", "flatpak":
+		target = packaging.TargetLinuxFlatpak
 	case "appdir", "appimage":
 		target = packaging.TargetLinuxAppImage
 	case "win-dir":
@@ -1017,7 +1020,7 @@ func runPackage(args []string) error {
 	case "dmg", "darwin-dmg":
 		target = packaging.TargetDarwinDMG
 	default:
-		return fmt.Errorf("unknown format %q (want dir, deb, rpm-dir, rpm, snap-dir, snap, appdir, appimage, win-dir, wix, nsis-dir, msi, nsis, app-dir, or dmg)", format)
+		return fmt.Errorf("unknown format %q (want dir, deb, rpm-dir, rpm, snap-dir, snap, flatpak-dir, flatpak, appdir, appimage, win-dir, wix, nsis-dir, msi, nsis, app-dir, or dmg)", format)
 	}
 	spec := packaging.Spec{
 		AppID:              appID,
@@ -1071,6 +1074,15 @@ func runPackage(args []string) error {
 			snapPath = filepath.Join(outDir, fmt.Sprintf("%s_%s_%s.snap", pkg, version, packaging.DefaultArch()))
 		}
 		art, err = packaging.BuildSnap(spec, bin, snapPath)
+	case "flatpak-dir":
+		art, err = packaging.BuildFlatpakDir(spec, bin, outDir)
+	case "flatpak":
+		fpPath := outDir
+		if !strings.HasSuffix(strings.ToLower(outDir), ".flatpak") {
+			pkg := strings.ReplaceAll(strings.ToLower(appID), ".", "-")
+			fpPath = filepath.Join(outDir, fmt.Sprintf("%s-%s.flatpak", pkg, version))
+		}
+		art, err = packaging.BuildFlatpak(spec, bin, fpPath)
 	case "win-dir":
 		art, err = packaging.StageWindows(spec, bin, outDir)
 	case "wix":
@@ -1121,7 +1133,7 @@ func runPackage(args []string) error {
 		return err
 	}
 	provDir := art.Path
-	if format == "deb" || format == "rpm" || format == "snap" || format == "appimage" || format == "msi" || format == "nsis" || format == "app-dir" || format == "darwin-app" || format == "dmg" || format == "darwin-dmg" {
+	if format == "deb" || format == "rpm" || format == "snap" || format == "flatpak" || format == "appimage" || format == "msi" || format == "nsis" || format == "app-dir" || format == "darwin-app" || format == "dmg" || format == "darwin-dmg" {
 		provDir = filepath.Dir(art.Path)
 	}
 	if err := os.MkdirAll(provDir, 0o755); err != nil {
