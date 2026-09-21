@@ -51,7 +51,7 @@ type Spec struct {
 	// Empty defaults to DefaultDescription.
 	Description string
 	// Homepage is an optional project URL (Debian Homepage, RPM URL, snap website,
-	// AppStream <url type="homepage"> / <url type="help"> / <url type="bugtracker"> / <url type="vcs-browser"> / <url type="donation">,
+	// AppStream <url type="homepage"> / <url type="help"> / <url type="bugtracker"> / <url type="vcs-browser"> / <url type="donation"> / <url type="contact">,
 	// Windows ARP URLInfoAbout / ARPURLINFOABOUT, HelpLink / ARPHELPLINK, and
 	// URLUpdateInfo / ARPURLUPDATEINFO).
 	Homepage string
