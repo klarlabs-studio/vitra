@@ -667,6 +667,17 @@ int vitra_message_dialog(const char *title, const char *message, int confirm) {
 	}
 }
 
+int vitra_show_notification(const char *title, const char *body) {
+	@autoreleasepool {
+		NSUserNotification *n = [[NSUserNotification alloc] init];
+		n.title = title ? [NSString stringWithUTF8String:title] : @"";
+		n.informativeText = body ? [NSString stringWithUTF8String:body] : @"";
+		n.soundName = nil;
+		[[NSUserNotificationCenter defaultUserNotificationCenter] deliverNotification:n];
+		return 1;
+	}
+}
+
 #define VITRA_MAX_HOTKEYS 64
 #define VITRA_HOTKEY_SIG 'VTRA'
 

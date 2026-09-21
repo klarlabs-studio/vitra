@@ -18,6 +18,7 @@ import (
 	"go.klarlabs.de/vitra/plugin"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
+	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
 	"go.klarlabs.de/vitra/policy"
 	"go.klarlabs.de/vitra/updater"
 	"go.klarlabs.de/vitra/worker"
@@ -274,11 +275,17 @@ func TestRuntime_RegisterOfficialPlugins(t *testing.T) {
 	if err := rt.RegisterPlugin(ctx, officialdialog.New()); err != nil {
 		t.Fatal(err)
 	}
+	if err := rt.RegisterPlugin(ctx, officialnotification.New()); err != nil {
+		t.Fatal(err)
+	}
 	if owner, ok := rt.Plugins().OwnerOf("fs.read"); !ok || owner != officialfs.PluginID {
 		t.Fatalf("fs.read owner = %q ok=%v", owner, ok)
 	}
 	if owner, ok := rt.Plugins().OwnerOf("dialog.open"); !ok || owner != officialdialog.PluginID {
 		t.Fatalf("dialog.open owner = %q ok=%v", owner, ok)
+	}
+	if owner, ok := rt.Plugins().OwnerOf("notifications.show"); !ok || owner != officialnotification.PluginID {
+		t.Fatalf("notifications.show owner = %q ok=%v", owner, ok)
 	}
 
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {

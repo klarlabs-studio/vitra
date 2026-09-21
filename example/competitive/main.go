@@ -26,6 +26,7 @@ import (
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
+	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	"go.klarlabs.de/vitra/policy"
 )
@@ -115,7 +116,7 @@ func run() error {
 
 	chromeGrant, err := domain.NewCapabilityGrant(
 		"desktop-chrome",
-		"clipboard, dialogs, menu, tray, shortcuts, single-instance, deeplink, drag-drop, window chrome, open url, os info",
+		"clipboard, dialogs, menu, tray, shortcuts, single-instance, deeplink, drag-drop, window chrome, open url, os info, notifications",
 		[]domain.WindowID{"main"},
 		[]domain.Origin{domain.OriginPackagedLocal},
 		[]domain.PermissionSpec{
@@ -133,6 +134,7 @@ func run() error {
 			{Name: desktop.PermWindowChrome},
 			{Name: desktop.PermOpenURL},
 			{Name: desktop.PermOsInfo},
+			{Name: desktop.PermNotificationShow},
 		},
 	)
 	if err != nil {
@@ -279,7 +281,7 @@ func run() error {
 	}
 	_ = register // kept for local demo commands if needed
 
-	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* / os.* permissions (invariant 6).
+	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* / os.* / notifications.* permissions (invariant 6).
 	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
 		return err
 	}
@@ -293,6 +295,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialos.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialnotification.New()); err != nil {
 		return err
 	}
 	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
@@ -322,6 +327,26 @@ func run() error {
 	osSvc := &desktop.OsService{Gateway: rt}
 	if err := rt.BindExecutor("os.info", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return osSvc.Info(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	notifs := &desktop.NotificationService{
+		Gateway: rt,
+		Host:    host,
+		OnShow: func(ctx context.Context, title, body string) error {
+			return host.ShowNotification(title, body)
+		},
+	}
+	if err := rt.BindExecutor("notifications.show", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		title, body := "", ""
+		switch v := input.(type) {
+		case string:
+			body = v
+		case map[string]any:
+			title, _ = v["title"].(string)
+			body, _ = v["body"].(string)
+		}
+		return nil, notifs.Show(ctx, caller, title, body)
 	})); err != nil {
 		return err
 	}

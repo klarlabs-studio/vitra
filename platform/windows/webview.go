@@ -143,6 +143,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDialogMessage, Available: true,
 			Detail: "Win32 MessageBox info/confirm",
 		},
+		platform.FeatureNotificationShow: {
+			Feature: platform.FeatureNotificationShow, Available: true,
+			Detail: "Shell_NotifyIcon balloon title+body",
+		},
 		platform.FeatureMenuBar: {
 			Feature: platform.FeatureMenuBar, Available: true,
 			Detail: "Win32 CreateMenu menubar; MenuItem.Shortcut as in-window HACCEL",
@@ -478,6 +482,25 @@ func (h *Host) MessageDialog(title, message, kind string) (bool, error) {
 		ch <- ok
 	})
 	return <-ch, nil
+}
+
+// ShowNotification displays a title+body desktop notification.
+func (h *Host) ShowNotification(title, body string) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ctitle := C.CString(title)
+		cbody := C.CString(body)
+		ok := C.vitra_show_notification(ctitle, cbody) != 0
+		C.free(unsafe.Pointer(ctitle))
+		C.free(unsafe.Pointer(cbody))
+		if !ok {
+			errCh <- errors.New("show notification failed")
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
 }
 
 // SetMenuBar replaces the window menu bar with the given flat items.
