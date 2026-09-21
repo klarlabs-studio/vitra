@@ -75,8 +75,9 @@ Still out of scope on main (do not claim otherwise):
 
 - Hosted update CDN / auto-update channel hosting
 - Notarization / codesign / Authenticode *execution* (`Spec.Sign` +
-  `SigningIdentityRef` are validated refs only; stage/fold never invoke
-  `codesign` / `signtool` / notary)
+  `SigningIdentityRef` are validated refs only — `env:` / `keychain:` /
+  `file:` / `secret:` prefixes; stage/fold never invoke `codesign` /
+  `signtool` / notary)
 - Extra Linux targets (`.rpm`, Flatpak, Snap)
 - Wails-class multi-framework project templates
 
