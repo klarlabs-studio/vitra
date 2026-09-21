@@ -123,6 +123,7 @@ type TrayService struct {
 	Gateway Gateway
 	Host    platform.Host
 	OnSet   func(ctx context.Context, tooltip string, items []MenuItem) error
+	OnClear func(ctx context.Context) error
 }
 
 // ParseTraySet extracts tooltip + menu items from an invoke payload.
@@ -156,6 +157,20 @@ func (s *TrayService) SetTray(ctx context.Context, caller domain.Caller, tooltip
 	}
 	if s.OnSet != nil {
 		return s.OnSet(ctx, tooltip, items)
+	}
+	return nil
+}
+
+// ClearTray authorizes tray.set then clears the tray icon.
+func (s *TrayService) ClearTray(ctx context.Context, caller domain.Caller) error {
+	if err := authorize(s.Gateway, caller, PermTraySet); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeatureTray); err != nil {
+		return err
+	}
+	if s.OnClear != nil {
+		return s.OnClear(ctx)
 	}
 	return nil
 }

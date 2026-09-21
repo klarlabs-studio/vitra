@@ -108,11 +108,23 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	)
 	ctx := context.Background()
 
-	if err := (&desktop.TrayService{
+	cleared := false
+	trays := &desktop.TrayService{
 		Gateway: allowAll{}, Host: host,
 		OnSet: func(context.Context, string, []desktop.MenuItem) error { return nil },
-	}).SetTray(ctx, caller, "Vitra", nil); err != nil {
+		OnClear: func(context.Context) error {
+			cleared = true
+			return nil
+		},
+	}
+	if err := trays.SetTray(ctx, caller, "Vitra", nil); err != nil {
 		t.Fatal(err)
+	}
+	if err := trays.ClearTray(ctx, caller); err != nil {
+		t.Fatal(err)
+	}
+	if !cleared {
+		t.Fatal("expected OnClear")
 	}
 	tip, items, err := desktop.ParseTraySet(map[string]any{
 		"tooltip": "Demo",

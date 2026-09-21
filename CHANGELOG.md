@@ -8,13 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official tray clear: `tray.clear` on `vitra.tray` (same `tray.set` grant) via `desktop.TrayService.ClearTray` → `DesktopHost.ClearTray`; scaffold/competitive bind.
 - Official window chrome read: `window.getChrome` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Read` → `DesktopHost.ReadWindowChrome`; scaffold/competitive bind.
 - `vitra new --template mithril`: Vite + Mithril 2 + TypeScript starter (`mithril` hyperscript `m.Component`, `m.mount`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Package keywords: `Spec.Keywords` / `vitra package --keywords` flow into FreeDesktop `.desktop` `Keywords=`, AppStream `<keyword>`, and snap `keywords:` (omitted when empty).
 - Official `vitra.app` plugin: declares `app.quit`; `desktop.AppService` + scaffold/generate/provenance/competitive bind → `App.Quit`.
 - Official `vitra.shortcut` plugin: declares `shortcut.register` + `shortcut.action` event; `desktop.ParseShortcutRegister` + scaffold/generate/provenance/competitive bind `ShortcutService` → `RegisterGlobalShortcut` (Wayland remains `ErrUnsupported`).
 - Official `vitra.dragdrop` plugin: declares `dragdrop.receive` + `dragdrop.drop` event; `desktop.ParseDragDropEnable` + scaffold/generate/provenance/competitive bind `DragDropService` → `EnableDragDrop`.
-- Official `vitra.tray` plugin: declares `tray.set` + `tray.action` event; `desktop.ParseTraySet` + scaffold/generate/provenance/competitive bind `TrayService` → `SetTray`; native actions emit `tray.action` (alongside `menu.action`).
+- Official `vitra.tray` plugin: declares `tray.set` / `tray.clear` + `tray.action` event; `desktop.ParseTraySet` + scaffold/generate/provenance/competitive bind `TrayService` → `SetTray` / `ClearTray`; native actions emit `tray.action` (alongside `menu.action`).
 - Official `vitra.menu` plugin: declares `menu.set` + `menu.action` event; `desktop.ParseMenuItems` + scaffold/generate/provenance/competitive bind `MenuService` → `SetMenuBar`; native actions emit `menu.action` (Quit still handled host-side).
 - Official `vitra.window` plugin: declares `window.create` / `window.close` / `window.chrome` / `window.getChrome`; `desktop.WindowService` Create/Close/Apply/Read wrap `app.App` + `DesktopHost` chrome APIs; scaffold/generate/provenance/competitive bind (grant includes `aux`).
 - Dialog open/save options: optional `title`, `defaultPath`, and `filters` (`[{ name, extensions }]`) on `dialog.open` / `dialog.save`; native hosts apply them (GTK filters, NSOpen/SavePanel allowedFileTypes, Win32 OFN filter); empty payload keeps prior unfiltered behavior.

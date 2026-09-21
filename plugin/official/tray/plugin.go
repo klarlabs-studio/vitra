@@ -1,6 +1,7 @@
 // Package tray is the official Phase 3 system-tray plugin contract.
-// It declares tray.set and contributes tray.action; native execution is bound
-// by the host via desktop.TrayService wrapping DesktopHost.SetTray.
+// It declares tray.set / tray.clear and contributes tray.action; native
+// execution is bound by the host via desktop.TrayService wrapping
+// DesktopHost.SetTray / ClearTray.
 package tray
 
 import (
@@ -23,7 +24,7 @@ func (trayPlugin) Manifest() plugin.Manifest {
 		ID:          PluginID,
 		Name:        "Tray",
 		Version:     plugin.SemVer{Major: 1},
-		Description: "Set the system tray icon/menu and receive tray actions",
+		Description: "Set or clear the system tray icon/menu and receive tray actions",
 		Permissions: []domain.PermissionName{"tray.set"},
 		MinKernel:   plugin.SemVer{Major: 0, Minor: 3},
 	}
@@ -35,8 +36,13 @@ func (trayPlugin) Contribute() (plugin.Contribution, error) {
 		return plugin.Contribution{}, err
 	}
 	set.WithPlugin(PluginID)
+	clear, err := domain.NewCommandDefinition("tray.clear", "Clear the system tray icon", "tray.set")
+	if err != nil {
+		return plugin.Contribution{}, err
+	}
+	clear.WithPlugin(PluginID)
 	return plugin.Contribution{
-		Commands: []*domain.CommandDefinition{set},
+		Commands: []*domain.CommandDefinition{set, clear},
 		Events:   []domain.EventName{"tray.action"},
 	}, nil
 }
