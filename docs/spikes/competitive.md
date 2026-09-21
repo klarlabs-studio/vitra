@@ -80,6 +80,6 @@ Wayland global hotkeys remain intentionally unsupported. `vitra dev` / `vitra bu
 enable `-tags vitra_native` on Linux, Darwin, and Windows. Windows MSI/NSIS
 staging and fold (`win-dir` / `wix` / `nsis-dir` / `msi` / `nsis`) ship; fold
 requires candle/light/makensis on the host (overridable via env). Darwin `.app`
-staging (`app-dir` / `StageDarwinApp`) ships; DMG fold remains a follow-on.
-Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM JSON policy documents
-(`policy.LoadDocument`) plug into Phase 5 ports.
+staging (`app-dir` / `StageDarwinApp`) and DMG fold (`dmg` / `hdiutil`, overridable
+via `VITRA_HDIUTIL`) ship. Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM
+JSON policy documents (`policy.LoadDocument`) plug into Phase 5 ports.

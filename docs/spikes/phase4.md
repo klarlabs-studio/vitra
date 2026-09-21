@@ -10,6 +10,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Linux staged app directory | `packaging.StageLinux` + `vitra package` |
 | Windows staged dir + WiX/NSIS scripts | `StageWindows` / `BuildWiXDir` / `BuildNSISDir` |
 | Darwin staged `.app` bundle | `StageDarwinApp` + `vitra package --format app-dir` |
+| Darwin DMG fold | `BuildDMG` / `FoldDMG` (`hdiutil` or `VITRA_HDIUTIL`) |
 | Signed update manifests (ed25519) | `updater` |
 | Install plans only after verify | `updater.PlanInstall` |
 | Atomic install after plan | `updater.ApplyInstall` / `Runtime.ApplyUpdate` |
@@ -29,12 +30,14 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `msi` | Final `.msi` (`BuildMSI` → candle/light or `VITRA_CANDLE`/`VITRA_LIGHT`) |
 | `nsis` | Final setup `.exe` (`BuildNSIS` → makensis or `VITRA_MAKENSIS`) |
 | `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`) |
+| `dmg` | Final `.dmg` (`BuildDMG` → hdiutil or `VITRA_HDIUTIL`) |
 
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold
 externally. `BuildMSI` / `BuildNSIS` likewise stage then fold; without WiX/NSIS
-tools, use `--format wix` / `nsis-dir` and fold on a Windows host. Darwin DMG
-fold remains a follow-on (`TargetDarwinDMG` declared; stage with `app-dir`).
+tools, use `--format wix` / `nsis-dir` and fold on a Windows host. `BuildDMG`
+stages a `.app` then folds with `hdiutil`; without it, use `--format app-dir`
+and fold on macOS.
 
 ## Update apply
 
