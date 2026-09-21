@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Windows ARP LegalCopyright: `Spec.License` / `vitra package --license` (via `EffectiveLicense`) flow into NSIS `LegalCopyright` and WiX `ARPCOPYRIGHT` (default: `LicenseRef-proprietary`).
 - Official menu clear: `menu.clear` on `vitra.menu` (same `menu.set` grant) via `desktop.MenuService.ClearMenu` → `DesktopHost.SetMenuBar(nil)`; scaffold/competitive bind.
 - RPM Group: `Spec.Categories` / `vitra package --categories` (via `RPMGroup`) set `.spec` `Group:` (e.g. Development→Development/Tools; default Utility→Applications/System).
 - Debian Section: `Spec.Categories` / `vitra package --categories` (via `DebianSection`) set control `Section:` (e.g. Development→devel; default Utility→utils).
@@ -36,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Official `vitra.notification` plugin: declares `notifications.show`; `desktop.NotificationService` + Linux/Darwin/Windows hosts (D-Bus Notifications / NSUserNotification / tray balloon); scaffold, generate, provenance, and competitive demo bind title+body only.
 - RPM/snap package metadata: `Spec.License` / `Homepage` / `Maintainer` / `Categories` flow into RPM `License:` / `URL:` / `Packager` / `Group:` and snap `license:` / `website:` / `contact:` (defaults match AppStream via `EffectiveLicense()` / `EffectiveMaintainer()` / `RPMGroup()`).
 - Official `vitra.os` plugin: declares `os.info`; `desktop.OsService` returns GOOS/GOARCH/family/locale (stdlib default); scaffold, `vitra generate typescript`, packaging provenance inventory, and competitive demo register + bind alongside `fs`/`dialog`/`clipboard`/`browser`.
-- Package metadata: `Spec.Homepage` / `Categories` / `Keywords` / `License` (+ `vitra package --homepage` / `--categories` / `--keywords` / `--license`) flow into FreeDesktop `.desktop` Categories/Keywords, AppStream metainfo (`<url>`, `<category>`, `<keyword>`, `<project_license>`), Debian `Homepage` + `Section:` + DEP-5 `copyright`, snap website/keywords, and Windows ARP `URLInfoAbout` / `ARPURLINFOABOUT`.
+- Package metadata: `Spec.Homepage` / `Categories` / `Keywords` / `License` (+ `vitra package --homepage` / `--categories` / `--keywords` / `--license`) flow into FreeDesktop `.desktop` Categories/Keywords, AppStream metainfo (`<url>`, `<category>`, `<keyword>`, `<project_license>`), Debian `Homepage` + `Section:` + DEP-5 `copyright`, snap website/keywords, and Windows ARP `URLInfoAbout` / `ARPURLINFOABOUT` / `LegalCopyright` / `ARPCOPYRIGHT`.
 - `vitra new --template htmx`: Vite + HTMX + TypeScript starter (`htmx.org`, `hx-on:click` helpers) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream metainfo: Linux stages (dir/AppDir/deb/rpm/snap/flatpak) emit `usr/share/metainfo/<appid>.metainfo.xml` (or Flatpak `files/share/metainfo/`) for software centers; Flathub PR automation still out of scope.
 - Native message dialogs: `dialog.message` (info/confirm) via `desktop.DialogService.Message`, official dialog plugin, and Linux/Darwin/Windows hosts (GTK MessageDialog / NSAlert / MessageBox); scaffold + competitive bind the executor.

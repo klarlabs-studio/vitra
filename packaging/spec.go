@@ -60,7 +60,8 @@ type Spec struct {
 	// AppStream <keyword>, snap keywords). Empty omits them.
 	Keywords []string
 	// License is the SPDX id or LicenseRef-* used for AppStream <project_license>,
-	// RPM License:, snap license:, and Debian usr/share/doc/.../copyright.
+	// RPM License:, snap license:, Debian usr/share/doc/.../copyright, and Windows
+	// ARP LegalCopyright / ARPCOPYRIGHT.
 	// Empty defaults to DefaultLicense.
 	License string
 }

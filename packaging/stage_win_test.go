@@ -499,3 +499,79 @@ func TestBuildWiXDir_ARPComments(t *testing.T) {
 		t.Fatalf("stale hardcoded Package Comments\n%s", body)
 	}
 }
+
+func TestBuildNSISDir_ARPLegalCopyright(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "nsis")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsNSIS}, License: "Apache-2.0",
+	}
+	if _, err := BuildNSISDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "installer.nsi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `WriteRegStr HKCU "${UNINST_KEY}" "LegalCopyright" "Apache-2.0"`
+	if !strings.Contains(string(raw), want) {
+		t.Fatalf("missing LegalCopyright\n%s", raw)
+	}
+
+	outDefault := filepath.Join(tmp, "nsis-default")
+	spec.License = ""
+	if _, err := BuildNSISDir(spec, bin, outDefault); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = os.ReadFile(filepath.Join(outDefault, "installer.nsi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantDefault := `WriteRegStr HKCU "${UNINST_KEY}" "LegalCopyright" "` + DefaultLicense + `"`
+	if !strings.Contains(string(raw), wantDefault) {
+		t.Fatalf("missing default LegalCopyright\n%s", raw)
+	}
+}
+
+func TestBuildWiXDir_ARPCopyright(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "wix")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsMSI}, License: "Apache-2.0",
+	}
+	if _, err := BuildWiXDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "product.wxs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `<Property Id="ARPCOPYRIGHT" Value="Apache-2.0"/>`
+	if !strings.Contains(string(raw), want) {
+		t.Fatalf("missing ARPCOPYRIGHT\n%s", raw)
+	}
+
+	outDefault := filepath.Join(tmp, "wix-default")
+	spec.License = ""
+	if _, err := BuildWiXDir(spec, bin, outDefault); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = os.ReadFile(filepath.Join(outDefault, "product.wxs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantDefault := `<Property Id="ARPCOPYRIGHT" Value="` + DefaultLicense + `"/>`
+	if !strings.Contains(string(raw), wantDefault) {
+		t.Fatalf("missing default ARPCOPYRIGHT\n%s", raw)
+	}
+}
