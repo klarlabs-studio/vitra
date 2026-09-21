@@ -71,9 +71,10 @@ Type=Application
 Name=%s
 Exec=%s
 Icon=%s
+StartupWMClass=%s
 Categories=Utility;
 StartupNotify=true
-`, spec.Name, destPath, iconKey)
+`, spec.Name, destPath, iconKey, safeName)
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}

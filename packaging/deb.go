@@ -58,9 +58,10 @@ Type=Application
 Name=%s
 Exec=AppRun
 Icon=%s
+StartupWMClass=%s
 Categories=Utility;
 Terminal=false
-`, spec.Name, iconKey)
+`, spec.Name, iconKey, binName)
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}
@@ -133,9 +134,10 @@ Type=Application
 Name=%s
 Exec=/usr/bin/%s
 Icon=%s
+StartupWMClass=%s
 Categories=Utility;
 Terminal=false
-`, spec.Name, binName, iconKey)
+`, spec.Name, binName, iconKey, binName)
 	dataFiles[desktopPath] = fileEntry{data: []byte(desktopBody), mode: 0o644}
 
 	installedSize := (payloadSize + 1023) / 1024

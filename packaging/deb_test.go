@@ -45,6 +45,10 @@ func TestBuildAppDir_Layout(t *testing.T) {
 	if !strings.Contains(string(body), "usr/bin/Vitra-Demo") {
 		t.Fatalf("AppRun=%s", body)
 	}
+	desktop, _ := os.ReadFile(filepath.Join(out, "Vitra-Demo.desktop"))
+	if !strings.Contains(string(desktop), "StartupWMClass=Vitra-Demo") {
+		t.Fatalf("desktop=%s", desktop)
+	}
 }
 
 func TestBuildDeb_ArArchive(t *testing.T) {
@@ -120,6 +124,9 @@ func TestBuildDeb_StagesIcon(t *testing.T) {
 	desktop := string(files["usr/share/applications/com.vitra.demo.desktop"])
 	if !strings.Contains(desktop, "Icon=Vitra-Demo") {
 		t.Fatalf("desktop:\n%s", desktop)
+	}
+	if !strings.Contains(desktop, "StartupWMClass=Vitra-Demo") {
+		t.Fatalf("desktop missing StartupWMClass:\n%s", desktop)
 	}
 }
 

@@ -49,6 +49,9 @@ func TestStageLinux_LayoutAndDigest(t *testing.T) {
 	if !strings.Contains(string(body), "Exec="+staged) {
 		t.Fatalf("desktop=%s", body)
 	}
+	if !strings.Contains(string(body), "StartupWMClass=Vitra-Demo") {
+		t.Fatalf("desktop missing StartupWMClass: %s", body)
+	}
 }
 
 func TestStageLinux_RejectsInlineSigningSecretPattern(t *testing.T) {
