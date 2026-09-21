@@ -106,7 +106,7 @@ func run() error {
 
 	chromeGrant, err := domain.NewCapabilityGrant(
 		"desktop-chrome",
-		"clipboard, dialogs, menu, tray, single-instance, deeplink, drag-drop",
+		"clipboard, dialogs, menu, tray, single-instance, deeplink, drag-drop, window chrome",
 		[]domain.WindowID{"main"},
 		[]domain.Origin{domain.OriginPackagedLocal},
 		[]domain.PermissionSpec{
@@ -119,6 +119,7 @@ func run() error {
 			{Name: desktop.PermSingleInstance},
 			{Name: desktop.PermDeepLinkHandle},
 			{Name: desktop.PermDragDrop},
+			{Name: desktop.PermWindowChrome},
 		},
 	)
 	if err != nil {
@@ -372,6 +373,24 @@ func run() error {
 		} else if _, err := rt.SubscribeEvent("drop-sub", "dragdrop.drop", "main"); err == nil {
 			if os.Getenv("VITRA_INJECT_DROP") == "1" {
 				host.InjectFileDrop("main", []string{"/tmp/vitra-demo-drop.txt"})
+			}
+		}
+		if title := os.Getenv("VITRA_WINDOW_TITLE"); title != "" {
+			winChrome := &desktop.WindowService{
+				Gateway: rt,
+				Host:    host,
+				OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
+					return host.ApplyWindowChrome(window, chrome)
+				},
+			}
+			cur, err := host.ReadWindowChrome("main")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "window chrome: %v\n", err)
+			} else {
+				cur.Title = title
+				if err := winChrome.Apply(context.Background(), caller, "main", cur); err != nil {
+					fmt.Fprintf(os.Stderr, "window chrome apply: %v\n", err)
+				}
 			}
 		}
 		if _, err := rt.SubscribeEvent("demo-tick", "demo.tick", "main"); err == nil {

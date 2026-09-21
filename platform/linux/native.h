@@ -10,7 +10,21 @@ typedef struct {
 	GtkWidget *menubar;
 	WebKitWebView *view;
 	char *id;
+	int maximized;
+	int fullscreen;
+	int above;
+	int req_width;
+	int req_height;
 } VitraWin;
+
+typedef struct {
+	char *title;
+	int width;
+	int height;
+	int maximized;
+	int fullscreen;
+	int above;
+} VitraChrome;
 
 void vitra_gtk_init(void);
 void vitra_gtk_main(void);
@@ -36,5 +50,8 @@ void vitra_tray_add_menu_item(const char *item_id, const char *item_label);
 void vitra_tray_clear(void);
 
 void vitra_win_set_drag_drop(VitraWin *w, int enabled);
+void vitra_win_flush(void);
+void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above);
+VitraChrome vitra_win_chrome(VitraWin *w);
 
 #endif

@@ -38,7 +38,18 @@ const (
 	FeatureSingleInstance  Feature = "single_instance"
 	FeatureDragDrop        Feature = "drag_drop"
 	FeatureFileAssociation Feature = "file_association"
+	FeatureWindowChrome    Feature = "window.chrome"
 )
+
+// WindowChrome is the native window presentation a host can apply and read back.
+type WindowChrome struct {
+	Title       string
+	Width       int
+	Height      int
+	Maximized   bool
+	Fullscreen  bool
+	AlwaysOnTop bool
+}
 
 // Support describes whether a feature is available on the current host.
 type Support struct {

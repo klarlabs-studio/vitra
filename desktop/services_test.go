@@ -237,3 +237,54 @@ func TestDragDropService_GrantFeatureAndHook(t *testing.T) {
 		t.Fatal("expected missing adapter")
 	}
 }
+
+func TestWindowService_GrantFeatureAndHook(t *testing.T) {
+	caller, _ := domain.NewCaller("main", domain.OriginPackagedLocal)
+	host := null.New(platform.OSLinux)
+	ctx := context.Background()
+	chrome := platform.WindowChrome{Title: "Vitra", Width: 800, Height: 600, AlwaysOnTop: true}
+
+	denied := &desktop.WindowService{Gateway: denyAll{}, Host: host}
+	err := denied.Apply(ctx, caller, "main", chrome)
+	var d *domain.ErrDenied
+	if !errors.As(err, &d) || d.Code != domain.DenialNoGrant {
+		t.Fatalf("expected denial, got %v", err)
+	}
+
+	bare := &desktop.WindowService{Gateway: allowAll{}, Host: host}
+	err = bare.Apply(ctx, caller, "main", chrome)
+	var un *platform.ErrUnsupported
+	if !errors.As(err, &un) || un.Feature != platform.FeatureWindowChrome {
+		t.Fatalf("expected unsupported window.chrome, got %v", err)
+	}
+
+	okHost := withFeatures(platform.OSLinux, platform.FeatureWindowChrome)
+	var got platform.WindowChrome
+	ok := &desktop.WindowService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
+			if window != "main" {
+				t.Fatalf("window=%s", window)
+			}
+			got = chrome
+			return nil
+		},
+	}
+	if err := ok.Apply(ctx, caller, "main", chrome); err != nil {
+		t.Fatal(err)
+	}
+	if got.Title != "Vitra" || got.Width != 800 || !got.AlwaysOnTop {
+		t.Fatalf("chrome=%+v", got)
+	}
+	if err := ok.Apply(ctx, caller, "", chrome); err == nil {
+		t.Fatal("expected empty window validation")
+	}
+	if err := ok.Apply(ctx, caller, "main", platform.WindowChrome{Title: "x"}); err == nil {
+		t.Fatal("expected size validation")
+	}
+	missing := &desktop.WindowService{Gateway: allowAll{}, Host: okHost}
+	if err := missing.Apply(ctx, caller, "main", chrome); err == nil {
+		t.Fatal("expected missing adapter")
+	}
+}

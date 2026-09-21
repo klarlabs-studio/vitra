@@ -97,6 +97,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureFileAssociation, Available: true,
 			Detail: "xdg MIME desktop file",
 		},
+		platform.FeatureWindowChrome: {
+			Feature: platform.FeatureWindowChrome, Available: true,
+			Detail: "GTK title, size, maximize, fullscreen, and keep-above",
+		},
 	}
 }
 
@@ -143,6 +147,68 @@ func (h *Host) InjectFileDrop(id domain.WindowID, paths []string) {
 		return
 	}
 	h.onDrop(id, append([]string(nil), paths...))
+}
+
+// ApplyWindowChrome sets title, size, and presentation hints on a native window.
+func (h *Host) ApplyWindowChrome(id domain.WindowID, chrome platform.WindowChrome) error {
+	if chrome.Width <= 0 || chrome.Height <= 0 {
+		return &domain.ErrValidation{Message: "window width and height must be positive"}
+	}
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		ctitle := C.CString(chrome.Title)
+		defer C.free(unsafe.Pointer(ctitle))
+		maxed, full, above := C.int(0), C.int(0), C.int(0)
+		if chrome.Maximized {
+			maxed = 1
+		}
+		if chrome.Fullscreen {
+			full = 1
+		}
+		if chrome.AlwaysOnTop {
+			above = 1
+		}
+		C.vitra_win_apply_chrome(w.ptr, ctitle, C.int(chrome.Width), C.int(chrome.Height), maxed, full, above)
+		errCh <- nil
+	})
+	return <-errCh
+}
+
+// ReadWindowChrome returns the window presentation GTK last applied.
+func (h *Host) ReadWindowChrome(id domain.WindowID) (platform.WindowChrome, error) {
+	type result struct {
+		chrome platform.WindowChrome
+		err    error
+	}
+	ch := make(chan result, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			ch <- result{err: &domain.ErrNotFound{Entity: "window", ID: string(id)}}
+			return
+		}
+		raw := C.vitra_win_chrome(w.ptr)
+		defer C.free(unsafe.Pointer(raw.title))
+		ch <- result{chrome: platform.WindowChrome{
+			Title:       C.GoString(raw.title),
+			Width:       int(raw.width),
+			Height:      int(raw.height),
+			Maximized:   raw.maximized != 0,
+			Fullscreen:  raw.fullscreen != 0,
+			AlwaysOnTop: raw.above != 0,
+		}}
+	})
+	got := <-ch
+	return got.chrome, got.err
 }
 
 // CreateWindow implements platform.Host.
@@ -248,16 +314,20 @@ func (h *Host) CloseWindow(_ context.Context, id domain.WindowID) error {
 	errCh := make(chan error, 1)
 	h.dispatch(func() {
 		h.mu.Lock()
-		defer h.mu.Unlock()
 		w, ok := h.windows[id]
 		if !ok {
+			h.mu.Unlock()
 			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
 			return
 		}
-		C.vitra_win_close(w.ptr)
-		C.vitra_win_free(w.ptr)
 		delete(h.windows, id)
 		delete(h.origins, id)
+		ptr := w.ptr
+		h.mu.Unlock()
+		// Destroy emits synchronously. Drop the map entry first so the
+		// destroy callback does not free the native window under h.mu.
+		C.vitra_win_close(ptr)
+		C.vitra_win_free(ptr)
 		errCh <- nil
 	})
 	return <-errCh
