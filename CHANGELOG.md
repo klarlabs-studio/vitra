@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- AppStream vcs-browser URL: `Spec.Homepage` / `vitra package --homepage` also flow into metainfo `<url type="vcs-browser">` alongside homepage/help/bugtracker (omitted when empty).
 - Official window restore: `window.restore` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Restore` (clears `Minimized`/`Maximized`/`Fullscreen`); scaffold/competitive bind.
 - `vitra new --template rescript`: Vite + ReScript 11 + React (`App.res` + `@jihchi/vite-plugin-rescript`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream bugtracker URL: `Spec.Homepage` / `vitra package --homepage` also flow into metainfo `<url type="bugtracker">` alongside homepage/help (omitted when empty).

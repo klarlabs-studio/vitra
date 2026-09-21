@@ -48,6 +48,7 @@ func AppStreamMetainfoXML(spec Spec) string {
 		fmt.Fprintf(&b, "  <url type=\"homepage\">%s</url>\n", escaped)
 		fmt.Fprintf(&b, "  <url type=\"help\">%s</url>\n", escaped)
 		fmt.Fprintf(&b, "  <url type=\"bugtracker\">%s</url>\n", escaped)
+		fmt.Fprintf(&b, "  <url type=\"vcs-browser\">%s</url>\n", escaped)
 	}
 	b.WriteString("  <categories>\n")
 	for _, cat := range spec.EffectiveCategories() {
