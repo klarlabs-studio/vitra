@@ -105,8 +105,8 @@ func printUsage() {
 Usage:
   vitra version              Print kernel version
   vitra doctor               Diagnose WebView / CGO prerequisites
-  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript|squint|cherry|vanjs|reef|atomico|sinuous|haunted|arrow|hybrids|uhtml|omi|htm|ractive|moon|solid-element|fast]
-                             Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik/mithril/riot/inferno/stencil/marko/ember/aurelia/stimulus/petite-vue/hyperapp/knockout/backbone/nerv/polymer/dojo/elm/rescript/squint/cherry/vanjs/reef/atomico/sinuous/haunted/arrow/hybrids/uhtml/omi/htm/ractive/moon/solid-element/fast add Vite frontends)
+  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript|squint|cherry|vanjs|reef|atomico|sinuous|haunted|arrow|hybrids|uhtml|omi|htm|ractive|moon|solid-element|fast|crank]
+                             Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik/mithril/riot/inferno/stencil/marko/ember/aurelia/stimulus/petite-vue/hyperapp/knockout/backbone/nerv/polymer/dojo/elm/rescript/squint/cherry/vanjs/reef/atomico/sinuous/haunted/arrow/hybrids/uhtml/omi/htm/ractive/moon/solid-element/fast/crank add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--keywords list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
@@ -254,7 +254,7 @@ func scaffoldNew(args []string) error {
 		case "--template":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, dojo, elm, rescript, squint, cherry, vanjs, reef, atomico, sinuous, haunted, arrow, hybrids, uhtml, omi, htm, ractive, moon, solid-element, or fast")
+				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, dojo, elm, rescript, squint, cherry, vanjs, reef, atomico, sinuous, haunted, arrow, hybrids, uhtml, omi, htm, ractive, moon, solid-element, fast, or crank")
 			}
 			tmpl = args[i]
 		default:
@@ -262,18 +262,18 @@ func scaffoldNew(args []string) error {
 				return fmt.Errorf("unknown new flag %q", args[i])
 			}
 			if dir != "" {
-				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript|squint|cherry|vanjs|reef|atomico|sinuous|haunted|arrow|hybrids|uhtml|omi|htm|ractive|moon|solid-element|fast]")
+				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript|squint|cherry|vanjs|reef|atomico|sinuous|haunted|arrow|hybrids|uhtml|omi|htm|ractive|moon|solid-element|fast|crank]")
 			}
 			dir = args[i]
 		}
 	}
 	if dir == "" {
-		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript|squint|cherry|vanjs|reef|atomico|sinuous|haunted|arrow|hybrids|uhtml|omi|htm|ractive|moon|solid-element|fast]")
+		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript|squint|cherry|vanjs|reef|atomico|sinuous|haunted|arrow|hybrids|uhtml|omi|htm|ractive|moon|solid-element|fast|crank]")
 	}
 	switch tmpl {
-	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm", "rescript", "squint", "cherry", "vanjs", "reef", "atomico", "sinuous", "haunted", "arrow", "hybrids", "uhtml", "omi", "htm", "ractive", "moon", "solid-element", "fast":
+	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm", "rescript", "squint", "cherry", "vanjs", "reef", "atomico", "sinuous", "haunted", "arrow", "hybrids", "uhtml", "omi", "htm", "ractive", "moon", "solid-element", "fast", "crank":
 	default:
-		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, dojo, elm, rescript, squint, cherry, vanjs, reef, atomico, sinuous, haunted, arrow, hybrids, uhtml, omi, htm, ractive, moon, solid-element, or fast)", tmpl)
+		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, dojo, elm, rescript, squint, cherry, vanjs, reef, atomico, sinuous, haunted, arrow, hybrids, uhtml, omi, htm, ractive, moon, solid-element, fast, or crank)", tmpl)
 	}
 
 	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
@@ -378,6 +378,8 @@ func scaffoldNew(args []string) error {
 		files = scaffoldSolidElementFiles(modPath, tsClient)
 	case "fast":
 		files = scaffoldFastFiles(modPath, tsClient)
+	case "crank":
+		files = scaffoldCrankFiles(modPath, tsClient)
 	default:
 		files = scaffoldVanillaFiles(modPath, tsClient)
 	}
@@ -392,7 +394,7 @@ func scaffoldNew(args []string) error {
 	}
 	fmt.Printf("created %s (template=%s)\n", dir, tmpl)
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm", "rescript", "squint", "cherry", "vanjs", "reef", "atomico", "sinuous", "haunted", "arrow", "hybrids", "uhtml", "omi", "htm", "ractive", "moon", "solid-element", "fast":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm", "rescript", "squint", "cherry", "vanjs", "reef", "atomico", "sinuous", "haunted", "arrow", "hybrids", "uhtml", "omi", "htm", "ractive", "moon", "solid-element", "fast", "crank":
 		fmt.Println("next: cd", dir, "&& (optional: cd frontend && npm install && npm run build) && vitra dev")
 	default:
 		fmt.Println("next: cd", dir, "&& vitra dev")
@@ -4692,6 +4694,107 @@ func scaffoldFastIndexHTML() string {
 
 }
 
+func scaffoldCrankFiles(modPath, tsClient string) map[string]string {
+	return map[string]string{
+		"go.mod":                     scaffoldGoMod(modPath),
+		"main.go":                    scaffoldMainGo("all:frontend/dist", "frontend/dist"),
+		"frontend/package.json":      scaffoldCrankPackageJSON(),
+		"frontend/vite.config.js":    scaffoldViteConfig(""),
+		"frontend/tsconfig.json":     scaffoldViteTSConfig(""),
+		"frontend/index.html":        scaffoldCrankIndexHTML(),
+		"frontend/src/main.ts":       scaffoldCrankMainTS(),
+		"frontend/src/vite-env.d.ts": "/// <reference types=\"vite/client\" />\n",
+		"frontend/vitra-client.ts":   tsClient,
+		"frontend/dist/index.html":   scaffoldIndexHTML(),
+		".gitignore":                 "frontend/node_modules/\nvitra-app\n",
+		"README.md":                  scaffoldREADME("crank"),
+	}
+}
+
+func scaffoldCrankPackageJSON() string {
+	return `{
+  "name": "vitra-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@b9g/crank": "^0.7.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0"
+  }
+}
+`
+}
+
+func scaffoldCrankMainTS() string {
+	bt := "`"
+	return `import { Context } from "@b9g/crank";
+import { html, renderer } from "@b9g/crank/standalone";
+import { createClient } from "../vitra-client";
+
+declare global {
+  interface Window {
+    vitra: { invoke: (cmd: string, input?: unknown) => Promise<unknown> };
+  }
+}
+
+const client = createClient(window.vitra.invoke);
+
+function* App(this: Context) {
+  let out = "";
+  const run = async (fn: () => Promise<unknown>) => {
+    try {
+      out = JSON.stringify(await fn(), null, 2);
+    } catch (e) {
+      out = String(e);
+    }
+    this.refresh();
+  };
+
+  for ({} of this) {
+    yield html` + bt + `
+      <div style="font-family: Georgia, serif; margin: 2rem; background: #111; color: #eee; min-height: 100vh;">
+        <h1>Vitra</h1>
+        <p>Vite + Crank starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
+        <button onclick=${() => run(() => client.demoGreet("Vitra"))}>demo.greet</button>
+        <button onclick=${() => run(() => client.dialogOpen())}>dialog.open</button>
+        <button onclick=${() => run(() => client.clipboardRead())}>clipboard.read</button>
+        <button onclick=${() => run(() => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>
+        <button onclick=${() => run(() => client.osInfo())}>os.info</button>
+        <button onclick=${() => run(() => client.notificationsShow({ title: "Vitra", body: "Hello from scaffold" }))}>
+          notifications.show
+        </button>
+        <pre>${out}</pre>
+      </div>
+    ` + bt + `;
+  }
+}
+
+renderer.render(html` + bt + `<${App} />` + bt + `, document.getElementById("app")!);
+`
+}
+
+func scaffoldCrankIndexHTML() string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Vitra App</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
+`
+}
+
 func scaffoldAngularFiles(modPath, tsClient string) map[string]string {
 	return map[string]string{
 		"go.mod":                        scaffoldGoMod(modPath),
@@ -4917,7 +5020,7 @@ vitra package --out dist/ --format dir
 ` + "```" + `
 `
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm", "rescript", "squint", "cherry", "vanjs", "reef", "atomico", "sinuous", "haunted", "arrow", "hybrids", "uhtml", "omi", "htm", "ractive", "moon", "solid-element", "fast":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm", "rescript", "squint", "cherry", "vanjs", "reef", "atomico", "sinuous", "haunted", "arrow", "hybrids", "uhtml", "omi", "htm", "ractive", "moon", "solid-element", "fast", "crank":
 		label := "Vite"
 		switch tmpl {
 		case "react":
@@ -5006,6 +5109,8 @@ vitra package --out dist/ --format dir
 			label = "Vite + solid-element"
 		case "fast":
 			label = "Vite + FAST Element"
+		case "crank":
+			label = "Vite + Crank"
 		}
 		body += `
 ## ` + label + ` frontend
