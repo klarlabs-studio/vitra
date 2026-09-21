@@ -74,6 +74,11 @@ func AppStreamMetainfoXML(spec Spec) string {
 		fmt.Fprintf(&b, "    <release version=\"%s\"/>\n", xmlEscape(ver))
 		b.WriteString("  </releases>\n")
 	}
+	if bin := sanitizeFileName(spec.Name); bin != "" {
+		b.WriteString("  <provides>\n")
+		fmt.Fprintf(&b, "    <binary>%s</binary>\n", xmlEscape(bin))
+		b.WriteString("  </provides>\n")
+	}
 	b.WriteString("</component>\n")
 	return b.String()
 }
