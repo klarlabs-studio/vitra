@@ -171,6 +171,9 @@ func run() error {
 			}
 			return host.SetMenuBar("main", native)
 		},
+		OnClear: func(ctx context.Context) error {
+			return host.SetMenuBar("main", nil)
+		},
 	}
 	trays := &desktop.TrayService{
 		Gateway: rt,
@@ -546,6 +549,11 @@ func run() error {
 			return nil, err
 		}
 		return nil, menus.SetMenu(ctx, caller, items)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("menu.clear", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return nil, menus.ClearMenu(ctx, caller)
 	})); err != nil {
 		return err
 	}

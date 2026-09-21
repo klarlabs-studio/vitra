@@ -60,6 +60,7 @@ type MenuService struct {
 	Gateway Gateway
 	Host    platform.Host
 	OnSet   func(ctx context.Context, items []MenuItem) error // optional native hook
+	OnClear func(ctx context.Context) error
 }
 
 // ParseMenuItems extracts menu entries from an invoke payload.
@@ -114,6 +115,20 @@ func (s *MenuService) SetMenu(ctx context.Context, caller domain.Caller, items [
 	}
 	if s.OnSet != nil {
 		return s.OnSet(ctx, items)
+	}
+	return nil
+}
+
+// ClearMenu authorizes menu.set then clears the menu bar.
+func (s *MenuService) ClearMenu(ctx context.Context, caller domain.Caller) error {
+	if err := authorize(s.Gateway, caller, PermMenuSet); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeatureMenuBar); err != nil {
+		return err
+	}
+	if s.OnClear != nil {
+		return s.OnClear(ctx)
 	}
 	return nil
 }

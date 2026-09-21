@@ -24,7 +24,7 @@ competitive demo binds `dialog.open`/`dialog.save`/`dialog.openDirectory`/`dialo
 `path.open` to `desktop.PathService`,
 `window.create`/`window.close`/`window.chrome`/`window.getChrome` to `desktop.WindowService`
 (via `app.App` / `DesktopHost` chrome APIs),
-`menu.set` to `desktop.MenuService` (via `DesktopHost.SetMenuBar`; actions emit `menu.action`),
+`menu.set`/`menu.clear` to `desktop.MenuService` (via `DesktopHost.SetMenuBar`; actions emit `menu.action`),
 `tray.set`/`tray.clear` to `desktop.TrayService` (via `DesktopHost.SetTray`/`ClearTray`; actions emit `tray.action`),
 `dragdrop.receive` to `desktop.DragDropService` (via `EnableDragDrop`; drops emit `dragdrop.drop`),
 host deep links via `desktop.DeepLinkService` (emit `deeplink.open` after `deeplink.handle`),

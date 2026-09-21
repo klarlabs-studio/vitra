@@ -64,11 +64,16 @@ func TestMenuService_GrantFeatureAndHook(t *testing.T) {
 
 	okHost := withFeatures(platform.OSLinux, platform.FeatureMenuBar)
 	called := false
+	cleared := false
 	ok := &desktop.MenuService{
 		Gateway: allowAll{},
 		Host:    okHost,
 		OnSet: func(ctx context.Context, items []desktop.MenuItem) error {
 			called = true
+			return nil
+		},
+		OnClear: func(ctx context.Context) error {
+			cleared = true
 			return nil
 		},
 	}
@@ -77,6 +82,12 @@ func TestMenuService_GrantFeatureAndHook(t *testing.T) {
 	}
 	if !called {
 		t.Fatal("expected OnSet")
+	}
+	if err := ok.ClearMenu(context.Background(), caller); err != nil {
+		t.Fatal(err)
+	}
+	if !cleared {
+		t.Fatal("expected OnClear")
 	}
 	items, err := desktop.ParseMenuItems([]any{
 		map[string]any{"id": "app.quit", "label": "Quit", "menu": "File", "shortcut": "Ctrl+Q"},

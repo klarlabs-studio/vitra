@@ -1,6 +1,7 @@
 // Package menu is the official Phase 3 application menu-bar plugin contract.
-// It declares menu.set and contributes menu.action; native execution is bound
-// by the host via desktop.MenuService wrapping DesktopHost.SetMenuBar.
+// It declares menu.set / menu.clear and contributes menu.action; native
+// execution is bound by the host via desktop.MenuService wrapping
+// DesktopHost.SetMenuBar (nil items clears the bar).
 package menu
 
 import (
@@ -23,7 +24,7 @@ func (menuPlugin) Manifest() plugin.Manifest {
 		ID:          PluginID,
 		Name:        "Menu",
 		Version:     plugin.SemVer{Major: 1},
-		Description: "Set the application menu bar and receive menu actions",
+		Description: "Set or clear the application menu bar and receive menu actions",
 		Permissions: []domain.PermissionName{"menu.set"},
 		MinKernel:   plugin.SemVer{Major: 0, Minor: 3},
 	}
@@ -35,8 +36,13 @@ func (menuPlugin) Contribute() (plugin.Contribution, error) {
 		return plugin.Contribution{}, err
 	}
 	set.WithPlugin(PluginID)
+	clear, err := domain.NewCommandDefinition("menu.clear", "Clear the application menu bar", "menu.set")
+	if err != nil {
+		return plugin.Contribution{}, err
+	}
+	clear.WithPlugin(PluginID)
 	return plugin.Contribution{
-		Commands: []*domain.CommandDefinition{set},
+		Commands: []*domain.CommandDefinition{set, clear},
 		Events:   []domain.EventName{"menu.action"},
 	}, nil
 }

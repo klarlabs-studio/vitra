@@ -19,8 +19,11 @@ func TestMenuPlugin_Contribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.Commands) != 1 || string(c.Commands[0].Name()) != "menu.set" {
+	if len(c.Commands) != 2 || string(c.Commands[0].Name()) != "menu.set" || string(c.Commands[1].Name()) != "menu.clear" {
 		t.Fatalf("commands: %v", c.Commands)
+	}
+	if string(c.Commands[1].Permission()) != "menu.set" {
+		t.Fatalf("menu.clear permission: %s", c.Commands[1].Permission())
 	}
 	if len(c.Events) != 1 || string(c.Events[0]) != "menu.action" {
 		t.Fatalf("events: %v", c.Events)

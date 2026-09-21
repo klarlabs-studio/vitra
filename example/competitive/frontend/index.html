@@ -59,6 +59,7 @@
       <button id="chrome" class="secondary">Apply window.chrome</button>
       <button id="getChrome" class="secondary">Read window.getChrome</button>
       <button id="menu" class="secondary">Set menu bar</button>
+      <button id="menuClear" class="secondary">Clear menu bar</button>
       <button id="tray" class="secondary">Set tray</button>
       <button id="trayClear" class="secondary">Clear tray</button>
       <button id="drop" class="secondary">Enable file drops</button>
@@ -207,6 +208,14 @@
           { menu: "Help", id: "help.about", label: "About Vitra" },
         ]);
         show({ menu: "set" });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("menuClear").onclick = async () => {
+      try {
+        await window.vitra.invoke("menu.clear");
+        show({ menu: "cleared" });
       } catch (e) {
         show(String(e.message || e), true);
       }

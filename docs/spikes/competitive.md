@@ -17,7 +17,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin + Windows); official `vitra.deeplink` (`deeplink.open` event) + scaffold/`generate` stubs |
 | Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem; Windows Shell_NotifyIcon) |
 | Navigation allowlist (local asset server only) | Done |
-| GTK menu bar + status-icon tray | Done; official `vitra.menu` (`menu.set` + `menu.action`) and `vitra.tray` (`tray.set` / `tray.clear` + `tray.action`) + scaffold/`generate` stubs |
+| GTK menu bar + status-icon tray | Done; official `vitra.menu` (`menu.set` / `menu.clear` + `menu.action`) and `vitra.tray` (`tray.set` / `tray.clear` + `tray.action`) + scaffold/`generate` stubs |
 | `vitra doctor/new/dev/build` | Done |
 | `platform/darwin` WKWebView host (`-tags vitra_native`) | DesktopHost complete for competitive parity |
 | Darwin global shortcuts (`shortcut.global`) | Done (`RegisterEventHotKey`; Ctrl→Command); official `vitra.shortcut` (`register`/`unregister`) + scaffold/`generate` stubs |
