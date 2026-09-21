@@ -17,11 +17,11 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin) |
 | Linux xdg URL-scheme registration (`RegisterURLScheme`) | Done |
 | Linux xdg MIME file associations (`RegisterFileAssociations`) | Done |
-| Tray context menu (status-icon popup) | Done |
+| Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem) |
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done |
 | `vitra doctor/new/dev/build` | Done |
-| `platform/darwin` WKWebView host (`-tags vitra_native`) | Scaffold + OpenURL/clipboard/single-instance/deep-link; dialogs, window chrome, menu bar (native); tray TBD |
+| `platform/darwin` WKWebView host (`-tags vitra_native`) | Scaffold + OpenURL/clipboard/single-instance/deep-link; dialogs, chrome, menu, tray (native) |
 | In-window menu accelerators (`MenuItem.Shortcut`) | Done (Linux GTK; Darwin NSMenu Ctrl→Command) |
 | `platform/windows` DesktopHost stub | Explicit unsupported |
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |

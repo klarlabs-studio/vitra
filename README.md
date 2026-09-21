@@ -154,7 +154,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Save dialog + single-instance lock | Linux + Darwin dialogs; single-instance Linux + Darwin |
 | Linux xdg URL-scheme registration | Linux native (`vitra register-scheme`) |
 | Linux xdg MIME file associations | Linux (`vitra register-files`) |
-| Darwin WKWebView | Scaffold (`-tags vitra_native`; window/navigate/message; OpenURL, clipboard, single-instance, deep-link, dialogs, chrome, menu bar) |
+| Darwin WKWebView | Scaffold (`-tags vitra_native`; core host + OpenURL/clipboard/single-instance/deep-link/dialogs/chrome/menu/tray) |
 | Windows WebView2 | Stub (explicit unsupported) |
 
 ## Development
