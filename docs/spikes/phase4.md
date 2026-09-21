@@ -38,7 +38,9 @@ Linux stages (root + `usr/share/icons/hicolor/…/apps/`, `Icon=<name>`), AppDir
 `Icon=`), Darwin `Contents/Resources` (`CFBundleIconFile`), and Windows `bin/`
 (WiX `ARPPRODUCTICON` + NSIS shortcut icon). Optional `--maintainer` sets Debian
 `Maintainer` and, when provided, WiX `Manufacturer` / NSIS `PRODUCT_PUBLISHER`
-(otherwise WiX/NSIS use `Name`).
+(otherwise WiX/NSIS use `Name`). Optional `--description` sets the Debian
+extended Description and FreeDesktop `Comment=` (default: secure Go + web
+desktop blurb).
 
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold

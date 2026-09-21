@@ -37,10 +37,16 @@ type Spec struct {
 	// Maintainer is the Debian control Maintainer field (and Windows publisher when set).
 	// Empty defaults to DefaultMaintainer for .deb; WiX/NSIS fall back to Name.
 	Maintainer string
+	// Description is a short package summary used as the Debian control extended
+	// Description and FreeDesktop Comment=. Empty defaults to DefaultDescription.
+	Description string
 }
 
 // DefaultMaintainer is used when Spec.Maintainer is empty for .deb packages.
 const DefaultMaintainer = "Vitra Packaging <vitra@klarlabs.de>"
+
+// DefaultDescription is used when Spec.Description is empty.
+const DefaultDescription = "Secure Go + web desktop application packaged by Vitra."
 
 // EffectiveMaintainer returns Spec.Maintainer or DefaultMaintainer.
 func (s Spec) EffectiveMaintainer() string {
@@ -57,6 +63,14 @@ func (s Spec) EffectivePublisher() string {
 		return m
 	}
 	return s.Name
+}
+
+// EffectiveDescription returns Spec.Description or DefaultDescription.
+func (s Spec) EffectiveDescription() string {
+	if d := strings.TrimSpace(s.Description); d != "" {
+		return d
+	}
+	return DefaultDescription
 }
 
 // Validate checks packaging invariants.

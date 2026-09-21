@@ -83,7 +83,7 @@ Usage:
   vitra new <dir>            Scaffold a starter desktop app
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
-  vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name]
+  vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text]
                              Stage Linux dir, build .deb / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
@@ -561,7 +561,8 @@ func runPackage(args []string) error {
 	format := "dir"
 	icon := ""
 	maintainer := ""
-	usage := "usage: vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name]"
+	description := ""
+	usage := "usage: vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text]"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
@@ -606,6 +607,12 @@ func runPackage(args []string) error {
 				return fmt.Errorf("--maintainer requires a value")
 			}
 			maintainer = args[i]
+		case "--description":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--description requires a value")
+			}
+			description = args[i]
 		case "--format":
 			i++
 			if i >= len(args) {
@@ -650,13 +657,14 @@ func runPackage(args []string) error {
 		return fmt.Errorf("unknown format %q (want dir, deb, appdir, appimage, win-dir, wix, nsis-dir, msi, nsis, app-dir, or dmg)", format)
 	}
 	spec := packaging.Spec{
-		AppID:      appID,
-		Version:    version,
-		Name:       name,
-		Targets:    []packaging.Target{target},
-		Arch:       packaging.DefaultArch(),
-		IconPath:   icon,
-		Maintainer: maintainer,
+		AppID:       appID,
+		Version:     version,
+		Name:        name,
+		Targets:     []packaging.Target{target},
+		Arch:        packaging.DefaultArch(),
+		IconPath:    icon,
+		Maintainer:  maintainer,
+		Description: description,
 	}
 
 	var art packaging.Artifact
