@@ -91,7 +91,7 @@ Runnable walkthrough: `go run ./example/quickstart`
 
 ```bash
 vitra new myapp
-# or: vitra new myapp --template vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript|squint|cherry|vanjs|reef|atomico|sinuous|haunted|arrow|hybrids|uhtml
+# or: vitra new myapp --template vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript|squint|cherry|vanjs|reef|atomico|sinuous|haunted|arrow|hybrids|uhtml|omi
 cd myapp
 CGO_ENABLED=1 go run -tags vitra_native .
 # or: vitra doctor && vitra dev
@@ -109,7 +109,7 @@ VITRA_DEMO_SECONDS=3 xvfb-run -a make demo
 vitra version
 vitra doctor
 vitra new ./myapp
-# vitra new ./myapp --template vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript|squint|cherry|vanjs|reef|atomico|sinuous|haunted|arrow|hybrids|uhtml
+# vitra new ./myapp --template vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm|rescript|squint|cherry|vanjs|reef|atomico|sinuous|haunted|arrow|hybrids|uhtml|omi
 vitra dev
 vitra build
 vitra package --out dist/ [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
