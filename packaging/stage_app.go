@@ -97,13 +97,15 @@ func StageDarwinApp(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	<string>%s</string>
 	<key>CFBundleVersion</key>
 	<string>%s</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>%s</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>11.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 %s</dict>
 </plist>
-`, xmlEscapeText(safeName), xmlEscapeText(spec.AppID), xmlEscapeText(spec.Name), xmlEscapeText(spec.Version), xmlEscapeText(spec.Version), iconExtra)
+`, xmlEscapeText(safeName), xmlEscapeText(spec.AppID), xmlEscapeText(spec.Name), xmlEscapeText(spec.Version), xmlEscapeText(spec.Version), xmlEscapeText(spec.EffectiveLicense()), iconExtra)
 	if err := os.WriteFile(filepath.Join(bundlePath, "Contents", "Info.plist"), []byte(plist), 0o644); err != nil {
 		return Artifact{}, err
 	}
