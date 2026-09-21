@@ -258,6 +258,27 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("acquire: %v %v", ok, err)
 	}
+
+	deniedApp := &desktop.AppService{Gateway: denyAll{}}
+	err = deniedApp.Quit(ctx, caller)
+	var d *domain.ErrDenied
+	if !errors.As(err, &d) {
+		t.Fatalf("expected app.quit denial, got %v", err)
+	}
+	quitCalled := false
+	appSvc := &desktop.AppService{
+		Gateway: allowAll{},
+		OnQuit: func(context.Context) error {
+			quitCalled = true
+			return nil
+		},
+	}
+	if err := appSvc.Quit(ctx, caller); err != nil || !quitCalled {
+		t.Fatalf("quit: called=%v err=%v", quitCalled, err)
+	}
+	if err := (&desktop.AppService{Gateway: allowAll{}}).Quit(ctx, caller); err == nil {
+		t.Fatal("expected missing quit adapter")
+	}
 }
 
 func TestClipboard_DeniedWithoutGrant(t *testing.T) {

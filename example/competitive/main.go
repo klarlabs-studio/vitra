@@ -22,6 +22,7 @@ import (
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
+	officialapp "go.klarlabs.de/vitra/plugin/official/app"
 	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
@@ -135,6 +136,7 @@ func run() error {
 			{Name: desktop.PermMenuSet},
 			{Name: desktop.PermTraySet},
 			{Name: desktop.PermShortcutRegister},
+			{Name: desktop.PermAppQuit},
 			{Name: desktop.PermSingleInstance},
 			{Name: desktop.PermDeepLinkHandle},
 			{Name: desktop.PermDragDrop},
@@ -329,6 +331,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialshortcut.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialapp.New()); err != nil {
 		return err
 	}
 	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
@@ -543,6 +548,21 @@ func run() error {
 			return nil, err
 		}
 		return nil, shortcuts.Register(ctx, caller, acc, action)
+	})); err != nil {
+		return err
+	}
+	appSvc := &desktop.AppService{
+		Gateway: rt,
+		OnQuit: func(ctx context.Context) error {
+			if application == nil {
+				return fmt.Errorf("app is not ready")
+			}
+			application.Quit()
+			return nil
+		},
+	}
+	if err := rt.BindExecutor("app.quit", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return nil, appSvc.Quit(ctx, caller)
 	})); err != nil {
 		return err
 	}
