@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Snap contact: `Spec.Maintainer` / `vitra package --maintainer` (via `EffectiveMaintainer`) flow into `meta/snap.yaml` `contact:` (defaults to `DefaultMaintainer`).
 - `vitra new --template riot`: Vite + Riot.js 9 + TypeScript starter (`app.riot` + `rollup-plugin-riot`, `riot.component` mount) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Debian copyright: `Spec.License` / `vitra package --license` (via `EffectiveLicense`) write DEP-5 `usr/share/doc/<pkg>/copyright` in `BuildDeb` (Upstream-Name/Contact, optional Source from Homepage).
 - Windows ARP Comments: `Spec.Description` / `vitra package --description` (via `EffectiveDescription`) flow into NSIS `Comments` and WiX `ARPCOMMENTS` / Package Description+Comments.
@@ -29,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Official `vitra.path` plugin: declares `path.open`; `desktop.PathService` opens absolute local paths via OS default handler (Linux `xdg-open`, Darwin `open`, Windows `explorer`); PathScope-gated; scaffold/generate/provenance/competitive bind.
 - `vitra new --template angular`: Vite + Angular 19 + TypeScript starter (`@analogjs/vite-plugin-angular`, standalone `vitra-app` component) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Official `vitra.notification` plugin: declares `notifications.show`; `desktop.NotificationService` + Linux/Darwin/Windows hosts (D-Bus Notifications / NSUserNotification / tray balloon); scaffold, generate, provenance, and competitive demo bind title+body only.
-- RPM/snap package metadata: `Spec.License` / `Homepage` flow into RPM `License:` / `URL:` and snap `license:` / `website:` (defaults match AppStream via `EffectiveLicense()`).
+- RPM/snap package metadata: `Spec.License` / `Homepage` / `Maintainer` flow into RPM `License:` / `URL:` / `Packager` and snap `license:` / `website:` / `contact:` (defaults match AppStream via `EffectiveLicense()` / `EffectiveMaintainer()`).
 - Official `vitra.os` plugin: declares `os.info`; `desktop.OsService` returns GOOS/GOARCH/family/locale (stdlib default); scaffold, `vitra generate typescript`, packaging provenance inventory, and competitive demo register + bind alongside `fs`/`dialog`/`clipboard`/`browser`.
 - Package metadata: `Spec.Homepage` / `Categories` / `Keywords` / `License` (+ `vitra package --homepage` / `--categories` / `--keywords` / `--license`) flow into FreeDesktop `.desktop` Categories/Keywords, AppStream metainfo (`<url>`, `<category>`, `<keyword>`, `<project_license>`), Debian `Homepage` + DEP-5 `copyright`, snap website/keywords, and Windows ARP `URLInfoAbout` / `ARPURLINFOABOUT`.
 - `vitra new --template htmx`: Vite + HTMX + TypeScript starter (`htmx.org`, `hx-on:click` helpers) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
@@ -69,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Packaging `Spec.Description` / `vitra package --description`: sets Debian control extended Description and FreeDesktop `Comment=` on dir/AppDir/deb `.desktop` files (default short Vitra blurb).
 - Linux `.desktop` files emit `StartupWMClass=<binary basename>` (dir / AppDir / deb) so docks can bind the running window to the launcher.
 - Linux package icons: AppDir stages `.DirIcon` + `usr/share/icons/hicolor/{256x256|scalable}/apps/`; dir stage and `.deb` also emit the hicolor theme path (deb keeps `usr/share/pixmaps/` too).
-- Packaging `Spec.Maintainer` / `vitra package --maintainer`: sets Debian control Maintainer (default `Vitra Packaging <vitra@klarlabs.de>`) and WiX Manufacturer / NSIS Publisher when provided.
+- Packaging `Spec.Maintainer` / `vitra package --maintainer`: sets Debian control Maintainer, snap `contact:`, and DEP-5 Upstream-Contact (default `Vitra Packaging <vitra@klarlabs.de>`) and WiX Manufacturer / NSIS Publisher when provided.
 - Packaging `SigningIdentityRef` validation: refs must use `env:` / `keychain:` / `file:` / `secret:` prefixes; PEM / `PRIVATE KEY` material is rejected (invariant 10).
 - WiX Desktop shortcut: `BuildWiXDir` emits a `DesktopFolder` shortcut (with optional `Icon` when `--icon` is set), matching NSIS Desktop UX.
 - NSIS desktop shortcut: `BuildNSISDir` creates `$DESKTOP\<Name>.lnk` (with icon when `--icon` is set) and removes it on uninstall.

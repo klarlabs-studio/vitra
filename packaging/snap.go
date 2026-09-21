@@ -107,6 +107,7 @@ Categories=%s
 	if home := strings.TrimSpace(spec.Homepage); home != "" {
 		websiteLine = "website: " + yamlScalar(home) + "\n"
 	}
+	contactLine := "contact: " + yamlScalar(spec.EffectiveMaintainer()) + "\n"
 	keywordsBlock := ""
 	if kws := spec.EffectiveKeywords(); len(kws) > 0 {
 		var kb strings.Builder
@@ -122,7 +123,7 @@ summary: %s
 description: |
 %s
 license: %s
-%s%sarchitectures:
+%s%s%sarchitectures:
   - %s
 base: core22
 confinement: strict
@@ -131,7 +132,7 @@ apps:
   %s:
     command: usr/bin/%s
     desktop: %s
-`, snapName, spec.Version, yamlScalar(spec.Name), desc, yamlScalar(spec.EffectiveLicense()), websiteLine, keywordsBlock, arch, snapName, binName, desktopRel)
+`, snapName, spec.Version, yamlScalar(spec.Name), desc, yamlScalar(spec.EffectiveLicense()), websiteLine, contactLine, keywordsBlock, arch, snapName, binName, desktopRel)
 	if err := os.WriteFile(filepath.Join(metaDir, "snap.yaml"), []byte(yaml), 0o644); err != nil {
 		return Artifact{}, err
 	}

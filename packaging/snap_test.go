@@ -28,6 +28,7 @@ func TestBuildSnapDir_Layout(t *testing.T) {
 		Homepage:    "https://example.com/demo",
 		License:     "Apache-2.0",
 		Keywords:    []string{"desktop", "secure"},
+		Maintainer:  "Acme Labs <packaging@example.com>",
 	}
 	art, err := packaging.BuildSnapDir(spec, bin, out)
 	if err != nil {
@@ -56,6 +57,7 @@ func TestBuildSnapDir_Layout(t *testing.T) {
 		"Demo Snap",
 		"license: Apache-2.0",
 		`website: "https://example.com/demo"`,
+		`contact: "Acme Labs <packaging@example.com>"`,
 		"keywords:",
 		"- desktop",
 		"- secure",
@@ -94,6 +96,36 @@ func TestBuildSnapDir_DefaultLicenseOmitsWebsite(t *testing.T) {
 	}
 	if strings.Contains(text, "website:") {
 		t.Fatalf("unexpected website:\n%s", text)
+	}
+	wantContact := "contact: " + packaging.DefaultMaintainer
+	// yamlScalar may quote the default maintainer
+	if !strings.Contains(text, "contact:") || !strings.Contains(text, "vitra@klarlabs.de") {
+		t.Fatalf("default contact missing (want %q):\n%s", wantContact, text)
+	}
+}
+
+func TestBuildSnapDir_CustomContact(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "payload")
+	if err := os.WriteFile(bin, []byte("bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "prime")
+	spec := packaging.Spec{
+		AppID: "com.vitra.demo", Version: "1.0.0", Name: "Demo",
+		Targets:    []packaging.Target{packaging.TargetLinuxSnap},
+		Maintainer: "Snap Owner <owner@example.com>",
+	}
+	if _, err := packaging.BuildSnapDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	yaml, err := os.ReadFile(filepath.Join(out, "meta", "snap.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(yaml)
+	if !strings.Contains(text, `contact: "Snap Owner <owner@example.com>"`) {
+		t.Fatalf("custom contact missing:\n%s", text)
 	}
 }
 
