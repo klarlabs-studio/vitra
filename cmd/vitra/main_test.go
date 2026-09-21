@@ -51,6 +51,14 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 			t.Fatalf("doctor missing %q: %q", tool, out)
 		}
 	}
+	if !strings.Contains(out, "packaging sign tools") {
+		t.Fatalf("doctor missing sign tools: %q", out)
+	}
+	for _, tool := range []string{"codesign:", "signtool:", "notarytool:"} {
+		if !strings.Contains(out, tool) {
+			t.Fatalf("doctor missing %q: %q", tool, out)
+		}
+	}
 
 	out = capture(t, func() {
 		if err := run([]string{"inspect", "capabilities"}); err != nil {
@@ -235,6 +243,40 @@ func TestRun_PackageStagesLinuxDir(t *testing.T) {
 		if !strings.Contains(s, want) {
 			t.Fatalf("provenance missing %q: %s", want, s)
 		}
+	}
+}
+
+func TestRun_PackageSignPlan(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("mach-o"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VITRA_TEST_SIGN_ID", "not-leaked-value")
+	out := filepath.Join(tmp, "Demo.app")
+	printed := capture(t, func() {
+		if err := run([]string{
+			"package", "--format", "app-dir", "--out", out, "--bin", bin,
+			"--app-id", "com.vitra.t", "--name", "Demo", "--version", "0.1.0",
+			"--sign", "--signing-identity", "env:VITRA_TEST_SIGN_ID",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(printed, "sign plan") || !strings.Contains(printed, "codesign") {
+		t.Fatalf("expected sign plan, got %q", printed)
+	}
+	if !strings.Contains(printed, "dry-run only") {
+		t.Fatalf("expected dry-run note: %q", printed)
+	}
+	if strings.Contains(printed, "not-leaked-value") {
+		t.Fatalf("leaked identity value: %q", printed)
+	}
+	if err := run([]string{
+		"package", "--format", "dir", "--out", filepath.Join(tmp, "bad"), "--bin", bin,
+		"--sign",
+	}); err == nil {
+		t.Fatal("expected --sign without identity to fail")
 	}
 }
 

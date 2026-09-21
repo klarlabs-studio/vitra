@@ -86,6 +86,7 @@ on main — Wayland global hotkeys remain intentionally unsupported. `vitra dev`
 `vitra build` enable `-tags vitra_native` on Linux, Darwin, and Windows.
 Fold still needs host tools (`appimagetool`, `rpmbuild`, candle/light, makensis,
 `hdiutil`) or env overrides; `Spec.Sign` / `SigningIdentityRef` validate refs
-only (no codesign/signtool/notary orchestration). Audit SIEM exporters
+and `vitra package --sign` prints a dry-run plan (`PlanSign`) — no
+codesign/signtool/notary orchestration. Audit SIEM exporters
 (`JSONLSink` / `CEFSink`) and MDM JSON policy documents (`policy.LoadDocument`)
 plug into Phase 5 ports.

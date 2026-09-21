@@ -87,8 +87,8 @@ Usage:
   vitra new <dir>            Scaffold a starter desktop app
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
-  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text]
-                             Stage Linux dir, build .deb / .rpm / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json
+  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign --signing-identity ref]
+                             Stage Linux dir, build .deb / .rpm / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints a dry-run plan only
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
   vitra update-apply --manifest <json> --artifact <path> --pubkey <hex> --dest <path> [--policy production|development]
@@ -163,6 +163,10 @@ func doctor() error {
 	reportPackagingTool("light", packaging.ResolveLight, "VITRA_LIGHT")
 	reportPackagingTool("makensis", packaging.ResolveMakensis, "VITRA_MAKENSIS")
 	reportPackagingTool("hdiutil", packaging.ResolveHdiutil, "VITRA_HDIUTIL")
+	fmt.Println("  packaging sign tools (plan only; not executed):")
+	reportPackagingTool("codesign", packaging.ResolveCodesign, "VITRA_CODESIGN")
+	reportPackagingTool("signtool", packaging.ResolveSigntool, "VITRA_SIGNTOOL")
+	reportPackagingTool("notarytool", packaging.ResolveNotarytool, "VITRA_NOTARYTOOL")
 	return nil
 }
 
@@ -730,7 +734,9 @@ func runPackage(args []string) error {
 	icon := ""
 	maintainer := ""
 	description := ""
-	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text]"
+	sign := false
+	signingIdentity := ""
+	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign --signing-identity ref]"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
@@ -781,6 +787,14 @@ func runPackage(args []string) error {
 				return fmt.Errorf("--description requires a value")
 			}
 			description = args[i]
+		case "--sign":
+			sign = true
+		case "--signing-identity":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--signing-identity requires a ref (env:/keychain:/file:/secret:)")
+			}
+			signingIdentity = args[i]
 		case "--format":
 			i++
 			if i >= len(args) {
@@ -827,14 +841,16 @@ func runPackage(args []string) error {
 		return fmt.Errorf("unknown format %q (want dir, deb, rpm-dir, rpm, appdir, appimage, win-dir, wix, nsis-dir, msi, nsis, app-dir, or dmg)", format)
 	}
 	spec := packaging.Spec{
-		AppID:       appID,
-		Version:     version,
-		Name:        name,
-		Targets:     []packaging.Target{target},
-		Arch:        packaging.DefaultArch(),
-		IconPath:    icon,
-		Maintainer:  maintainer,
-		Description: description,
+		AppID:              appID,
+		Version:            version,
+		Name:               name,
+		Targets:            []packaging.Target{target},
+		Arch:               packaging.DefaultArch(),
+		IconPath:           icon,
+		Maintainer:         maintainer,
+		Description:        description,
+		Sign:               sign,
+		SigningIdentityRef: signingIdentity,
 	}
 
 	var art packaging.Artifact
@@ -928,6 +944,13 @@ func runPackage(args []string) error {
 		return err
 	}
 	fmt.Printf("packaged %s (%s)\n  artifact sha256: %s\n  provenance:      %s\n", art.Path, art.Target, art.SHA256, provPath)
+	if spec.Sign {
+		plan, err := packaging.PlanSign(spec, art.Path)
+		if err != nil {
+			return err
+		}
+		fmt.Print(plan.String())
+	}
 	return nil
 }
 
