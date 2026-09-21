@@ -217,6 +217,24 @@ func TestRun_PackageStagesLinuxDir(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(out, "provenance.json")); err != nil {
 		t.Fatal(err)
 	}
+	raw, err := os.ReadFile(filepath.Join(out, "provenance.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	mods, _ := doc["modules"].([]any)
+	if len(mods) == 0 {
+		t.Fatalf("expected modules from build info, got %s", raw)
+	}
+	s := string(raw)
+	for _, want := range []string{"vitra.fs", "vitra.dialog", "fs.read", "dialog.open"} {
+		if !strings.Contains(s, want) {
+			t.Fatalf("provenance missing %q: %s", want, s)
+		}
+	}
 }
 
 func TestRun_PackageDMG(t *testing.T) {

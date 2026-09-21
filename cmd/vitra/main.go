@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"crypto/ed25519"
+	"debug/buildinfo"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -23,6 +25,7 @@ import (
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
+	"go.klarlabs.de/vitra/plugin"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	"go.klarlabs.de/vitra/policy"
@@ -855,12 +858,13 @@ func runPackage(args []string) error {
 		return err
 	}
 	doc := provenance.NewDocument(appID, version, runtime.Version()).
-		WithArtifactDigest(raw)
-	doc.Plugins = []provenance.PluginInfo{
-		{ID: string(officialfs.PluginID), Version: "1.0.0", Perms: []string{"fs.read", "fs.write"}},
-		{ID: string(officialdialog.PluginID), Version: "1.0.0", Perms: []string{"dialog.open", "dialog.save"}},
+		WithArtifactDigest(raw).
+		WithPluginInventory(officialPluginInventory())
+	if bi, err := buildinfo.ReadFile(bin); err == nil {
+		doc = doc.WithModulesFromBuildInfo(bi)
+	} else if bi, ok := debug.ReadBuildInfo(); ok {
+		doc = doc.WithModulesFromBuildInfo(bi)
 	}
-	doc.Capabilities = []string{"fs.read", "fs.write", "dialog.open", "dialog.save"}
 	body, err := doc.JSON()
 	if err != nil {
 		return err
@@ -878,6 +882,25 @@ func runPackage(args []string) error {
 	}
 	fmt.Printf("packaged %s (%s)\n  artifact sha256: %s\n  provenance:      %s\n", art.Path, art.Target, art.SHA256, provPath)
 	return nil
+}
+
+// officialPluginInventory returns Manifest-derived plugin rows for packaging
+// provenance (declared surface, not a claim that --bin embeds them).
+func officialPluginInventory() []provenance.PluginInfo {
+	out := make([]provenance.PluginInfo, 0, 2)
+	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New()} {
+		m := p.Manifest()
+		perms := make([]string, 0, len(m.Permissions))
+		for _, perm := range m.Permissions {
+			perms = append(perms, string(perm))
+		}
+		out = append(out, provenance.PluginInfo{
+			ID:      string(m.ID),
+			Version: m.Version.String(),
+			Perms:   perms,
+		})
+	}
+	return out
 }
 
 func registerScheme(args []string) error {
