@@ -97,7 +97,7 @@ func printUsage() {
 Usage:
   vitra version              Print kernel version
   vitra doctor               Diagnose WebView / CGO prerequisites
-  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx]
+  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular]
                              Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
@@ -245,7 +245,7 @@ func scaffoldNew(args []string) error {
 		case "--template":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, or htmx")
+				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, or angular")
 			}
 			tmpl = args[i]
 		default:
@@ -253,18 +253,18 @@ func scaffoldNew(args []string) error {
 				return fmt.Errorf("unknown new flag %q", args[i])
 			}
 			if dir != "" {
-				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx]")
+				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular]")
 			}
 			dir = args[i]
 		}
 	}
 	if dir == "" {
-		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx]")
+		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular]")
 	}
 	switch tmpl {
-	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx":
+	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular":
 	default:
-		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, or htmx)", tmpl)
+		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, or angular)", tmpl)
 	}
 
 	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
@@ -299,6 +299,8 @@ func scaffoldNew(args []string) error {
 		files = scaffoldAlpineFiles(modPath, tsClient)
 	case "htmx":
 		files = scaffoldHtmxFiles(modPath, tsClient)
+	case "angular":
+		files = scaffoldAngularFiles(modPath, tsClient)
 	default:
 		files = scaffoldVanillaFiles(modPath, tsClient)
 	}
@@ -313,7 +315,7 @@ func scaffoldNew(args []string) error {
 	}
 	fmt.Printf("created %s (template=%s)\n", dir, tmpl)
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular":
 		fmt.Println("next: cd", dir, "&& (optional: cd frontend && npm install && npm run build) && vitra dev")
 	default:
 		fmt.Println("next: cd", dir, "&& vitra dev")
@@ -476,6 +478,129 @@ func scaffoldAlpineFiles(modPath, tsClient string) map[string]string {
 	}
 }
 
+func scaffoldAngularFiles(modPath, tsClient string) map[string]string {
+	return map[string]string{
+		"go.mod":                        scaffoldGoMod(modPath),
+		"main.go":                       scaffoldMainGo("all:frontend/dist", "frontend/dist"),
+		"frontend/package.json":         scaffoldAngularPackageJSON(),
+		"frontend/vite.config.js":       scaffoldViteConfig("angular"),
+		"frontend/tsconfig.json":        scaffoldViteTSConfig("angular"),
+		"frontend/index.html":           scaffoldAngularIndexHTML(),
+		"frontend/src/main.ts":          scaffoldAngularMainTS(),
+		"frontend/src/app.component.ts": scaffoldAngularAppComponent(),
+		"frontend/src/vite-env.d.ts":    "/// <reference types=\"vite/client\" />\n",
+		"frontend/vitra-client.ts":      tsClient,
+		"frontend/dist/index.html":      scaffoldIndexHTML(),
+		".gitignore":                    "frontend/node_modules/\nvitra-app\n",
+		"README.md":                     scaffoldREADME("angular"),
+	}
+}
+
+func scaffoldAngularPackageJSON() string {
+	return `{
+  "name": "vitra-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@angular/common": "^19.0.0",
+    "@angular/core": "^19.0.0",
+    "@angular/platform-browser": "^19.0.0",
+    "rxjs": "^7.8.0",
+    "tslib": "^2.8.0"
+  },
+  "devDependencies": {
+    "@analogjs/vite-plugin-angular": "^1.10.0",
+    "@angular/compiler": "^19.0.0",
+    "@angular/compiler-cli": "^19.0.0",
+    "typescript": "~5.6.0",
+    "vite": "^5.4.0"
+  }
+}
+`
+}
+
+func scaffoldAngularIndexHTML() string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Vitra App</title>
+</head>
+<body>
+  <vitra-app></vitra-app>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
+`
+}
+
+func scaffoldAngularMainTS() string {
+	return `import { bootstrapApplication } from "@angular/platform-browser";
+import { AppComponent } from "./app.component";
+
+bootstrapApplication(AppComponent).catch((err) => console.error(err));
+`
+}
+
+func scaffoldAngularAppComponent() string {
+	bt := "`"
+	return `import { Component } from "@angular/core";
+import { createClient } from "../vitra-client";
+
+declare global {
+  interface Window {
+    vitra: { invoke: (cmd: string, input?: unknown) => Promise<unknown> };
+  }
+}
+
+const client = createClient(window.vitra.invoke);
+
+@Component({
+  selector: "vitra-app",
+  standalone: true,
+  template: ` + bt + `
+    <h1>Vitra</h1>
+    <p>Vite + Angular starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+    <button type="button" (click)="run(() => client.demoGreet('Vitra'))">demo.greet</button>
+    <button type="button" (click)="run(() => client.dialogOpen())">dialog.open</button>
+    <button type="button" (click)="run(() => client.clipboardRead())">clipboard.read</button>
+    <button type="button" (click)="run(() => client.browserOpen('https://go.klarlabs.de/vitra'))">browser.open</button>
+    <button type="button" (click)="run(() => client.osInfo())">os.info</button>
+    <button type="button" (click)="run(() => client.notificationsShow({ title: 'Vitra', body: 'Hello from scaffold' }))">notifications.show</button>
+    <pre>{{ out }}</pre>
+  ` + bt + `,
+  styles: [
+    ` + bt + `
+      :host {
+        display: block;
+        font-family: Georgia, serif;
+        margin: 2rem;
+        background: #111;
+        color: #eee;
+        min-height: 100vh;
+      }
+    ` + bt + `,
+  ],
+})
+export class AppComponent {
+  out = "";
+
+  async run(fn: () => Promise<unknown>) {
+    try {
+      this.out = JSON.stringify(await fn(), null, 2);
+    } catch (e) {
+      this.out = String(e);
+    }
+  }
+}
+`
+}
+
 func scaffoldREADME(tmpl string) string {
 	body := `# Vitra app
 
@@ -493,7 +618,7 @@ vitra package --out dist/ --format dir
 ` + "```" + `
 `
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular":
 		label := "Vite"
 		switch tmpl {
 		case "react":
@@ -512,6 +637,8 @@ vitra package --out dist/ --format dir
 			label = "Vite + Alpine"
 		case "htmx":
 			label = "Vite + HTMX"
+		case "angular":
+			label = "Vite + Angular"
 		}
 		body += `
 ## ` + label + ` frontend
@@ -642,6 +769,19 @@ export default defineConfig({
   },
 });
 `
+	case "angular":
+		return `import { defineConfig } from "vite";
+import angular from "@analogjs/vite-plugin-angular";
+
+export default defineConfig({
+  plugins: [angular()],
+  root: ".",
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+  },
+});
+`
 	default:
 		return `import { defineConfig } from "vite";
 
@@ -683,6 +823,12 @@ func scaffoldViteTSConfig(framework string) string {
 		include = `"src/**/*.ts", "src/**/*.svelte", "vitra-client.ts"`
 	case "vue":
 		include = `"src/**/*.ts", "src/**/*.vue", "vitra-client.ts"`
+	case "angular":
+		jsx = `
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": false,
+    "useDefineForClassFields": false,`
+		include = `"src", "vitra-client.ts"`
 	}
 	return `{
   "compilerOptions": {
