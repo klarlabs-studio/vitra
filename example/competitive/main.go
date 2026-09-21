@@ -22,6 +22,7 @@ import (
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
+	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
@@ -272,7 +273,7 @@ func run() error {
 	}
 	_ = register // kept for local demo commands if needed
 
-	// Official plugins own dialog.* / fs.* / clipboard.* permissions (invariant 6).
+	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* permissions (invariant 6).
 	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
 		return err
 	}
@@ -280,6 +281,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialclipboard.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialbrowser.New()); err != nil {
 		return err
 	}
 	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
@@ -290,6 +294,19 @@ func run() error {
 	if err := rt.BindExecutor("clipboard.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		text, _ := input.(string)
 		return nil, clips.Write(ctx, caller, text)
+	})); err != nil {
+		return err
+	}
+	browserSvc := &desktop.BrowserService{
+		Gateway: rt,
+		Host:    host,
+		OnOpen: func(ctx context.Context, rawURL string) error {
+			return host.OpenURL(ctx, rawURL)
+		},
+	}
+	if err := rt.BindExecutor("browser.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		rawURL, _ := input.(string)
+		return nil, browserSvc.OpenURL(ctx, caller, rawURL)
 	})); err != nil {
 		return err
 	}
@@ -426,14 +443,7 @@ func run() error {
 			}
 		}
 		if openTarget := os.Getenv("VITRA_OPEN_URL"); openTarget != "" {
-			browser := &desktop.BrowserService{
-				Gateway: rt,
-				Host:    host,
-				OnOpen: func(ctx context.Context, rawURL string) error {
-					return host.OpenURL(ctx, rawURL)
-				},
-			}
-			if err := browser.OpenURL(context.Background(), caller, openTarget); err != nil {
+			if err := browserSvc.OpenURL(context.Background(), caller, openTarget); err != nil {
 				fmt.Fprintf(os.Stderr, "open url: %v\n", err)
 			} else {
 				fmt.Println("opened url:", openTarget)

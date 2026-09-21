@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"go.klarlabs.de/vitra/plugin"
+	"go.klarlabs.de/vitra/plugin/official/browser"
 	"go.klarlabs.de/vitra/plugin/official/clipboard"
 	"go.klarlabs.de/vitra/plugin/official/dialog"
 	"go.klarlabs.de/vitra/plugin/official/fs"
@@ -21,14 +22,20 @@ func TestOfficialPlugins_RegisterCleanly(t *testing.T) {
 	if err := reg.Register(context.Background(), clipboard.New()); err != nil {
 		t.Fatal(err)
 	}
+	if err := reg.Register(context.Background(), browser.New()); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := reg.Get(fs.PluginID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := reg.Get(clipboard.PluginID); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := reg.Get(browser.PluginID); err != nil {
+		t.Fatal(err)
+	}
 	surface := reg.InspectSurface()
-	if len(surface) < 6 {
-		t.Fatalf("expected fs+dialog+clipboard permissions, got %v", surface)
+	if len(surface) < 7 {
+		t.Fatalf("expected fs+dialog+clipboard+browser permissions, got %v", surface)
 	}
 }

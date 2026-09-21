@@ -41,7 +41,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Host→frontend events (`vitra.on` / `App.Emit`) | Done |
 | Linux window chrome (`window.chrome`) | Done (GTK title, size, maximize, fullscreen, keep-above, minimize, hide, icon) |
 | Darwin window chrome (`window.chrome`) | Done (NSWindow title, size, zoom, fullscreen, floating, miniaturize, hide, miniwindow icon) |
-| OpenURL (`browser.open`) | Done (Linux `xdg-open`, Darwin `open`, Windows `cmd start` for http(s)/mailto) |
+| OpenURL (`browser.open`) | Done (Linux `xdg-open`, Darwin `open`, Windows `cmd start` for http(s)/mailto); official `vitra.browser` plugin + scaffold/`generate` stubs |
 
 ## Security invariants preserved
 
