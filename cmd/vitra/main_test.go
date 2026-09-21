@@ -190,6 +190,29 @@ func TestRun_PackageStagesLinuxDir(t *testing.T) {
 	}
 }
 
+func TestRun_PackageWiX(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist-wix")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "wix", "--out", out, "--bin", bin, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if _, err := os.Stat(filepath.Join(out, "product.wxs")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "bin", "T.exe")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "provenance.json")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRun_PackageDeb(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "vitra-app")

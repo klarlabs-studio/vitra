@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Windows packaging stage: `vitra package --format win-dir|wix|nsis-dir` stages `bin/<Name>.exe` and emits WiX `product.wxs` / NSIS `installer.nsi` intermediates (fold with candle/light/makensis externally).
 - Competitive docs: DesktopHost parity called out for Linux/Darwin/Windows; honest gap vs Wails reframed to templates/packaging and Wayland global hotkeys (not missing OS adapters).
 - Darwin global shortcuts: `RegisterGlobalShortcut` / `UnregisterGlobalShortcut` via Carbon `RegisterEventHotKey` (Ctrl→Command, matching menu accelerators); stub remains explicit unsupported.
 - Windows global shortcuts: `RegisterGlobalShortcut` / `UnregisterGlobalShortcut` via `RegisterHotKey` (OS-wide; requires a modifier); `ShortcutService.Register` now takes `actionID`; competitive demo binds `Ctrl+Shift+Q` → `app.quit` when supported.
