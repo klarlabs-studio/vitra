@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Darwin notary credential bootstrap plan: `PlanNotaryCredentials` / `vitra notary-setup [--profile]` prints `notarytool store-credentials` argv (env placeholders only; never executed); Darwin `PlanSign` includes it as prep.
 - `Artifact.Signed` is set after successful `ExecuteSign`; `RefreshArtifactDigest` recomputes SHA-256 for file artifacts (directory bundles keep prior digest).
 - `vitra new --template preact`: Vite + Preact + TypeScript starter (`App.tsx`, `@preact/preset-vite`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - `secret:` signing refs resolve at `ExecuteSign` via `VITRA_SECRET_<NAME>` (path separators → `_`; plan argv stays opaque `<secret:…>`).

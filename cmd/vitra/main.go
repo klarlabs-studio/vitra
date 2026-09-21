@@ -68,6 +68,8 @@ func run(args []string) error {
 		return runUpdateApply(args[1:])
 	case "update-check":
 		return runUpdateCheck(args[1:])
+	case "notary-setup":
+		return runNotarySetup(args[1:])
 	case "register-scheme":
 		return registerScheme(args[1:])
 	case "register-files":
@@ -98,6 +100,8 @@ Usage:
                              Fetch + verify a signed channel manifest (HTTP(S) client; does not install)
   vitra update-apply (--manifest <json> --artifact <path> | --base-url <url> --app-id <id> [--channel name]) --pubkey <hex> --dest <path> [--policy production|development]
                              Verify a signed update and atomically install it (local files or HTTP channel fetch)
+  vitra notary-setup [--profile name]
+                             Print a dry-run notarytool store-credentials plan (Darwin notarize bootstrap; not executed)
   vitra register-scheme <scheme> [app-id] [exec]
                              Register a URL scheme handler (Linux xdg / Darwin helper .app / Windows .reg)
   vitra register-files --mime <type> [--mime <type>] [--app-id id] [--exec path] [--name name]
@@ -1586,6 +1590,24 @@ func runUpdateCheck(args []string) error {
 	}
 	fmt.Printf("update available: %s v%s (%s)\n  manifest: %s\n  artifact: %s\n  sha256: %s\n",
 		m.AppID, m.Version, m.Channel, manifestURL, m.Artifact, m.SHA256)
+	return nil
+}
+
+func runNotarySetup(args []string) error {
+	profile := ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--profile":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--profile requires a name")
+			}
+			profile = args[i]
+		default:
+			return fmt.Errorf("unknown notary-setup flag %q", args[i])
+		}
+	}
+	fmt.Print(packaging.PlanNotaryCredentials(profile).String())
 	return nil
 }
 

@@ -37,6 +37,12 @@ func TestPlanSign_DarwinCodesign(t *testing.T) {
 	if len(plan.FollowUps) != 2 {
 		t.Fatalf("expected notarize+staple follow-ups, got %+v", plan.FollowUps)
 	}
+	if len(plan.Prep) != 1 || plan.Prep[0].Tool != "notarytool" {
+		t.Fatalf("expected store-credentials prep, got %+v", plan.Prep)
+	}
+	if !strings.Contains(strings.Join(plan.Prep[0].Args, " "), "store-credentials") {
+		t.Fatalf("prep args=%v", plan.Prep[0].Args)
+	}
 	if plan.FollowUps[0].Tool != "notarytool" || plan.FollowUps[1].Tool != "stapler" {
 		t.Fatalf("follow-ups=%+v", plan.FollowUps)
 	}
@@ -44,8 +50,31 @@ func TestPlanSign_DarwinCodesign(t *testing.T) {
 	if !strings.Contains(joinedFU, "submit /tmp/Demo.app") || !strings.Contains(joinedFU, "--keychain-profile") {
 		t.Fatalf("notarize args=%v", plan.FollowUps[0].Args)
 	}
+	if !strings.Contains(plan.String(), "prep 1:") || !strings.Contains(plan.String(), "store-credentials") {
+		t.Fatalf("string missing prep: %s", plan.String())
+	}
 	if !strings.Contains(plan.String(), "follow-up 1:") || !strings.Contains(plan.String(), "notarytool") {
 		t.Fatalf("string missing follow-ups: %s", plan.String())
+	}
+}
+
+func TestPlanNotaryCredentials(t *testing.T) {
+	plan := packaging.PlanNotaryCredentials("")
+	if plan.Profile != "vitra-notary" || len(plan.Steps) != 1 {
+		t.Fatalf("%+v", plan)
+	}
+	joined := strings.Join(plan.Steps[0].Args, " ")
+	for _, want := range []string{"store-credentials", "vitra-notary", "${APPLE_ID}", "${APPLE_TEAM_ID}", "${APP_SPECIFIC_PASSWORD}"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing %q in %s", want, joined)
+		}
+	}
+	if strings.Contains(plan.String(), "@") {
+		t.Fatalf("leaked email-like value: %s", plan.String())
+	}
+	named := packaging.PlanNotaryCredentials("AC_PASSWORD")
+	if named.Profile != "AC_PASSWORD" {
+		t.Fatalf("%+v", named)
 	}
 }
 

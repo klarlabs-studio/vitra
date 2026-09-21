@@ -40,6 +40,8 @@ type SignPlan struct {
 	IdentityNote string
 	Supported    bool
 	Note         string
+	// Prep are optional one-time setup steps (Darwin notarytool store-credentials).
+	Prep []CommandPlan
 	// FollowUps are optional post-sign steps (Darwin notarize + staple).
 	FollowUps []CommandPlan
 }
@@ -55,6 +57,54 @@ type CommandPlan struct {
 type ExecuteSignOptions struct {
 	// FollowUps runs plan.FollowUps after the primary sign tool succeeds.
 	FollowUps bool
+}
+
+// NotaryCredentialsPlan is a dry-run for one-time notarytool store-credentials
+// bootstrap. Vitra never runs it (interactive / secret password).
+type NotaryCredentialsPlan struct {
+	Profile string
+	Steps   []CommandPlan
+	Note    string
+}
+
+// PlanNotaryCredentials returns argv guidance for creating a keychain profile
+// used by Darwin PlanSign follow-ups. Profile defaults to "vitra-notary" when
+// empty or still a ${NOTARYTOOL_PROFILE} placeholder.
+func PlanNotaryCredentials(profile string) NotaryCredentialsPlan {
+	profile = strings.TrimSpace(profile)
+	if profile == "" || profile == "${NOTARYTOOL_PROFILE}" {
+		profile = "vitra-notary"
+	}
+	return NotaryCredentialsPlan{
+		Profile: profile,
+		Steps: []CommandPlan{
+			{
+				Tool: "notarytool",
+				Args: []string{
+					"store-credentials", profile,
+					"--apple-id", "${APPLE_ID}",
+					"--team-id", "${APPLE_TEAM_ID}",
+					"--password", "${APP_SPECIFIC_PASSWORD}",
+				},
+				Note: "one-time interactive bootstrap; set APPLE_ID / APPLE_TEAM_ID / APP_SPECIFIC_PASSWORD (app-specific password) — values never printed by Vitra",
+			},
+		},
+		Note: "plan only; notarytool store-credentials is not invoked",
+	}
+}
+
+func (p NotaryCredentialsPlan) String() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "notary credentials plan\n")
+	fmt.Fprintf(&b, "  profile:   %s\n", p.Profile)
+	for i, step := range p.Steps {
+		fmt.Fprintf(&b, "  step %d:\n", i+1)
+		fmt.Fprintf(&b, "    tool:    %s\n", step.Tool)
+		fmt.Fprintf(&b, "    argv:    %s %s\n", step.Tool, strings.Join(step.Args, " "))
+		fmt.Fprintf(&b, "    status:  %s\n", step.Note)
+	}
+	fmt.Fprintf(&b, "  status:    %s\n", p.Note)
+	return b.String()
 }
 
 // PlanSign validates Spec signing fields and returns an argv plan for the
@@ -93,6 +143,11 @@ func PlanSign(spec Spec, artifactPath string) (SignPlan, error) {
 		}
 		plan.Note = "plan only until ExecuteSign; Artifact.Signed set after successful ExecuteSign"
 		profile := notarizeProfileDisplay(spec.SigningIdentityRef)
+		cred := PlanNotaryCredentials(profile)
+		plan.Prep = append([]CommandPlan(nil), cred.Steps...)
+		for i := range plan.Prep {
+			plan.Prep[i].Note = "prep; " + plan.Prep[i].Note + " (see PlanNotaryCredentials / --notary-setup)"
+		}
 		plan.FollowUps = []CommandPlan{
 			{
 				Tool: "notarytool",
@@ -289,6 +344,12 @@ func (p SignPlan) String() string {
 		fmt.Fprintf(&b, "  tool:      (none)\n")
 	}
 	fmt.Fprintf(&b, "  status:    %s\n", p.Note)
+	for i, step := range p.Prep {
+		fmt.Fprintf(&b, "  prep %d:\n", i+1)
+		fmt.Fprintf(&b, "    tool:    %s\n", step.Tool)
+		fmt.Fprintf(&b, "    argv:    %s %s\n", step.Tool, strings.Join(step.Args, " "))
+		fmt.Fprintf(&b, "    status:  %s\n", step.Note)
+	}
 	for i, step := range p.FollowUps {
 		fmt.Fprintf(&b, "  follow-up %d:\n", i+1)
 		fmt.Fprintf(&b, "    tool:    %s\n", step.Tool)
