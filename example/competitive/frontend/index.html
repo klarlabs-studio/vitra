@@ -59,6 +59,7 @@
       <button id="chrome" class="secondary">Apply window.chrome</button>
       <button id="menu" class="secondary">Set menu bar</button>
       <button id="tray" class="secondary">Set tray</button>
+      <button id="drop" class="secondary">Enable file drops</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -206,6 +207,14 @@
           ],
         });
         show({ tray: "set" });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("drop").onclick = async () => {
+      try {
+        await window.vitra.invoke("dragdrop.receive", { id: "main", enabled: true });
+        show({ dragdrop: "enabled" });
       } catch (e) {
         show(String(e.message || e), true);
       }

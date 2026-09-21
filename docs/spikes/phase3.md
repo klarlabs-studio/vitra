@@ -11,7 +11,7 @@ Phase 3 stabilizes how privileged native surface enters a Vitra app: through
 | Contribution (commands/events) | `plugin.Contribution` |
 | Registry + permission ownership | `plugin.Registry` |
 | Lifecycle hooks | `plugin.Lifecycle` |
-| Official `fs` / `dialog` / `clipboard` / `browser` / `os` / `notification` / `path` / `window` / `menu` / `tray` contracts | `plugin/official/{fs,dialog,clipboard,browser,os,notification,path,window,menu,tray}` |
+| Official `fs` / `dialog` / `clipboard` / `browser` / `os` / `notification` / `path` / `window` / `menu` / `tray` / `dragdrop` contracts | `plugin/official/{fs,dialog,clipboard,browser,os,notification,path,window,menu,tray,dragdrop}` |
 | Runtime wiring | `Runtime.RegisterPlugin` / `BindExecutor` / `Plugins()` |
 | TypeScript binding stub generator | `bindings.GenerateTypeScript` + `vitra generate typescript` |
 
@@ -26,6 +26,7 @@ competitive demo binds `dialog.open`/`dialog.save`/`dialog.openDirectory`/`dialo
 (via `app.App` / `DesktopHost.ApplyWindowChrome`),
 `menu.set` to `desktop.MenuService` (via `DesktopHost.SetMenuBar`; actions emit `menu.action`),
 `tray.set` to `desktop.TrayService` (via `DesktopHost.SetTray`; actions emit `tray.action`),
+`dragdrop.receive` to `desktop.DragDropService` (via `EnableDragDrop`; drops emit `dragdrop.drop`),
 and `fs.read`/`fs.write` to
 `desktop.FileService` with a PathScope grant.
 
