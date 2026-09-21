@@ -555,6 +555,24 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.hide", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Hide(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.show", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Show(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
 	if err := rt.BindExecutor("menu.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		items, err := desktop.ParseMenuItems(input)
 		if err != nil {

@@ -512,6 +512,34 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 		t.Fatal("expected empty window validation")
 	}
 
+	var applied platform.WindowChrome
+	visibility := &desktop.WindowService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnRead: func(_ context.Context, window domain.WindowID) (platform.WindowChrome, error) {
+			if window != "main" {
+				t.Fatalf("hide/show read window=%s", window)
+			}
+			return platform.WindowChrome{Title: "Vitra", Width: 800, Height: 600, Hidden: applied.Hidden}, nil
+		},
+		OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
+			if window != "main" {
+				t.Fatalf("hide/show apply window=%s", window)
+			}
+			applied = chrome
+			return nil
+		},
+	}
+	if err := visibility.Hide(ctx, caller, "main"); err != nil || !applied.Hidden {
+		t.Fatalf("hide: %+v err=%v", applied, err)
+	}
+	if err := visibility.Show(ctx, caller, "main"); err != nil || applied.Hidden {
+		t.Fatalf("show: %+v err=%v", applied, err)
+	}
+	if err := visibility.Hide(ctx, caller, ""); err == nil {
+		t.Fatal("expected empty window validation for hide")
+	}
+
 	createHost := withFeatures(platform.OSLinux, platform.FeatureWindowCreate)
 	var created desktop.WindowCreateOptions
 	lifecycle := &desktop.WindowService{

@@ -3243,6 +3243,24 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.hide", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Hide(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.show", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Show(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
 	menus := &desktop.MenuService{
 		Gateway: rt,
 		Host:    host,
@@ -3478,6 +3496,8 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="chrome">window.chrome</button>
 <button id="getChrome">window.getChrome</button>
 <button id="focus">window.focus</button>
+<button id="hide">window.hide</button>
+<button id="show">window.show</button>
 <button id="menu">menu.set</button>
 <button id="menuClear">menu.clear</button>
 <button id="tray">tray.set</button>
@@ -3534,6 +3554,19 @@ document.getElementById("focus").onclick = async () => {
   try {
     await invoke("window.focus", { id: "main" });
     out.textContent = JSON.stringify({ focus: "main" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("hide").onclick = async () => {
+  try {
+    await invoke("window.hide", { id: "main" });
+    out.textContent = JSON.stringify({ hide: "main", note: "auto-show in 1.5s" }, null, 2);
+    setTimeout(() => invoke("window.show", { id: "main" }).catch(() => {}), 1500);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("show").onclick = async () => {
+  try {
+    await invoke("window.show", { id: "main" });
+    out.textContent = JSON.stringify({ show: "main" }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
 document.getElementById("menu").onclick = async () => {
