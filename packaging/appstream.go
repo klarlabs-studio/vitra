@@ -57,6 +57,10 @@ func AppStreamMetainfoXML(spec Spec) string {
 	}
 	// Empty OARS 1.1 rating means all attributes are "none" (Flathub-friendly default).
 	b.WriteString("  <content_rating type=\"oars-1.1\"/>\n")
+	b.WriteString("  <recommends>\n")
+	b.WriteString("    <control>keyboard</control>\n")
+	b.WriteString("    <control>pointing</control>\n")
+	b.WriteString("  </recommends>\n")
 	b.WriteString("  <categories>\n")
 	for _, cat := range spec.EffectiveCategories() {
 		fmt.Fprintf(&b, "    <category>%s</category>\n", xmlEscape(cat))
