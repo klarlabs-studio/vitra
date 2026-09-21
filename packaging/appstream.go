@@ -44,7 +44,9 @@ func AppStreamMetainfoXML(spec Spec) string {
   <update_contact>%s</update_contact>
 `, id, license, name, summary, summary, desktopID, developer, contact)
 	if home := strings.TrimSpace(spec.Homepage); home != "" {
-		fmt.Fprintf(&b, "  <url type=\"homepage\">%s</url>\n", xmlEscape(home))
+		escaped := xmlEscape(home)
+		fmt.Fprintf(&b, "  <url type=\"homepage\">%s</url>\n", escaped)
+		fmt.Fprintf(&b, "  <url type=\"help\">%s</url>\n", escaped)
 	}
 	b.WriteString("  <categories>\n")
 	for _, cat := range spec.EffectiveCategories() {
