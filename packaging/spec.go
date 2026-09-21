@@ -45,7 +45,8 @@ type Spec struct {
 	// Empty defaults to DefaultMaintainer for .deb/snap/copyright; WiX/NSIS fall back to Name.
 	Maintainer string
 	// Description is a short package summary used as the Debian control extended
-	// Description, FreeDesktop Comment=, and Windows ARP Comments / ARPCOMMENTS.
+	// Description, FreeDesktop Comment=, Windows ARP Comments / ARPCOMMENTS, and
+	// Darwin Info.plist CFBundleGetInfoString.
 	// Empty defaults to DefaultDescription.
 	Description string
 	// Homepage is an optional project URL (Debian Homepage, RPM URL, snap website,
