@@ -142,6 +142,7 @@ func doctor() error {
 			fmt.Println("  pkg-config: webkit2gtk-4.1 ok")
 		}
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native")
+		fmt.Println("  note:     global shortcuts via XGrabKey on X11; Wayland stays unsupported (use MenuItem.Shortcut)")
 	case "darwin":
 		fmt.Println("  frameworks: Cocoa + WebKit (system)")
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native")

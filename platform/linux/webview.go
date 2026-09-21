@@ -5,7 +5,7 @@
 package linux
 
 /*
-#cgo pkg-config: gtk+-3.0 webkit2gtk-4.1
+#cgo pkg-config: gtk+-3.0 webkit2gtk-4.1 x11
 #include "native.h"
 */
 import "C"
@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -82,10 +83,7 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureMenuBar:        {Feature: platform.FeatureMenuBar, Available: true},
 		platform.FeatureTray:           {Feature: platform.FeatureTray, Available: true},
 		platform.FeatureSingleInstance: {Feature: platform.FeatureSingleInstance, Available: true},
-		platform.FeatureGlobalShortcut: {
-			Feature: platform.FeatureGlobalShortcut, Available: false,
-			Detail: "global shortcuts are not reliable on Wayland; use in-window menu accelerators (MenuItem.Shortcut)",
-		},
+		platform.FeatureGlobalShortcut: linuxGlobalShortcutFeature(),
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: true,
 			Detail: "argv + socket handoff + xdg URL-scheme registration",
@@ -507,22 +505,87 @@ func (h *Host) ClearTray() {
 	h.dispatch(func() { C.vitra_tray_clear() })
 }
 
-// RegisterGlobalShortcut is unsupported on Linux (Wayland has no portable global hotkeys).
-func (h *Host) RegisterGlobalShortcut(string, string) error {
-	return &platform.ErrUnsupported{
-		Feature: platform.FeatureGlobalShortcut,
-		OS:      platform.OSLinux,
-		Detail:  "global shortcuts unsupported on Wayland; use MenuItem.Shortcut for in-window accelerators",
+// RegisterGlobalShortcut binds an OS-wide accelerator on X11 (unsupported on Wayland).
+func (h *Host) RegisterGlobalShortcut(accelerator, actionID string) error {
+	if accelerator == "" || actionID == "" {
+		return &domain.ErrValidation{Message: "accelerator and action id are required"}
+	}
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		if C.vitra_hotkey_supported() == 0 {
+			errCh <- &platform.ErrUnsupported{
+				Feature: platform.FeatureGlobalShortcut,
+				OS:      platform.OSLinux,
+				Detail:  "global shortcuts unsupported on Wayland; use MenuItem.Shortcut for in-window accelerators",
+			}
+			return
+		}
+		ca := C.CString(accelerator)
+		cid := C.CString(actionID)
+		defer C.free(unsafe.Pointer(ca))
+		defer C.free(unsafe.Pointer(cid))
+		if C.vitra_register_hotkey(ca, cid) == 0 {
+			errCh <- errors.New("failed to register global shortcut")
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
+}
+
+// UnregisterGlobalShortcut removes a previously registered X11 accelerator.
+func (h *Host) UnregisterGlobalShortcut(accelerator string) error {
+	if accelerator == "" {
+		return &domain.ErrValidation{Message: "accelerator is required"}
+	}
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		if C.vitra_hotkey_supported() == 0 {
+			errCh <- &platform.ErrUnsupported{
+				Feature: platform.FeatureGlobalShortcut,
+				OS:      platform.OSLinux,
+				Detail:  "global shortcuts unsupported on Wayland; use MenuItem.Shortcut for in-window accelerators",
+			}
+			return
+		}
+		ca := C.CString(accelerator)
+		defer C.free(unsafe.Pointer(ca))
+		if C.vitra_unregister_hotkey(ca) == 0 {
+			errCh <- errors.New("global shortcut not found")
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
+}
+
+// linuxGlobalShortcutFeature reports X11-only OS-wide hotkeys. Wayland stays unsupported.
+func linuxGlobalShortcutFeature() platform.Support {
+	if waylandSession() {
+		return platform.Support{
+			Feature: platform.FeatureGlobalShortcut, Available: false,
+			Detail: "global shortcuts are not reliable on Wayland; use in-window menu accelerators (MenuItem.Shortcut)",
+		}
+	}
+	if os.Getenv("DISPLAY") == "" {
+		return platform.Support{
+			Feature: platform.FeatureGlobalShortcut, Available: false,
+			Detail: "global shortcuts require an X11 DISPLAY",
+		}
+	}
+	return platform.Support{
+		Feature: platform.FeatureGlobalShortcut, Available: true,
+		Detail: "XGrabKey OS-wide accelerators on X11 → SetActionHandler (Wayland unsupported)",
 	}
 }
 
-// UnregisterGlobalShortcut is unsupported on Linux.
-func (h *Host) UnregisterGlobalShortcut(string) error {
-	return &platform.ErrUnsupported{
-		Feature: platform.FeatureGlobalShortcut,
-		OS:      platform.OSLinux,
-		Detail:  "global shortcuts unsupported on Wayland; use MenuItem.Shortcut for in-window accelerators",
+func waylandSession() bool {
+	if os.Getenv("WAYLAND_DISPLAY") != "" {
+		return true
 	}
+	return strings.EqualFold(os.Getenv("XDG_SESSION_TYPE"), "wayland")
 }
 
 // Run runs the GTK main loop (blocking). Must be called from the main OS thread.

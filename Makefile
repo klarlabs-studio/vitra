@@ -28,6 +28,7 @@ e2e:
 test-native:
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeWindowChrome
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeMenuAccelerator
+	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeGlobalShortcut
 
 vet:
 	$(GO) vet ./...

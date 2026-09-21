@@ -21,6 +21,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | `vitra doctor/new/dev/build` | Done |
 | `platform/darwin` WKWebView host (`-tags vitra_native`) | DesktopHost complete for competitive parity |
 | Darwin global shortcuts (`shortcut.global`) | Done (`RegisterEventHotKey`; Ctrl→Command) |
+| Linux global shortcuts (`shortcut.global`) | Done on X11 (`XGrabKey`); unsupported on Wayland |
 | Linux xdg URL-scheme registration (`RegisterURLScheme`) | Done |
 | Darwin URL-scheme registration (`RegisterURLScheme`) | Done (helper `.app` + lsregister) |
 | Linux xdg MIME file associations (`RegisterFileAssociations`) | Done |
@@ -69,13 +70,14 @@ make e2e
 Vitra is a **secure runtime you can run** on Linux, Darwin, and Windows with
 API-compatible `app.DesktopHost` adapters (WebKitGTK / WKWebView / Win32+WebView2),
 including menus, tray, dialogs, chrome, drag-drop, deep links, and grant-gated
-desktop services. Global OS hotkeys ship on Windows and Darwin; Linux keeps
-in-window accelerators only (Wayland has no portable global hotkey API).
+desktop services. Global OS hotkeys ship on Windows, Darwin, and Linux/X11;
+Wayland keeps in-window accelerators only (no portable global hotkey API).
 
 Wails still leads on template ecosystem and packaging polish. Vitra leads on
-capability-oriented authority and inspectable grants. Remaining work is optional
-X11-only global shortcuts — not core DesktopHost, installer-script, or SIEM/MDM
-port parity. Windows MSI/NSIS staging and fold (`win-dir` / `wix` / `nsis-dir` /
-`msi` / `nsis`) ship; fold requires candle/light/makensis on the host
-(overridable via env). Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM
-JSON policy documents (`policy.LoadDocument`) plug into Phase 5 ports.
+capability-oriented authority and inspectable grants. Core DesktopHost,
+installer-script, SIEM/MDM port, and X11 global-shortcut parity are in place —
+Wayland global hotkeys remain intentionally unsupported. Windows MSI/NSIS
+staging and fold (`win-dir` / `wix` / `nsis-dir` / `msi` / `nsis`) ship; fold
+requires candle/light/makensis on the host (overridable via env). Audit SIEM
+exporters (`JSONLSink` / `CEFSink`) and MDM JSON policy documents
+(`policy.LoadDocument`) plug into Phase 5 ports.
