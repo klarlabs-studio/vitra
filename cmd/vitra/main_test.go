@@ -512,7 +512,7 @@ func TestRun_PackageStagesLinuxDir(t *testing.T) {
 		t.Fatalf("expected modules from build info, got %s", raw)
 	}
 	s := string(raw)
-	for _, want := range []string{"vitra.fs", "vitra.dialog", "vitra.clipboard", "vitra.browser", "vitra.os", "vitra.notification", "vitra.path", "vitra.window", "fs.read", "dialog.open", "dialog.openDirectory", "dialog.message", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close"} {
+	for _, want := range []string{"vitra.fs", "vitra.dialog", "vitra.clipboard", "vitra.browser", "vitra.os", "vitra.notification", "vitra.path", "vitra.window", "fs.read", "dialog.open", "dialog.openDirectory", "dialog.message", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close", "window.chrome"} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("provenance missing %q: %s", want, s)
 		}
@@ -1028,7 +1028,7 @@ func TestRun_NewScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "dialog.openDirectory", "dialog.message", "fs.read", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close"} {
+	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "dialog.openDirectory", "dialog.message", "fs.read", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close", "window.chrome"} {
 		if !strings.Contains(string(client), want) {
 			t.Fatalf("vitra-client.ts missing %q", want)
 		}

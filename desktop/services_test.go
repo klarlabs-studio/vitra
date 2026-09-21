@@ -395,6 +395,12 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	if err != nil || wid != "aux" {
 		t.Fatalf("parse id: %v %v", wid, err)
 	}
+	winID, parsedChrome, err := desktop.ParseWindowChromeApply(map[string]any{
+		"id": "main", "title": "Hi", "width": 640.0, "height": 480.0, "alwaysOnTop": true,
+	})
+	if err != nil || winID != "main" || parsedChrome.Title != "Hi" || parsedChrome.Width != 640 || !parsedChrome.AlwaysOnTop {
+		t.Fatalf("parse chrome: %s %+v err=%v", winID, parsedChrome, err)
+	}
 }
 
 func TestBrowserService_GrantFeatureAndHook(t *testing.T) {

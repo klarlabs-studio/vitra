@@ -22,8 +22,8 @@ competitive demo binds `dialog.open`/`dialog.save`/`dialog.openDirectory`/`dialo
 `browser.open` to `desktop.BrowserService`, `os.info` to `desktop.OsService`,
 `notifications.show` to `desktop.NotificationService`,
 `path.open` to `desktop.PathService`,
-`window.create`/`window.close` to `desktop.WindowService` (via `app.App`),
-and `fs.read`/`fs.write` to
+`window.create`/`window.close`/`window.chrome` to `desktop.WindowService`
+(via `app.App` / `DesktopHost.ApplyWindowChrome`), and `fs.read`/`fs.write` to
 `desktop.FileService` with a PathScope grant.
 
 ## Security invariant 6

@@ -1,6 +1,6 @@
 // Package window is the official Phase 3 multi-window plugin contract.
-// It declares window.create / window.close; native execution is bound by the
-// host via desktop.WindowService Create/Close wrapping app.App.
+// It declares window.create / window.close / window.chrome; native execution
+// is bound by the host via desktop.WindowService wrapping app.App / DesktopHost.
 package window
 
 import (
@@ -23,8 +23,8 @@ func (windowPlugin) Manifest() plugin.Manifest {
 		ID:          PluginID,
 		Name:        "Windows",
 		Version:     plugin.SemVer{Major: 1},
-		Description: "Create and close application windows",
-		Permissions: []domain.PermissionName{"window.create", "window.close"},
+		Description: "Create, close, and apply chrome to application windows",
+		Permissions: []domain.PermissionName{"window.create", "window.close", "window.chrome"},
 		MinKernel:   plugin.SemVer{Major: 0, Minor: 3},
 	}
 }
@@ -40,5 +40,10 @@ func (windowPlugin) Contribute() (plugin.Contribution, error) {
 		return plugin.Contribution{}, err
 	}
 	closeCmd.WithPlugin(PluginID)
-	return plugin.Contribution{Commands: []*domain.CommandDefinition{create, closeCmd}}, nil
+	chrome, err := domain.NewCommandDefinition("window.chrome", "Apply window presentation (title, size, chrome)", "window.chrome")
+	if err != nil {
+		return plugin.Contribution{}, err
+	}
+	chrome.WithPlugin(PluginID)
+	return plugin.Contribution{Commands: []*domain.CommandDefinition{create, closeCmd, chrome}}, nil
 }
