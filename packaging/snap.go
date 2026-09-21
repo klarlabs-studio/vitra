@@ -94,6 +94,9 @@ Terminal=false
 	if err := os.WriteFile(desktopAbs, []byte(desktopBody), 0o644); err != nil {
 		return Artifact{}, err
 	}
+	if err := writeAppStreamMetainfo(spec, outDir, AppStreamMetainfoRel("usr/share", spec.AppID)); err != nil {
+		return Artifact{}, err
+	}
 
 	metaDir := filepath.Join(outDir, "meta")
 	if err := os.MkdirAll(metaDir, 0o755); err != nil {

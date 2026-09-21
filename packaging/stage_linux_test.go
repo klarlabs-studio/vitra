@@ -55,6 +55,10 @@ func TestStageLinux_LayoutAndDigest(t *testing.T) {
 	if !strings.Contains(string(body), "Comment="+packaging.DefaultDescription) {
 		t.Fatalf("desktop missing Comment: %s", body)
 	}
+	meta := filepath.Join(out, "usr", "share", "metainfo", "com.vitra.demo.metainfo.xml")
+	if _, err := os.Stat(meta); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestStageLinux_RejectsInlineSigningSecretPattern(t *testing.T) {

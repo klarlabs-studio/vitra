@@ -7,6 +7,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
+| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`) |
 | Sign dry-run plan | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
 | Notary credential bootstrap plan | `PlanNotaryCredentials` + `vitra notary-setup` (store-credentials argv; not executed) |
 | Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}` and `<secret:…>`→`VITRA_SECRET_*`; sets `Artifact.Signed`) |
@@ -126,12 +127,13 @@ Still out of scope on main (do not claim otherwise):
   `PlanNotaryCredentials` / `vitra notary-setup` dry-run (`store-credentials`
   argv with `${APPLE_ID}` / `${APPLE_TEAM_ID}` / `${APP_SPECIFIC_PASSWORD}`;
   operator still runs notarytool)
-- Extra Linux store polish beyond publish *plans* / non-interactive *execute*
-  and portal-oriented Flatpak finish-args (Flathub PR automation, interactive
-  store login) — `PlanPublish` / `--publish` prints Snap Store / Flathub argv
-  guidance; `--publish-execute` runs Executable steps only (`snapcraft upload`,
-  `flatpak-builder`); Flatpak stage uses xdg-desktop-portal talk-names; `.rpm` /
-  `.snap` / `.flatpak` generators ship via `BuildRPM*` / `BuildSnap*` /
+- Extra Linux store polish beyond publish *plans* / non-interactive *execute*,
+  AppStream metainfo, and portal-oriented Flatpak finish-args (Flathub PR
+  automation, interactive store login) — `PlanPublish` / `--publish` prints Snap
+  Store / Flathub argv guidance; `--publish-execute` runs Executable steps only
+  (`snapcraft upload`, `flatpak-builder`); stages emit AppStream
+  `<appid>.metainfo.xml`; Flatpak stage uses xdg-desktop-portal talk-names;
+  `.rpm` / `.snap` / `.flatpak` generators ship via `BuildRPM*` / `BuildSnap*` /
   `BuildFlatpak*`
 - Wails-class template breadth beyond Vitra’s `vanilla` / `vite` / `react` /
   `svelte` / `vue` / `solid` / `preact` / `lit` / `alpine` starters (additional frameworks, richer presets)

@@ -79,6 +79,9 @@ StartupNotify=true
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}
+	if err := writeAppStreamMetainfo(spec, outDir, AppStreamMetainfoRel("usr/share", spec.AppID)); err != nil {
+		return Artifact{}, err
+	}
 
 	return Artifact{
 		Target: TargetLinuxDir,
