@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template arrow`: Vite + ArrowJS (`@arrow-js/core`) + TypeScript starter (`reactive` / `html` + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream translate URL: `Spec.Homepage` / `vitra package --homepage` also flow into metainfo `<url type="translate">` alongside homepage/help/bugtracker/vcs-browser/donation/contact/faq/contribute (omitted when empty).
 - `vitra new --template haunted`: Vite + Haunted + TypeScript starter (`component` / `html` / `useState` web component + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Official window unmaximize: `window.unmaximize` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Unmaximize` (clears `Maximized`); scaffold/competitive bind.
