@@ -2521,6 +2521,62 @@ func TestRun_NewScaffoldNerv(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldPolymer(t *testing.T) {
+	dir := t.TempDir() + "/polymer-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "polymer"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=polymer") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/src/vitra-app.ts", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"@polymer/polymer"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/vitra-app.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen",
+		"osInfo", "notificationsShow", "PolymerElement", "vitra-app",
+	} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("vitra-app.ts missing %q: %s", want, app)
+		}
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("polymer embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Polymer") {
+		t.Fatalf("polymer README should mention Vite + Polymer: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
