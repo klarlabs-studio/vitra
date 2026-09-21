@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- NSIS installer UX: `BuildNSISDir` emits `WriteUninstaller`, HKCU Add/Remove Programs registry keys (`DisplayName`/`UninstallString`/…), and cleans them on uninstall; optional `DisplayIcon` when `--icon` is set.
 - Linux `.deb` package icons: `Spec.IconPath` / `--icon` stages `usr/share/pixmaps/<name>.<ext>` and sets `Icon=` on the FreeDesktop `.desktop` entry.
 - Darwin DMG drag-install layout: FoldDMG stages `.app` + `/Applications` symlink in the image root before `hdiutil create`.
 - `app.DesktopHost` includes `RegisterFileAssociations` and `InjectFileDrop` (all OS adapters already implemented); competitive demo uses the shared interface.
