@@ -207,3 +207,32 @@ void vitra_win_free(VitraWin *w) {
 	free(w->id);
 	free(w);
 }
+
+char *vitra_open_dialog(void) {
+	NSOpenPanel *panel = [NSOpenPanel openPanel];
+	panel.canChooseFiles = YES;
+	panel.canChooseDirectories = NO;
+	panel.allowsMultipleSelection = NO;
+	panel.resolvesAliases = YES;
+	if ([panel runModal] != NSModalResponseOK) {
+		return NULL;
+	}
+	NSURL *url = panel.URL;
+	if (!url || !url.path) {
+		return NULL;
+	}
+	return strdup(url.fileSystemRepresentation);
+}
+
+char *vitra_save_dialog(void) {
+	NSSavePanel *panel = [NSSavePanel savePanel];
+	panel.canCreateDirectories = YES;
+	if ([panel runModal] != NSModalResponseOK) {
+		return NULL;
+	}
+	NSURL *url = panel.URL;
+	if (!url || !url.path) {
+		return NULL;
+	}
+	return strdup(url.fileSystemRepresentation);
+}

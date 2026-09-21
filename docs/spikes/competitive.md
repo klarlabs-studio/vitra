@@ -12,7 +12,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | `app.App` — assets + WebView + invoke→gateway | Done (multi-window `OpenWindow` / `CloseWindow`; quit on last native destroy) |
 | `bridge.PreloadJS` — `window.vitra.invoke` | Done |
 | `platform/linux` WebKitGTK host (`-tags vitra_native`) | Done |
-| Clipboard + open/save file dialogs (GTK) | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste); dialogs Linux only |
+| Clipboard + open/save file dialogs (GTK) | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste); dialogs Linux GTK + Darwin NSOpen/SavePanel |
 | Single-instance lock (flock) | Done (Linux + Darwin) |
 | Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin) |
 | Linux xdg URL-scheme registration (`RegisterURLScheme`) | Done |
@@ -21,7 +21,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done |
 | `vitra doctor/new/dev/build` | Done |
-| `platform/darwin` WKWebView host (`-tags vitra_native`) | Scaffold + OpenURL/clipboard/single-instance/deep-link without WebView; dialogs/tray/chrome TBD |
+| `platform/darwin` WKWebView host (`-tags vitra_native`) | Scaffold + OpenURL/clipboard/single-instance/deep-link; open/save dialogs (native); tray/chrome TBD |
 | `platform/windows` DesktopHost stub | Explicit unsupported |
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |
 | Host→frontend events (`vitra.on` / `App.Emit`) | Done |

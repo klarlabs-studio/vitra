@@ -82,12 +82,12 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "pbcopy/pbpaste; available without native WebView",
 		},
 		platform.FeatureDialogOpen: {
-			Feature: platform.FeatureDialogOpen, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureDialogOpen, Available: true,
+			Detail: "NSOpenPanel",
 		},
 		platform.FeatureDialogSave: {
-			Feature: platform.FeatureDialogSave, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureDialogSave, Available: true,
+			Detail: "NSSavePanel",
 		},
 		platform.FeatureMenuBar: {
 			Feature: platform.FeatureMenuBar, Available: false,
@@ -299,14 +299,36 @@ func (h *Host) CloseWindow(_ context.Context, id domain.WindowID) error {
 	return <-errCh
 }
 
-// OpenFileDialog is not yet implemented on Darwin.
+// OpenFileDialog opens a native file chooser (NSOpenPanel).
 func (h *Host) OpenFileDialog() (string, error) {
-	return "", h.err(platform.FeatureDialogOpen)
+	ch := make(chan string, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		p := C.vitra_open_dialog()
+		if p == nil {
+			ch <- ""
+			return
+		}
+		ch <- C.GoString(p)
+		C.free(unsafe.Pointer(p))
+	})
+	return <-ch, nil
 }
 
-// SaveFileDialog is not yet implemented on Darwin.
+// SaveFileDialog opens a native save-file chooser (NSSavePanel).
 func (h *Host) SaveFileDialog() (string, error) {
-	return "", h.err(platform.FeatureDialogSave)
+	ch := make(chan string, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		p := C.vitra_save_dialog()
+		if p == nil {
+			ch <- ""
+			return
+		}
+		ch <- C.GoString(p)
+		C.free(unsafe.Pointer(p))
+	})
+	return <-ch, nil
 }
 
 // SetMenuBar is not yet implemented on Darwin.
