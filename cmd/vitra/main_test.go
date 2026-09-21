@@ -2341,6 +2341,66 @@ func TestRun_NewScaffoldHyperapp(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldKnockout(t *testing.T) {
+	dir := t.TempDir() + "/knockout-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "knockout"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=knockout") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"knockout"`, `"@types/knockout"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	srcTS, err := os.ReadFile(dir + "/frontend/src/main.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "applyBindings", `from "knockout"`} {
+		if !strings.Contains(string(srcTS), want) {
+			t.Fatalf("main.ts missing %q: %s", want, srcTS)
+		}
+	}
+	html, err := os.ReadFile(dir + "/frontend/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), "data-bind") || !strings.Contains(string(html), "Knockout") {
+		t.Fatalf("index.html missing knockout bindings: %s", html)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("knockout embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Knockout") {
+		t.Fatalf("knockout README should mention Vite + Knockout: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
