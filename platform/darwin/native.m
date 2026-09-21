@@ -3,8 +3,10 @@
 #import "native.h"
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
+#import <Carbon/Carbon.h>
 #import <stdlib.h>
 #import <string.h>
+#import <ctype.h>
 
 extern void goVitraIdle(void *);
 extern void goVitraMessage(char *, char *);
@@ -173,6 +175,7 @@ void vitra_app_run(void) {
 }
 
 void vitra_app_quit(void) {
+	vitra_clear_hotkeys();
 	dispatch_async(dispatch_get_main_queue(), ^{
 		[NSApp stop:nil];
 		NSEvent *ev = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
@@ -627,4 +630,198 @@ char *vitra_save_dialog(void) {
 		return NULL;
 	}
 	return strdup(url.fileSystemRepresentation);
+}
+
+#define VITRA_MAX_HOTKEYS 64
+#define VITRA_HOTKEY_SIG 'VTRA'
+
+typedef struct {
+	EventHotKeyRef ref;
+	UInt32 id;
+	char *accel;
+	char *action;
+} HotkeyEntry;
+
+static HotkeyEntry g_hotkeys[VITRA_MAX_HOTKEYS];
+static int g_hotkey_n = 0;
+static UInt32 g_hotkey_next = 1;
+static EventHandlerRef g_hotkey_handler = NULL;
+
+static int parse_hotkey(const char *shortcut, UInt32 *mods, UInt32 *vk) {
+	if (!shortcut || !mods || !vk) {
+		return 0;
+	}
+	*mods = 0;
+	*vk = 0;
+	char buf[128];
+	strncpy(buf, shortcut, sizeof(buf) - 1);
+	buf[sizeof(buf) - 1] = '\0';
+	for (char *p = buf; *p; p++) {
+		if (*p == '<' || *p == '>') {
+			*p = '+';
+		}
+	}
+	char key = 0;
+	char *cursor = buf;
+	while (*cursor) {
+		while (*cursor == '+') {
+			cursor++;
+		}
+		if (*cursor == '\0') {
+			break;
+		}
+		char *tok = cursor;
+		while (*cursor && *cursor != '+') {
+			cursor++;
+		}
+		if (*cursor == '+') {
+			*cursor++ = '\0';
+		}
+		while (*tok && isspace((unsigned char)*tok)) {
+			tok++;
+		}
+		char *end = tok + strlen(tok);
+		while (end > tok && isspace((unsigned char)end[-1])) {
+			*--end = '\0';
+		}
+		char lower[64];
+		size_t n = strlen(tok);
+		if (n >= sizeof(lower)) {
+			n = sizeof(lower) - 1;
+		}
+		for (size_t i = 0; i < n; i++) {
+			lower[i] = (char)tolower((unsigned char)tok[i]);
+		}
+		lower[n] = '\0';
+		if (strcmp(lower, "ctrl") == 0 || strcmp(lower, "control") == 0 ||
+			strcmp(lower, "cmd") == 0 || strcmp(lower, "command") == 0 ||
+			strcmp(lower, "meta") == 0 || strcmp(lower, "super") == 0 ||
+			strcmp(lower, "win") == 0) {
+			/* Ctrl maps to Command for macOS conventions (matches menus). */
+			*mods |= cmdKey;
+		} else if (strcmp(lower, "shift") == 0) {
+			*mods |= shiftKey;
+		} else if (strcmp(lower, "alt") == 0 || strcmp(lower, "option") == 0) {
+			*mods |= optionKey;
+		} else if (n == 1) {
+			key = (char)toupper((unsigned char)lower[0]);
+		}
+	}
+	if (key == 0 || *mods == 0) {
+		return 0;
+	}
+	if (key < 'A' || key > 'Z') {
+		return 0;
+	}
+	/* kVK_ANSI_A is 0x00, B is 0x0B, … — use the standard letter table. */
+	static const UInt32 letterVK[26] = {
+		kVK_ANSI_A, kVK_ANSI_B, kVK_ANSI_C, kVK_ANSI_D, kVK_ANSI_E, kVK_ANSI_F,
+		kVK_ANSI_G, kVK_ANSI_H, kVK_ANSI_I, kVK_ANSI_J, kVK_ANSI_K, kVK_ANSI_L,
+		kVK_ANSI_M, kVK_ANSI_N, kVK_ANSI_O, kVK_ANSI_P, kVK_ANSI_Q, kVK_ANSI_R,
+		kVK_ANSI_S, kVK_ANSI_T, kVK_ANSI_U, kVK_ANSI_V, kVK_ANSI_W, kVK_ANSI_X,
+		kVK_ANSI_Y, kVK_ANSI_Z,
+	};
+	*vk = letterVK[key - 'A'];
+	return 1;
+}
+
+static OSStatus on_hotkey(EventHandlerCallRef next, EventRef event, void *data) {
+	(void)next;
+	(void)data;
+	EventHotKeyID hk;
+	if (GetEventParameter(event, kEventParamDirectObject, typeEventHotKeyID, NULL, sizeof(hk), NULL, &hk) != noErr) {
+		return noErr;
+	}
+	for (int i = 0; i < g_hotkey_n; i++) {
+		if (g_hotkeys[i].id == hk.id && g_hotkeys[i].action) {
+			goVitraAction(g_hotkeys[i].action);
+			break;
+		}
+	}
+	return noErr;
+}
+
+static void ensure_hotkey_handler(void) {
+	if (g_hotkey_handler) {
+		return;
+	}
+	EventTypeSpec spec = {kEventClassKeyboard, kEventHotKeyPressed};
+	InstallApplicationEventHandler(NewEventHandlerUPP(on_hotkey), 1, &spec, NULL, &g_hotkey_handler);
+}
+
+static void free_hotkey_at(int i) {
+	if (g_hotkeys[i].ref) {
+		UnregisterEventHotKey(g_hotkeys[i].ref);
+		g_hotkeys[i].ref = NULL;
+	}
+	free(g_hotkeys[i].accel);
+	free(g_hotkeys[i].action);
+	g_hotkeys[i].accel = NULL;
+	g_hotkeys[i].action = NULL;
+	g_hotkeys[i].id = 0;
+}
+
+int vitra_register_hotkey(const char *accelerator, const char *action_id) {
+	if (!accelerator || !action_id || accelerator[0] == '\0' || action_id[0] == '\0') {
+		return 0;
+	}
+	UInt32 mods = 0, vk = 0;
+	if (!parse_hotkey(accelerator, &mods, &vk)) {
+		return 0;
+	}
+	ensure_hotkey_handler();
+	for (int i = 0; i < g_hotkey_n; i++) {
+		if (g_hotkeys[i].accel && strcmp(g_hotkeys[i].accel, accelerator) == 0) {
+			if (g_hotkeys[i].ref) {
+				UnregisterEventHotKey(g_hotkeys[i].ref);
+				g_hotkeys[i].ref = NULL;
+			}
+			free(g_hotkeys[i].action);
+			g_hotkeys[i].action = strdup(action_id);
+			EventHotKeyID hk = {.signature = VITRA_HOTKEY_SIG, .id = g_hotkeys[i].id};
+			if (RegisterEventHotKey(vk, mods, hk, GetApplicationEventTarget(), 0, &g_hotkeys[i].ref) != noErr) {
+				return 0;
+			}
+			return 1;
+		}
+	}
+	if (g_hotkey_n >= VITRA_MAX_HOTKEYS) {
+		return 0;
+	}
+	UInt32 id = g_hotkey_next++;
+	EventHotKeyID hk = {.signature = VITRA_HOTKEY_SIG, .id = id};
+	EventHotKeyRef ref = NULL;
+	if (RegisterEventHotKey(vk, mods, hk, GetApplicationEventTarget(), 0, &ref) != noErr) {
+		return 0;
+	}
+	g_hotkeys[g_hotkey_n].ref = ref;
+	g_hotkeys[g_hotkey_n].id = id;
+	g_hotkeys[g_hotkey_n].accel = strdup(accelerator);
+	g_hotkeys[g_hotkey_n].action = strdup(action_id);
+	g_hotkey_n++;
+	return 1;
+}
+
+int vitra_unregister_hotkey(const char *accelerator) {
+	if (!accelerator) {
+		return 0;
+	}
+	for (int i = 0; i < g_hotkey_n; i++) {
+		if (g_hotkeys[i].accel && strcmp(g_hotkeys[i].accel, accelerator) == 0) {
+			free_hotkey_at(i);
+			g_hotkeys[i] = g_hotkeys[g_hotkey_n - 1];
+			memset(&g_hotkeys[g_hotkey_n - 1], 0, sizeof(g_hotkeys[0]));
+			g_hotkey_n--;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void vitra_clear_hotkeys(void) {
+	for (int i = 0; i < g_hotkey_n; i++) {
+		free_hotkey_at(i);
+	}
+	g_hotkey_n = 0;
+	g_hotkey_next = 1;
 }

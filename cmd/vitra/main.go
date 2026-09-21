@@ -145,7 +145,7 @@ func doctor() error {
 	case "darwin":
 		fmt.Println("  frameworks: Cocoa + WebKit (system)")
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native")
-		fmt.Println("  note:     WKWebView DesktopHost under -tags vitra_native; OpenURL/clipboard/single-instance/deep-link/scheme/files without WebView")
+		fmt.Println("  note:     WKWebView DesktopHost under -tags vitra_native; global shortcuts via RegisterEventHotKey (Ctrl→Command)")
 	case "windows":
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native (Win32 + WebView2Loader.dll)")
 		fmt.Println("  note:     WebView2 Navigate/Eval/message need Evergreen Runtime; global shortcuts via RegisterHotKey")
