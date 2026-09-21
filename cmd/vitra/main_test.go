@@ -3528,6 +3528,55 @@ func TestRun_NewScaffoldSolidElement(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldFast(t *testing.T) {
+	dir := t.TempDir() + "/fast-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "fast"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=fast") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/src/vitra-app.ts", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"@microsoft/fast-element"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	src, err := os.ReadFile(dir + "/frontend/src/vitra-app.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "@microsoft/fast-element", "FASTElement", "customElement", "vitra-app"} {
+		if !strings.Contains(string(src), want) {
+			t.Fatalf("vitra-app.ts missing %q: %s", want, src)
+		}
+	}
+	if _, err := os.Stat(dir + "/frontend/dist/index.html"); err != nil {
+		t.Fatalf("fast embed missing: %s", err)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + FAST Element") {
+		t.Fatalf("fast README should mention Vite + FAST Element: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
