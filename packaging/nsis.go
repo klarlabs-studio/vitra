@@ -170,7 +170,7 @@ Section "Uninstall"
   DeleteRegKey HKCU "${UNINST_KEY}"
   RMDir "$INSTDIR"
 SectionEnd
-`, nsisEscape(spec.Name), nsisEscape(spec.Version), nsisEscape(spec.Name),
+`, nsisEscape(spec.Name), nsisEscape(spec.Version), nsisEscape(spec.EffectivePublisher()),
 		nsisEscape(spec.AppID), exeName, iconDefine, outInstaller, iconFileLine, shortcuts,
 		displayIconReg, iconUninstall)
 	if err := os.WriteFile(filepath.Join(outDir, "installer.nsi"), []byte(nsi), 0o644); err != nil {

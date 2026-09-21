@@ -221,7 +221,7 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
     </ComponentGroup>
   </Fragment>
 </Wix>
-`, xmlEscape(spec.Name), xmlEscape(spec.Version), xmlEscape(spec.Name), upgrade,
+`, xmlEscape(spec.Name), xmlEscape(spec.Version), xmlEscape(spec.EffectivePublisher()), upgrade,
 		xmlEscape(spec.Name), iconXML, xmlEscape(spec.Name), xmlEscape(safeName), xmlEscape(safeName),
 		exeName, iconComp,
 		xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIcon, regManufacturer, regProduct,
