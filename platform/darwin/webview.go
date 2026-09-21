@@ -134,6 +134,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDialogMessage, Available: true,
 			Detail: "NSAlert info/confirm",
 		},
+		platform.FeatureNotificationShow: {
+			Feature: platform.FeatureNotificationShow, Available: true,
+			Detail: "NSUserNotification title+body",
+		},
 		platform.FeatureMenuBar: {
 			Feature: platform.FeatureMenuBar, Available: true,
 			Detail: "NSApp main menu; MenuItem.Shortcut maps Ctrl→Command",
@@ -478,6 +482,25 @@ func (h *Host) MessageDialog(title, message, kind string) (bool, error) {
 		ch <- ok
 	})
 	return <-ch, nil
+}
+
+// ShowNotification displays a title+body desktop notification.
+func (h *Host) ShowNotification(title, body string) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ctitle := C.CString(title)
+		cbody := C.CString(body)
+		ok := C.vitra_show_notification(ctitle, cbody) != 0
+		C.free(unsafe.Pointer(ctitle))
+		C.free(unsafe.Pointer(cbody))
+		if !ok {
+			errCh <- errors.New("show notification failed")
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
 }
 
 // SetMenuBar replaces the application main menu with the given flat items.

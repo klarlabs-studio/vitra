@@ -12,7 +12,7 @@ Phase 1’s capability boundary.
 | Subscription cleanup on close | `CloseWindowUseCase` releases subscriptions |
 | Navigation policy | `domain.NavigationPolicy`, `NavigateWithPolicyUseCase` |
 | Deep-link patterns | `domain.DeepLinkPattern` |
-| Capability-gated desktop services | `desktop` — menu (+ in-window accelerators), tray, dialog, clipboard, shortcuts, single-instance, deeplinks, drag-drop, window chrome, open URL |
+| Capability-gated desktop services | `desktop` — menu (+ in-window accelerators), tray, dialog, clipboard, shortcuts, single-instance, deeplinks, drag-drop, window chrome, open URL, notifications |
 | Explicit unsupported features | services call `platform.Require` before native hooks |
 | Linux xdg MIME associations | `linux.RegisterFileAssociations`, `vitra register-files` |
 

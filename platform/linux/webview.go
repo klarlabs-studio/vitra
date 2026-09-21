@@ -114,17 +114,18 @@ func (h *Host) OS() platform.OS { return platform.OSLinux }
 // Features reports supported native capabilities.
 func (h *Host) Features() platform.FeatureSet {
 	return platform.FeatureSet{
-		platform.FeatureWindowCreate:   {Feature: platform.FeatureWindowCreate, Available: true},
-		platform.FeatureWindowNavigate: {Feature: platform.FeatureWindowNavigate, Available: true},
-		platform.FeatureWebViewMessage: {Feature: platform.FeatureWebViewMessage, Available: true},
-		platform.FeatureDialogOpen:     {Feature: platform.FeatureDialogOpen, Available: true},
-		platform.FeatureDialogSave:     {Feature: platform.FeatureDialogSave, Available: true},
-		platform.FeatureDialogMessage:  {Feature: platform.FeatureDialogMessage, Available: true},
-		platform.FeatureClipboard:      {Feature: platform.FeatureClipboard, Available: true},
-		platform.FeatureMenuBar:        {Feature: platform.FeatureMenuBar, Available: true},
-		platform.FeatureTray:           {Feature: platform.FeatureTray, Available: true},
-		platform.FeatureSingleInstance: {Feature: platform.FeatureSingleInstance, Available: true},
-		platform.FeatureGlobalShortcut: linuxGlobalShortcutFeature(),
+		platform.FeatureWindowCreate:     {Feature: platform.FeatureWindowCreate, Available: true},
+		platform.FeatureWindowNavigate:   {Feature: platform.FeatureWindowNavigate, Available: true},
+		platform.FeatureWebViewMessage:   {Feature: platform.FeatureWebViewMessage, Available: true},
+		platform.FeatureDialogOpen:       {Feature: platform.FeatureDialogOpen, Available: true},
+		platform.FeatureDialogSave:       {Feature: platform.FeatureDialogSave, Available: true},
+		platform.FeatureDialogMessage:    {Feature: platform.FeatureDialogMessage, Available: true},
+		platform.FeatureNotificationShow: {Feature: platform.FeatureNotificationShow, Available: true, Detail: "org.freedesktop.Notifications"},
+		platform.FeatureClipboard:        {Feature: platform.FeatureClipboard, Available: true},
+		platform.FeatureMenuBar:          {Feature: platform.FeatureMenuBar, Available: true},
+		platform.FeatureTray:             {Feature: platform.FeatureTray, Available: true},
+		platform.FeatureSingleInstance:   {Feature: platform.FeatureSingleInstance, Available: true},
+		platform.FeatureGlobalShortcut:   linuxGlobalShortcutFeature(),
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: true,
 			Detail: "argv + socket handoff + xdg URL-scheme registration",
@@ -482,6 +483,25 @@ func (h *Host) MessageDialog(title, message, kind string) (bool, error) {
 		ch <- ok
 	})
 	return <-ch, nil
+}
+
+// ShowNotification displays a title+body desktop notification.
+func (h *Host) ShowNotification(title, body string) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ctitle := C.CString(title)
+		cbody := C.CString(body)
+		ok := C.vitra_show_notification(ctitle, cbody) != 0
+		C.free(unsafe.Pointer(ctitle))
+		C.free(unsafe.Pointer(cbody))
+		if !ok {
+			errCh <- errors.New("show notification failed")
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
 }
 
 // MenuItem is an alias for the portable chrome menu entry.

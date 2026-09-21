@@ -1,6 +1,7 @@
 //go:build linux && cgo && vitra_native
 
 #include "native.h"
+#include <gio/gio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -438,6 +439,58 @@ int vitra_message_dialog(const char *title, const char *message, int confirm) {
 	if (confirm) {
 		return response == GTK_RESPONSE_YES ? 1 : 0;
 	}
+	return 1;
+}
+
+int vitra_show_notification(const char *title, const char *body) {
+	GError *err = NULL;
+	GDBusProxy *proxy = g_dbus_proxy_new_for_bus_sync(
+		G_BUS_TYPE_SESSION,
+		G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES,
+		NULL,
+		"org.freedesktop.Notifications",
+		"/org/freedesktop/Notifications",
+		"org.freedesktop.Notifications",
+		NULL,
+		&err);
+	if (!proxy) {
+		if (err) {
+			g_error_free(err);
+		}
+		return 0;
+	}
+	const char *app = vitra_get_prgname();
+	if (!app || !app[0]) {
+		app = "vitra";
+	}
+	GVariantBuilder actions;
+	GVariantBuilder hints;
+	g_variant_builder_init(&actions, G_VARIANT_TYPE("as"));
+	g_variant_builder_init(&hints, G_VARIANT_TYPE("a{sv}"));
+	GVariant *result = g_dbus_proxy_call_sync(
+		proxy,
+		"Notify",
+		g_variant_new("(susssasa{sv}i)",
+			app,
+			(guint32)0,
+			"",
+			title ? title : "",
+			body ? body : "",
+			&actions,
+			&hints,
+			-1),
+		G_DBUS_CALL_FLAGS_NONE,
+		-1,
+		NULL,
+		&err);
+	g_object_unref(proxy);
+	if (!result) {
+		if (err) {
+			g_error_free(err);
+		}
+		return 0;
+	}
+	g_variant_unref(result);
 	return 1;
 }
 

@@ -32,6 +32,7 @@ const (
 	PermWindowChrome     domain.PermissionName = "window.chrome"
 	PermOpenURL          domain.PermissionName = "browser.open"
 	PermOsInfo           domain.PermissionName = "os.info"
+	PermNotificationShow domain.PermissionName = "notifications.show"
 )
 
 // Gateway evaluates desktop permissions for a caller.
@@ -380,6 +381,30 @@ func DefaultOsInfo() OsInfo {
 		Family: family,
 		Locale: locale,
 	}
+}
+
+// NotificationService shows desktop notifications when permitted.
+type NotificationService struct {
+	Gateway Gateway
+	Host    platform.Host
+	OnShow  func(ctx context.Context, title, body string) error
+}
+
+// Show authorizes notifications.show then displays a title+body notification.
+func (s *NotificationService) Show(ctx context.Context, caller domain.Caller, title, body string) error {
+	if strings.TrimSpace(body) == "" && strings.TrimSpace(title) == "" {
+		return &domain.ErrValidation{Message: "title or body is required"}
+	}
+	if err := authorize(s.Gateway, caller, PermNotificationShow); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeatureNotificationShow); err != nil {
+		return err
+	}
+	if s.OnShow == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureNotificationShow, OS: s.Host.OS(), Detail: "no notification adapter bound"}
+	}
+	return s.OnShow(ctx, title, body)
 }
 
 func authorize(gw Gateway, caller domain.Caller, perm domain.PermissionName) error {

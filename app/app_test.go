@@ -75,6 +75,7 @@ func (h *fakeHost) ClipboardSet(string) error                          { return 
 func (h *fakeHost) OpenFileDialog() (string, error)                    { return "/tmp/x", nil }
 func (h *fakeHost) SaveFileDialog() (string, error)                    { return "/tmp/y", nil }
 func (h *fakeHost) MessageDialog(string, string, string) (bool, error) { return true, nil }
+func (h *fakeHost) ShowNotification(string, string) error              { return nil }
 func (h *fakeHost) SetActionHandler(func(string))                      {}
 func (h *fakeHost) SetDragDropHandler(func(domain.WindowID, []string)) {}
 func (h *fakeHost) SetDestroyHandler(fn func(domain.WindowID))         { h.onDestroy = fn }

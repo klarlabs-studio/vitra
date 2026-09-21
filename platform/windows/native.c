@@ -809,6 +809,43 @@ int vitra_message_dialog(const char *title, const char *message, int confirm) {
 	return 1;
 }
 
+int vitra_show_notification(const char *title, const char *body) {
+	ensure_tray_window();
+	if (!g_tray_hwnd) {
+		return 0;
+	}
+	NOTIFYICONDATAA nid;
+	memset(&nid, 0, sizeof(nid));
+	nid.cbSize = sizeof(nid);
+	nid.hWnd = g_tray_hwnd;
+	nid.uID = 1;
+	nid.uFlags = NIF_INFO | NIF_ICON | NIF_MESSAGE;
+	nid.uCallbackMessage = WM_TRAYICON;
+	nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	nid.dwInfoFlags = NIIF_INFO;
+	if (title) {
+		strncpy(nid.szInfoTitle, title, sizeof(nid.szInfoTitle) - 1);
+	}
+	if (body) {
+		strncpy(nid.szInfo, body, sizeof(nid.szInfo) - 1);
+	}
+	if (g_tray_added) {
+		nid.uFlags |= NIF_TIP;
+		strncpy(nid.szTip, g_nid.szTip, sizeof(nid.szTip) - 1);
+		if (!Shell_NotifyIconA(NIM_MODIFY, &nid)) {
+			return 0;
+		}
+		g_nid = nid;
+		return 1;
+	}
+	if (!Shell_NotifyIconA(NIM_ADD, &nid)) {
+		return 0;
+	}
+	g_tray_added = 1;
+	g_nid = nid;
+	return 1;
+}
+
 void vitra_tray_set(const char *tooltip) {
 	ensure_tray_window();
 	if (!g_tray_hwnd) {

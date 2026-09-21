@@ -52,6 +52,7 @@
       <button id="open" class="secondary">Open file</button>
       <button id="save" class="secondary">Save file</button>
       <button id="msg" class="secondary">Message dialog</button>
+      <button id="notify" class="secondary">Notify</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -108,6 +109,17 @@
             kind: "confirm",
           }),
         });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("notify").onclick = async () => {
+      try {
+        await window.vitra.invoke("notifications.show", {
+          title: "Vitra",
+          body: "Hello from competitive demo",
+        });
+        show({ notified: true });
       } catch (e) {
         show(String(e.message || e), true);
       }

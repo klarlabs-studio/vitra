@@ -393,3 +393,47 @@ func TestOsService_GrantAndDefault(t *testing.T) {
 		t.Fatalf("custom OnInfo: got=%+v err=%v called=%v", got, err, called)
 	}
 }
+
+func TestNotificationService_GrantFeatureAndHook(t *testing.T) {
+	caller, _ := domain.NewCaller("main", domain.OriginPackagedLocal)
+	host := null.New(platform.OSLinux)
+	ctx := context.Background()
+
+	denied := &desktop.NotificationService{Gateway: denyAll{}, Host: host}
+	err := denied.Show(ctx, caller, "t", "b")
+	var d *domain.ErrDenied
+	if !errors.As(err, &d) || d.Code != domain.DenialNoGrant {
+		t.Fatalf("expected denial, got %v", err)
+	}
+
+	bare := &desktop.NotificationService{Gateway: allowAll{}, Host: host}
+	err = bare.Show(ctx, caller, "t", "b")
+	var un *platform.ErrUnsupported
+	if !errors.As(err, &un) || un.Feature != platform.FeatureNotificationShow {
+		t.Fatalf("expected unsupported notification, got %v", err)
+	}
+
+	okHost := withFeatures(platform.OSLinux, platform.FeatureNotificationShow)
+	var gotTitle, gotBody string
+	ok := &desktop.NotificationService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnShow: func(_ context.Context, title, body string) error {
+			gotTitle, gotBody = title, body
+			return nil
+		},
+	}
+	if err := ok.Show(ctx, caller, "Hello", "World"); err != nil {
+		t.Fatal(err)
+	}
+	if gotTitle != "Hello" || gotBody != "World" {
+		t.Fatalf("got %q %q", gotTitle, gotBody)
+	}
+	if err := ok.Show(ctx, caller, "  ", "  "); err == nil {
+		t.Fatal("expected empty validation")
+	}
+	missing := &desktop.NotificationService{Gateway: allowAll{}, Host: okHost}
+	if err := missing.Show(ctx, caller, "t", "b"); err == nil {
+		t.Fatal("expected missing adapter")
+	}
+}
