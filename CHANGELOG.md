@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- AppStream donation URL: `Spec.Homepage` / `vitra package --homepage` also flow into metainfo `<url type="donation">` alongside homepage/help/bugtracker/vcs-browser (omitted when empty).
 - `vitra new --template cherry`: Vite + Cherry (ClojureScript dialect, `cherry-cljs/vite`) starter (`main.cljs` + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - `vitra new --template squint`: Vite + Squint (ClojureScript dialect, `squint-cljs/vite`) starter (`main.cljs` + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream vcs-browser URL: `Spec.Homepage` / `vitra package --homepage` also flow into metainfo `<url type="vcs-browser">` alongside homepage/help/bugtracker (omitted when empty).

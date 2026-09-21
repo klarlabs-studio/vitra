@@ -52,7 +52,7 @@ Linux stages (root + `usr/share/icons/hicolor/…/apps/`, `Icon=<name>`), AppDir
 (`.DirIcon` symlink + hicolor), `.deb` packages (`usr/share/pixmaps/` + hicolor +
 `Icon=`), Darwin `Contents/Resources` (`CFBundleIconFile`), and Windows `bin/`
 (WiX `ARPPRODUCTICON` + NSIS shortcut icon). Optional `--homepage` sets Debian
-`Homepage`, AppStream/RPM/snap URLs (AppStream homepage + help + bugtracker + vcs-browser), and Windows ARP support/help URLs
+`Homepage`, AppStream/RPM/snap URLs (AppStream homepage + help + bugtracker + vcs-browser + donation), and Windows ARP support/help URLs
 (`URLInfoAbout` / `ARPURLINFOABOUT`, `HelpLink` / `ARPHELPLINK`, `URLUpdateInfo` / `ARPURLUPDATEINFO`) when provided. Optional `--maintainer` sets Debian
 `Maintainer`, snap `contact:`, AppStream `<update_contact>`, DEP-5 Upstream-Contact, and, when provided, WiX
 `Manufacturer` / NSIS `PRODUCT_PUBLISHER` (otherwise WiX/NSIS use `Name`). Optional `--description` sets the Debian
