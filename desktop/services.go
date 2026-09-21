@@ -61,6 +61,48 @@ type MenuService struct {
 	OnSet   func(ctx context.Context, items []MenuItem) error // optional native hook
 }
 
+// ParseMenuItems extracts menu entries from an invoke payload.
+// Accepts a bare array or { items: [...] }. Each entry needs id + label;
+// optional menu (top-level label) and shortcut are forwarded.
+func ParseMenuItems(input any) ([]MenuItem, error) {
+	var raw []any
+	switch v := input.(type) {
+	case nil:
+		return nil, nil
+	case []any:
+		raw = v
+	case map[string]any:
+		if items, ok := v["items"].([]any); ok {
+			raw = items
+		} else {
+			return nil, &domain.ErrValidation{Message: "menu.set input must be an array or {items:[]}"}
+		}
+	default:
+		return nil, &domain.ErrValidation{Message: "menu.set input must be an array or {items:[]}"}
+	}
+	out := make([]MenuItem, 0, len(raw))
+	for _, entry := range raw {
+		m, ok := entry.(map[string]any)
+		if !ok || m == nil {
+			return nil, &domain.ErrValidation{Message: "menu.set items must be objects"}
+		}
+		id, _ := m["id"].(string)
+		label, _ := m["label"].(string)
+		if id == "" || label == "" {
+			return nil, &domain.ErrValidation{Message: "menu.set item requires id and label"}
+		}
+		item := MenuItem{ID: id, Label: label}
+		if menu, ok := m["menu"].(string); ok {
+			item.Menu = menu
+		}
+		if shortcut, ok := m["shortcut"].(string); ok {
+			item.Shortcut = shortcut
+		}
+		out = append(out, item)
+	}
+	return out, nil
+}
+
 // SetMenu authorizes menu.set then applies items (or returns unsupported).
 func (s *MenuService) SetMenu(ctx context.Context, caller domain.Caller, items []MenuItem) error {
 	if err := authorize(s.Gateway, caller, PermMenuSet); err != nil {

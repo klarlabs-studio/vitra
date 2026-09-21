@@ -57,6 +57,7 @@
       <button id="path" class="secondary">Open temp dir</button>
       <button id="win" class="secondary">Open aux window</button>
       <button id="chrome" class="secondary">Apply window.chrome</button>
+      <button id="menu" class="secondary">Set menu bar</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -69,6 +70,7 @@
     if (window.vitra && window.vitra.on) {
       window.vitra.on("demo.tick", (payload) => show({ event: "demo.tick", payload }));
       window.vitra.on("dragdrop.drop", (payload) => show({ event: "dragdrop.drop", payload }));
+      window.vitra.on("menu.action", (payload) => show({ event: "menu.action", payload }));
     }
     document.getElementById("greet").onclick = async () => {
       try {
@@ -177,6 +179,17 @@
           height: 600,
         });
         show({ chrome: { id: "main", title: "Vitra Chrome", width: 900, height: 600 } });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("menu").onclick = async () => {
+      try {
+        await window.vitra.invoke("menu.set", [
+          { menu: "File", id: "app.quit", label: "Quit", shortcut: "Ctrl+Q" },
+          { menu: "Help", id: "help.about", label: "About Vitra" },
+        ]);
+        show({ menu: "set" });
       } catch (e) {
         show(String(e.message || e), true);
       }
