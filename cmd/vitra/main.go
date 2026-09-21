@@ -5020,6 +5020,24 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.setTitle", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, title, err := desktop.ParseWindowSetTitle(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.SetTitle(ctx, caller, id, title)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.setSize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, width, height, err := desktop.ParseWindowSetSize(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.SetSize(ctx, caller, id, width, height)
+	})); err != nil {
+		return err
+	}
 	menus := &desktop.MenuService{
 		Gateway: rt,
 		Host:    host,
@@ -5263,6 +5281,8 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="fullscreen">window.fullscreen</button>
 <button id="alwaysOnTop">window.setAlwaysOnTop</button>
 <button id="restore">window.restore</button>
+<button id="setTitle">window.setTitle</button>
+<button id="setSize">window.setSize</button>
 <button id="menu">menu.set</button>
 <button id="menuClear">menu.clear</button>
 <button id="tray">tray.set</button>
@@ -5368,6 +5388,18 @@ document.getElementById("restore").onclick = async () => {
   try {
     await invoke("window.restore", { id: "main" });
     out.textContent = JSON.stringify({ restore: "main" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("setTitle").onclick = async () => {
+  try {
+    await invoke("window.setTitle", { id: "main", title: "Vitra Title" });
+    out.textContent = JSON.stringify({ setTitle: "Vitra Title", id: "main" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("setSize").onclick = async () => {
+  try {
+    await invoke("window.setSize", { id: "main", width: 1024, height: 768 });
+    out.textContent = JSON.stringify({ setSize: { width: 1024, height: 768 }, id: "main" }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
 document.getElementById("menu").onclick = async () => {

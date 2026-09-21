@@ -612,6 +612,52 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 		t.Fatal("expected empty window validation for minimize")
 	}
 
+	var titled platform.WindowChrome
+	titleSize := &desktop.WindowService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnRead: func(_ context.Context, window domain.WindowID) (platform.WindowChrome, error) {
+			if window != "main" {
+				t.Fatalf("setTitle/setSize read window=%s", window)
+			}
+			cur := titled
+			if cur.Width == 0 {
+				cur = platform.WindowChrome{Title: "Vitra", Width: 800, Height: 600}
+			}
+			return cur, nil
+		},
+		OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
+			if window != "main" {
+				t.Fatalf("setTitle/setSize apply window=%s", window)
+			}
+			titled = chrome
+			return nil
+		},
+	}
+	if err := titleSize.SetTitle(ctx, caller, "main", "Hello"); err != nil || titled.Title != "Hello" || titled.Width != 800 {
+		t.Fatalf("setTitle: %+v err=%v", titled, err)
+	}
+	if err := titleSize.SetSize(ctx, caller, "main", 1024, 768); err != nil || titled.Width != 1024 || titled.Height != 768 || titled.Title != "Hello" {
+		t.Fatalf("setSize: %+v err=%v", titled, err)
+	}
+	if err := titleSize.SetSize(ctx, caller, "main", 0, 100); err == nil {
+		t.Fatal("expected setSize validation for non-positive width")
+	}
+	setTitleID, setTitle, parseTitleErr := desktop.ParseWindowSetTitle(map[string]any{"id": "main", "title": "Hi"})
+	if parseTitleErr != nil || setTitleID != "main" || setTitle != "Hi" {
+		t.Fatalf("ParseWindowSetTitle: id=%s title=%q err=%v", setTitleID, setTitle, parseTitleErr)
+	}
+	if _, _, err := desktop.ParseWindowSetTitle(map[string]any{"id": "main"}); err == nil {
+		t.Fatal("expected title required")
+	}
+	setSizeID, w, h, parseSizeErr := desktop.ParseWindowSetSize(map[string]any{"id": "main", "width": 640, "height": 480})
+	if parseSizeErr != nil || setSizeID != "main" || w != 640 || h != 480 {
+		t.Fatalf("ParseWindowSetSize: id=%s %dx%d err=%v", setSizeID, w, h, parseSizeErr)
+	}
+	if _, _, _, err := desktop.ParseWindowSetSize(map[string]any{"id": "main", "width": 640}); err == nil {
+		t.Fatal("expected height required")
+	}
+
 	createHost := withFeatures(platform.OSLinux, platform.FeatureWindowCreate)
 	var created desktop.WindowCreateOptions
 	lifecycle := &desktop.WindowService{

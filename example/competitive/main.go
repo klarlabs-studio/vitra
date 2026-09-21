@@ -630,6 +630,24 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.setTitle", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, title, err := desktop.ParseWindowSetTitle(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.SetTitle(ctx, caller, id, title)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.setSize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, width, height, err := desktop.ParseWindowSetSize(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.SetSize(ctx, caller, id, width, height)
+	})); err != nil {
+		return err
+	}
 	if err := rt.BindExecutor("menu.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		items, err := desktop.ParseMenuItems(input)
 		if err != nil {
