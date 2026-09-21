@@ -565,14 +565,19 @@ func openAuditWriter(path string) (io.Writer, string, error) {
 
 // newDesktopHost selects the OS DesktopHost adapter (Linux / Darwin / Windows).
 func newDesktopHost() app.DesktopHost {
+	const prog = "vitra-competitive"
 	switch runtime.GOOS {
 	case "darwin":
-		return darwin.New()
+		h := darwin.New()
+		h.SetProgramName(prog)
+		return h
 	case "windows":
-		return windows.New()
+		h := windows.New()
+		h.SetProgramName(prog)
+		return h
 	default:
 		h := linux.New()
-		h.SetProgramName("vitra-competitive")
+		h.SetProgramName(prog)
 		return h
 	}
 }

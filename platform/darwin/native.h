@@ -19,7 +19,8 @@ typedef struct {
 	char *icon_path;
 } VitraChrome;
 
-void vitra_app_init(void);
+void vitra_app_init(const char *prgname);
+const char *vitra_get_program_name(void);
 void vitra_app_run(void);
 void vitra_app_quit(void);
 void vitra_idle_add(void *data);
