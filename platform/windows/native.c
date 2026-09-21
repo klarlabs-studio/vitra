@@ -767,6 +767,22 @@ VitraChrome vitra_win_chrome(VitraWin *w) {
 	return c;
 }
 
+void vitra_win_focus(VitraWin *w) {
+	if (!w || !w->hwnd) {
+		return;
+	}
+	HWND hwnd = w->hwnd;
+	w->hidden = 0;
+	w->minimized = 0;
+	if (IsIconic(hwnd)) {
+		ShowWindow(hwnd, SW_RESTORE);
+	} else {
+		ShowWindow(hwnd, SW_SHOW);
+	}
+	BringWindowToTop(hwnd);
+	SetForegroundWindow(hwnd);
+}
+
 /* Build Win32 OFN filter from "Name:ext1,ext2;Other:txt". Caller frees with free(). */
 static char *vitra_win_filter_buffer(const char *filters) {
 	if (!filters || !filters[0]) {

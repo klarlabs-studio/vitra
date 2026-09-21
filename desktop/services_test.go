@@ -488,6 +488,24 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	if err != nil || gotRead.Title != "Vitra" || gotRead.Width != 800 {
 		t.Fatalf("read: %+v err=%v", gotRead, err)
 	}
+	if err := missing.Focus(ctx, caller, "main"); err == nil {
+		t.Fatal("expected missing focus adapter")
+	}
+	var focused domain.WindowID
+	focuser := &desktop.WindowService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnFocus: func(_ context.Context, window domain.WindowID) error {
+			focused = window
+			return nil
+		},
+	}
+	if err := focuser.Focus(ctx, caller, "main"); err != nil || focused != "main" {
+		t.Fatalf("focus: %s err=%v", focused, err)
+	}
+	if err := focuser.Focus(ctx, caller, ""); err == nil {
+		t.Fatal("expected empty window validation")
+	}
 
 	createHost := withFeatures(platform.OSLinux, platform.FeatureWindowCreate)
 	var created desktop.WindowCreateOptions

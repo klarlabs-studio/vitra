@@ -268,6 +268,19 @@ VitraChrome vitra_win_chrome(VitraWin *w) {
 	return c;
 }
 
+void vitra_win_focus(VitraWin *w) {
+	if (!w || !w->window) {
+		return;
+	}
+	GtkWindow *win = GTK_WINDOW(w->window);
+	w->hidden = 0;
+	w->minimized = 0;
+	gtk_window_deiconify(win);
+	gtk_widget_show(w->window);
+	gtk_window_present(win);
+	vitra_win_flush();
+}
+
 void vitra_win_clear_menu(VitraWin *w) {
 	if (!w || !w->menubar) {
 		return;

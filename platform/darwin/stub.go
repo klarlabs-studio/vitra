@@ -174,6 +174,9 @@ func (h *Host) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error {
 func (h *Host) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, error) {
 	return platform.WindowChrome{}, h.err(platform.FeatureWindowChrome)
 }
+func (h *Host) FocusWindow(domain.WindowID) error {
+	return h.err(platform.FeatureWindowChrome)
+}
 func (h *Host) Run() error { return h.err(platform.FeatureWindowCreate) }
 func (h *Host) Quit()      {}
 
