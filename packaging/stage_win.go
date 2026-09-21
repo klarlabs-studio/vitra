@@ -71,3 +71,22 @@ func StageWindows(spec Spec, binaryPath, outDir string) (Artifact, error) {
 		Signed: false,
 	}, nil
 }
+
+// windowsARPEstimatedSizeKB returns the Apps & Features EstimatedSize (KB)
+// from the staged binary (+ optional icon), matching Debian Installed-Size rounding.
+func windowsARPEstimatedSizeKB(binaryPath, iconPath string) int {
+	var payload int64
+	if st, err := os.Stat(binaryPath); err == nil {
+		payload += st.Size()
+	}
+	if icon := strings.TrimSpace(iconPath); icon != "" {
+		if st, err := os.Stat(icon); err == nil {
+			payload += st.Size()
+		}
+	}
+	kb := int((payload + 1023) / 1024)
+	if kb < 1 {
+		kb = 1
+	}
+	return kb
+}

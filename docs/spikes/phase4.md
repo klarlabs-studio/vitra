@@ -40,8 +40,8 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `appdir` | AppImage-ready AppDir (`BuildAppDir`) |
 | `appimage` | Final `.AppImage` (`BuildAppImage` → `appimagetool`) |
 | `win-dir` | Staged Windows `bin/<Name>.exe` (`StageWindows`) |
-| `wix` | Windows stage + `product.wxs` (`BuildWiXDir`; Start Menu + Desktop shortcuts + stable UpgradeCode + ARP URL/helplink/urlupdate/comments/copyright/nomodify/norepair) |
-| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP + Desktop/Start Menu shortcuts + URLInfoAbout/HelpLink/URLUpdateInfo/Comments/LegalCopyright/NoModify/NoRepair) |
+| `wix` | Windows stage + `product.wxs` (`BuildWiXDir`; Start Menu + Desktop shortcuts + stable UpgradeCode + ARP URL/helplink/urlupdate/comments/copyright/nomodify/norepair/size) |
+| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP + Desktop/Start Menu shortcuts + URLInfoAbout/HelpLink/URLUpdateInfo/Comments/LegalCopyright/NoModify/NoRepair/EstimatedSize) |
 | `msi` | Final `.msi` (`BuildMSI` → candle/light or `VITRA_CANDLE`/`VITRA_LIGHT`) |
 | `nsis` | Final setup `.exe` (`BuildNSIS` → makensis or `VITRA_MAKENSIS`) |
 | `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`; Info.plist + `NSHumanReadableCopyright` + `LSApplicationCategoryType` + `CFBundleGetInfoString` + `CFBundleDisplayName`) |
