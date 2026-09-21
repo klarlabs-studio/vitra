@@ -166,6 +166,70 @@ func TestRun_UpdateApply(t *testing.T) {
 	}
 }
 
+func TestRun_UpdateApplyChannel(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact := []byte("channel-apply-v4")
+	sum := sha256.Sum256(artifact)
+	m := updater.Manifest{
+		AppID: "com.vitra.channel", Version: "4.2.0", Channel: updater.ChannelBeta,
+		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
+		CreatedAt: time.Now().UTC(),
+	}
+	m, err = updater.SignManifest(m, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/feed/com.vitra.channel/beta/manifest.json", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(body)
+	})
+	mux.HandleFunc("/feed/com.vitra.channel/beta/app.bin", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(artifact)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	dest := filepath.Join(t.TempDir(), "installed.bin")
+	out := capture(t, func() {
+		if err := run([]string{
+			"update-apply",
+			"--base-url", srv.URL + "/feed/",
+			"--app-id", "com.vitra.channel",
+			"--channel", "beta",
+			"--pubkey", hex.EncodeToString(pub),
+			"--dest", dest,
+			"--policy", "development",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "installed") || !strings.Contains(out, "4.2.0") {
+		t.Fatalf("stdout: %q", out)
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil || string(got) != string(artifact) {
+		t.Fatalf("dest=%q err=%v", got, err)
+	}
+	if err := run([]string{
+		"update-apply",
+		"--manifest", "x.json",
+		"--artifact", "y.bin",
+		"--base-url", srv.URL,
+		"--app-id", "com.vitra.channel",
+		"--pubkey", hex.EncodeToString(pub),
+		"--dest", dest,
+	}); err == nil {
+		t.Fatal("expected mixed local+channel mode to fail")
+	}
+}
+
 func TestRun_UpdateCheck(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(nil)
 	if err != nil {

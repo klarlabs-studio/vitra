@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra update-apply --base-url`: fetch signed channel manifest + artifact via `updater.Fetcher`, then verify and atomically install (same invariant 9 path as local `--manifest`/`--artifact`).
 - `vitra new --template solid`: Vite + SolidJS + TypeScript starter (`App.tsx`, `vite-plugin-solid`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Packaging sign execution: `packaging.ExecuteSign` runs PlanSign argv (expands `${ENV}`, rejects `secret:` refs); `vitra package --sign-execute` [--sign-follow-ups] invokes host tools; `vitra doctor` reports `stapler`.
 - Update channel HTTP client: `updater.ChannelSource` / `Fetcher` fetch `{base}/{app}/{channel}/manifest.json` (+ artifact); `vitra update-check` verifies the signed manifest without installing. Hosted CDN remains out of scope.
