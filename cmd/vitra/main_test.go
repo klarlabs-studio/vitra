@@ -269,6 +269,9 @@ func TestRun_PackageSignPlan(t *testing.T) {
 	if !strings.Contains(printed, "dry-run only") {
 		t.Fatalf("expected dry-run note: %q", printed)
 	}
+	if !strings.Contains(printed, "notarytool") || !strings.Contains(printed, "stapler") {
+		t.Fatalf("expected notarize/staple follow-ups: %q", printed)
+	}
 	if strings.Contains(printed, "not-leaked-value") {
 		t.Fatalf("leaked identity value: %q", printed)
 	}
