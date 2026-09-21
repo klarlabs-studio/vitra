@@ -57,6 +57,7 @@
       <button id="path" class="secondary">Open temp dir</button>
       <button id="win" class="secondary">Open aux window</button>
       <button id="chrome" class="secondary">Apply window.chrome</button>
+      <button id="getChrome" class="secondary">Read window.getChrome</button>
       <button id="menu" class="secondary">Set menu bar</button>
       <button id="tray" class="secondary">Set tray</button>
       <button id="drop" class="secondary">Enable file drops</button>
@@ -185,6 +186,13 @@
           height: 600,
         });
         show({ chrome: { id: "main", title: "Vitra Chrome", width: 900, height: 600 } });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("getChrome").onclick = async () => {
+      try {
+        show({ chrome: await window.vitra.invoke("window.getChrome", { id: "main" }) });
       } catch (e) {
         show(String(e.message || e), true);
       }

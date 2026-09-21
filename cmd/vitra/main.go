@@ -2094,6 +2094,9 @@ func run() error {
 		OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
 			return host.ApplyWindowChrome(window, chrome)
 		},
+		OnRead: func(_ context.Context, window domain.WindowID) (platform.WindowChrome, error) {
+			return host.ReadWindowChrome(window)
+		},
 		OnCreate: func(ctx context.Context, opts desktop.WindowCreateOptions) error {
 			if application == nil {
 				return fmt.Errorf("app is not ready")
@@ -2137,6 +2140,15 @@ func run() error {
 			return nil, err
 		}
 		return nil, winSvc.Apply(ctx, caller, id, chrome)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.getChrome", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return winSvc.Read(ctx, caller, id)
 	})); err != nil {
 		return err
 	}
@@ -2314,6 +2326,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="notify">notifications.show</button>
 <button id="win">window.create</button>
 <button id="chrome">window.chrome</button>
+<button id="getChrome">window.getChrome</button>
 <button id="menu">menu.set</button>
 <button id="tray">tray.set</button>
 <button id="drop">dragdrop.receive</button>
@@ -2357,6 +2370,10 @@ document.getElementById("win").onclick = async () => {
 };
 document.getElementById("chrome").onclick = async () => {
   try { out.textContent = JSON.stringify(await invoke("window.chrome", { id: "main", title: "Vitra Chrome", width: 900, height: 600 }), null, 2); }
+  catch (e) { out.textContent = String(e); }
+};
+document.getElementById("getChrome").onclick = async () => {
+  try { out.textContent = JSON.stringify(await invoke("window.getChrome", { id: "main" }), null, 2); }
   catch (e) { out.textContent = String(e); }
 };
 document.getElementById("menu").onclick = async () => {

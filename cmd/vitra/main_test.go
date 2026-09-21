@@ -1040,7 +1040,7 @@ func TestRun_NewScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "dialog.openDirectory", "dialog.message", "fs.read", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close", "window.chrome", "menu.set", "tray.set", "dragdrop.receive", "shortcut.register", "app.quit", "onMenuAction", "onTrayAction", "onDragdropDrop", "onShortcutAction", "createEvents"} {
+	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "dialog.openDirectory", "dialog.message", "fs.read", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close", "window.chrome", "window.getChrome", "menu.set", "tray.set", "dragdrop.receive", "shortcut.register", "app.quit", "onMenuAction", "onTrayAction", "onDragdropDrop", "onShortcutAction", "createEvents"} {
 		if !strings.Contains(string(client), want) {
 			t.Fatalf("vitra-client.ts missing %q", want)
 		}

@@ -422,6 +422,23 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	if err := missing.Apply(ctx, caller, "main", chrome); err == nil {
 		t.Fatal("expected missing adapter")
 	}
+	if _, err := missing.Read(ctx, caller, "main"); err == nil {
+		t.Fatal("expected missing reader")
+	}
+	reader := &desktop.WindowService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnRead: func(_ context.Context, window domain.WindowID) (platform.WindowChrome, error) {
+			if window != "main" {
+				t.Fatalf("read window=%s", window)
+			}
+			return chrome, nil
+		},
+	}
+	gotRead, err := reader.Read(ctx, caller, "main")
+	if err != nil || gotRead.Title != "Vitra" || gotRead.Width != 800 {
+		t.Fatalf("read: %+v err=%v", gotRead, err)
+	}
 
 	createHost := withFeatures(platform.OSLinux, platform.FeatureWindowCreate)
 	var created desktop.WindowCreateOptions

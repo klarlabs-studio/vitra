@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official window chrome read: `window.getChrome` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Read` → `DesktopHost.ReadWindowChrome`; scaffold/competitive bind.
 - `vitra new --template mithril`: Vite + Mithril 2 + TypeScript starter (`mithril` hyperscript `m.Component`, `m.mount`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Package keywords: `Spec.Keywords` / `vitra package --keywords` flow into FreeDesktop `.desktop` `Keywords=`, AppStream `<keyword>`, and snap `keywords:` (omitted when empty).
 - Official `vitra.app` plugin: declares `app.quit`; `desktop.AppService` + scaffold/generate/provenance/competitive bind → `App.Quit`.
@@ -15,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Official `vitra.dragdrop` plugin: declares `dragdrop.receive` + `dragdrop.drop` event; `desktop.ParseDragDropEnable` + scaffold/generate/provenance/competitive bind `DragDropService` → `EnableDragDrop`.
 - Official `vitra.tray` plugin: declares `tray.set` + `tray.action` event; `desktop.ParseTraySet` + scaffold/generate/provenance/competitive bind `TrayService` → `SetTray`; native actions emit `tray.action` (alongside `menu.action`).
 - Official `vitra.menu` plugin: declares `menu.set` + `menu.action` event; `desktop.ParseMenuItems` + scaffold/generate/provenance/competitive bind `MenuService` → `SetMenuBar`; native actions emit `menu.action` (Quit still handled host-side).
-- Official `vitra.window` plugin: declares `window.create` / `window.close` / `window.chrome`; `desktop.WindowService` Create/Close/Apply wrap `app.App` + `DesktopHost.ApplyWindowChrome`; scaffold/generate/provenance/competitive bind (grant includes `aux`).
+- Official `vitra.window` plugin: declares `window.create` / `window.close` / `window.chrome` / `window.getChrome`; `desktop.WindowService` Create/Close/Apply/Read wrap `app.App` + `DesktopHost` chrome APIs; scaffold/generate/provenance/competitive bind (grant includes `aux`).
 - Dialog open/save options: optional `title`, `defaultPath`, and `filters` (`[{ name, extensions }]`) on `dialog.open` / `dialog.save`; native hosts apply them (GTK filters, NSOpen/SavePanel allowedFileTypes, Win32 OFN filter); empty payload keeps prior unfiltered behavior.
 - `vitra new --template qwik`: Vite + Qwik CSR + TypeScript starter (`@builder.io/qwik`, `qwikVite({ csr: true })`, `component$` App) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Native directory dialogs: `dialog.openDirectory` via `desktop.DialogService.OpenDirectory`, official dialog plugin, and Linux/Darwin/Windows hosts (GTK SELECT_FOLDER / NSOpenPanel directories / IFileOpenDialog FOS_PICKFOLDERS); scaffold + competitive bind the executor.
