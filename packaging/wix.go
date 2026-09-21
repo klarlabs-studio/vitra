@@ -174,8 +174,10 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	}
 	homepageXML := ""
 	if home := strings.TrimSpace(spec.Homepage); home != "" {
+		escaped := xmlEscape(home)
 		homepageXML = fmt.Sprintf(`
-    <Property Id="ARPURLINFOABOUT" Value="%s"/>`, xmlEscape(home))
+    <Property Id="ARPURLINFOABOUT" Value="%s"/>
+    <Property Id="ARPHELPLINK" Value="%s"/>`, escaped, escaped)
 	}
 	desc := xmlEscape(spec.EffectiveDescription())
 	commentsXML := fmt.Sprintf(`

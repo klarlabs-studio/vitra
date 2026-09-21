@@ -138,7 +138,8 @@ func BuildNSISDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	shortcuts := startMenuShortcut + "\n" + desktopShortcut + "\n"
 	homepageReg := ""
 	if home := strings.TrimSpace(spec.Homepage); home != "" {
-		homepageReg = fmt.Sprintf("  WriteRegStr HKCU \"${UNINST_KEY}\" \"URLInfoAbout\" \"%s\"\n", nsisEscape(home))
+		escaped := nsisEscape(home)
+		homepageReg = fmt.Sprintf("  WriteRegStr HKCU \"${UNINST_KEY}\" \"URLInfoAbout\" \"%s\"\n  WriteRegStr HKCU \"${UNINST_KEY}\" \"HelpLink\" \"%s\"\n", escaped, escaped)
 	}
 	commentsReg := fmt.Sprintf("  WriteRegStr HKCU \"${UNINST_KEY}\" \"Comments\" \"%s\"\n", nsisEscape(spec.EffectiveDescription()))
 	copyrightReg := fmt.Sprintf("  WriteRegStr HKCU \"${UNINST_KEY}\" \"LegalCopyright\" \"%s\"\n", nsisEscape(spec.EffectiveLicense()))
