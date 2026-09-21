@@ -112,7 +112,7 @@ vitra new ./myapp
 # vitra new ./myapp --template vite|react|svelte|vue|solid|preact|lit|alpine|htmx
 vitra dev
 vitra build
-vitra package --out dist/ [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
+vitra package --out dist/ [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
 vitra generate typescript --out frontend/vitra-client.ts
 vitra notary-setup [--profile name]
 vitra update-keygen [--out keys/]

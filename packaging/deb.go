@@ -60,9 +60,9 @@ Comment=%s
 Exec=AppRun
 Icon=%s
 StartupWMClass=%s
-Categories=Utility;
+Categories=%s
 Terminal=false
-`, spec.Name, spec.EffectiveDescription(), iconKey, binName)
+`, spec.Name, spec.EffectiveDescription(), iconKey, binName, spec.DesktopCategories())
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}
@@ -140,9 +140,9 @@ Comment=%s
 Exec=/usr/bin/%s
 Icon=%s
 StartupWMClass=%s
-Categories=Utility;
+Categories=%s
 Terminal=false
-`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName)
+`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories())
 	dataFiles[desktopPath] = fileEntry{data: []byte(desktopBody), mode: 0o644}
 	metaPath := AppStreamMetainfoRel("usr/share", spec.AppID)
 	dataFiles[metaPath] = fileEntry{data: []byte(AppStreamMetainfoXML(spec)), mode: 0o644}
@@ -150,6 +150,10 @@ Terminal=false
 	installedSize := (payloadSize + 1023) / 1024
 	// Debian Description: synopsis on first line, extended body indented with a space.
 	extDesc := " " + strings.ReplaceAll(spec.EffectiveDescription(), "\n", "\n ")
+	homepageLine := ""
+	if home := strings.TrimSpace(spec.Homepage); home != "" {
+		homepageLine = "Homepage: " + home + "\n"
+	}
 	control := fmt.Sprintf(`Package: %s
 Version: %s
 Section: utils
@@ -157,9 +161,9 @@ Priority: optional
 Architecture: %s
 Maintainer: %s
 Installed-Size: %d
-Description: %s
+%sDescription: %s
 %s
-`, pkgName, spec.Version, arch, spec.EffectiveMaintainer(), installedSize, spec.Name, extDesc)
+`, pkgName, spec.Version, arch, spec.EffectiveMaintainer(), installedSize, homepageLine, spec.Name, extDesc)
 
 	controlTGZ, err := tarGz(map[string]fileEntry{
 		"control": {data: []byte(control), mode: 0o644},

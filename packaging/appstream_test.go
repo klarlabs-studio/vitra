@@ -14,6 +14,9 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		AppID: "com.example.Demo", Version: "1.2.3", Name: "Demo & Co",
 		Description: `Hello <world>`,
 		Maintainer:  "Klarlabs <dev@klarlabs.de>",
+		Homepage:    "https://example.com/demo",
+		Categories:  []string{"Utility", "Development"},
+		License:     "Apache-2.0",
 		Targets:     []packaging.Target{packaging.TargetLinuxDir},
 	}
 	xml := packaging.AppStreamMetainfoXML(spec)
@@ -21,6 +24,10 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		`<id>com.example.Demo</id>`,
 		`<name>Demo &amp; Co</name>`,
 		`<summary>Hello &lt;world&gt;</summary>`,
+		`<project_license>Apache-2.0</project_license>`,
+		`<url type="homepage">https://example.com/demo</url>`,
+		`<category>Utility</category>`,
+		`<category>Development</category>`,
 		`<launchable type="desktop-id">com.example.Demo.desktop</launchable>`,
 		`<developer_name>Klarlabs &lt;dev@klarlabs.de&gt;</developer_name>`,
 		`type="desktop-application"`,
@@ -31,6 +38,16 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 	}
 	if packaging.AppStreamMetainfoRel("usr/share", "com.example.Demo") != "usr/share/metainfo/com.example.Demo.metainfo.xml" {
 		t.Fatal(packaging.AppStreamMetainfoRel("usr/share", "com.example.Demo"))
+	}
+	if spec.DesktopCategories() != "Utility;Development;" {
+		t.Fatalf("desktop cats=%q", spec.DesktopCategories())
+	}
+	empty := packaging.Spec{AppID: "a", Version: "1", Name: "A", Targets: []packaging.Target{packaging.TargetLinuxDir}}
+	if empty.EffectiveLicense() != packaging.DefaultLicense {
+		t.Fatal(empty.EffectiveLicense())
+	}
+	if empty.DesktopCategories() != "Utility;" {
+		t.Fatal(empty.DesktopCategories())
 	}
 }
 

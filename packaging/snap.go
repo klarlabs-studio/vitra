@@ -84,9 +84,9 @@ Comment=%s
 Exec=%s
 Icon=%s
 StartupWMClass=%s
-Categories=Utility;
+Categories=%s
 Terminal=false
-`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName)
+`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories())
 	desktopAbs := filepath.Join(outDir, filepath.FromSlash(desktopRel))
 	if err := os.MkdirAll(filepath.Dir(desktopAbs), 0o755); err != nil {
 		return Artifact{}, err

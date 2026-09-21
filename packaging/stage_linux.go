@@ -73,9 +73,9 @@ Comment=%s
 Exec=%s
 Icon=%s
 StartupWMClass=%s
-Categories=Utility;
+Categories=%s
 StartupNotify=true
-`, spec.Name, spec.EffectiveDescription(), destPath, iconKey, safeName)
+`, spec.Name, spec.EffectiveDescription(), destPath, iconKey, safeName, spec.DesktopCategories())
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}
