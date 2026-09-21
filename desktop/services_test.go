@@ -558,6 +558,37 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 		t.Fatal("expected empty window validation for hide")
 	}
 
+	var sized platform.WindowChrome
+	minmax := &desktop.WindowService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnRead: func(_ context.Context, window domain.WindowID) (platform.WindowChrome, error) {
+			if window != "main" {
+				t.Fatalf("minimize/maximize read window=%s", window)
+			}
+			return platform.WindowChrome{
+				Title: "Vitra", Width: 800, Height: 600,
+				Minimized: sized.Minimized, Maximized: sized.Maximized,
+			}, nil
+		},
+		OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
+			if window != "main" {
+				t.Fatalf("minimize/maximize apply window=%s", window)
+			}
+			sized = chrome
+			return nil
+		},
+	}
+	if err := minmax.Minimize(ctx, caller, "main"); err != nil || !sized.Minimized || sized.Maximized {
+		t.Fatalf("minimize: %+v err=%v", sized, err)
+	}
+	if err := minmax.Maximize(ctx, caller, "main"); err != nil || !sized.Maximized || sized.Minimized {
+		t.Fatalf("maximize: %+v err=%v", sized, err)
+	}
+	if err := minmax.Minimize(ctx, caller, ""); err == nil {
+		t.Fatal("expected empty window validation for minimize")
+	}
+
 	createHost := withFeatures(platform.OSLinux, platform.FeatureWindowCreate)
 	var created desktop.WindowCreateOptions
 	lifecycle := &desktop.WindowService{
