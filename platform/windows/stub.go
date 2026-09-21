@@ -62,6 +62,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDialogSave, Available: false,
 			Detail: "requires native windows host",
 		},
+		platform.FeatureDialogOpenDirectory: {
+			Feature: platform.FeatureDialogOpenDirectory, Available: false,
+			Detail: "requires native windows host",
+		},
 		platform.FeatureDialogMessage: {
 			Feature: platform.FeatureDialogMessage, Available: false,
 			Detail: "requires native windows host",
@@ -134,6 +138,9 @@ func (h *Host) OpenFileDialog() (string, error) {
 }
 func (h *Host) SaveFileDialog() (string, error) {
 	return "", h.err(platform.FeatureDialogSave)
+}
+func (h *Host) OpenDirectoryDialog() (string, error) {
+	return "", h.err(platform.FeatureDialogOpenDirectory)
 }
 func (h *Host) MessageDialog(string, string, string) (bool, error) {
 	return false, h.err(platform.FeatureDialogMessage)

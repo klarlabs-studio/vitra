@@ -16,7 +16,13 @@ func TestDialogPlugin_Contribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.Commands) != 3 {
+	if len(c.Commands) != 4 {
 		t.Fatalf("commands: %d", len(c.Commands))
+	}
+	want := []string{"dialog.open", "dialog.save", "dialog.openDirectory", "dialog.message"}
+	for i, name := range want {
+		if string(c.Commands[i].Name()) != name {
+			t.Fatalf("command[%d]=%s want %s", i, c.Commands[i].Name(), name)
+		}
 	}
 }

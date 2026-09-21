@@ -45,6 +45,7 @@ void vitra_win_set_drag_drop(VitraWin *w, int enabled);
 
 char *vitra_open_dialog(void);
 char *vitra_save_dialog(void);
+char *vitra_open_directory_dialog(void);
 int vitra_message_dialog(const char *title, const char *message, int confirm);
 int vitra_show_notification(const char *title, const char *body);
 

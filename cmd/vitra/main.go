@@ -143,6 +143,7 @@ func doctor() error {
 		platform.FeatureClipboard,
 		platform.FeatureDialogOpen,
 		platform.FeatureDialogSave,
+		platform.FeatureDialogOpenDirectory,
 		platform.FeatureMenuBar,
 		platform.FeatureTray,
 		platform.FeatureSingleInstance,
@@ -1680,6 +1681,9 @@ func run() error {
 		OnSave: func(ctx context.Context) (string, error) {
 			return host.SaveFileDialog()
 		},
+		OnOpenDirectory: func(ctx context.Context) (string, error) {
+			return host.OpenDirectoryDialog()
+		},
 		OnMessage: func(ctx context.Context, title, message, kind string) (bool, error) {
 			return host.MessageDialog(title, message, kind)
 		},
@@ -1691,6 +1695,11 @@ func run() error {
 	}
 	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return dialogs.SaveFile(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("dialog.openDirectory", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return dialogs.OpenDirectory(ctx, caller)
 	})); err != nil {
 		return err
 	}
@@ -1811,6 +1820,7 @@ func run() error {
 			{Name: "demo.greet"},
 			{Name: desktop.PermDialogOpen},
 			{Name: desktop.PermDialogSave},
+			{Name: desktop.PermDialogOpenDirectory},
 			{Name: desktop.PermDialogMessage},
 			{Name: desktop.PermClipboardRead},
 			{Name: desktop.PermClipboardWrite},
@@ -1855,6 +1865,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
 <button id="greet">demo.greet</button>
 <button id="open">dialog.open</button>
+<button id="opendir">dialog.openDirectory</button>
 <button id="clip">clipboard.read</button>
 <button id="browser">browser.open</button>
 <button id="os">os.info</button>
@@ -1869,6 +1880,10 @@ document.getElementById("greet").onclick = async () => {
 };
 document.getElementById("open").onclick = async () => {
   try { out.textContent = JSON.stringify(await invoke("dialog.open"), null, 2); }
+  catch (e) { out.textContent = String(e); }
+};
+document.getElementById("opendir").onclick = async () => {
+  try { out.textContent = JSON.stringify(await invoke("dialog.openDirectory"), null, 2); }
   catch (e) { out.textContent = String(e); }
 };
 document.getElementById("clip").onclick = async () => {

@@ -783,6 +783,47 @@ char *vitra_open_dialog(void) {
 	return _strdup(path);
 }
 
+char *vitra_open_directory_dialog(void) {
+	HRESULT hrInit = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	IFileOpenDialog *pfd = NULL;
+	HRESULT hr = CoCreateInstance(
+		&CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER,
+		&IID_IFileOpenDialog, (void **)&pfd);
+	if (FAILED(hr)) {
+		if (hrInit == S_OK) {
+			CoUninitialize();
+		}
+		return NULL;
+	}
+	DWORD opts = 0;
+	pfd->lpVtbl->GetOptions(pfd, &opts);
+	pfd->lpVtbl->SetOptions(pfd, opts | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
+	hr = pfd->lpVtbl->Show(pfd, NULL);
+	char *result = NULL;
+	if (SUCCEEDED(hr)) {
+		IShellItem *psi = NULL;
+		if (SUCCEEDED(pfd->lpVtbl->GetResult(pfd, &psi))) {
+			PWSTR wpath = NULL;
+			if (SUCCEEDED(psi->lpVtbl->GetDisplayName(psi, SIGDN_FILESYSPATH, &wpath))) {
+				int n = WideCharToMultiByte(CP_UTF8, 0, wpath, -1, NULL, 0, NULL, NULL);
+				if (n > 0) {
+					result = (char *)malloc((size_t)n);
+					if (result) {
+						WideCharToMultiByte(CP_UTF8, 0, wpath, -1, result, n, NULL, NULL);
+					}
+				}
+				CoTaskMemFree(wpath);
+			}
+			psi->lpVtbl->Release(psi);
+		}
+	}
+	pfd->lpVtbl->Release(pfd);
+	if (hrInit == S_OK) {
+		CoUninitialize();
+	}
+	return result;
+}
+
 char *vitra_save_dialog(void) {
 	char path[MAX_PATH];
 	path[0] = '\0';

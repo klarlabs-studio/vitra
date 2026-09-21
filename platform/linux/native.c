@@ -411,6 +411,18 @@ char *vitra_open_dialog(void) {
 	return path;
 }
 
+char *vitra_open_directory_dialog(void) {
+	GtkWidget *dialog = gtk_file_chooser_dialog_new(
+		"Open Folder", NULL, GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
+		"_Cancel", GTK_RESPONSE_CANCEL,
+		"_Open", GTK_RESPONSE_ACCEPT, NULL);
+	char *path = NULL;
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+	}
+	gtk_widget_destroy(dialog);
+	return path;
+}
 
 char *vitra_save_dialog(void) {
 	GtkWidget *dialog = gtk_file_chooser_dialog_new(
