@@ -1910,6 +1910,74 @@ func TestRun_NewScaffoldInferno(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldStencil(t *testing.T) {
+	dir := t.TempDir() + "/stencil-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "stencil"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=stencil") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/stencil.config.ts", "frontend/src/main.ts",
+		"frontend/src/components/vitra-app.tsx", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"@stencil/core"`, `"@stencil-community/unplugin-stencil"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/components/vitra-app.tsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "@stencil/core"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("vitra-app.tsx missing %q: %s", want, app)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "@stencil-community/unplugin-stencil/vite") || !strings.Contains(string(cfg), "plugins: [stencil()]") {
+		t.Fatalf("vite.config missing stencil plugin: %s", cfg)
+	}
+	stcfg, err := os.ReadFile(dir + "/frontend/stencil.config.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(stcfg), "dist-custom-elements") {
+		t.Fatalf("stencil.config missing dist-custom-elements: %s", stcfg)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("stencil embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Stencil") {
+		t.Fatalf("stencil README should mention Vite + Stencil: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
