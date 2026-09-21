@@ -442,11 +442,17 @@ func (h *Host) CloseWindow(_ context.Context, id domain.WindowID) error {
 }
 
 // OpenFileDialog opens a native file chooser (NSOpenPanel).
-func (h *Host) OpenFileDialog() (string, error) {
+func (h *Host) OpenFileDialog(opts platform.DialogFileOptions) (string, error) {
 	ch := make(chan string, 1)
 	h.dispatch(func() {
 		h.ensureInit()
-		p := C.vitra_open_dialog()
+		ctitle := C.CString(opts.Title)
+		cdefault := C.CString(opts.DefaultPath)
+		cfilters := C.CString(platform.EncodeFileFilters(opts.Filters))
+		p := C.vitra_open_dialog(ctitle, cdefault, cfilters)
+		C.free(unsafe.Pointer(ctitle))
+		C.free(unsafe.Pointer(cdefault))
+		C.free(unsafe.Pointer(cfilters))
 		if p == nil {
 			ch <- ""
 			return
@@ -458,11 +464,17 @@ func (h *Host) OpenFileDialog() (string, error) {
 }
 
 // SaveFileDialog opens a native save-file chooser (NSSavePanel).
-func (h *Host) SaveFileDialog() (string, error) {
+func (h *Host) SaveFileDialog(opts platform.DialogFileOptions) (string, error) {
 	ch := make(chan string, 1)
 	h.dispatch(func() {
 		h.ensureInit()
-		p := C.vitra_save_dialog()
+		ctitle := C.CString(opts.Title)
+		cdefault := C.CString(opts.DefaultPath)
+		cfilters := C.CString(platform.EncodeFileFilters(opts.Filters))
+		p := C.vitra_save_dialog(ctitle, cdefault, cfilters)
+		C.free(unsafe.Pointer(ctitle))
+		C.free(unsafe.Pointer(cdefault))
+		C.free(unsafe.Pointer(cfilters))
 		if p == nil {
 			ch <- ""
 			return

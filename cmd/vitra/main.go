@@ -1778,15 +1778,15 @@ func run() error {
 	dialogs := &desktop.DialogService{
 		Gateway: rt,
 		Host:    host,
-		OnOpen: func(ctx context.Context) ([]string, error) {
-			path, err := host.OpenFileDialog()
+		OnOpen: func(ctx context.Context, opts platform.DialogFileOptions) ([]string, error) {
+			path, err := host.OpenFileDialog(opts)
 			if err != nil || path == "" {
 				return nil, err
 			}
 			return []string{path}, nil
 		},
-		OnSave: func(ctx context.Context) (string, error) {
-			return host.SaveFileDialog()
+		OnSave: func(ctx context.Context, opts platform.DialogFileOptions) (string, error) {
+			return host.SaveFileDialog(opts)
 		},
 		OnOpenDirectory: func(ctx context.Context) (string, error) {
 			return host.OpenDirectoryDialog()
@@ -1795,13 +1795,13 @@ func run() error {
 			return host.MessageDialog(title, message, kind)
 		},
 	}
-	if err := rt.BindExecutor("dialog.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
-		return dialogs.OpenFile(ctx, caller)
+	if err := rt.BindExecutor("dialog.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		return dialogs.OpenFile(ctx, caller, desktop.ParseDialogFileOptions(input))
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
-		return dialogs.SaveFile(ctx, caller)
+	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		return dialogs.SaveFile(ctx, caller, desktop.ParseDialogFileOptions(input))
 	})); err != nil {
 		return err
 	}

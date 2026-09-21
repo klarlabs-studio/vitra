@@ -98,14 +98,60 @@ func (s *TrayService) SetTray(ctx context.Context, caller domain.Caller, tooltip
 type DialogService struct {
 	Gateway         Gateway
 	Host            platform.Host
-	OnOpen          func(ctx context.Context) ([]string, error)
-	OnSave          func(ctx context.Context) (string, error)
+	OnOpen          func(ctx context.Context, opts platform.DialogFileOptions) ([]string, error)
+	OnSave          func(ctx context.Context, opts platform.DialogFileOptions) (string, error)
 	OnOpenDirectory func(ctx context.Context) (string, error)
 	OnMessage       func(ctx context.Context, title, message, kind string) (bool, error)
 }
 
+// ParseDialogFileOptions extracts title/defaultPath/filters from an invoke payload.
+// nil or unrecognized input yields zero options (legacy unfiltered dialogs).
+func ParseDialogFileOptions(input any) platform.DialogFileOptions {
+	var opts platform.DialogFileOptions
+	m, ok := input.(map[string]any)
+	if !ok || m == nil {
+		return opts
+	}
+	if t, ok := m["title"].(string); ok {
+		opts.Title = t
+	}
+	if d, ok := m["defaultPath"].(string); ok {
+		opts.DefaultPath = d
+	}
+	rawFilters, ok := m["filters"]
+	if !ok {
+		return opts
+	}
+	list, ok := rawFilters.([]any)
+	if !ok {
+		return opts
+	}
+	for _, item := range list {
+		fm, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		f := platform.FileFilter{}
+		if n, ok := fm["name"].(string); ok {
+			f.Name = n
+		}
+		switch exts := fm["extensions"].(type) {
+		case []any:
+			for _, e := range exts {
+				if s, ok := e.(string); ok {
+					f.Extensions = append(f.Extensions, s)
+				}
+			}
+		case []string:
+			f.Extensions = append(f.Extensions, exts...)
+		}
+		opts.Filters = append(opts.Filters, f)
+	}
+	return opts
+}
+
 // OpenFile authorizes dialog.open.
-func (s *DialogService) OpenFile(ctx context.Context, caller domain.Caller) ([]string, error) {
+func (s *DialogService) OpenFile(ctx context.Context, caller domain.Caller, opts platform.DialogFileOptions) ([]string, error) {
 	if err := authorize(s.Gateway, caller, PermDialogOpen); err != nil {
 		return nil, err
 	}
@@ -115,11 +161,11 @@ func (s *DialogService) OpenFile(ctx context.Context, caller domain.Caller) ([]s
 	if s.OnOpen == nil {
 		return nil, &platform.ErrUnsupported{Feature: platform.FeatureDialogOpen, OS: s.Host.OS(), Detail: "no dialog adapter bound"}
 	}
-	return s.OnOpen(ctx)
+	return s.OnOpen(ctx, opts)
 }
 
 // SaveFile authorizes dialog.save.
-func (s *DialogService) SaveFile(ctx context.Context, caller domain.Caller) (string, error) {
+func (s *DialogService) SaveFile(ctx context.Context, caller domain.Caller, opts platform.DialogFileOptions) (string, error) {
 	if err := authorize(s.Gateway, caller, PermDialogSave); err != nil {
 		return "", err
 	}
@@ -129,7 +175,7 @@ func (s *DialogService) SaveFile(ctx context.Context, caller domain.Caller) (str
 	if s.OnSave == nil {
 		return "", &platform.ErrUnsupported{Feature: platform.FeatureDialogSave, OS: s.Host.OS(), Detail: "no dialog adapter bound"}
 	}
-	return s.OnSave(ctx)
+	return s.OnSave(ctx, opts)
 }
 
 // OpenDirectory authorizes dialog.openDirectory.

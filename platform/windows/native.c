@@ -9,6 +9,7 @@
 #include <commdlg.h>
 #include <shellapi.h>
 #include <shobjidl.h>
+#include <stdio.h>
 
 extern void goVitraIdle(void *);
 extern void goVitraDestroy(char *);
@@ -766,18 +767,127 @@ VitraChrome vitra_win_chrome(VitraWin *w) {
 	return c;
 }
 
-char *vitra_open_dialog(void) {
+/* Build Win32 OFN filter from "Name:ext1,ext2;Other:txt". Caller frees with free(). */
+static char *vitra_win_filter_buffer(const char *filters) {
+	if (!filters || !filters[0]) {
+		char *all = (char *)malloc(16);
+		if (!all) {
+			return NULL;
+		}
+		memcpy(all, "All Files\0*.*\0", 14);
+		all[14] = '\0';
+		return all;
+	}
+	/* Worst case: each char expands a bit; allocate generously. */
+	size_t cap = strlen(filters) * 8 + 64;
+	char *buf = (char *)malloc(cap);
+	if (!buf) {
+		return NULL;
+	}
+	size_t n = 0;
+	char *copy = _strdup(filters);
+	if (!copy) {
+		free(buf);
+		return NULL;
+	}
+	char *ctx = NULL;
+	for (char *group = strtok_s(copy, ";", &ctx); group; group = strtok_s(NULL, ";", &ctx)) {
+		char *colon = strchr(group, ':');
+		if (!colon) {
+			continue;
+		}
+		*colon = '\0';
+		const char *name = group;
+		char *exts = colon + 1;
+		if (!exts[0]) {
+			continue;
+		}
+		char patterns[512];
+		patterns[0] = '\0';
+		char *ectx = NULL;
+		for (char *ext = strtok_s(exts, ",", &ectx); ext; ext = strtok_s(NULL, ",", &ectx)) {
+			if (!ext[0]) {
+				continue;
+			}
+			size_t plen = strlen(patterns);
+			if (plen > 0 && plen + 1 < sizeof(patterns)) {
+				patterns[plen++] = ';';
+				patterns[plen] = '\0';
+			}
+			snprintf(patterns + strlen(patterns), sizeof(patterns) - strlen(patterns), "*.%s", ext);
+		}
+		if (!patterns[0]) {
+			continue;
+		}
+		char label[256];
+		snprintf(label, sizeof(label), "%s (%s)", name[0] ? name : patterns, patterns);
+		size_t l1 = strlen(label) + 1;
+		size_t l2 = strlen(patterns) + 1;
+		if (n + l1 + l2 + 16 >= cap) {
+			continue;
+		}
+		memcpy(buf + n, label, l1);
+		n += l1;
+		memcpy(buf + n, patterns, l2);
+		n += l2;
+	}
+	free(copy);
+	/* Append All Files */
+	memcpy(buf + n, "All Files", 10);
+	n += 10;
+	memcpy(buf + n, "*.*", 4);
+	n += 4;
+	buf[n] = '\0';
+	return buf;
+}
+
+char *vitra_open_dialog(const char *title, const char *default_path, const char *filters) {
 	char path[MAX_PATH];
+	char initial_dir[MAX_PATH];
 	path[0] = '\0';
+	initial_dir[0] = '\0';
 	OPENFILENAMEA ofn;
 	memset(&ofn, 0, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 	ofn.lpstrFile = path;
 	ofn.nMaxFile = (DWORD)sizeof(path);
-	ofn.lpstrFilter = "All Files\0*.*\0";
+	char *filter_buf = vitra_win_filter_buffer(filters);
+	ofn.lpstrFilter = filter_buf ? filter_buf : "All Files\0*.*\0";
 	ofn.nFilterIndex = 1;
 	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
-	if (!GetOpenFileNameA(&ofn)) {
+	if (title && title[0]) {
+		ofn.lpstrTitle = title;
+	}
+	if (default_path && default_path[0]) {
+		strncpy(initial_dir, default_path, sizeof(initial_dir) - 1);
+		size_t len = strlen(initial_dir);
+		int is_dir = 0;
+		DWORD attrs = GetFileAttributesA(initial_dir);
+		if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+			is_dir = 1;
+		} else if (len > 0 && (initial_dir[len - 1] == '\\' || initial_dir[len - 1] == '/')) {
+			is_dir = 1;
+		}
+		if (is_dir) {
+			ofn.lpstrInitialDir = initial_dir;
+		} else {
+			char *slash = strrchr(initial_dir, '\\');
+			char *slash2 = strrchr(initial_dir, '/');
+			if (slash2 && (!slash || slash2 > slash)) {
+				slash = slash2;
+			}
+			if (slash) {
+				strncpy(path, slash + 1, sizeof(path) - 1);
+				*slash = '\0';
+				ofn.lpstrInitialDir = initial_dir;
+			} else {
+				strncpy(path, default_path, sizeof(path) - 1);
+			}
+		}
+	}
+	BOOL ok = GetOpenFileNameA(&ofn);
+	free(filter_buf);
+	if (!ok) {
 		return NULL;
 	}
 	return _strdup(path);
@@ -824,18 +934,53 @@ char *vitra_open_directory_dialog(void) {
 	return result;
 }
 
-char *vitra_save_dialog(void) {
+char *vitra_save_dialog(const char *title, const char *default_path, const char *filters) {
 	char path[MAX_PATH];
+	char initial_dir[MAX_PATH];
 	path[0] = '\0';
+	initial_dir[0] = '\0';
 	OPENFILENAMEA ofn;
 	memset(&ofn, 0, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 	ofn.lpstrFile = path;
 	ofn.nMaxFile = (DWORD)sizeof(path);
-	ofn.lpstrFilter = "All Files\0*.*\0";
+	char *filter_buf = vitra_win_filter_buffer(filters);
+	ofn.lpstrFilter = filter_buf ? filter_buf : "All Files\0*.*\0";
 	ofn.nFilterIndex = 1;
 	ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
-	if (!GetSaveFileNameA(&ofn)) {
+	if (title && title[0]) {
+		ofn.lpstrTitle = title;
+	}
+	if (default_path && default_path[0]) {
+		strncpy(initial_dir, default_path, sizeof(initial_dir) - 1);
+		size_t len = strlen(initial_dir);
+		int is_dir = 0;
+		DWORD attrs = GetFileAttributesA(initial_dir);
+		if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+			is_dir = 1;
+		} else if (len > 0 && (initial_dir[len - 1] == '\\' || initial_dir[len - 1] == '/')) {
+			is_dir = 1;
+		}
+		if (is_dir) {
+			ofn.lpstrInitialDir = initial_dir;
+		} else {
+			char *slash = strrchr(initial_dir, '\\');
+			char *slash2 = strrchr(initial_dir, '/');
+			if (slash2 && (!slash || slash2 > slash)) {
+				slash = slash2;
+			}
+			if (slash) {
+				strncpy(path, slash + 1, sizeof(path) - 1);
+				*slash = '\0';
+				ofn.lpstrInitialDir = initial_dir;
+			} else {
+				strncpy(path, default_path, sizeof(path) - 1);
+			}
+		}
+	}
+	BOOL ok = GetSaveFileNameA(&ofn);
+	free(filter_buf);
+	if (!ok) {
 		return NULL;
 	}
 	return _strdup(path);

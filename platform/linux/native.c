@@ -398,14 +398,64 @@ void vitra_clip_set(const char *text) {
 	gtk_clipboard_set_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), text, -1);
 }
 
-char *vitra_open_dialog(void) {
+static void vitra_apply_file_filters(GtkFileChooser *chooser, const char *filters) {
+	if (!filters || !filters[0]) {
+		return;
+	}
+	char *copy = g_strdup(filters);
+	char *saveptr = NULL;
+	for (char *group = strtok_r(copy, ";", &saveptr); group; group = strtok_r(NULL, ";", &saveptr)) {
+		char *colon = strchr(group, ':');
+		if (!colon) {
+			continue;
+		}
+		*colon = '\0';
+		const char *name = group;
+		char *exts = colon + 1;
+		if (!exts[0]) {
+			continue;
+		}
+		GtkFileFilter *filter = gtk_file_filter_new();
+		gtk_file_filter_set_name(filter, name[0] ? name : exts);
+		char *esave = NULL;
+		for (char *ext = strtok_r(exts, ",", &esave); ext; ext = strtok_r(NULL, ",", &esave)) {
+			if (!ext[0]) {
+				continue;
+			}
+			char *pattern = g_strdup_printf("*.%s", ext);
+			gtk_file_filter_add_pattern(filter, pattern);
+			g_free(pattern);
+		}
+		gtk_file_chooser_add_filter(chooser, filter);
+	}
+	g_free(copy);
+	GtkFileFilter *all = gtk_file_filter_new();
+	gtk_file_filter_set_name(all, "All Files");
+	gtk_file_filter_add_pattern(all, "*");
+	gtk_file_chooser_add_filter(chooser, all);
+}
+
+static void vitra_apply_dialog_defaults(GtkFileChooser *chooser, const char *title, const char *default_path, GtkWidget *dialog) {
+	if (title && title[0]) {
+		gtk_window_set_title(GTK_WINDOW(dialog), title);
+	}
+	if (default_path && default_path[0]) {
+		gtk_file_chooser_set_filename(chooser, default_path);
+		gtk_file_chooser_set_current_folder(chooser, default_path);
+	}
+}
+
+char *vitra_open_dialog(const char *title, const char *default_path, const char *filters) {
 	GtkWidget *dialog = gtk_file_chooser_dialog_new(
-		"Open File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN,
+		title && title[0] ? title : "Open File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN,
 		"_Cancel", GTK_RESPONSE_CANCEL,
 		"_Open", GTK_RESPONSE_ACCEPT, NULL);
+	GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
+	vitra_apply_dialog_defaults(chooser, title, default_path, dialog);
+	vitra_apply_file_filters(chooser, filters);
 	char *path = NULL;
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-		path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		path = gtk_file_chooser_get_filename(chooser);
 	}
 	gtk_widget_destroy(dialog);
 	return path;
@@ -424,15 +474,18 @@ char *vitra_open_directory_dialog(void) {
 	return path;
 }
 
-char *vitra_save_dialog(void) {
+char *vitra_save_dialog(const char *title, const char *default_path, const char *filters) {
 	GtkWidget *dialog = gtk_file_chooser_dialog_new(
-		"Save File", NULL, GTK_FILE_CHOOSER_ACTION_SAVE,
+		title && title[0] ? title : "Save File", NULL, GTK_FILE_CHOOSER_ACTION_SAVE,
 		"_Cancel", GTK_RESPONSE_CANCEL,
 		"_Save", GTK_RESPONSE_ACCEPT, NULL);
-	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
+	GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
+	gtk_file_chooser_set_do_overwrite_confirmation(chooser, TRUE);
+	vitra_apply_dialog_defaults(chooser, title, default_path, dialog);
+	vitra_apply_file_filters(chooser, filters);
 	char *path = NULL;
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-		path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		path = gtk_file_chooser_get_filename(chooser);
 	}
 	gtk_widget_destroy(dialog);
 	return path;

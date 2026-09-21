@@ -617,12 +617,39 @@ void vitra_win_set_drag_drop(VitraWin *w, int enabled) {
 	[w->dropView setDropEnabled:enabled];
 }
 
-char *vitra_open_dialog(void) {
+char *vitra_open_dialog(const char *title, const char *default_path, const char *filters) {
 	NSOpenPanel *panel = [NSOpenPanel openPanel];
 	panel.canChooseFiles = YES;
 	panel.canChooseDirectories = NO;
 	panel.allowsMultipleSelection = NO;
 	panel.resolvesAliases = YES;
+	if (title && title[0]) {
+		panel.title = [NSString stringWithUTF8String:title];
+		panel.message = panel.title;
+	}
+	if (default_path && default_path[0]) {
+		panel.directoryURL = [NSURL fileURLWithPath:[NSString stringWithUTF8String:default_path] isDirectory:YES];
+	}
+	if (filters && filters[0]) {
+		NSMutableArray<NSString *> *exts = [NSMutableArray array];
+		NSString *spec = [NSString stringWithUTF8String:filters];
+		for (NSString *group in [spec componentsSeparatedByString:@";"]) {
+			NSRange colon = [group rangeOfString:@":"];
+			if (colon.location == NSNotFound) {
+				continue;
+			}
+			NSString *list = [group substringFromIndex:colon.location + 1];
+			for (NSString *ext in [list componentsSeparatedByString:@","]) {
+				NSString *trimmed = [ext stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+				if (trimmed.length > 0) {
+					[exts addObject:trimmed];
+				}
+			}
+		}
+		if (exts.count > 0) {
+			panel.allowedFileTypes = exts;
+		}
+	}
 	if ([panel runModal] != NSModalResponseOK) {
 		return NULL;
 	}
@@ -650,9 +677,44 @@ char *vitra_open_directory_dialog(void) {
 	return strdup(url.fileSystemRepresentation);
 }
 
-char *vitra_save_dialog(void) {
+char *vitra_save_dialog(const char *title, const char *default_path, const char *filters) {
 	NSSavePanel *panel = [NSSavePanel savePanel];
 	panel.canCreateDirectories = YES;
+	if (title && title[0]) {
+		panel.title = [NSString stringWithUTF8String:title];
+		panel.message = panel.title;
+	}
+	if (default_path && default_path[0]) {
+		NSString *path = [NSString stringWithUTF8String:default_path];
+		BOOL isDir = NO;
+		[[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&isDir];
+		if (isDir) {
+			panel.directoryURL = [NSURL fileURLWithPath:path isDirectory:YES];
+		} else {
+			panel.directoryURL = [NSURL fileURLWithPath:[path stringByDeletingLastPathComponent] isDirectory:YES];
+			panel.nameFieldStringValue = [path lastPathComponent];
+		}
+	}
+	if (filters && filters[0]) {
+		NSMutableArray<NSString *> *exts = [NSMutableArray array];
+		NSString *spec = [NSString stringWithUTF8String:filters];
+		for (NSString *group in [spec componentsSeparatedByString:@";"]) {
+			NSRange colon = [group rangeOfString:@":"];
+			if (colon.location == NSNotFound) {
+				continue;
+			}
+			NSString *list = [group substringFromIndex:colon.location + 1];
+			for (NSString *ext in [list componentsSeparatedByString:@","]) {
+				NSString *trimmed = [ext stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+				if (trimmed.length > 0) {
+					[exts addObject:trimmed];
+				}
+			}
+		}
+		if (exts.count > 0) {
+			panel.allowedFileTypes = exts;
+		}
+	}
 	if ([panel runModal] != NSModalResponseOK) {
 		return NULL;
 	}

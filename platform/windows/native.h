@@ -37,8 +37,8 @@ void vitra_win_clear_menu(VitraWin *w);
 void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut);
 int vitra_win_activate_accel(VitraWin *w, const char *shortcut);
 
-char *vitra_open_dialog(void);
-char *vitra_save_dialog(void);
+char *vitra_open_dialog(const char *title, const char *default_path, const char *filters);
+char *vitra_save_dialog(const char *title, const char *default_path, const char *filters);
 char *vitra_open_directory_dialog(void);
 int vitra_message_dialog(const char *title, const char *message, int confirm);
 int vitra_show_notification(const char *title, const char *body);
