@@ -47,7 +47,7 @@ type Spec struct {
 	// Description and FreeDesktop Comment=. Empty defaults to DefaultDescription.
 	Description string
 	// Homepage is an optional project URL (Debian Homepage, RPM URL, snap website,
-	// AppStream <url type="homepage">).
+	// AppStream <url type="homepage">, Windows ARP URLInfoAbout / ARPURLINFOABOUT).
 	Homepage string
 	// Categories are FreeDesktop/AppStream categories (e.g. Utility, Development).
 	// Empty defaults to []string{"Utility"}.

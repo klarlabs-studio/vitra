@@ -7,7 +7,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
-| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`); Homepage / Categories / License via Spec (also RPM `URL:`/`License:`, snap `website:`/`license:`) |
+| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`); Homepage / Categories / License via Spec (also RPM `URL:`/`License:`, snap `website:`/`license:`, Windows ARP `URLInfoAbout` / `ARPURLINFOABOUT`) |
 | Sign dry-run plan | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
 | Notary credential bootstrap plan | `PlanNotaryCredentials` + `vitra notary-setup` (store-credentials argv; not executed) |
 | Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}` and `<secret:…>`→`VITRA_SECRET_*`; sets `Artifact.Signed`) |
@@ -40,8 +40,8 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `appdir` | AppImage-ready AppDir (`BuildAppDir`) |
 | `appimage` | Final `.AppImage` (`BuildAppImage` → `appimagetool`) |
 | `win-dir` | Staged Windows `bin/<Name>.exe` (`StageWindows`) |
-| `wix` | Windows stage + `product.wxs` (`BuildWiXDir`; Start Menu + Desktop shortcuts + stable UpgradeCode) |
-| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP + Desktop/Start Menu shortcuts) |
+| `wix` | Windows stage + `product.wxs` (`BuildWiXDir`; Start Menu + Desktop shortcuts + stable UpgradeCode + optional ARP URL) |
+| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP + Desktop/Start Menu shortcuts + optional URLInfoAbout) |
 | `msi` | Final `.msi` (`BuildMSI` → candle/light or `VITRA_CANDLE`/`VITRA_LIGHT`) |
 | `nsis` | Final setup `.exe` (`BuildNSIS` → makensis or `VITRA_MAKENSIS`) |
 | `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`) |
@@ -51,7 +51,9 @@ Optional `--icon <path>` copies a `.png` / `.svg` / `.icns` / `.ico` / `.xpm` in
 Linux stages (root + `usr/share/icons/hicolor/…/apps/`, `Icon=<name>`), AppDir
 (`.DirIcon` symlink + hicolor), `.deb` packages (`usr/share/pixmaps/` + hicolor +
 `Icon=`), Darwin `Contents/Resources` (`CFBundleIconFile`), and Windows `bin/`
-(WiX `ARPPRODUCTICON` + NSIS shortcut icon). Optional `--maintainer` sets Debian
+(WiX `ARPPRODUCTICON` + NSIS shortcut icon). Optional `--homepage` sets Debian
+`Homepage`, AppStream/RPM/snap URLs, and Windows ARP support URL
+(`URLInfoAbout` / `ARPURLINFOABOUT`) when provided. Optional `--maintainer` sets Debian
 `Maintainer` and, when provided, WiX `Manufacturer` / NSIS `PRODUCT_PUBLISHER`
 (otherwise WiX/NSIS use `Name`). Optional `--description` sets the Debian
 extended Description and FreeDesktop `Comment=` (default: secure Go + web
