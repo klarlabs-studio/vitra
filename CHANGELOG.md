@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Linux window chrome minimize/hide: `WindowChrome.Minimized` / `Hidden` map to GTK iconify and hide; zero-value `Hidden` stays visible (compatible with existing apply calls).
 - Worker IPC transport: newline-delimited JSON `Session` (`Send`/`Recv`/`Request`) over in-memory pipes or OS-process stdio (`StdioIPC`); oversized/malformed frames fail closed.
 - Linux OpenURL: grant-gated `desktop.BrowserService` (`browser.open`) launches http(s)/mailto via `xdg-open`; competitive demo honors `VITRA_OPEN_URL`.
 - Linux in-window menu accelerators: `platform.MenuItem.Shortcut` (e.g. `Ctrl+Q`) binds GTK accel groups; competitive Quit uses `Ctrl+Q`. Global shortcuts remain unsupported on Wayland.

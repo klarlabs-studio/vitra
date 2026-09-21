@@ -27,7 +27,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |
 | Host→frontend events (`vitra.on` / `App.Emit`) | Done |
 | Linux file drag-drop (`dragdrop.receive`) | Done (GTK URI drops + inject helper) |
-| Linux window chrome (`window.chrome`) | Done (GTK title, size, maximize, fullscreen, keep-above) |
+| Linux window chrome (`window.chrome`) | Done (GTK title, size, maximize, fullscreen, keep-above, minimize, hide) |
 | In-window menu accelerators (`MenuItem.Shortcut`) | Done (GTK accel groups; not global Wayland hotkeys) |
 | OpenURL (`browser.open`) | Done (`xdg-open` for http(s)/mailto) |
 

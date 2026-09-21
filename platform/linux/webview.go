@@ -99,7 +99,7 @@ func (h *Host) Features() platform.FeatureSet {
 		},
 		platform.FeatureWindowChrome: {
 			Feature: platform.FeatureWindowChrome, Available: true,
-			Detail: "GTK title, size, maximize, fullscreen, and keep-above",
+			Detail: "GTK title, size, maximize, fullscreen, keep-above, minimize, and hide",
 		},
 		platform.FeatureOpenURL: {
 			Feature: platform.FeatureOpenURL, Available: true,
@@ -169,7 +169,7 @@ func (h *Host) ApplyWindowChrome(id domain.WindowID, chrome platform.WindowChrom
 		}
 		ctitle := C.CString(chrome.Title)
 		defer C.free(unsafe.Pointer(ctitle))
-		maxed, full, above := C.int(0), C.int(0), C.int(0)
+		maxed, full, above, mini, hid := C.int(0), C.int(0), C.int(0), C.int(0), C.int(0)
 		if chrome.Maximized {
 			maxed = 1
 		}
@@ -179,7 +179,13 @@ func (h *Host) ApplyWindowChrome(id domain.WindowID, chrome platform.WindowChrom
 		if chrome.AlwaysOnTop {
 			above = 1
 		}
-		C.vitra_win_apply_chrome(w.ptr, ctitle, C.int(chrome.Width), C.int(chrome.Height), maxed, full, above)
+		if chrome.Minimized {
+			mini = 1
+		}
+		if chrome.Hidden {
+			hid = 1
+		}
+		C.vitra_win_apply_chrome(w.ptr, ctitle, C.int(chrome.Width), C.int(chrome.Height), maxed, full, above, mini, hid)
 		errCh <- nil
 	})
 	return <-errCh
@@ -209,6 +215,8 @@ func (h *Host) ReadWindowChrome(id domain.WindowID) (platform.WindowChrome, erro
 			Maximized:   raw.maximized != 0,
 			Fullscreen:  raw.fullscreen != 0,
 			AlwaysOnTop: raw.above != 0,
+			Minimized:   raw.minimized != 0,
+			Hidden:      raw.hidden != 0,
 		}}
 	})
 	got := <-ch

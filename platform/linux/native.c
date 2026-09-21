@@ -146,7 +146,7 @@ void vitra_win_flush(void) {
 	}
 }
 
-void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above) {
+void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden) {
 	if (!w || !w->window) {
 		return;
 	}
@@ -163,6 +163,8 @@ void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int heigh
 	w->maximized = maximized ? 1 : 0;
 	w->fullscreen = fullscreen ? 1 : 0;
 	w->above = above ? 1 : 0;
+	w->minimized = minimized ? 1 : 0;
+	w->hidden = hidden ? 1 : 0;
 	if (maximized) {
 		gtk_window_maximize(win);
 	} else {
@@ -174,6 +176,16 @@ void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int heigh
 		gtk_window_unfullscreen(win);
 	}
 	gtk_window_set_keep_above(win, above ? TRUE : FALSE);
+	if (minimized) {
+		gtk_window_iconify(win);
+	} else {
+		gtk_window_deiconify(win);
+	}
+	if (hidden) {
+		gtk_widget_hide(w->window);
+	} else {
+		gtk_widget_show(w->window);
+	}
 	vitra_win_flush();
 }
 
@@ -202,10 +214,12 @@ VitraChrome vitra_win_chrome(VitraWin *w) {
 	GdkWindow *gw = gtk_widget_get_window(w->window);
 	int gdk_full = 0;
 	int gdk_above = 0;
+	int gdk_icon = 0;
 	if (gw) {
 		GdkWindowState st = gdk_window_get_state(gw);
 		gdk_full = (st & GDK_WINDOW_STATE_FULLSCREEN) ? 1 : 0;
 		gdk_above = (st & GDK_WINDOW_STATE_ABOVE) ? 1 : 0;
+		gdk_icon = (st & GDK_WINDOW_STATE_ICONIFIED) ? 1 : 0;
 		if (st & GDK_WINDOW_STATE_MAXIMIZED) {
 			c.maximized = 1;
 		}
@@ -217,6 +231,8 @@ VitraChrome vitra_win_chrome(VitraWin *w) {
 	}
 	c.fullscreen = gdk_full || w->fullscreen;
 	c.above = gdk_above || w->above;
+	c.minimized = gdk_icon || w->minimized;
+	c.hidden = (!gtk_widget_get_visible(w->window)) || w->hidden;
 	return c;
 }
 
