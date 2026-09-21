@@ -7,7 +7,8 @@ and secure-by-construction — please keep that in mind when proposing changes.
 
 1. **Zero external dependencies in the kernel.** The `domain/` package must not
    import anything outside the standard library. Phase 1 adapters (`inmemory/`)
-   also use stdlib only. Platform WebView bindings (later phases) are adapters.
+   also use stdlib only. Platform WebView bindings (`platform/*`,
+   `-tags vitra_native`) are adapters outside the kernel.
 2. **DDD boundaries.** Respect the dependency direction:
    `domain` ← `application` ← `inmemory` ← `vitra` (root facade) ← consumer code.
    The domain owns its port interfaces.

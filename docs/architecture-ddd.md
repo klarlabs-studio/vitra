@@ -15,9 +15,9 @@ cmd/vitra/       Developer CLI (delivery adapter).
 example/         Runnable documentation — not a supported API.
 ```
 
-Infrastructure (platform WebView adapters, packaging, updater) will land
-under dedicated packages in later phases and may import application/domain
-only. Nothing in `domain/` may import an infrastructure package.
+Infrastructure packages (`platform/*` WebView adapters, `packaging`,
+`updater`, `provenance`, …) may import application/domain only. Nothing in
+`domain/` may import an infrastructure package.
 
 ## Bounded Contexts (Phase 1)
 
@@ -63,8 +63,9 @@ only. Nothing in `domain/` may import an infrastructure package.
 ## Composition Root
 
 `vitra.New(Config)` is the composition root. It wires in-memory adapters and
-use cases. Platform hosts (future) should construct the same use cases with
-platform-backed ports rather than inventing parallel invocation paths.
+use cases. Platform hosts (`platform/linux|darwin|windows`) construct the same
+use cases with platform-backed ports rather than inventing parallel invocation
+paths.
 
 ## Testing
 

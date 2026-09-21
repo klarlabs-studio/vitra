@@ -23,8 +23,10 @@ Phase 1’s capability boundary.
 - **14**: missing platform features → `platform.ErrUnsupported`, never silent success
 - **15 / reliability 2**: closing a window closes and deletes its subscriptions
 
-## Still platform-adapter work (later)
+## Platform adapters (landed in competitive / DesktopHost track)
 
-Native macOS/Windows/Linux bindings for WebView chrome, menus, tray, and
-dialogs remain adapter implementations behind `platform.Host`. Phase 2
-freezes the portable contracts and enforces grants in front of them.
+Phase 2 froze portable contracts (`desktop.*`, `platform.Require`). Native
+bindings now ship under `-tags vitra_native` on Linux (WebKitGTK), Darwin
+(WKWebView), and Windows (Win32 + WebView2) — see
+[`docs/spikes/competitive.md`](competitive.md). Wayland global hotkeys stay
+`ErrUnsupported` (use in-window `MenuItem.Shortcut`).
