@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- AppStream recommends: metainfo always emits `<recommends>` with `<control>keyboard</control>` and `<control>pointing</control>` (desktop input defaults for software centers).
 - `vitra new --template htm`: Vite + htm + TypeScript starter (`html` tagged templates + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream provides: metainfo emits `<provides><binary>…</binary></provides>` from `sanitizeFileName(Spec.Name)` (matches staged Linux binary basename).
 - `vitra new --template omi`: Vite + Omi + TypeScript starter (`define` / `WeElement` / `html` web component + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
