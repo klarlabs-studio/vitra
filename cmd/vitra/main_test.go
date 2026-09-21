@@ -735,6 +735,52 @@ func TestRun_NewScaffoldReact(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldSvelte(t *testing.T) {
+	dir := t.TempDir() + "/svelte-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "svelte"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=svelte") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/svelte.config.js", "frontend/src/main.ts", "frontend/src/App.svelte",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"svelte"`, `"@sveltejs/vite-plugin-svelte"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/App.svelte")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "$state"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("App.svelte missing %q: %s", want, app)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "vite-plugin-svelte") {
+		t.Fatalf("vite config missing svelte plugin: %s", cfg)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
