@@ -59,6 +59,23 @@ func run() error {
 		}
 		fmt.Println("registered xdg handler for vitra://")
 	}
+	if raw := os.Getenv("VITRA_REGISTER_FILES"); raw != "" {
+		execPath, err := os.Executable()
+		if err != nil {
+			return err
+		}
+		var mimes []string
+		for _, m := range strings.Split(raw, ",") {
+			m = strings.TrimSpace(m)
+			if m != "" {
+				mimes = append(mimes, m)
+			}
+		}
+		if err := host.RegisterFileAssociations(appID, execPath, "Vitra Competitive", mimes); err != nil {
+			return fmt.Errorf("register file associations: %w", err)
+		}
+		fmt.Println("registered xdg file associations:", strings.Join(mimes, ","))
+	}
 
 	held, release, err := host.TrySingleInstance(appID)
 	if err != nil {

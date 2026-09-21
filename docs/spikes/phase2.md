@@ -14,6 +14,7 @@ Phase 1’s capability boundary.
 | Deep-link patterns | `domain.DeepLinkPattern` |
 | Capability-gated desktop services | `desktop` — menu, tray, dialog, clipboard, shortcuts, single-instance, deeplinks, drag-drop |
 | Explicit unsupported features | services call `platform.Require` before native hooks |
+| Linux xdg MIME associations | `linux.RegisterFileAssociations`, `vitra register-files` |
 
 ## Security / reliability invariants covered
 

@@ -64,6 +64,8 @@ func run(args []string) error {
 		return runUpdateApply(args[1:])
 	case "register-scheme":
 		return registerScheme(args[1:])
+	case "register-files":
+		return registerFiles(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return nil
@@ -89,6 +91,8 @@ Usage:
                              Verify a signed update and atomically install it
   vitra register-scheme <scheme> [app-id] [exec]
                              Register an xdg URL scheme handler (Linux)
+  vitra register-files --mime <type> [--mime <type>] [--app-id id] [--exec path] [--name name]
+                             Register xdg MIME file associations (Linux)
   vitra inspect capabilities Demo capability inspection against an in-memory runtime
   vitra help                 Show this help`)
 }
@@ -113,6 +117,7 @@ func doctor() error {
 		platform.FeatureSingleInstance,
 		platform.FeatureDeepLink,
 		platform.FeatureDragDrop,
+		platform.FeatureFileAssociation,
 	} {
 		s := host.Features()[f]
 		status := "missing"
@@ -661,6 +666,65 @@ func registerScheme(args []string) error {
 		return err
 	}
 	fmt.Printf("registered xdg handler for %s:// → %s (%s)\n", scheme, execPath, appID)
+	return nil
+}
+
+func registerFiles(args []string) error {
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("register-files is only implemented on Linux (xdg)")
+	}
+	var mimes []string
+	appID := "com.vitra.app"
+	name := ""
+	execPath := ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--mime":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--mime requires a type")
+			}
+			mimes = append(mimes, args[i])
+		case "--app-id":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--app-id requires a value")
+			}
+			appID = args[i]
+		case "--exec":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--exec requires a path")
+			}
+			execPath = args[i]
+		case "--name":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--name requires a value")
+			}
+			name = args[i]
+		default:
+			return fmt.Errorf("unknown register-files flag %q", args[i])
+		}
+	}
+	if len(mimes) == 0 {
+		return fmt.Errorf("usage: vitra register-files --mime <type> [--mime <type>] [--app-id id] [--exec path] [--name name]")
+	}
+	if execPath == "" {
+		var err error
+		execPath, err = os.Executable()
+		if err != nil {
+			return err
+		}
+	}
+	if name == "" {
+		name = appID
+	}
+	host := linux.New()
+	if err := host.RegisterFileAssociations(appID, execPath, name, mimes); err != nil {
+		return err
+	}
+	fmt.Printf("registered xdg file associations %s → %s (%s)\n", strings.Join(mimes, ","), execPath, appID)
 	return nil
 }
 

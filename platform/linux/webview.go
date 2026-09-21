@@ -93,6 +93,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDragDrop, Available: true,
 			Detail: "GTK URI file drops on the WebView",
 		},
+		platform.FeatureFileAssociation: {
+			Feature: platform.FeatureFileAssociation, Available: true,
+			Detail: "xdg MIME desktop file",
+		},
 	}
 }
 

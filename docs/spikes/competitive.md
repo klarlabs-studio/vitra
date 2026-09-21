@@ -18,6 +18,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | `vitra new` writes `go.mod`; `vitra dev` watches & restarts | Done |
 | Deep-link argv + secondary-instance socket handoff | Done |
 | Linux xdg URL-scheme registration (`RegisterURLScheme`) | Done |
+| Linux xdg MIME file associations (`RegisterFileAssociations`) | Done |
 | Tray context menu (status-icon popup) | Done |
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done |
