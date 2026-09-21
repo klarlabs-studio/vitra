@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Linux `.deb` package icons: `Spec.IconPath` / `--icon` stages `usr/share/pixmaps/<name>.<ext>` and sets `Icon=` on the FreeDesktop `.desktop` entry.
 - Darwin DMG drag-install layout: FoldDMG stages `.app` + `/Applications` symlink in the image root before `hdiutil create`.
 - `app.DesktopHost` includes `RegisterFileAssociations` and `InjectFileDrop` (all OS adapters already implemented); competitive demo uses the shared interface.
 - Windows package icons: `Spec.IconPath` / `--icon` stages into `bin/` for `win-dir`; WiX emits `Icon`/`ARPPRODUCTICON`, NSIS shortcuts use the icon file.

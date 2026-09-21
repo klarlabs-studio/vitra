@@ -74,6 +74,8 @@ Terminal=false
 }
 
 // BuildDeb writes a Debian binary package (.deb) using only the Go standard library.
+// When Spec.IconPath is set, the icon is staged under usr/share/pixmaps/ and the
+// .desktop entry sets Icon=<name> for FreeDesktop lookup.
 func BuildDeb(spec Spec, binaryPath, outPath string) (Artifact, error) {
 	if err := spec.Validate(); err != nil {
 		return Artifact{}, err
@@ -98,7 +100,44 @@ func BuildDeb(spec Spec, binaryPath, outPath string) (Artifact, error) {
 		arch = DefaultArch()
 	}
 
-	installedSize := (len(raw) + 1023) / 1024
+	dataFiles := map[string]fileEntry{
+		"usr/bin/" + binName: {data: raw, mode: 0o755},
+	}
+	payloadSize := len(raw)
+
+	iconKey := binName
+	if strings.TrimSpace(spec.IconPath) != "" {
+		stage, err := os.MkdirTemp("", "vitra-deb-icon-*")
+		if err != nil {
+			return Artifact{}, err
+		}
+		defer func() { _ = os.RemoveAll(stage) }()
+		_, fileName, err := stageIconFile(spec.IconPath, stage, binName)
+		if err != nil {
+			return Artifact{}, err
+		}
+		if fileName != "" {
+			iconData, err := os.ReadFile(filepath.Join(stage, fileName))
+			if err != nil {
+				return Artifact{}, err
+			}
+			dataFiles["usr/share/pixmaps/"+fileName] = fileEntry{data: iconData, mode: 0o644}
+			payloadSize += len(iconData)
+		}
+	}
+
+	desktopPath := "usr/share/applications/" + sanitizeFileName(spec.AppID) + ".desktop"
+	desktopBody := fmt.Sprintf(`[Desktop Entry]
+Type=Application
+Name=%s
+Exec=/usr/bin/%s
+Icon=%s
+Categories=Utility;
+Terminal=false
+`, spec.Name, binName, iconKey)
+	dataFiles[desktopPath] = fileEntry{data: []byte(desktopBody), mode: 0o644}
+
+	installedSize := (payloadSize + 1023) / 1024
 	control := fmt.Sprintf(`Package: %s
 Version: %s
 Section: utils
@@ -117,18 +156,7 @@ Description: %s
 		return Artifact{}, err
 	}
 
-	desktopPath := "usr/share/applications/" + sanitizeFileName(spec.AppID) + ".desktop"
-	desktopBody := fmt.Sprintf(`[Desktop Entry]
-Type=Application
-Name=%s
-Exec=/usr/bin/%s
-Categories=Utility;
-Terminal=false
-`, spec.Name, binName)
-	dataTGZ, err := tarGz(map[string]fileEntry{
-		"usr/bin/" + binName: {data: raw, mode: 0o755},
-		desktopPath:          {data: []byte(desktopBody), mode: 0o644},
-	})
+	dataTGZ, err := tarGz(dataFiles)
 	if err != nil {
 		return Artifact{}, err
 	}
