@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template marko`: Vite + Marko 5 + TypeScript starter (`App.marko` class component, `@marko/vite` with `linked: false`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Windows ARP HelpLink: `Spec.Homepage` / `vitra package --homepage` also flow into NSIS `HelpLink` and WiX `ARPHELPLINK` (alongside URLInfoAbout; omitted when empty).
 - Darwin CFBundleGetInfoString: `Spec.Description` / `vitra package --description` (via `EffectiveDescription`) flow into Info.plist `CFBundleGetInfoString` (default: secure Go + web desktop blurb).
 - `vitra new --template stencil`: Vite + Stencil 4 + TypeScript starter (`vitra-app` component, `@stencil-community/unplugin-stencil`, `dist-custom-elements`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
