@@ -19,7 +19,8 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done |
 | `vitra doctor/new/dev/build` | Done |
-| `platform/darwin` WKWebView host (`-tags vitra_native`) | DesktopHost complete for competitive parity (global shortcuts still TBD) |
+| `platform/darwin` WKWebView host (`-tags vitra_native`) | DesktopHost complete for competitive parity |
+| Darwin global shortcuts (`shortcut.global`) | Done (`RegisterEventHotKey`; Ctrl→Command) |
 | Linux xdg URL-scheme registration (`RegisterURLScheme`) | Done |
 | Darwin URL-scheme registration (`RegisterURLScheme`) | Done (helper `.app` + lsregister) |
 | Linux xdg MIME file associations (`RegisterFileAssociations`) | Done |

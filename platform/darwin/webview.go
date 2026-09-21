@@ -6,7 +6,7 @@ package darwin
 
 /*
 #cgo CFLAGS: -x objective-c -fno-objc-arc
-#cgo LDFLAGS: -framework Cocoa -framework WebKit
+#cgo LDFLAGS: -framework Cocoa -framework WebKit -framework Carbon
 #include "native.h"
 #include <stdlib.h>
 */
@@ -103,8 +103,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "flock-based; available without native WebView",
 		},
 		platform.FeatureGlobalShortcut: {
-			Feature: platform.FeatureGlobalShortcut, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureGlobalShortcut, Available: true,
+			Detail: "RegisterEventHotKey OS-wide accelerators (Ctrl→Command) → SetActionHandler",
 		},
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: true,
@@ -495,14 +495,43 @@ func (h *Host) ClearTray() {
 	h.dispatch(func() { C.vitra_tray_clear() })
 }
 
-// RegisterGlobalShortcut is not yet implemented on Darwin.
-func (h *Host) RegisterGlobalShortcut(string, string) error {
-	return h.err(platform.FeatureGlobalShortcut)
+// RegisterGlobalShortcut binds an OS-wide accelerator to an action id.
+func (h *Host) RegisterGlobalShortcut(accelerator, actionID string) error {
+	if accelerator == "" || actionID == "" {
+		return &domain.ErrValidation{Message: "accelerator and action id are required"}
+	}
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ca := C.CString(accelerator)
+		cid := C.CString(actionID)
+		defer C.free(unsafe.Pointer(ca))
+		defer C.free(unsafe.Pointer(cid))
+		if C.vitra_register_hotkey(ca, cid) == 0 {
+			errCh <- errors.New("failed to register global shortcut")
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
 }
 
-// UnregisterGlobalShortcut is not yet implemented on Darwin.
-func (h *Host) UnregisterGlobalShortcut(string) error {
-	return h.err(platform.FeatureGlobalShortcut)
+// UnregisterGlobalShortcut removes a previously registered accelerator.
+func (h *Host) UnregisterGlobalShortcut(accelerator string) error {
+	if accelerator == "" {
+		return &domain.ErrValidation{Message: "accelerator is required"}
+	}
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		ca := C.CString(accelerator)
+		defer C.free(unsafe.Pointer(ca))
+		if C.vitra_unregister_hotkey(ca) == 0 {
+			errCh <- errors.New("global shortcut not found")
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
 }
 
 // Run runs the Cocoa main loop (blocking). Must be called from the main OS thread.

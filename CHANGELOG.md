@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Darwin global shortcuts: `RegisterGlobalShortcut` / `UnregisterGlobalShortcut` via Carbon `RegisterEventHotKey` (Ctrl→Command, matching menu accelerators); stub remains explicit unsupported.
 - Windows global shortcuts: `RegisterGlobalShortcut` / `UnregisterGlobalShortcut` via `RegisterHotKey` (OS-wide; requires a modifier); `ShortcutService.Register` now takes `actionID`; competitive demo binds `Ctrl+Shift+Q` → `app.quit` when supported.
 - Windows WebView2 Navigate/Eval/message: `LoadLibrary(WebView2Loader.dll)` + hand-rolled COM for Navigate, ExecuteScript, chrome.webview messages, and document-start preload; bridge prefers `chrome.webview.postMessage` then webkit. HWND shell remains when the loader/runtime is absent.
 - Windows file drag-drop: `EnableDragDrop` accepts `WM_DROPFILES` on the HWND; `InjectFileDrop` for demos/tests under `-tags vitra_native`.
