@@ -90,9 +90,9 @@ Usage:
   vitra update-apply --manifest <json> --artifact <path> --pubkey <hex> --dest <path> [--policy production|development]
                              Verify a signed update and atomically install it
   vitra register-scheme <scheme> [app-id] [exec]
-                             Register a URL scheme handler (Linux xdg / Darwin helper .app)
+                             Register a URL scheme handler (Linux xdg / Darwin helper .app / Windows .reg)
   vitra register-files --mime <type> [--mime <type>] [--app-id id] [--exec path] [--name name]
-                             Register MIME file associations (Linux xdg / Darwin helper .app)
+                             Register MIME file associations (Linux xdg / Darwin helper .app / Windows .reg)
   vitra inspect capabilities Demo capability inspection against an in-memory runtime
   vitra help                 Show this help`)
 }
@@ -146,7 +146,7 @@ func doctor() error {
 		fmt.Println("  note:     WKWebView DesktopHost under -tags vitra_native; OpenURL/clipboard/single-instance/deep-link/scheme/files without WebView")
 	case "windows":
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native (Win32 shell; WebView2 next)")
-		fmt.Println("  note:     OpenURL/clipboard/single-instance/deep-link without native host; WebView2 Eval/message TBD")
+		fmt.Println("  note:     OpenURL/clipboard/single-instance/deep-link/scheme/files without native host; WebView2 Eval/message TBD")
 	}
 	return nil
 }
@@ -653,8 +653,8 @@ func registerScheme(args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("usage: vitra register-scheme <scheme> [app-id] [exec]")
 	}
-	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
-		return fmt.Errorf("register-scheme is only implemented on Linux (xdg) and Darwin (helper .app)")
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
+		return fmt.Errorf("register-scheme is only implemented on Linux (xdg), Darwin (helper .app), and Windows (.reg)")
 	}
 	scheme := args[0]
 	appID := "com.vitra.app"
@@ -687,8 +687,8 @@ func registerScheme(args []string) error {
 }
 
 func registerFiles(args []string) error {
-	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
-		return fmt.Errorf("register-files is only implemented on Linux (xdg) and Darwin (helper .app)")
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
+		return fmt.Errorf("register-files is only implemented on Linux (xdg), Darwin (helper .app), and Windows (.reg)")
 	}
 	var mimes []string
 	appID := "com.vitra.app"
