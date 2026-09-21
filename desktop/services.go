@@ -883,6 +883,16 @@ func (s *WindowService) Fullscreen(ctx context.Context, caller domain.Caller, wi
 	return s.Apply(ctx, caller, window, chrome)
 }
 
+// Unfullscreen authorizes window.chrome then clears chrome.Fullscreen.
+func (s *WindowService) Unfullscreen(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.Fullscreen = false
+	return s.Apply(ctx, caller, window, chrome)
+}
+
 // SetAlwaysOnTop authorizes window.chrome then toggles chrome.AlwaysOnTop.
 func (s *WindowService) SetAlwaysOnTop(ctx context.Context, caller domain.Caller, window domain.WindowID, onTop bool) error {
 	chrome, err := s.Read(ctx, caller, window)
