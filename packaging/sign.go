@@ -51,6 +51,9 @@ type CommandPlan struct {
 	Tool string
 	Args []string
 	Note string
+	// Executable marks steps that ExecutePublish / --publish-execute may run.
+	// Interactive login, name registration, and Flathub PR creation stay false.
+	Executable bool
 }
 
 // ExecuteSignOptions controls whether Darwin notarize/staple follow-ups run.

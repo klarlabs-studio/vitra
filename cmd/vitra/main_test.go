@@ -614,8 +614,44 @@ func TestRun_PackagePublish(t *testing.T) {
 	if !strings.Contains(printed, "publish plan") || !strings.Contains(printed, "Snap Store") {
 		t.Fatalf("expected publish plan: %q", printed)
 	}
-	if !strings.Contains(printed, "snapcraft upload") || !strings.Contains(printed, "plan only") {
+	if !strings.Contains(printed, "snapcraft upload") || !strings.Contains(printed, "ExecutePublish") {
 		t.Fatalf("expected snapcraft upload plan: %q", printed)
+	}
+}
+
+func TestRun_PackagePublishExecute(t *testing.T) {
+	tmp := t.TempDir()
+	logPath := filepath.Join(tmp, "snap.log")
+	tool := filepath.Join(tmp, "fake-snapcraft")
+	script := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> " + logPath + "\n"
+	if err := os.WriteFile(tool, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VITRA_SNAPCRAFT", tool)
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("elf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "snap-stage")
+	printed := capture(t, func() {
+		if err := run([]string{
+			"package", "--format", "snap-dir", "--out", out, "--bin", bin,
+			"--app-id", "com.vitra.t", "--name", "Demo App", "--version", "0.1.0",
+			"--publish", "--publish-execute",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(printed, "published") || !strings.Contains(printed, "Snap Store") {
+		t.Fatalf("expected publish execute confirmation: %q", printed)
+	}
+	got, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	line := string(got)
+	if !strings.Contains(line, "upload") || strings.Contains(line, "login") {
+		t.Fatalf("snapcraft log=%q", line)
 	}
 }
 
