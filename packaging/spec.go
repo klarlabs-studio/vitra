@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 )
 
 // Target is a packaging destination.
@@ -27,7 +28,8 @@ type Spec struct {
 	Targets []Target
 	Arch    string // amd64, arm64, …
 	Sign    bool
-	// SigningIdentityRef is a keychain/CI secret reference — never a raw secret.
+	// SigningIdentityRef is a keychain/CI secret reference — never raw key material.
+	// Accepted forms: env:<name>, keychain:<name>, file:<path>, secret:<name>.
 	SigningIdentityRef string
 	// IconPath is an optional filesystem path to an app icon (.png / .svg / .icns).
 	// Empty leaves packages without a staged icon file.
@@ -54,7 +56,34 @@ func (s Spec) Validate() error {
 	if !s.Sign && s.SigningIdentityRef != "" {
 		return errors.New("SigningIdentityRef set but Sign is false")
 	}
+	if s.SigningIdentityRef != "" {
+		if err := validateSigningIdentityRef(s.SigningIdentityRef); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func validateSigningIdentityRef(ref string) error {
+	ref = strings.TrimSpace(ref)
+	upper := strings.ToUpper(ref)
+	for _, bad := range []string{"BEGIN ", "PRIVATE KEY", "-----"} {
+		if strings.Contains(upper, bad) {
+			return errors.New("SigningIdentityRef must be a reference (env:/keychain:/file:/secret:), not raw key material")
+		}
+	}
+	switch {
+	case strings.HasPrefix(ref, "env:"),
+		strings.HasPrefix(ref, "keychain:"),
+		strings.HasPrefix(ref, "file:"),
+		strings.HasPrefix(ref, "secret:"):
+		if len(ref) <= strings.IndexByte(ref, ':')+1 {
+			return fmt.Errorf("SigningIdentityRef %q has empty name after prefix", ref)
+		}
+		return nil
+	default:
+		return fmt.Errorf("SigningIdentityRef %q must start with env:, keychain:, file:, or secret: prefix", ref)
+	}
 }
 
 // DefaultArch returns GOARCH.
