@@ -622,6 +622,24 @@ func ParseWindowID(input any) (domain.WindowID, error) {
 	}
 }
 
+// ParseWindowAlwaysOnTop extracts window id + alwaysOnTop flag from an invoke payload.
+// Requires { id, alwaysOnTop: bool }.
+func ParseWindowAlwaysOnTop(input any) (domain.WindowID, bool, error) {
+	m, ok := input.(map[string]any)
+	if !ok || m == nil {
+		return "", false, &domain.ErrValidation{Message: "window.setAlwaysOnTop input must be an object"}
+	}
+	id, _ := m["id"].(string)
+	if id == "" {
+		return "", false, &domain.ErrValidation{Message: "window id is required"}
+	}
+	onTop, ok := asBool(m["alwaysOnTop"])
+	if !ok {
+		return "", false, &domain.ErrValidation{Message: "alwaysOnTop bool is required"}
+	}
+	return domain.WindowID(id), onTop, nil
+}
+
 // ParseWindowChromeApply extracts window id + chrome from an invoke payload.
 func ParseWindowChromeApply(input any) (domain.WindowID, platform.WindowChrome, error) {
 	m, ok := input.(map[string]any)
@@ -794,6 +812,16 @@ func (s *WindowService) Fullscreen(ctx context.Context, caller domain.Caller, wi
 	}
 	chrome.Fullscreen = true
 	chrome.Minimized = false
+	return s.Apply(ctx, caller, window, chrome)
+}
+
+// SetAlwaysOnTop authorizes window.chrome then toggles chrome.AlwaysOnTop.
+func (s *WindowService) SetAlwaysOnTop(ctx context.Context, caller domain.Caller, window domain.WindowID, onTop bool) error {
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.AlwaysOnTop = onTop
 	return s.Apply(ctx, caller, window, chrome)
 }
 

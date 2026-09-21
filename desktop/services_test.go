@@ -568,7 +568,8 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 			}
 			return platform.WindowChrome{
 				Title: "Vitra", Width: 800, Height: 600,
-				Minimized: sized.Minimized, Maximized: sized.Maximized, Fullscreen: sized.Fullscreen,
+				Minimized: sized.Minimized, Maximized: sized.Maximized,
+				Fullscreen: sized.Fullscreen, AlwaysOnTop: sized.AlwaysOnTop,
 			}, nil
 		},
 		OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
@@ -587,6 +588,19 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	}
 	if err := minmax.Fullscreen(ctx, caller, "main"); err != nil || !sized.Fullscreen || sized.Minimized {
 		t.Fatalf("fullscreen: %+v err=%v", sized, err)
+	}
+	if err := minmax.SetAlwaysOnTop(ctx, caller, "main", true); err != nil || !sized.AlwaysOnTop {
+		t.Fatalf("setAlwaysOnTop true: %+v err=%v", sized, err)
+	}
+	if err := minmax.SetAlwaysOnTop(ctx, caller, "main", false); err != nil || sized.AlwaysOnTop {
+		t.Fatalf("setAlwaysOnTop false: %+v err=%v", sized, err)
+	}
+	winID, onTop, parseErr := desktop.ParseWindowAlwaysOnTop(map[string]any{"id": "main", "alwaysOnTop": true})
+	if parseErr != nil || winID != "main" || !onTop {
+		t.Fatalf("ParseWindowAlwaysOnTop: id=%s onTop=%v err=%v", winID, onTop, parseErr)
+	}
+	if _, _, err := desktop.ParseWindowAlwaysOnTop(map[string]any{"id": "main"}); err == nil {
+		t.Fatal("expected alwaysOnTop required")
 	}
 	if err := minmax.Minimize(ctx, caller, ""); err == nil {
 		t.Fatal("expected empty window validation for minimize")
