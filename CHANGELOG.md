@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Competitive demo selects Linux / Darwin / Windows DesktopHost by `GOOS` (deep-link argv helpers included); Linux CI e2e unchanged.
 - Darwin DMG fold: `vitra package --format dmg` stages a `.app` then invokes `hdiutil` (`VITRA_HDIUTIL` override); CI covers fold with a fake tool.
 - Darwin `.app` stage: `vitra package --format app-dir` builds `<Name>.app/Contents/{Info.plist,MacOS/<exec>}` via `StageDarwinApp` (DMG fold remains follow-on).
 - CLI `vitra dev` / `vitra build` pass `-tags vitra_native` on Darwin and Windows (not only Linux), matching DesktopHost adapters; scaffold README points at `vitra dev`.

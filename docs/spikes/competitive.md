@@ -56,15 +56,18 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 # Kernel + stubs (CI default)
 go test ./...
 
-# Native Linux host
-sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev
+# Native DesktopHost (Linux CI; also Darwin WKWebView / Windows WebView2)
+sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev   # Linux
 CGO_ENABLED=1 go run -tags vitra_native ./example/competitive
-# headless demo
+# headless demo (Linux/xvfb)
 VITRA_DEMO_SECONDS=3 xvfb-run -a make demo
 # invoke round-trip through the capability gateway
 make e2e
 ```
 
+The competitive example selects `platform/linux`, `platform/darwin`, or
+`platform/windows` from `GOOS` so the same demo binary path exercises each
+DesktopHost adapter.
 ## Honest gap vs Wails 3
 
 Vitra is a **secure runtime you can run** on Linux, Darwin, and Windows with

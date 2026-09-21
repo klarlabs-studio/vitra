@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -18,7 +19,9 @@ import (
 	"go.klarlabs.de/vitra/desktop"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/platform"
+	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
+	"go.klarlabs.de/vitra/platform/windows"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	"go.klarlabs.de/vitra/policy"
@@ -49,7 +52,7 @@ func run() error {
 	if err := installOptionalAudit(rt); err != nil {
 		return err
 	}
-	host := linux.New()
+	host := newCompetitiveHost()
 	const appID = "com.vitra.competitive"
 
 	if os.Getenv("VITRA_REGISTER_SCHEME") == "1" {
@@ -60,7 +63,7 @@ func run() error {
 		if err := host.RegisterURLScheme("vitra", appID, execPath); err != nil {
 			return fmt.Errorf("register URL scheme: %w", err)
 		}
-		fmt.Println("registered xdg handler for vitra://")
+		fmt.Println("registered URL scheme handler for vitra://")
 	}
 	if raw := os.Getenv("VITRA_REGISTER_FILES"); raw != "" {
 		execPath, err := os.Executable()
@@ -77,7 +80,7 @@ func run() error {
 		if err := host.RegisterFileAssociations(appID, execPath, "Vitra Competitive", mimes); err != nil {
 			return fmt.Errorf("register file associations: %w", err)
 		}
-		fmt.Println("registered xdg file associations:", strings.Join(mimes, ","))
+		fmt.Println("registered file associations:", strings.Join(mimes, ","))
 	}
 
 	held, release, err := host.TrySingleInstance(appID)
@@ -85,7 +88,7 @@ func run() error {
 		return fmt.Errorf("single-instance: %w", err)
 	}
 	if !held {
-		urls := linux.DeepLinksFromArgs(os.Args[1:])
+		urls := deepLinksFromArgs(os.Args[1:])
 		if len(urls) == 0 {
 			return fmt.Errorf("another Vitra competitive instance is already running")
 		}
@@ -221,7 +224,7 @@ func run() error {
 		return fmt.Errorf("deep-link bridge: %w", err)
 	}
 	defer stopBridge()
-	for _, u := range linux.DeepLinksFromArgs(os.Args[1:]) {
+	for _, u := range deepLinksFromArgs(os.Args[1:]) {
 		handleDeepLink(u)
 	}
 
@@ -558,4 +561,34 @@ func openAuditWriter(path string) (io.Writer, string, error) {
 		return nil, "", fmt.Errorf("VITRA_AUDIT_PATH: %w", err)
 	}
 	return f, path, nil
+}
+
+// competitiveHost is the DesktopHost surface plus demo-only helpers shared by
+// Linux / Darwin / Windows adapters.
+type competitiveHost interface {
+	app.DesktopHost
+	RegisterFileAssociations(appID, execPath, name string, mimeTypes []string) error
+	InjectFileDrop(id domain.WindowID, paths []string)
+}
+
+func newCompetitiveHost() competitiveHost {
+	switch runtime.GOOS {
+	case "darwin":
+		return darwin.New()
+	case "windows":
+		return windows.New()
+	default:
+		return linux.New()
+	}
+}
+
+func deepLinksFromArgs(args []string) []string {
+	switch runtime.GOOS {
+	case "darwin":
+		return darwin.DeepLinksFromArgs(args)
+	case "windows":
+		return windows.DeepLinksFromArgs(args)
+	default:
+		return linux.DeepLinksFromArgs(args)
+	}
 }
