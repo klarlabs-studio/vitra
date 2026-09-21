@@ -140,7 +140,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Platform spikes + IPC (Phase 0) | Contracts done; competitive host uses versioned invoke envelopes |
 | Desktop completeness contracts (Phase 2) | Contracts done |
 | Plugin SDK (Phase 3) | Contracts + Runtime wiring; competitive binds dialog + scoped FS |
-| Distribution (Phase 4) | Specs + Linux stage/`.deb`/AppDir/AppImage + Windows `win-dir`/`wix`/`nsis-dir`/`msi`/`nsis` + signed update apply |
+| Distribution (Phase 4) | Specs + Linux stage/`.deb`/AppDir/AppImage + Windows `win-dir`/`wix`/`nsis-dir`/`msi`/`nsis` + Darwin `app-dir` + signed update apply |
 | Isolation / enterprise (Phase 5) | Contracts + Runtime policy/audit/workers + SIEM JSONL/CEF exporters + MDM JSON policy docs |
 | **Competitive Linux WebView host** | **Done** (`-tags vitra_native`) |
 | Linux menu bar + tray menus | **Done** |
