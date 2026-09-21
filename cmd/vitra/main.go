@@ -118,6 +118,7 @@ func doctor() error {
 		platform.FeatureDeepLink,
 		platform.FeatureDragDrop,
 		platform.FeatureFileAssociation,
+		platform.FeatureWindowChrome,
 	} {
 		s := host.Features()[f]
 		status := "missing"

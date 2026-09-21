@@ -69,6 +69,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureTray, Available: false,
 			Detail: "NSStatusItem pending native host",
 		},
+		platform.FeatureWindowChrome: {
+			Feature: platform.FeatureWindowChrome, Available: false,
+			Detail: "WKWebView window chrome pending native host",
+		},
 	}
 }
 
@@ -126,6 +130,12 @@ func (h *Host) ForwardToPrimary(string, []string) (bool, error) {
 }
 func (h *Host) RegisterURLScheme(string, string, string) error {
 	return h.err(platform.FeatureDeepLink)
+}
+func (h *Host) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error {
+	return h.err(platform.FeatureWindowChrome)
+}
+func (h *Host) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, error) {
+	return platform.WindowChrome{}, h.err(platform.FeatureWindowChrome)
 }
 func (h *Host) Run() error { return h.err(platform.FeatureWindowCreate) }
 func (h *Host) Quit()      {}

@@ -70,6 +70,13 @@ func TestStubHost_ReportsNativeRequirement(t *testing.T) {
 	}
 	h.SetDragDropHandler(func(domain.WindowID, []string) {})
 	mustErr(h.EnableDragDrop("main", true))
+	if fs.Available(platform.FeatureWindowChrome) {
+		t.Fatal("stub should not claim window.chrome without native host")
+	}
+	mustErr(h.ApplyWindowChrome("main", platform.WindowChrome{Title: "x", Width: 100, Height: 100}))
+	if _, err := h.ReadWindowChrome("main"); err == nil {
+		t.Fatal("expected read chrome error")
+	}
 	h.Quit()
 	mustErr(h.Run())
 }

@@ -40,6 +40,8 @@ type DesktopHost interface {
 	StartDeepLinkBridge(appID string, onLink func(raw string)) (stop func(), err error)
 	ForwardToPrimary(appID string, urls []string) (ok bool, err error)
 	RegisterURLScheme(scheme, appID, execPath string) error
+	ApplyWindowChrome(id domain.WindowID, chrome platform.WindowChrome) error
+	ReadWindowChrome(id domain.WindowID) (platform.WindowChrome, error)
 	Run() error
 	Quit()
 }

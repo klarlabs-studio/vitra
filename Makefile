@@ -1,4 +1,4 @@
-.PHONY: build build-native test vet fmt fmt-check lint cover security check install-hooks demo e2e
+.PHONY: build build-native test test-native vet fmt fmt-check lint cover security check install-hooks demo e2e
 
 GO       := go
 LINT     := golangci-lint
@@ -24,6 +24,9 @@ e2e:
 	@out=$$(CGO_ENABLED=1 VITRA_DEMO_SECONDS=20 VITRA_E2E=1 xvfb-run -a .bin/competitive 2>&1); \
 	echo "$$out"; \
 	echo "$$out" | grep -q VITRA_E2E_OK
+
+test-native:
+	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeWindowChrome
 
 vet:
 	$(GO) vet ./...

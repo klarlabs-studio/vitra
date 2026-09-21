@@ -124,6 +124,87 @@ void vitra_win_free(VitraWin *w) {
 	g_free(w);
 }
 
+void vitra_win_flush(void) {
+	/* Bound the pump: WebKit keeps the queue non-empty while a page loads. */
+	for (int i = 0; i < 32 && gtk_events_pending(); i++) {
+		gtk_main_iteration_do(FALSE);
+	}
+}
+
+void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above) {
+	if (!w || !w->window) {
+		return;
+	}
+	GtkWindow *win = GTK_WINDOW(w->window);
+	if (title) {
+		gtk_window_set_title(win, title);
+	}
+	if (width > 0 && height > 0) {
+		gtk_window_set_default_size(win, width, height);
+		gtk_window_resize(win, width, height);
+		w->req_width = width;
+		w->req_height = height;
+	}
+	w->maximized = maximized ? 1 : 0;
+	w->fullscreen = fullscreen ? 1 : 0;
+	w->above = above ? 1 : 0;
+	if (maximized) {
+		gtk_window_maximize(win);
+	} else {
+		gtk_window_unmaximize(win);
+	}
+	if (fullscreen) {
+		gtk_window_fullscreen(win);
+	} else {
+		gtk_window_unfullscreen(win);
+	}
+	gtk_window_set_keep_above(win, above ? TRUE : FALSE);
+	vitra_win_flush();
+}
+
+VitraChrome vitra_win_chrome(VitraWin *w) {
+	VitraChrome c;
+	memset(&c, 0, sizeof(c));
+	c.title = g_strdup("");
+	if (!w || !w->window) {
+		return c;
+	}
+	GtkWindow *win = GTK_WINDOW(w->window);
+	const gchar *t = gtk_window_get_title(win);
+	g_free(c.title);
+	c.title = g_strdup(t ? t : "");
+	int dw = 0;
+	int dh = 0;
+	gtk_window_get_default_size(win, &dw, &dh);
+	if (dw > 0 && dh > 0) {
+		c.width = dw;
+		c.height = dh;
+	} else {
+		c.width = w->req_width;
+		c.height = w->req_height;
+	}
+	c.maximized = gtk_window_is_maximized(win) ? 1 : 0;
+	GdkWindow *gw = gtk_widget_get_window(w->window);
+	int gdk_full = 0;
+	int gdk_above = 0;
+	if (gw) {
+		GdkWindowState st = gdk_window_get_state(gw);
+		gdk_full = (st & GDK_WINDOW_STATE_FULLSCREEN) ? 1 : 0;
+		gdk_above = (st & GDK_WINDOW_STATE_ABOVE) ? 1 : 0;
+		if (st & GDK_WINDOW_STATE_MAXIMIZED) {
+			c.maximized = 1;
+		}
+	}
+	/* Xvfb has no window manager, so GDK may not echo these hints.
+	   Fall back to the last request, which was still applied via GTK. */
+	if (!c.maximized) {
+		c.maximized = w->maximized;
+	}
+	c.fullscreen = gdk_full || w->fullscreen;
+	c.above = gdk_above || w->above;
+	return c;
+}
+
 void vitra_win_clear_menu(VitraWin *w) {
 	if (!w || !w->menubar) {
 		return;

@@ -25,6 +25,7 @@ const (
 	PermDeepLinkHandle   domain.PermissionName = "deeplink.handle"
 	PermSingleInstance   domain.PermissionName = "app.single_instance"
 	PermDragDrop         domain.PermissionName = "dragdrop.receive"
+	PermWindowChrome     domain.PermissionName = "window.chrome"
 )
 
 // Gateway evaluates desktop permissions for a caller.
@@ -245,6 +246,33 @@ func (s *DragDropService) Enable(ctx context.Context, caller domain.Caller, wind
 		return &platform.ErrUnsupported{Feature: platform.FeatureDragDrop, OS: s.Host.OS(), Detail: "no drag-drop adapter bound"}
 	}
 	return s.OnEnable(ctx, window, enabled)
+}
+
+// WindowService applies native window presentation when permitted.
+type WindowService struct {
+	Gateway Gateway
+	Host    platform.Host
+	OnApply func(ctx context.Context, window domain.WindowID, chrome platform.WindowChrome) error
+}
+
+// Apply authorizes window.chrome then updates title, size, and presentation hints.
+func (s *WindowService) Apply(ctx context.Context, caller domain.Caller, window domain.WindowID, chrome platform.WindowChrome) error {
+	if window == "" {
+		return &domain.ErrValidation{Message: "window id is required"}
+	}
+	if chrome.Width <= 0 || chrome.Height <= 0 {
+		return &domain.ErrValidation{Message: "window width and height must be positive"}
+	}
+	if err := authorize(s.Gateway, caller, PermWindowChrome); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeatureWindowChrome); err != nil {
+		return err
+	}
+	if s.OnApply == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureWindowChrome, OS: s.Host.OS(), Detail: "no window chrome adapter bound"}
+	}
+	return s.OnApply(ctx, window, chrome)
 }
 
 func authorize(gw Gateway, caller domain.Caller, perm domain.PermissionName) error {

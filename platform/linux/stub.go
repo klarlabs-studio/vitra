@@ -69,6 +69,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureFileAssociation, Available: true,
 			Detail: "xdg MIME desktop file; available without native WebView",
 		},
+		platform.FeatureWindowChrome: {
+			Feature: platform.FeatureWindowChrome, Available: false,
+			Detail: "requires native linux host",
+		},
 	}
 }
 func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) []byte) {
@@ -84,6 +88,10 @@ func (h *Host) InjectFileDrop(id domain.WindowID, paths []string) {
 	if h.onDrop != nil {
 		h.onDrop(id, append([]string(nil), paths...))
 	}
+}
+func (h *Host) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error { return h.err() }
+func (h *Host) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, error) {
+	return platform.WindowChrome{}, h.err()
 }
 func (h *Host) CreateWindow(context.Context, platform.WindowSpec) error {
 	return h.err()

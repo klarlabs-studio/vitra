@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Linux window chrome: grant-gated `desktop.WindowService` (`window.chrome`) sets GTK title, size, maximize, fullscreen, and keep-above; competitive demo honors `VITRA_WINDOW_TITLE`.
 - Linux xdg MIME file associations (`Host.RegisterFileAssociations`, `vitra register-files`); competitive demo honors `VITRA_REGISTER_FILES`.
 - OS worker processes: `worker.CommandRunner` execs a binary under `Supervisor` (cancel stops the process; non-zero exit is a crash).
 - Linux file drag-drop: grant-gated `desktop.DragDropService`, GTK URI drops on the WebView, `InjectFileDrop` for headless demos; competitive emits `dragdrop.drop`.
