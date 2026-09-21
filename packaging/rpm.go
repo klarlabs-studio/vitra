@@ -136,6 +136,12 @@ Terminal=false
 	}
 	fileList = append(fileList, "/"+desktopRel)
 
+	metaRel := AppStreamMetainfoRel("usr/share", spec.AppID)
+	if err := writeAppStreamMetainfo(spec, payload, metaRel); err != nil {
+		return Artifact{}, err
+	}
+	fileList = append(fileList, "/"+metaRel)
+
 	filesSection := strings.Join(fileList, "\n")
 	changelogDate := time.Unix(0, 0).UTC().Format("Mon Jan 02 2006")
 	specBody := fmt.Sprintf(`Name: %s

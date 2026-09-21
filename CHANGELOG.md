@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- AppStream metainfo: Linux stages (dir/AppDir/deb/rpm/snap/flatpak) emit `usr/share/metainfo/<appid>.metainfo.xml` (or Flatpak `files/share/metainfo/`) for software centers; Flathub PR automation still out of scope.
 - Native message dialogs: `dialog.message` (info/confirm) via `desktop.DialogService.Message`, official dialog plugin, and Linux/Darwin/Windows hosts (GTK MessageDialog / NSAlert / MessageBox); scaffold + competitive bind the executor.
 - Official `vitra.browser` plugin: declares `browser.open`; scaffold, `vitra generate typescript`, packaging provenance inventory, and competitive demo register + bind via `desktop.BrowserService` alongside `fs`/`dialog`/`clipboard`.
 - `vitra new --template alpine`: Vite + Alpine.js + TypeScript starter (`x-data` / Alpine.data, alpinejs) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.

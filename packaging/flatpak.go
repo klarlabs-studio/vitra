@@ -128,6 +128,11 @@ Terminal=false
 		return Artifact{}, err
 	}
 
+	metaRel := AppStreamMetainfoRel("share", appID)
+	if err := writeAppStreamMetainfo(spec, filesRoot, metaRel); err != nil {
+		return Artifact{}, err
+	}
+
 	meta := fmt.Sprintf(`[Application]
 name=%s
 runtime=org.freedesktop.Platform/%s/23.08

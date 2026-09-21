@@ -36,6 +36,7 @@ func TestBuildFlatpakDir_Layout(t *testing.T) {
 	for _, p := range []string{
 		filepath.Join(out, "files", "bin", "Vitra-Demo"),
 		filepath.Join(out, "files", "share", "applications", "com.vitra.demo.desktop"),
+		filepath.Join(out, "files", "share", "metainfo", "com.vitra.demo.metainfo.xml"),
 		filepath.Join(out, "files", "share", "icons", "hicolor", "256x256", "apps", "Vitra-Demo.png"),
 		filepath.Join(out, "metadata"),
 		filepath.Join(out, "manifest.yml"),

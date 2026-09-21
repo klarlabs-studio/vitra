@@ -66,6 +66,9 @@ Terminal=false
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}
+	if err := writeAppStreamMetainfo(spec, outDir, AppStreamMetainfoRel("usr/share", spec.AppID)); err != nil {
+		return Artifact{}, err
+	}
 
 	return Artifact{
 		Target: TargetLinuxAppImage,
@@ -141,6 +144,8 @@ Categories=Utility;
 Terminal=false
 `, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName)
 	dataFiles[desktopPath] = fileEntry{data: []byte(desktopBody), mode: 0o644}
+	metaPath := AppStreamMetainfoRel("usr/share", spec.AppID)
+	dataFiles[metaPath] = fileEntry{data: []byte(AppStreamMetainfoXML(spec)), mode: 0o644}
 
 	installedSize := (payloadSize + 1023) / 1024
 	// Debian Description: synopsis on first line, extended body indented with a space.
