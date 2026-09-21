@@ -24,6 +24,7 @@ func TestBuildRPMDir_Layout(t *testing.T) {
 		AppID: "com.vitra.demo", Version: "0.3.0", Name: "Vitra Demo",
 		Targets:  []packaging.Target{packaging.TargetLinuxRPM},
 		IconPath: icon, Description: "Demo RPM", Maintainer: "Packager <p@example.com>",
+		Homepage: "https://example.com/demo", License: "Apache-2.0",
 	}
 	art, err := packaging.BuildRPMDir(spec, bin, out)
 	if err != nil {
@@ -53,6 +54,8 @@ func TestBuildRPMDir_Layout(t *testing.T) {
 		"Name: com-vitra-demo",
 		"Version: 0.3.0",
 		"Release: 1",
+		"License: Apache-2.0",
+		"URL: https://example.com/demo",
 		"Packager: Packager <p@example.com>",
 		"BuildArch: ",
 		"%description",
@@ -70,6 +73,33 @@ func TestBuildRPMDir_Layout(t *testing.T) {
 	desktop, _ := os.ReadFile(filepath.Join(out, "payload", "usr", "share", "applications", "com.vitra.demo.desktop"))
 	if !strings.Contains(string(desktop), "StartupWMClass=Vitra-Demo") {
 		t.Fatalf("desktop=%s", desktop)
+	}
+}
+
+func TestBuildRPMDir_DefaultLicenseOmitsURL(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "payload")
+	if err := os.WriteFile(bin, []byte("bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "rpm-top")
+	spec := packaging.Spec{
+		AppID: "com.vitra.demo", Version: "1.0.0", Name: "Demo",
+		Targets: []packaging.Target{packaging.TargetLinuxRPM},
+	}
+	if _, err := packaging.BuildRPMDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(out, "SPECS", "com-vitra-demo.spec"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	if !strings.Contains(text, "License: "+packaging.DefaultLicense) {
+		t.Fatalf("default license missing:\n%s", text)
+	}
+	if strings.Contains(text, "URL:") {
+		t.Fatalf("unexpected URL:\n%s", text)
 	}
 }
 
