@@ -571,7 +571,9 @@ func newDesktopHost() app.DesktopHost {
 	case "windows":
 		return windows.New()
 	default:
-		return linux.New()
+		h := linux.New()
+		h.SetProgramName("vitra-competitive")
+		return h
 	}
 }
 

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Linux host WM_CLASS: `vitra_gtk_init` calls `g_set_prgname` / `gdk_set_program_class` (default `filepath.Base(os.Args[0])`, overridable via `Host.SetProgramName`) so docks match FreeDesktop `StartupWMClass`.
 - Packaging `Spec.Description` / `vitra package --description`: sets Debian control extended Description and FreeDesktop `Comment=` on dir/AppDir/deb `.desktop` files (default short Vitra blurb).
 - Linux `.desktop` files emit `StartupWMClass=<binary basename>` (dir / AppDir / deb) so docks can bind the running window to the launcher.
 - Linux package icons: AppDir stages `.DirIcon` + `usr/share/icons/hicolor/{256x256|scalable}/apps/`; dir stage and `.deb` also emit the hicolor theme path (deb keeps `usr/share/pixmaps/` too).

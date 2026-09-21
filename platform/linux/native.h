@@ -33,7 +33,8 @@ typedef struct {
 	char *icon_path;
 } VitraChrome;
 
-void vitra_gtk_init(void);
+void vitra_gtk_init(const char *prgname);
+const char *vitra_get_prgname(void);
 void vitra_gtk_main(void);
 void vitra_gtk_quit(void);
 void vitra_idle_add(void *data);

@@ -24,7 +24,18 @@ static gboolean idle_cb(gpointer data) {
 	return G_SOURCE_REMOVE;
 }
 
-void vitra_gtk_init(void) { gtk_init(NULL, NULL); }
+void vitra_gtk_init(const char *prgname) {
+	if (prgname != NULL && prgname[0] != '\0') {
+		g_set_prgname(prgname);
+		gdk_set_program_class(prgname);
+	}
+	gtk_init(NULL, NULL);
+}
+
+const char *vitra_get_prgname(void) {
+	return g_get_prgname();
+}
+
 void vitra_gtk_main(void) { gtk_main(); }
 void vitra_gtk_quit(void) { gtk_main_quit(); }
 void vitra_idle_add(void *data) { g_idle_add(idle_cb, data); }
