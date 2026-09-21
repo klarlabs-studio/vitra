@@ -29,6 +29,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Linux file drag-drop (`dragdrop.receive`) | Done (GTK URI drops + inject helper) |
 | Linux window chrome (`window.chrome`) | Done (GTK title, size, maximize, fullscreen, keep-above) |
 | In-window menu accelerators (`MenuItem.Shortcut`) | Done (GTK accel groups; not global Wayland hotkeys) |
+| OpenURL (`browser.open`) | Done (`xdg-open` for http(s)/mailto) |
 
 ## Security invariants preserved
 

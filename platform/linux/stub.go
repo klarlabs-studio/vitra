@@ -73,6 +73,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureWindowChrome, Available: false,
 			Detail: "requires native linux host",
 		},
+		platform.FeatureOpenURL: {
+			Feature: platform.FeatureOpenURL, Available: true,
+			Detail: "xdg-open for http(s)/mailto; available without native WebView",
+		},
 	}
 }
 func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) []byte) {

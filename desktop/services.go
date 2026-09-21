@@ -8,6 +8,7 @@ package desktop
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/platform"
@@ -26,6 +27,7 @@ const (
 	PermSingleInstance   domain.PermissionName = "app.single_instance"
 	PermDragDrop         domain.PermissionName = "dragdrop.receive"
 	PermWindowChrome     domain.PermissionName = "window.chrome"
+	PermOpenURL          domain.PermissionName = "browser.open"
 )
 
 // Gateway evaluates desktop permissions for a caller.
@@ -273,6 +275,30 @@ func (s *WindowService) Apply(ctx context.Context, caller domain.Caller, window 
 		return &platform.ErrUnsupported{Feature: platform.FeatureWindowChrome, OS: s.Host.OS(), Detail: "no window chrome adapter bound"}
 	}
 	return s.OnApply(ctx, window, chrome)
+}
+
+// BrowserService opens URLs in the system default browser when permitted.
+type BrowserService struct {
+	Gateway Gateway
+	Host    platform.Host
+	OnOpen  func(ctx context.Context, rawURL string) error
+}
+
+// OpenURL authorizes browser.open then opens an http(s) or mailto URL.
+func (s *BrowserService) OpenURL(ctx context.Context, caller domain.Caller, rawURL string) error {
+	if strings.TrimSpace(rawURL) == "" {
+		return &domain.ErrValidation{Message: "url is required"}
+	}
+	if err := authorizePath(s.Gateway, caller, PermOpenURL, rawURL); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeatureOpenURL); err != nil {
+		return err
+	}
+	if s.OnOpen == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureOpenURL, OS: s.Host.OS(), Detail: "no browser opener bound"}
+	}
+	return s.OnOpen(ctx, rawURL)
 }
 
 func authorize(gw Gateway, caller domain.Caller, perm domain.PermissionName) error {

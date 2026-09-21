@@ -39,6 +39,7 @@ const (
 	FeatureDragDrop        Feature = "drag_drop"
 	FeatureFileAssociation Feature = "file_association"
 	FeatureWindowChrome    Feature = "window.chrome"
+	FeatureOpenURL         Feature = "browser.open"
 )
 
 // WindowChrome is the native window presentation a host can apply and read back.

@@ -42,6 +42,7 @@ type DesktopHost interface {
 	RegisterURLScheme(scheme, appID, execPath string) error
 	ApplyWindowChrome(id domain.WindowID, chrome platform.WindowChrome) error
 	ReadWindowChrome(id domain.WindowID) (platform.WindowChrome, error)
+	OpenURL(ctx context.Context, rawURL string) error
 	Run() error
 	Quit()
 }

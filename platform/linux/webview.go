@@ -101,6 +101,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureWindowChrome, Available: true,
 			Detail: "GTK title, size, maximize, fullscreen, and keep-above",
 		},
+		platform.FeatureOpenURL: {
+			Feature: platform.FeatureOpenURL, Available: true,
+			Detail: "xdg-open for http(s)/mailto",
+		},
 	}
 }
 
