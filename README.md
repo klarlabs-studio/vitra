@@ -153,9 +153,9 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Linux OpenURL | **Done** (grant-gated `xdg-open` for http(s)/mailto) |
 | Deep-link argv / secondary handoff | Linux + Darwin |
 | Save dialog + single-instance lock | Linux + Darwin dialogs; single-instance Linux + Darwin |
-| Linux xdg URL-scheme registration | Linux native (`vitra register-scheme`) |
-| Linux xdg MIME file associations | Linux (`vitra register-files`) |
-| Darwin WKWebView | Near-complete (`-tags vitra_native`; file associations TBD) |
+| Linux xdg URL-scheme registration | Linux + Darwin (`vitra register-scheme`) |
+| Linux xdg MIME file associations | Linux + Darwin (`vitra register-files`) |
+| Darwin WKWebView | Competitive DesktopHost parity (`-tags vitra_native`; global shortcuts TBD) |
 | Windows WebView2 | Stub (explicit unsupported) |
 
 ## Development

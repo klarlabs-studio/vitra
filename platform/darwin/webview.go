@@ -108,15 +108,15 @@ func (h *Host) Features() platform.FeatureSet {
 		},
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: true,
-			Detail: "argv + socket handoff",
+			Detail: "argv + socket handoff + helper .app URL-scheme registration",
 		},
 		platform.FeatureDragDrop: {
 			Feature: platform.FeatureDragDrop, Available: true,
 			Detail: "NSFilenamesPboardType drops on the window content view",
 		},
 		platform.FeatureFileAssociation: {
-			Feature: platform.FeatureFileAssociation, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureFileAssociation, Available: true,
+			Detail: "helper .app CFBundleDocumentTypes; available without native WebView",
 		},
 		platform.FeatureWindowChrome: {
 			Feature: platform.FeatureWindowChrome, Available: true,
@@ -493,11 +493,6 @@ func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
 // ClearTray hides the tray icon.
 func (h *Host) ClearTray() {
 	h.dispatch(func() { C.vitra_tray_clear() })
-}
-
-// RegisterURLScheme is not yet implemented on Darwin.
-func (h *Host) RegisterURLScheme(string, string, string) error {
-	return h.err(platform.FeatureDeepLink)
 }
 
 // Run runs the Cocoa main loop (blocking). Must be called from the main OS thread.

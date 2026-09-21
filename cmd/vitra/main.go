@@ -90,9 +90,9 @@ Usage:
   vitra update-apply --manifest <json> --artifact <path> --pubkey <hex> --dest <path> [--policy production|development]
                              Verify a signed update and atomically install it
   vitra register-scheme <scheme> [app-id] [exec]
-                             Register an xdg URL scheme handler (Linux)
+                             Register a URL scheme handler (Linux xdg / Darwin helper .app)
   vitra register-files --mime <type> [--mime <type>] [--app-id id] [--exec path] [--name name]
-                             Register xdg MIME file associations (Linux)
+                             Register MIME file associations (Linux xdg / Darwin helper .app)
   vitra inspect capabilities Demo capability inspection against an in-memory runtime
   vitra help                 Show this help`)
 }
@@ -143,7 +143,7 @@ func doctor() error {
 	case "darwin":
 		fmt.Println("  frameworks: Cocoa + WebKit (system)")
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native")
-		fmt.Println("  note:     WKWebView DesktopHost under -tags vitra_native (incl. drag-drop); OpenURL/clipboard/single-instance/deep-link without WebView")
+		fmt.Println("  note:     WKWebView DesktopHost under -tags vitra_native; OpenURL/clipboard/single-instance/deep-link/scheme/files without WebView")
 	}
 	return nil
 }
@@ -650,8 +650,8 @@ func registerScheme(args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("usage: vitra register-scheme <scheme> [app-id] [exec]")
 	}
-	if runtime.GOOS != "linux" {
-		return fmt.Errorf("register-scheme is only implemented on Linux (xdg)")
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		return fmt.Errorf("register-scheme is only implemented on Linux (xdg) and Darwin (helper .app)")
 	}
 	scheme := args[0]
 	appID := "com.vitra.app"
@@ -668,17 +668,24 @@ func registerScheme(args []string) error {
 			return err
 		}
 	}
-	host := linux.New()
-	if err := host.RegisterURLScheme(scheme, appID, execPath); err != nil {
+	host := currentHost()
+	type schemeRegistrar interface {
+		RegisterURLScheme(scheme, appID, execPath string) error
+	}
+	reg, ok := host.(schemeRegistrar)
+	if !ok {
+		return fmt.Errorf("host does not support URL scheme registration")
+	}
+	if err := reg.RegisterURLScheme(scheme, appID, execPath); err != nil {
 		return err
 	}
-	fmt.Printf("registered xdg handler for %s:// → %s (%s)\n", scheme, execPath, appID)
+	fmt.Printf("registered URL handler for %s:// → %s (%s)\n", scheme, execPath, appID)
 	return nil
 }
 
 func registerFiles(args []string) error {
-	if runtime.GOOS != "linux" {
-		return fmt.Errorf("register-files is only implemented on Linux (xdg)")
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		return fmt.Errorf("register-files is only implemented on Linux (xdg) and Darwin (helper .app)")
 	}
 	var mimes []string
 	appID := "com.vitra.app"
@@ -727,11 +734,18 @@ func registerFiles(args []string) error {
 	if name == "" {
 		name = appID
 	}
-	host := linux.New()
-	if err := host.RegisterFileAssociations(appID, execPath, name, mimes); err != nil {
+	host := currentHost()
+	type fileRegistrar interface {
+		RegisterFileAssociations(appID, execPath, name string, mimeTypes []string) error
+	}
+	reg, ok := host.(fileRegistrar)
+	if !ok {
+		return fmt.Errorf("host does not support file association registration")
+	}
+	if err := reg.RegisterFileAssociations(appID, execPath, name, mimes); err != nil {
 		return err
 	}
-	fmt.Printf("registered xdg file associations %s → %s (%s)\n", strings.Join(mimes, ","), execPath, appID)
+	fmt.Printf("registered file associations %s → %s (%s)\n", strings.Join(mimes, ","), execPath, appID)
 	return nil
 }
 
