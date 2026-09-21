@@ -98,8 +98,8 @@ Usage:
                              Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
-  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish]
-                             Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints PlanSign; --sign-execute runs host tools; --publish prints store PlanPublish
+  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
+                             Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints PlanSign; --sign-execute runs host tools; --publish prints store PlanPublish; --publish-execute runs non-interactive Executable steps
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
   vitra update-keygen [--out <dir>]
@@ -1926,8 +1926,9 @@ func runPackage(args []string) error {
 	signExecute := false
 	signFollowUps := false
 	publish := false
+	publishExecute := false
 	signingIdentity := ""
-	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish]"
+	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
@@ -1987,6 +1988,9 @@ func runPackage(args []string) error {
 			signFollowUps = true
 		case "--publish":
 			publish = true
+		case "--publish-execute":
+			publish = true
+			publishExecute = true
 		case "--signing-identity":
 			i++
 			if i >= len(args) {
@@ -2190,6 +2194,12 @@ func runPackage(args []string) error {
 			return err
 		}
 		fmt.Print(pubPlan.String())
+		if publishExecute {
+			if err := packaging.ExecutePublish(pubPlan, packaging.ExecutePublishOptions{}); err != nil {
+				return err
+			}
+			fmt.Printf("published %s via %s (executable steps only)\n", art.Path, pubPlan.Store)
+		}
 	}
 	return nil
 }
