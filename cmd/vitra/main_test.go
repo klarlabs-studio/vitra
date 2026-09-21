@@ -3479,6 +3479,55 @@ func TestRun_NewScaffoldMoon(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldSolidElement(t *testing.T) {
+	dir := t.TempDir() + "/solid-element-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "solid-element"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=solid-element") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.tsx", "frontend/src/vitra-app.tsx", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"solid-element"`, `"solid-js"`, `"vite-plugin-solid"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	src, err := os.ReadFile(dir + "/frontend/src/vitra-app.tsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "solid-element", "customElement", "createSignal", "vitra-app"} {
+		if !strings.Contains(string(src), want) {
+			t.Fatalf("vitra-app.tsx missing %q: %s", want, src)
+		}
+	}
+	if _, err := os.Stat(dir + "/frontend/dist/index.html"); err != nil {
+		t.Fatalf("solid-element embed missing: %s", err)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + solid-element") {
+		t.Fatalf("solid-element README should mention Vite + solid-element: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
