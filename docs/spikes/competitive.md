@@ -20,8 +20,8 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | GTK menu bar + status-icon tray | Done; official `vitra.menu` (`menu.set` + `menu.action`) and `vitra.tray` (`tray.set` + `tray.action`) + scaffold/`generate` stubs |
 | `vitra doctor/new/dev/build` | Done |
 | `platform/darwin` WKWebView host (`-tags vitra_native`) | DesktopHost complete for competitive parity |
-| Darwin global shortcuts (`shortcut.global`) | Done (`RegisterEventHotKey`; Ctrl→Command) |
-| Linux global shortcuts (`shortcut.global`) | Done on X11 (`XGrabKey`); unsupported on Wayland |
+| Darwin global shortcuts (`shortcut.global`) | Done (`RegisterEventHotKey`; Ctrl→Command); official `vitra.shortcut` plugin + scaffold/`generate` stubs |
+| Linux global shortcuts (`shortcut.global`) | Done on X11 (`XGrabKey`); unsupported on Wayland; official `vitra.shortcut` plugin + scaffold/`generate` stubs |
 | Linux xdg URL-scheme registration (`RegisterURLScheme`) | Done |
 | Darwin URL-scheme registration (`RegisterURLScheme`) | Done (helper `.app` + lsregister) |
 | Linux xdg MIME file associations (`RegisterFileAssociations`) | Done |
@@ -31,7 +31,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Windows file drag-drop (`dragdrop.receive`) | Done (WM_DROPFILES + inject helper); official `vitra.dragdrop` plugin + scaffold/`generate` stubs |
 | In-window menu accelerators (`MenuItem.Shortcut`) | Done (Linux GTK; Darwin NSMenu Ctrl→Command; Windows HACCEL) |
 | `platform/windows` DesktopHost | Win32 + WebView2 Navigate/Eval/message; chrome/dialogs/menu/tray/drag-drop/global shortcuts/OpenURL/clipboard/SI/deep-link/scheme/files |
-| Windows global shortcuts (`shortcut.global`) | Done (`RegisterHotKey` → action handler) |
+| Windows global shortcuts (`shortcut.global`) | Done (`RegisterHotKey` → action handler); official `vitra.shortcut` plugin + scaffold/`generate` stubs |
 | Windows window chrome (`window.chrome`) | Done (Win32 title, size, maximize, fullscreen, topmost, minimize, hide, icon); official `vitra.window` plugin + scaffold/`generate` stubs |
 | Windows open/save/directory file dialogs | Done (GetOpenFileName / GetSaveFileName / IFileOpenDialog FOS_PICKFOLDERS) |
 | Windows menu bar + tray | Done (CreateMenu/HACCEL; Shell_NotifyIcon + TrackPopupMenu); official `vitra.menu` / `vitra.tray` plugins + scaffold/`generate` stubs |

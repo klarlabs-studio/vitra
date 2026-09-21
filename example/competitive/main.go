@@ -31,6 +31,7 @@ import (
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	officialpath "go.klarlabs.de/vitra/plugin/official/path"
+	officialshortcut "go.klarlabs.de/vitra/plugin/official/shortcut"
 	officialtray "go.klarlabs.de/vitra/plugin/official/tray"
 	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
 	"go.klarlabs.de/vitra/policy"
@@ -327,6 +328,9 @@ func run() error {
 	if err := rt.RegisterPlugin(context.Background(), officialdragdrop.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(context.Background(), officialshortcut.New()); err != nil {
+		return err
+	}
 	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return clips.Read(ctx, caller)
 	})); err != nil {
@@ -533,6 +537,15 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("shortcut.register", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		acc, action, err := desktop.ParseShortcutRegister(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, shortcuts.Register(ctx, caller, acc, action)
+	})); err != nil {
+		return err
+	}
 
 	application, err = app.New(app.Options{
 		AppID:   "com.vitra.competitive",
@@ -551,6 +564,7 @@ func run() error {
 		payload := map[string]any{"id": id}
 		_ = application.Emit(context.Background(), "menu.action", payload)
 		_ = application.Emit(context.Background(), "tray.action", payload)
+		_ = application.Emit(context.Background(), "shortcut.action", payload)
 		if id == "app.quit" || id == "tray.quit" || id == "tray.activate" {
 			application.Quit()
 		}

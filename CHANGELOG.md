@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official `vitra.shortcut` plugin: declares `shortcut.register` + `shortcut.action` event; `desktop.ParseShortcutRegister` + scaffold/generate/provenance/competitive bind `ShortcutService` → `RegisterGlobalShortcut` (Wayland remains `ErrUnsupported`).
 - Official `vitra.dragdrop` plugin: declares `dragdrop.receive` + `dragdrop.drop` event; `desktop.ParseDragDropEnable` + scaffold/generate/provenance/competitive bind `DragDropService` → `EnableDragDrop`.
 - Official `vitra.tray` plugin: declares `tray.set` + `tray.action` event; `desktop.ParseTraySet` + scaffold/generate/provenance/competitive bind `TrayService` → `SetTray`; native actions emit `tray.action` (alongside `menu.action`).
 - Official `vitra.menu` plugin: declares `menu.set` + `menu.action` event; `desktop.ParseMenuItems` + scaffold/generate/provenance/competitive bind `MenuService` → `SetMenuBar`; native actions emit `menu.action` (Quit still handled host-side).

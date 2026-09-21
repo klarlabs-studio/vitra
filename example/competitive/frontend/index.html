@@ -60,6 +60,7 @@
       <button id="menu" class="secondary">Set menu bar</button>
       <button id="tray" class="secondary">Set tray</button>
       <button id="drop" class="secondary">Enable file drops</button>
+      <button id="shortcut" class="secondary">Register shortcut</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -74,6 +75,7 @@
       window.vitra.on("dragdrop.drop", (payload) => show({ event: "dragdrop.drop", payload }));
       window.vitra.on("menu.action", (payload) => show({ event: "menu.action", payload }));
       window.vitra.on("tray.action", (payload) => show({ event: "tray.action", payload }));
+      window.vitra.on("shortcut.action", (payload) => show({ event: "shortcut.action", payload }));
     }
     document.getElementById("greet").onclick = async () => {
       try {
@@ -215,6 +217,17 @@
       try {
         await window.vitra.invoke("dragdrop.receive", { id: "main", enabled: true });
         show({ dragdrop: "enabled" });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("shortcut").onclick = async () => {
+      try {
+        await window.vitra.invoke("shortcut.register", {
+          accelerator: "Ctrl+Shift+Q",
+          action: "app.quit",
+        });
+        show({ shortcut: "registered" });
       } catch (e) {
         show(String(e.message || e), true);
       }
