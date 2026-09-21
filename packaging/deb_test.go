@@ -1,6 +1,10 @@
 package packaging_test
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -83,4 +87,107 @@ func TestBuildDeb_ArArchive(t *testing.T) {
 			t.Fatalf("info=%s", outb)
 		}
 	}
+}
+
+func TestBuildDeb_StagesIcon(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "payload")
+	icon := filepath.Join(tmp, "app.png")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\necho hi\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(icon, []byte("PNGICON"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "vitra.deb")
+	spec := packaging.Spec{
+		AppID: "com.vitra.demo", Version: "0.3.0", Name: "Vitra Demo",
+		Targets: []packaging.Target{packaging.TargetLinuxDeb},
+		Arch:    "amd64", IconPath: icon,
+	}
+	if _, err := packaging.BuildDeb(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	files := debDataFiles(t, out)
+	pixmap := files["usr/share/pixmaps/Vitra-Demo.png"]
+	if string(pixmap) != "PNGICON" {
+		t.Fatalf("pixmap=%q", pixmap)
+	}
+	desktop := string(files["usr/share/applications/com.vitra.demo.desktop"])
+	if !strings.Contains(desktop, "Icon=Vitra-Demo") {
+		t.Fatalf("desktop:\n%s", desktop)
+	}
+}
+
+func TestBuildDeb_IconMissing(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "payload")
+	if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	spec := packaging.Spec{
+		AppID: "com.vitra.demo", Version: "1.0.0", Name: "Demo",
+		Targets:  []packaging.Target{packaging.TargetLinuxDeb},
+		IconPath: filepath.Join(tmp, "missing.png"),
+	}
+	_, err := packaging.BuildDeb(spec, bin, filepath.Join(tmp, "x.deb"))
+	if err == nil || !strings.Contains(err.Error(), "icon") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func debDataFiles(t *testing.T, debPath string) map[string][]byte {
+	t.Helper()
+	raw, err := os.ReadFile(debPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(raw, []byte("!<arch>\n")) {
+		t.Fatal("not an ar archive")
+	}
+	pos := 8
+	var dataTGZ []byte
+	for pos+60 <= len(raw) {
+		hdr := raw[pos : pos+60]
+		name := strings.TrimSpace(string(hdr[0:16]))
+		size := 0
+		for _, c := range strings.TrimSpace(string(hdr[48:58])) {
+			size = size*10 + int(c-'0')
+		}
+		pos += 60
+		body := raw[pos : pos+size]
+		pos += size
+		if size%2 == 1 {
+			pos++
+		}
+		if name == "data.tar.gz" {
+			dataTGZ = body
+			break
+		}
+	}
+	if dataTGZ == nil {
+		t.Fatal("missing data.tar.gz")
+	}
+	gr, err := gzip.NewReader(bytes.NewReader(dataTGZ))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = gr.Close() }()
+	tr := tar.NewReader(gr)
+	out := map[string][]byte{}
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := io.ReadAll(tr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out[hdr.Name] = b
+	}
+	return out
 }

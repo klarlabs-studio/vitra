@@ -33,9 +33,10 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `dmg` | Final `.dmg` (`BuildDMG` → hdiutil or `VITRA_HDIUTIL`; includes Applications symlink) |
 
 Optional `--icon <path>` copies a `.png` / `.svg` / `.icns` / `.ico` / `.xpm` into
-Linux stages (next to the `.desktop`, `Icon=<name>`), Darwin
-`Contents/Resources` (`CFBundleIconFile`), and Windows `bin/` (WiX `ARPPRODUCTICON`
-+ NSIS shortcut icon).
+Linux stages (next to the `.desktop`, `Icon=<name>`), `.deb` packages
+(`usr/share/pixmaps/` + `Icon=`), Darwin `Contents/Resources`
+(`CFBundleIconFile`), and Windows `bin/` (WiX `ARPPRODUCTICON` + NSIS shortcut
+icon).
 
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold
