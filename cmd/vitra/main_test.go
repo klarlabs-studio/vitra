@@ -2831,6 +2831,66 @@ func TestRun_NewScaffoldSquint(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldCherry(t *testing.T) {
+	dir := t.TempDir() + "/cherry-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "cherry"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=cherry") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/src/main.cljs", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"cherry-cljs"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	cljs, err := os.ReadFile(dir + "/frontend/src/main.cljs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "(ns main"} {
+		if !strings.Contains(string(cljs), want) {
+			t.Fatalf("main.cljs missing %q: %s", want, cljs)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "cherry-cljs/vite") || !strings.Contains(string(cfg), "cherry()") {
+		t.Fatalf("vite.config missing cherry plugin: %s", cfg)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("cherry embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Cherry") {
+		t.Fatalf("cherry README should mention Vite + Cherry: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
