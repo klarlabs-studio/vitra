@@ -338,3 +338,79 @@ func TestBuildNSISDir_ARPDisplayIcon(t *testing.T) {
 		t.Fatalf("missing DisplayIcon ARP entry\n%s", body)
 	}
 }
+
+func TestBuildNSISDir_HomepageURLInfoAbout(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "nsis")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsNSIS}, Homepage: "https://example.com/demo",
+	}
+	if _, err := BuildNSISDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "installer.nsi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	want := `WriteRegStr HKCU "${UNINST_KEY}" "URLInfoAbout" "https://example.com/demo"`
+	if !strings.Contains(body, want) {
+		t.Fatalf("missing URLInfoAbout\n%s", body)
+	}
+
+	outEmpty := filepath.Join(tmp, "nsis-empty")
+	spec.Homepage = ""
+	if _, err := BuildNSISDir(spec, bin, outEmpty); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = os.ReadFile(filepath.Join(outEmpty, "installer.nsi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "URLInfoAbout") {
+		t.Fatalf("unexpected URLInfoAbout when Homepage empty\n%s", raw)
+	}
+}
+
+func TestBuildWiXDir_HomepageARPURL(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "wix")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsMSI}, Homepage: "https://example.com/demo",
+	}
+	if _, err := BuildWiXDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "product.wxs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	want := `<Property Id="ARPURLINFOABOUT" Value="https://example.com/demo"/>`
+	if !strings.Contains(body, want) {
+		t.Fatalf("missing ARPURLINFOABOUT\n%s", body)
+	}
+
+	outEmpty := filepath.Join(tmp, "wix-empty")
+	spec.Homepage = ""
+	if _, err := BuildWiXDir(spec, bin, outEmpty); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = os.ReadFile(filepath.Join(outEmpty, "product.wxs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "ARPURLINFOABOUT") {
+		t.Fatalf("unexpected ARPURLINFOABOUT when Homepage empty\n%s", raw)
+	}
+}
