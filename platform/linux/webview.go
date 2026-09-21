@@ -83,7 +83,7 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureSingleInstance: {Feature: platform.FeatureSingleInstance, Available: true},
 		platform.FeatureGlobalShortcut: {
 			Feature: platform.FeatureGlobalShortcut, Available: false,
-			Detail: "global shortcuts are not reliable on Wayland; use in-window accelerators",
+			Detail: "global shortcuts are not reliable on Wayland; use in-window menu accelerators (MenuItem.Shortcut)",
 		},
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: true,
@@ -323,11 +323,19 @@ func (h *Host) CloseWindow(_ context.Context, id domain.WindowID) error {
 		delete(h.windows, id)
 		delete(h.origins, id)
 		ptr := w.ptr
+		empty := len(h.windows) == 0
 		h.mu.Unlock()
 		// Destroy emits synchronously. Drop the map entry first so the
 		// destroy callback does not free the native window under h.mu.
 		C.vitra_win_close(ptr)
 		C.vitra_win_free(ptr)
+		if empty {
+			activeMu.Lock()
+			if active == h {
+				active = nil
+			}
+			activeMu.Unlock()
+		}
 		errCh <- nil
 	})
 	return <-errCh
@@ -414,14 +422,39 @@ func (h *Host) SetMenuBar(id domain.WindowID, items []platform.MenuItem) error {
 			cmenu := C.CString(it.Menu)
 			cid := C.CString(it.ID)
 			clabel := C.CString(it.Label)
-			C.vitra_win_add_menu_item(w.ptr, cmenu, cid, clabel)
+			cshort := C.CString(it.Shortcut)
+			C.vitra_win_add_menu_item(w.ptr, cmenu, cid, clabel, cshort)
 			C.free(unsafe.Pointer(cmenu))
 			C.free(unsafe.Pointer(cid))
 			C.free(unsafe.Pointer(clabel))
+			C.free(unsafe.Pointer(cshort))
 		}
 		errCh <- nil
 	})
 	return <-errCh
+}
+
+// ActivateMenuAccel fires an in-window menu accelerator (tests / headless demos).
+func (h *Host) ActivateMenuAccel(id domain.WindowID, shortcut string) (bool, error) {
+	type result struct {
+		ok  bool
+		err error
+	}
+	ch := make(chan result, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			ch <- result{err: &domain.ErrNotFound{Entity: "window", ID: string(id)}}
+			return
+		}
+		cshort := C.CString(shortcut)
+		defer C.free(unsafe.Pointer(cshort))
+		ch <- result{ok: C.vitra_win_activate_accel(w.ptr, cshort) != 0}
+	})
+	got := <-ch
+	return got.ok, got.err
 }
 
 // SetTray shows a status-icon tray entry with tooltip and optional context menu.

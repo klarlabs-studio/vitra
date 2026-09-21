@@ -71,6 +71,8 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 
 	w->menubar = gtk_menu_bar_new();
 	gtk_box_pack_start(GTK_BOX(w->vbox), w->menubar, FALSE, FALSE, 0);
+	w->accels = gtk_accel_group_new();
+	gtk_window_add_accel_group(GTK_WINDOW(w->window), w->accels);
 
 	WebKitUserContentManager *ucm = webkit_user_content_manager_new();
 	webkit_user_content_manager_register_script_message_handler(ucm, "vitra");
@@ -111,14 +113,27 @@ void vitra_win_eval(VitraWin *w, const char *js) {
 }
 
 void vitra_win_close(VitraWin *w) {
-	if (w && w->window) {
-		gtk_widget_destroy(w->window);
+	if (!w || !w->window) {
+		return;
+	}
+	/* Destroy first so menu items disconnect from the accel group while it
+	   is still alive; then drop our remaining reference. */
+	gtk_widget_destroy(w->window);
+	w->window = NULL;
+	if (w->accels) {
+		g_object_unref(w->accels);
+		w->accels = NULL;
 	}
 }
 
 void vitra_win_free(VitraWin *w) {
 	if (!w) {
 		return;
+	}
+	if (w->accels) {
+		/* Window may already be destroyed (UI close); drop only our ref. */
+		g_object_unref(w->accels);
+		w->accels = NULL;
 	}
 	g_free(w->id);
 	g_free(w);
@@ -214,6 +229,48 @@ void vitra_win_clear_menu(VitraWin *w) {
 		gtk_widget_destroy(GTK_WIDGET(l->data));
 	}
 	g_list_free(children);
+	/* Rebuild the accel group so prior shortcuts cannot fire after clear.
+	   Destroying menu items above already disconnected them from the old group. */
+	if (w->window && w->accels) {
+		gtk_window_remove_accel_group(GTK_WINDOW(w->window), w->accels);
+		g_object_unref(w->accels);
+		w->accels = gtk_accel_group_new();
+		gtk_window_add_accel_group(GTK_WINDOW(w->window), w->accels);
+	}
+}
+
+static char *normalize_accel(const char *shortcut) {
+	if (!shortcut || shortcut[0] == '\0') {
+		return NULL;
+	}
+	if (shortcut[0] == '<') {
+		return g_strdup(shortcut);
+	}
+	GString *out = g_string_new(NULL);
+	gchar **parts = g_strsplit(shortcut, "+", -1);
+	for (int i = 0; parts[i] != NULL; i++) {
+		gchar *p = g_strstrip(parts[i]);
+		if (p[0] == '\0') {
+			continue;
+		}
+		gchar *lower = g_ascii_strdown(p, -1);
+		if (g_strcmp0(lower, "ctrl") == 0 || g_strcmp0(lower, "control") == 0) {
+			g_string_append(out, "<Control>");
+		} else if (g_strcmp0(lower, "shift") == 0) {
+			g_string_append(out, "<Shift>");
+		} else if (g_strcmp0(lower, "alt") == 0 || g_strcmp0(lower, "mod1") == 0) {
+			g_string_append(out, "<Alt>");
+		} else if (g_strcmp0(lower, "meta") == 0 || g_strcmp0(lower, "super") == 0 || g_strcmp0(lower, "win") == 0) {
+			g_string_append(out, "<Super>");
+		} else if (strlen(lower) == 1) {
+			g_string_append_c(out, lower[0]);
+		} else {
+			g_string_append(out, lower);
+		}
+		g_free(lower);
+	}
+	g_strfreev(parts);
+	return g_string_free(out, FALSE);
 }
 
 static GtkWidget *find_or_create_menu(GtkWidget *menubar, const char *menu_label) {
@@ -240,7 +297,7 @@ static GtkWidget *find_or_create_menu(GtkWidget *menubar, const char *menu_label
 	return top;
 }
 
-void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label) {
+void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut) {
 	if (!w || !w->menubar || !menu_label || !item_id || !item_label) {
 		return;
 	}
@@ -249,8 +306,40 @@ void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *it
 	GtkWidget *item = gtk_menu_item_new_with_label(item_label);
 	char *id_copy = g_strdup(item_id);
 	g_signal_connect_data(item, "activate", G_CALLBACK(on_action), id_copy, (GClosureNotify)g_free, 0);
+	if (shortcut && shortcut[0] != '\0' && w->accels) {
+		char *accel = normalize_accel(shortcut);
+		if (accel) {
+			guint key = 0;
+			GdkModifierType mods = 0;
+			gtk_accelerator_parse(accel, &key, &mods);
+			if (key != 0) {
+				gtk_widget_add_accelerator(item, "activate", w->accels, key, mods, GTK_ACCEL_VISIBLE);
+			}
+			g_free(accel);
+		}
+	}
 	gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
 	gtk_widget_show_all(item);
+}
+
+int vitra_win_activate_accel(VitraWin *w, const char *shortcut) {
+	if (!w || !w->window || !shortcut || shortcut[0] == '\0') {
+		return 0;
+	}
+	char *accel = normalize_accel(shortcut);
+	if (!accel) {
+		return 0;
+	}
+	guint key = 0;
+	GdkModifierType mods = 0;
+	gtk_accelerator_parse(accel, &key, &mods);
+	g_free(accel);
+	if (key == 0) {
+		return 0;
+	}
+	gboolean ok = gtk_accel_groups_activate(G_OBJECT(w->window), key, mods);
+	vitra_win_flush();
+	return ok ? 1 : 0;
 }
 
 char *vitra_clip_get(void) {

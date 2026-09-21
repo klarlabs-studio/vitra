@@ -139,7 +139,7 @@ func run() error {
 				if menu == "" {
 					menu = "App"
 				}
-				native = append(native, platform.MenuItem{Menu: menu, ID: it.ID, Label: it.Label})
+				native = append(native, platform.MenuItem{Menu: menu, ID: it.ID, Label: it.Label, Shortcut: it.Shortcut})
 			}
 			return host.SetMenuBar("main", native)
 		},
@@ -361,7 +361,7 @@ func run() error {
 		// Wait until the GTK loop is up; cold WebKit on CI can exceed 500ms.
 		time.Sleep(1500 * time.Millisecond)
 		_ = menus.SetMenu(context.Background(), caller, []desktop.MenuItem{
-			{Menu: "File", ID: "app.quit", Label: "Quit"},
+			{Menu: "File", ID: "app.quit", Label: "Quit", Shortcut: "Ctrl+Q"},
 			{Menu: "Help", ID: "help.about", Label: "About Vitra"},
 		})
 		_ = trays.SetTray(context.Background(), caller, "Vitra competitive demo", []desktop.MenuItem{
