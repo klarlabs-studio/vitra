@@ -335,6 +335,40 @@ func TestRun_NewScaffold(t *testing.T) {
 	if !seen["io/fs"] {
 		t.Fatal("scaffold missing io/fs import")
 	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "vitra_native") || !strings.Contains(string(readme), "vitra dev") {
+		t.Fatalf("scaffold README should mention native tag and vitra dev: %s", readme)
+	}
+	if !strings.Contains(out, "vitra dev") {
+		t.Fatalf("new next-step should suggest vitra dev: %q", out)
+	}
+}
+
+func TestSupportsNativeHostTag(t *testing.T) {
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		if !supportsNativeHostTag(goos) {
+			t.Fatalf("%s should use -tags vitra_native", goos)
+		}
+	}
+	if supportsNativeHostTag("js") || supportsNativeHostTag("plan9") {
+		t.Fatal("non-desktop OS must not force vitra_native")
+	}
+}
+
+func TestAppendNativeHostTags(t *testing.T) {
+	got := appendNativeHostTags([]string{"run"})
+	if !supportsNativeHostTag(runtime.GOOS) {
+		if len(got) != 1 || got[0] != "run" {
+			t.Fatalf("%v", got)
+		}
+		return
+	}
+	if len(got) != 3 || got[0] != "run" || got[1] != "-tags" || got[2] != "vitra_native" {
+		t.Fatalf("%v", got)
+	}
 }
 
 func capture(t *testing.T, fn func()) string {

@@ -81,8 +81,8 @@ Usage:
   vitra version              Print kernel version
   vitra doctor               Diagnose WebView / CGO prerequisites
   vitra new <dir>            Scaffold a starter desktop app
-  vitra dev [dir]            Watch + run the app with the native host (Linux: -tags vitra_native)
-  vitra build [dir]          Build the app binary with the native host
+  vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
+  vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis] [--bin path] [--app-id id] [--name name] [--version ver]
                              Stage Linux dir, build .deb / AppDir / .AppImage + provenance.json
   vitra generate typescript [--out path] [--module name]
@@ -282,7 +282,7 @@ document.getElementById("go").onclick=async()=>{
 };
 </script></body></html>
 `,
-		"README.md": "# Vitra app\n\n```bash\n# Linux native host\nCGO_ENABLED=1 go run -tags vitra_native .\n# or\nvitra dev\n```\n",
+		"README.md": "# Vitra app\n\n```bash\n# Native DesktopHost (Linux WebKitGTK / Darwin WKWebView / Windows WebView2)\nCGO_ENABLED=1 go run -tags vitra_native .\n# or\nvitra dev\n```\n",
 	}
 	for name, body := range files {
 		path := filepath.Join(dir, name)
@@ -294,7 +294,7 @@ document.getElementById("go").onclick=async()=>{
 		}
 	}
 	fmt.Printf("created %s\n", dir)
-	fmt.Println("next: cd", dir, "&& CGO_ENABLED=1 go run -tags vitra_native .")
+	fmt.Println("next: cd", dir, "&& vitra dev")
 	return nil
 }
 
@@ -314,10 +314,7 @@ func runDev(args []string) error {
 			_ = cmd.Process.Kill()
 			_, _ = cmd.Process.Wait()
 		}
-		argsGo := []string{"run"}
-		if runtime.GOOS == "linux" {
-			argsGo = append(argsGo, "-tags", "vitra_native")
-		}
+		argsGo := appendNativeHostTags([]string{"run"})
 		argsGo = append(argsGo, ".")
 		cmd = exec.Command("go", argsGo...)
 		cmd.Dir = dir
@@ -370,12 +367,27 @@ func runBuild(args []string) error {
 	if len(args) > 0 {
 		dir = args[0]
 	}
-	argsGo := []string{"build"}
-	if runtime.GOOS == "linux" {
-		argsGo = append(argsGo, "-tags", "vitra_native")
-	}
+	argsGo := appendNativeHostTags([]string{"build"})
 	argsGo = append(argsGo, "-o", "vitra-app", ".")
 	return execGo(dir, argsGo...)
+}
+
+// appendNativeHostTags adds -tags vitra_native on desktop OSes that ship a
+// DesktopHost adapter (Linux WebKitGTK, Darwin WKWebView, Windows WebView2).
+func appendNativeHostTags(args []string) []string {
+	if supportsNativeHostTag(runtime.GOOS) {
+		return append(args, "-tags", "vitra_native")
+	}
+	return args
+}
+
+func supportsNativeHostTag(goos string) bool {
+	switch goos {
+	case "linux", "darwin", "windows":
+		return true
+	default:
+		return false
+	}
 }
 
 func runGenerate(args []string) error {
