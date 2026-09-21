@@ -2633,6 +2633,75 @@ func TestRun_NewScaffoldDojo(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldElm(t *testing.T) {
+	dir := t.TempDir() + "/elm-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "elm"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=elm") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/elm.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/src/Main.elm", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"vite-plugin-elm"`, `"elm"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	mainTS, err := os.ReadFile(dir + "/frontend/src/main.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "Main.elm", "runCmd"} {
+		if !strings.Contains(string(mainTS), want) {
+			t.Fatalf("main.ts missing %q: %s", want, mainTS)
+		}
+	}
+	elm, err := os.ReadFile(dir + "/frontend/src/Main.elm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"port module Main", "Browser.element", "runCmd", "gotOut", "demo.greet"} {
+		if !strings.Contains(string(elm), want) {
+			t.Fatalf("Main.elm missing %q: %s", want, elm)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "vite-plugin-elm") || !strings.Contains(string(cfg), "elm()") {
+		t.Fatalf("vite.config missing elm plugin: %s", cfg)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("elm embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Elm") {
+		t.Fatalf("elm README should mention Vite + Elm: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {

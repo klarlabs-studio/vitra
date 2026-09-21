@@ -105,8 +105,8 @@ func printUsage() {
 Usage:
   vitra version              Print kernel version
   vitra doctor               Diagnose WebView / CGO prerequisites
-  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo]
-                             Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik/mithril/riot/inferno/stencil/marko/ember/aurelia/stimulus/petite-vue/hyperapp/knockout/backbone/nerv/polymer/dojo add Vite frontends)
+  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm]
+                             Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik/mithril/riot/inferno/stencil/marko/ember/aurelia/stimulus/petite-vue/hyperapp/knockout/backbone/nerv/polymer/dojo/elm add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--keywords list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
@@ -254,7 +254,7 @@ func scaffoldNew(args []string) error {
 		case "--template":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, or dojo")
+				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, dojo, or elm")
 			}
 			tmpl = args[i]
 		default:
@@ -262,18 +262,18 @@ func scaffoldNew(args []string) error {
 				return fmt.Errorf("unknown new flag %q", args[i])
 			}
 			if dir != "" {
-				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo]")
+				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm]")
 			}
 			dir = args[i]
 		}
 	}
 	if dir == "" {
-		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo]")
+		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember|aurelia|stimulus|petite-vue|hyperapp|knockout|backbone|nerv|polymer|dojo|elm]")
 	}
 	switch tmpl {
-	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo":
+	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm":
 	default:
-		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, or dojo)", tmpl)
+		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, ember, aurelia, stimulus, petite-vue, hyperapp, knockout, backbone, nerv, polymer, dojo, or elm)", tmpl)
 	}
 
 	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
@@ -342,6 +342,8 @@ func scaffoldNew(args []string) error {
 		files = scaffoldPolymerFiles(modPath, tsClient)
 	case "dojo":
 		files = scaffoldDojoFiles(modPath, tsClient)
+	case "elm":
+		files = scaffoldElmFiles(modPath, tsClient)
 	default:
 		files = scaffoldVanillaFiles(modPath, tsClient)
 	}
@@ -356,7 +358,7 @@ func scaffoldNew(args []string) error {
 	}
 	fmt.Printf("created %s (template=%s)\n", dir, tmpl)
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm":
 		fmt.Println("next: cd", dir, "&& (optional: cd frontend && npm install && npm run build) && vitra dev")
 	default:
 		fmt.Println("next: cd", dir, "&& vitra dev")
@@ -2544,6 +2546,241 @@ if (root) {
 `
 }
 
+func scaffoldElmFiles(modPath, tsClient string) map[string]string {
+	return map[string]string{
+		"go.mod":                     scaffoldGoMod(modPath),
+		"main.go":                    scaffoldMainGo("all:frontend/dist", "frontend/dist"),
+		"frontend/package.json":      scaffoldElmPackageJSON(),
+		"frontend/elm.json":          scaffoldElmJSON(),
+		"frontend/vite.config.js":    scaffoldViteConfig("elm"),
+		"frontend/tsconfig.json":     scaffoldViteTSConfig("elm"),
+		"frontend/index.html":        scaffoldViteIndexHTML("main.ts"),
+		"frontend/src/main.ts":       scaffoldElmMainTS(),
+		"frontend/src/Main.elm":      scaffoldElmMainElm(),
+		"frontend/src/vite-env.d.ts": scaffoldElmViteEnvDTS(),
+		"frontend/vitra-client.ts":   tsClient,
+		"frontend/dist/index.html":   scaffoldIndexHTML(),
+		".gitignore":                 "frontend/node_modules/\nfrontend/elm-stuff/\nvitra-app\n",
+		"README.md":                  scaffoldREADME("elm"),
+	}
+}
+
+func scaffoldElmPackageJSON() string {
+	return `{
+  "name": "vitra-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "elm": "^0.19.1-6",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vite-plugin-elm": "^3.0.1"
+  }
+}
+`
+}
+
+func scaffoldElmJSON() string {
+	return `{
+    "type": "application",
+    "source-directories": [
+        "src"
+    ],
+    "elm-version": "0.19.1",
+    "dependencies": {
+        "direct": {
+            "elm/browser": "1.0.2",
+            "elm/core": "1.0.5",
+            "elm/html": "1.0.0",
+            "elm/json": "1.1.3"
+        },
+        "indirect": {
+            "elm/time": "1.0.0",
+            "elm/url": "1.0.0",
+            "elm/virtual-dom": "1.0.3"
+        }
+    },
+    "test-dependencies": {
+        "direct": {},
+        "indirect": {}
+    }
+}
+`
+}
+
+func scaffoldElmViteEnvDTS() string {
+	return `/// <reference types="vite/client" />
+
+declare module "*.elm" {
+  export const Elm: {
+    Main: {
+      init: (opts: { node: HTMLElement | null }) => {
+        ports: {
+          runCmd: { subscribe: (fn: (cmd: string) => void) => void };
+          gotOut: { send: (out: string) => void };
+        };
+      };
+    };
+  };
+}
+`
+}
+
+func scaffoldElmMainTS() string {
+	return `import { Elm } from "./Main.elm";
+import { createClient } from "../vitra-client";
+
+declare global {
+  interface Window {
+    vitra: { invoke: (cmd: string, input?: unknown) => Promise<unknown> };
+  }
+}
+
+const client = createClient(window.vitra.invoke);
+const app = Elm.Main.init({ node: document.getElementById("app") });
+
+async function run(fn: () => Promise<unknown>) {
+  try {
+    app.ports.gotOut.send(JSON.stringify(await fn(), null, 2));
+  } catch (e) {
+    app.ports.gotOut.send(String(e));
+  }
+}
+
+app.ports.runCmd.subscribe((cmd) => {
+  switch (cmd) {
+    case "demo.greet":
+      return run(() => client.demoGreet("Vitra"));
+    case "dialog.open":
+      return run(() => client.dialogOpen());
+    case "clipboard.read":
+      return run(() => client.clipboardRead());
+    case "browser.open":
+      return run(() => client.browserOpen("https://go.klarlabs.de/vitra"));
+    case "os.info":
+      return run(() => client.osInfo());
+    case "notifications.show":
+      return run(() =>
+        client.notificationsShow({ title: "Vitra", body: "Hello from scaffold" }),
+      );
+    default:
+      app.ports.gotOut.send("unknown command: " + cmd);
+  }
+});
+`
+}
+
+func scaffoldElmMainElm() string {
+	return `port module Main exposing (main)
+
+import Browser
+import Html exposing (Html, button, div, h1, p, pre, text)
+import Html.Attributes exposing (style)
+import Html.Events exposing (onClick)
+
+
+
+-- PORTS
+
+
+port runCmd : String -> Cmd msg
+
+
+port gotOut : (String -> msg) -> Sub msg
+
+
+
+-- MODEL
+
+
+type alias Model =
+    { out : String }
+
+
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( { out = "" }, Cmd.none )
+
+
+
+-- UPDATE
+
+
+type Msg
+    = Run String
+    | GotOut String
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        Run cmd ->
+            ( model, runCmd cmd )
+
+        GotOut out ->
+            ( { model | out = out }, Cmd.none )
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    gotOut GotOut
+
+
+
+-- VIEW
+
+
+view : Model -> Html Msg
+view model =
+    div
+        [ style "font-family" "Georgia, serif"
+        , style "margin" "2rem"
+        , style "background" "#111"
+        , style "color" "#eee"
+        , style "min-height" "100vh"
+        ]
+        [ h1 [] [ text "Vitra" ]
+        , p []
+            [ text "Vite + Elm starter (official fs + dialog + clipboard + browser + os + notification + path plugins)." ]
+        , button [ onClick (Run "demo.greet") ] [ text "demo.greet" ]
+        , text " "
+        , button [ onClick (Run "dialog.open") ] [ text "dialog.open" ]
+        , text " "
+        , button [ onClick (Run "clipboard.read") ] [ text "clipboard.read" ]
+        , text " "
+        , button [ onClick (Run "browser.open") ] [ text "browser.open" ]
+        , text " "
+        , button [ onClick (Run "os.info") ] [ text "os.info" ]
+        , text " "
+        , button [ onClick (Run "notifications.show") ] [ text "notifications.show" ]
+        , pre [] [ text model.out ]
+        ]
+
+
+
+-- MAIN
+
+
+main : Program () Model Msg
+main =
+    Browser.element
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = view
+        }
+`
+}
+
 func scaffoldAngularFiles(modPath, tsClient string) map[string]string {
 	return map[string]string{
 		"go.mod":                        scaffoldGoMod(modPath),
@@ -2769,7 +3006,7 @@ vitra package --out dist/ --format dir
 ` + "```" + `
 `
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember", "aurelia", "stimulus", "petite-vue", "hyperapp", "knockout", "backbone", "nerv", "polymer", "dojo", "elm":
 		label := "Vite"
 		switch tmpl {
 		case "react":
@@ -2822,6 +3059,8 @@ vitra package --out dist/ --format dir
 			label = "Vite + Polymer"
 		case "dojo":
 			label = "Vite + Dojo"
+		case "elm":
+			label = "Vite + Elm"
 		}
 		body += `
 ## ` + label + ` frontend
@@ -3029,6 +3268,19 @@ export default defineConfig({
   },
 });
 `
+	case "elm":
+		return `import { defineConfig } from "vite";
+import elm from "vite-plugin-elm";
+
+export default defineConfig({
+  plugins: [elm()],
+  root: ".",
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+  },
+});
+`
 	case "stencil":
 		return `import { defineConfig } from "vite";
 import stencil from "@stencil-community/unplugin-stencil/vite";
@@ -3157,6 +3409,8 @@ func scaffoldViteTSConfig(framework string) string {
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment",`
 		include = `"src"`
+	case "elm":
+		include = `"src/**/*.ts", "vitra-client.ts"`
 	case "stencil":
 		jsx = `
     "experimentalDecorators": true,

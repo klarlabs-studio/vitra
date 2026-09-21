@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template elm`: Vite + Elm 0.19 + TypeScript bridge (`Main.elm` ports + `vite-plugin-elm`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream help URL: `Spec.Homepage` / `vitra package --homepage` also flow into metainfo `<url type="help">` alongside `<url type="homepage">` (omitted when empty; mirrors Windows ARP HelpLink).
 - Official window fullscreen: `window.fullscreen` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Fullscreen` (read chrome → set `Fullscreen` → `Apply`); scaffold/competitive bind.
 - Official window minimize/maximize: `window.minimize` / `window.maximize` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Minimize` / `Maximize` (read chrome → set `Minimized`/`Maximized` → `Apply`); scaffold/competitive bind.
