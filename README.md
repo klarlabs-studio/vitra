@@ -154,7 +154,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Deep-link argv / secondary handoff | Linux native |
 | Linux xdg URL-scheme registration | Linux native (`vitra register-scheme`) |
 | Linux xdg MIME file associations | Linux (`vitra register-files`) |
-| Darwin WKWebView | Scaffold (`-tags vitra_native`; window/navigate/message; OpenURL via `open`) |
+| Darwin WKWebView | Scaffold (`-tags vitra_native`; window/navigate/message; OpenURL + clipboard) |
 | Windows WebView2 | Stub (explicit unsupported) |
 
 ## Development

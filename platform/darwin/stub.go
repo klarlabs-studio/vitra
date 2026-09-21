@@ -41,8 +41,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "requires native darwin host",
 		},
 		platform.FeatureClipboard: {
-			Feature: platform.FeatureClipboard, Available: false,
-			Detail: "requires native darwin host",
+			Feature: platform.FeatureClipboard, Available: true,
+			Detail: "pbcopy/pbpaste; available without native WebView",
 		},
 		platform.FeatureDialogOpen: {
 			Feature: platform.FeatureDialogOpen, Available: false,
@@ -111,10 +111,6 @@ func (h *Host) Eval(domain.WindowID, string) error { return h.err(platform.Featu
 func (h *Host) CloseWindow(context.Context, domain.WindowID) error {
 	return h.err(platform.FeatureWindowCreate)
 }
-func (h *Host) ClipboardGet() (string, error) {
-	return "", h.err(platform.FeatureClipboard)
-}
-func (h *Host) ClipboardSet(string) error { return h.err(platform.FeatureClipboard) }
 func (h *Host) OpenFileDialog() (string, error) {
 	return "", h.err(platform.FeatureDialogOpen)
 }
