@@ -19,6 +19,7 @@ const (
 	TargetLinuxAppImage Target = "linux-appimage"
 	TargetLinuxDeb      Target = "linux-deb"
 	TargetLinuxRPM      Target = "linux-rpm"
+	TargetLinuxSnap     Target = "linux-snap"
 )
 
 // Spec describes a package to build.

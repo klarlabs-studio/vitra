@@ -25,6 +25,8 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `deb` | Pure-Go `.deb` (`BuildDeb`) |
 | `rpm-dir` | rpmbuild `_topdir` + `SPECS/*.spec` (`BuildRPMDir`) |
 | `rpm` | Final `.rpm` (`BuildRPM` → `rpmbuild` or `VITRA_RPMBUILD`) |
+| `snap-dir` | Snap prime dir + `meta/snap.yaml` (`BuildSnapDir`) |
+| `snap` | Final `.snap` (`BuildSnap` → `snapcraft pack` or `VITRA_SNAPCRAFT`) |
 | `appdir` | AppImage-ready AppDir (`BuildAppDir`) |
 | `appimage` | Final `.AppImage` (`BuildAppImage` → `appimagetool`) |
 | `win-dir` | Staged Windows `bin/<Name>.exe` (`StageWindows`) |
@@ -48,13 +50,15 @@ desktop blurb).
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold
 externally. `BuildRPM` stages an rpmbuild tree then invokes `rpmbuild` (or
-`VITRA_RPMBUILD`); without it, use `--format rpm-dir`. `BuildMSI` / `BuildNSIS`
-likewise stage then fold; without WiX/NSIS tools, use `--format wix` /
-`nsis-dir` and fold on a Windows host. `BuildDMG` stages a `.app` then folds
-with `hdiutil`; without it, use `--format app-dir` and fold on macOS.
-`vitra doctor` reports whether those fold tools are on PATH (or set via
-`VITRA_APPIMAGETOOL` / `VITRA_RPMBUILD` / `VITRA_CANDLE` / `VITRA_LIGHT` /
-`VITRA_MAKENSIS` / `VITRA_HDIUTIL`).
+`VITRA_RPMBUILD`); without it, use `--format rpm-dir`. `BuildSnap` stages a
+snap prime then invokes `snapcraft pack` (or `VITRA_SNAPCRAFT`); without it,
+use `--format snap-dir`. `BuildMSI` / `BuildNSIS` likewise stage then fold;
+without WiX/NSIS tools, use `--format wix` / `nsis-dir` and fold on a Windows
+host. `BuildDMG` stages a `.app` then folds with `hdiutil`; without it, use
+`--format app-dir` and fold on macOS. `vitra doctor` reports whether those fold
+tools are on PATH (or set via `VITRA_APPIMAGETOOL` / `VITRA_RPMBUILD` /
+`VITRA_SNAPCRAFT` / `VITRA_CANDLE` / `VITRA_LIGHT` / `VITRA_MAKENSIS` /
+`VITRA_HDIUTIL`).
 
 ## Update apply
 
@@ -86,11 +90,12 @@ Still out of scope on main (do not claim otherwise):
 - Notarization / codesign / Authenticode *execution* (`Spec.Sign` +
   `SigningIdentityRef` validate refs; `PlanSign` / `--sign` print argv plans
   only — stage/fold never invoke `codesign` / `signtool` / notary)
-- Extra Linux targets (Flatpak, Snap) — `.rpm` stage+fold ships via
-  `BuildRPMDir` / `BuildRPM`
+- Extra Linux targets (Flatpak) — `.rpm` / `.snap` stage+fold ship via
+  `BuildRPMDir` / `BuildRPM` and `BuildSnapDir` / `BuildSnap`
 - Wails-class multi-framework project templates (React/Svelte/…) — `vitra new`
   ships `vanilla` + `vite` starters; richer frameworks still out
 
-Installer **generators** (stage scripts + fold to `.deb` / `.rpm` / `.AppImage` /
-`.msi` / NSIS setup / `.dmg`) are delivered; fold still needs host tools
-(`appimagetool`, `rpmbuild`, candle/light, makensis, `hdiutil`) or env overrides.
+Installer **generators** (stage scripts + fold to `.deb` / `.rpm` / `.snap` /
+`.AppImage` / `.msi` / NSIS setup / `.dmg`) are delivered; fold still needs host
+tools (`appimagetool`, `rpmbuild`, `snapcraft`, candle/light, makensis,
+`hdiutil`) or env overrides.
