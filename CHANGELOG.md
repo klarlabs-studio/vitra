@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template vanjs`: Vite + VanJS (`vanjs-core`) + TypeScript starter (`van.tags` / `van.state` / `van.add` + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Darwin CFBundleDisplayName: `Spec.Name` flows into Info.plist `CFBundleDisplayName` (alongside `CFBundleName`) for Finder/Dock display.
 - Official window setTitle/setSize: `window.setTitle` / `window.setSize` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.SetTitle` / `SetSize` + `ParseWindowSetTitle` / `ParseWindowSetSize` (`{ id, title }` / `{ id, width, height }`); scaffold/competitive bind.
 - Windows ARP NoModify/NoRepair: NSIS writes `NoModify`/`NoRepair` DWORD 1 under the Uninstall key; WiX sets `ARPNOMODIFY`/`ARPNOREPAIR` (hides Modify/Repair in Apps & Features for per-user installs).
