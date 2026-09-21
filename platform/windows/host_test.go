@@ -1,3 +1,5 @@
+//go:build !windows || !cgo || !vitra_native
+
 package windows
 
 import (
@@ -15,6 +17,9 @@ func TestHost_ExplicitUnsupported(t *testing.T) {
 	}
 	if h.Features().Available(platform.FeatureWindowCreate) {
 		t.Fatal("expected window.create unavailable")
+	}
+	if !h.Features().Available(platform.FeatureOpenURL) {
+		t.Fatal("expected browser.open available without native host")
 	}
 	err := h.Open(platform.WindowSpec{ID: "main"}, "about:blank", "")
 	var unsupp *platform.ErrUnsupported

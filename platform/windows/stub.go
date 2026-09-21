@@ -1,7 +1,11 @@
+//go:build !windows || !cgo || !vitra_native
+
 // Package windows provides the Windows WebView2 host adapter.
 //
-// The competitive Linux host is production-linked today. Windows follows the
-// same DesktopHost surface with an explicit FeatureSet (no silent no-ops).
+// Without CGO_ENABLED=1 -tags vitra_native this is an explicit stub
+// (security invariant 14). Enable the native host on Windows with:
+//
+//	CGO_ENABLED=1 go build -tags vitra_native
 package windows
 
 import (
@@ -17,7 +21,7 @@ type Host struct {
 	onNav    func(domain.WindowID, string) bool
 }
 
-// New returns a Windows host. Native WebView2 linking is the next platform milestone.
+// New returns a stub host that reports why native UI is unavailable.
 func New() *Host { return &Host{} }
 
 func (h *Host) OS() platform.OS { return platform.OSWindows }
@@ -26,55 +30,63 @@ func (h *Host) Features() platform.FeatureSet {
 	return platform.FeatureSet{
 		platform.FeatureWindowCreate: {
 			Feature: platform.FeatureWindowCreate, Available: false,
-			Detail: "WebView2 adapter not yet linked; API-compatible stub",
+			Detail: "requires CGO_ENABLED=1 -tags vitra_native on Windows (Win32 + WebView2)",
 		},
 		platform.FeatureWindowNavigate: {
 			Feature: platform.FeatureWindowNavigate, Available: false,
-			Detail: "WebView2 adapter not yet linked",
+			Detail: "requires native windows host",
 		},
 		platform.FeatureWebViewMessage: {
 			Feature: platform.FeatureWebViewMessage, Available: false,
-			Detail: "WebView2 adapter not yet linked",
+			Detail: "requires native windows host + WebView2",
 		},
 		platform.FeatureClipboard: {
 			Feature: platform.FeatureClipboard, Available: false,
-			Detail: "Win32 clipboard wiring pending native host",
+			Detail: "requires native windows host",
 		},
 		platform.FeatureDialogOpen: {
 			Feature: platform.FeatureDialogOpen, Available: false,
-			Detail: "IFileOpenDialog wiring pending native host",
+			Detail: "requires native windows host",
 		},
 		platform.FeatureMenuBar: {
 			Feature: platform.FeatureMenuBar, Available: false,
-			Detail: "native menu pending native host",
+			Detail: "requires native windows host",
 		},
 		platform.FeatureDialogSave: {
 			Feature: platform.FeatureDialogSave, Available: false,
-			Detail: "save dialog pending native host",
+			Detail: "requires native windows host",
 		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: false,
-			Detail: "single-instance lock pending native host",
+			Detail: "requires native windows host",
 		},
 		platform.FeatureGlobalShortcut: {
 			Feature: platform.FeatureGlobalShortcut, Available: false,
-			Detail: "global shortcuts pending native host",
+			Detail: "requires native windows host",
 		},
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: false,
-			Detail: "deep-link argv/socket handoff pending native host",
+			Detail: "requires native windows host",
 		},
 		platform.FeatureTray: {
 			Feature: platform.FeatureTray, Available: false,
-			Detail: "NotifyIcon pending native host",
+			Detail: "requires native windows host",
 		},
 		platform.FeatureWindowChrome: {
 			Feature: platform.FeatureWindowChrome, Available: false,
-			Detail: "WebView2 window chrome pending native host",
+			Detail: "requires native windows host",
 		},
 		platform.FeatureOpenURL: {
-			Feature: platform.FeatureOpenURL, Available: false,
-			Detail: "ShellExecute open URL pending native host",
+			Feature: platform.FeatureOpenURL, Available: true,
+			Detail: "cmd start for http(s)/mailto; available without native WebView",
+		},
+		platform.FeatureDragDrop: {
+			Feature: platform.FeatureDragDrop, Available: false,
+			Detail: "requires native windows host",
+		},
+		platform.FeatureFileAssociation: {
+			Feature: platform.FeatureFileAssociation, Available: false,
+			Detail: "requires native windows host",
 		},
 	}
 }
@@ -140,9 +152,6 @@ func (h *Host) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error {
 }
 func (h *Host) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, error) {
 	return platform.WindowChrome{}, h.err(platform.FeatureWindowChrome)
-}
-func (h *Host) OpenURL(context.Context, string) error {
-	return h.err(platform.FeatureOpenURL)
 }
 func (h *Host) Run() error { return h.err(platform.FeatureWindowCreate) }
 func (h *Host) Quit()      {}
