@@ -25,5 +25,11 @@ func TestHost_ExplicitUnsupported(t *testing.T) {
 	}
 	h.SetInvokeHandler(func(domain.WindowID, domain.Origin, []byte) []byte { return nil })
 	h.SetNavPolicy(func(domain.WindowID, string) bool { return false })
+	if _, err := h.OpenFileDialog(); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureDialogOpen {
+		t.Fatalf("open dialog: %v", err)
+	}
+	if _, err := h.SaveFileDialog(); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureDialogSave {
+		t.Fatalf("save dialog: %v", err)
+	}
 	h.Quit()
 }

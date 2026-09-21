@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Darwin file dialogs: native `OpenFileDialog` / `SaveFileDialog` via NSOpenPanel / NSSavePanel under `-tags vitra_native`; stub remains explicit unsupported.
 - Darwin single-instance + deep-link handoff: flock lock and unix-socket secondary→primary URL forwarding (mirrors Linux; available without WKWebView).
 - Darwin clipboard: `ClipboardGet`/`ClipboardSet` via `pbpaste`/`pbcopy` (available without WKWebView); grant path unchanged (`clipboard.read`/`clipboard.write`).
 - Darwin OpenURL: grant-gated `browser.open` launches http(s)/mailto via macOS `open` (available without WKWebView); scheme validation mirrors Linux.

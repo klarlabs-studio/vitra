@@ -18,6 +18,9 @@ void vitra_win_eval(VitraWin *w, const char *js);
 void vitra_win_close(VitraWin *w);
 void vitra_win_free(VitraWin *w);
 
+char *vitra_open_dialog(void);
+char *vitra_save_dialog(void);
+
 #ifdef __cplusplus
 }
 #endif

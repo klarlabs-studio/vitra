@@ -151,10 +151,10 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Linux menu accelerators | **Done** (in-window `MenuItem.Shortcut`; not global) |
 | Linux OpenURL | **Done** (grant-gated `xdg-open` for http(s)/mailto) |
 | Deep-link argv / secondary handoff | Linux + Darwin |
-| Save dialog + single-instance lock | Linux native dialogs; single-instance Linux + Darwin |
+| Save dialog + single-instance lock | Linux + Darwin dialogs; single-instance Linux + Darwin |
 | Linux xdg URL-scheme registration | Linux native (`vitra register-scheme`) |
 | Linux xdg MIME file associations | Linux (`vitra register-files`) |
-| Darwin WKWebView | Scaffold (`-tags vitra_native`; window/navigate/message; OpenURL, clipboard, single-instance, deep-link) |
+| Darwin WKWebView | Scaffold (`-tags vitra_native`; window/navigate/message; OpenURL, clipboard, single-instance, deep-link, open/save dialogs) |
 | Windows WebView2 | Stub (explicit unsupported) |
 
 ## Development
