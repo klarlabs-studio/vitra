@@ -146,6 +146,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureOpenURL, Available: true,
 			Detail: "xdg-open for http(s)/mailto",
 		},
+		platform.FeaturePathOpen: {
+			Feature: platform.FeaturePathOpen, Available: true,
+			Detail: "open absolute local paths with OS default handler",
+		},
 	}
 }
 

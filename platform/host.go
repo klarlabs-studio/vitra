@@ -42,6 +42,7 @@ const (
 	FeatureFileAssociation  Feature = "file_association"
 	FeatureWindowChrome     Feature = "window.chrome"
 	FeatureOpenURL          Feature = "browser.open"
+	FeaturePathOpen         Feature = "path.open"
 )
 
 // WindowChrome is the native window presentation a host can apply and read back.

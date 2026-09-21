@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -33,6 +34,7 @@ const (
 	PermOpenURL          domain.PermissionName = "browser.open"
 	PermOsInfo           domain.PermissionName = "os.info"
 	PermNotificationShow domain.PermissionName = "notifications.show"
+	PermPathOpen         domain.PermissionName = "path.open"
 )
 
 // Gateway evaluates desktop permissions for a caller.
@@ -405,6 +407,46 @@ func (s *NotificationService) Show(ctx context.Context, caller domain.Caller, ti
 		return &platform.ErrUnsupported{Feature: platform.FeatureNotificationShow, OS: s.Host.OS(), Detail: "no notification adapter bound"}
 	}
 	return s.OnShow(ctx, title, body)
+}
+
+// PathService opens local filesystem paths with the OS default handler when permitted.
+type PathService struct {
+	Gateway Gateway
+	Host    platform.Host
+	OnOpen  func(ctx context.Context, path string) error
+}
+
+// Open authorizes path.open for an absolute local path then opens it.
+func (s *PathService) Open(ctx context.Context, caller domain.Caller, path string) error {
+	cleaned, err := validateLocalPath(path)
+	if err != nil {
+		return err
+	}
+	if err := authorizePath(s.Gateway, caller, PermPathOpen, cleaned); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeaturePathOpen); err != nil {
+		return err
+	}
+	if s.OnOpen == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeaturePathOpen, OS: s.Host.OS(), Detail: "no path opener bound"}
+	}
+	return s.OnOpen(ctx, cleaned)
+}
+
+func validateLocalPath(path string) (string, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "", &domain.ErrValidation{Message: "path is required"}
+	}
+	lower := strings.ToLower(path)
+	if strings.Contains(path, "://") || strings.HasPrefix(lower, "file:") {
+		return "", &domain.ErrValidation{Message: "path must be a local filesystem path, not a URL"}
+	}
+	if !filepath.IsAbs(path) {
+		return "", &domain.ErrValidation{Message: "path must be absolute"}
+	}
+	return filepath.Clean(path), nil
 }
 
 func authorize(gw Gateway, caller domain.Caller, perm domain.PermissionName) error {

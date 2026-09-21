@@ -437,3 +437,49 @@ func TestNotificationService_GrantFeatureAndHook(t *testing.T) {
 		t.Fatal("expected missing adapter")
 	}
 }
+
+func TestPathService_GrantFeatureAndHook(t *testing.T) {
+	caller, _ := domain.NewCaller("main", domain.OriginPackagedLocal)
+	host := null.New(platform.OSLinux)
+	ctx := context.Background()
+
+	denied := &desktop.PathService{Gateway: denyAll{}, Host: host}
+	err := denied.Open(ctx, caller, "/tmp/x")
+	var d *domain.ErrDenied
+	if !errors.As(err, &d) || d.Code != domain.DenialNoGrant {
+		t.Fatalf("expected denial, got %v", err)
+	}
+
+	bare := &desktop.PathService{Gateway: allowAll{}, Host: host}
+	err = bare.Open(ctx, caller, "/tmp/x")
+	var un *platform.ErrUnsupported
+	if !errors.As(err, &un) || un.Feature != platform.FeaturePathOpen {
+		t.Fatalf("expected unsupported path.open, got %v", err)
+	}
+
+	okHost := withFeatures(platform.OSLinux, platform.FeaturePathOpen)
+	var got string
+	ok := &desktop.PathService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnOpen: func(_ context.Context, path string) error {
+			got = path
+			return nil
+		},
+	}
+	if err := ok.Open(ctx, caller, "/tmp/vitra-path"); err != nil {
+		t.Fatal(err)
+	}
+	if got != "/tmp/vitra-path" {
+		t.Fatalf("got %q", got)
+	}
+	for _, bad := range []string{"", "relative", "https://example.com", "file:///etc/passwd"} {
+		if err := ok.Open(ctx, caller, bad); err == nil {
+			t.Fatalf("expected validation for %q", bad)
+		}
+	}
+	missing := &desktop.PathService{Gateway: allowAll{}, Host: okHost}
+	if err := missing.Open(ctx, caller, "/tmp/x"); err == nil {
+		t.Fatal("expected missing adapter")
+	}
+}

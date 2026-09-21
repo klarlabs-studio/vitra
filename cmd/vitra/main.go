@@ -32,6 +32,7 @@ import (
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
+	officialpath "go.klarlabs.de/vitra/plugin/official/path"
 	"go.klarlabs.de/vitra/policy"
 	"go.klarlabs.de/vitra/provenance"
 	"go.klarlabs.de/vitra/updater"
@@ -565,7 +566,7 @@ const client = createClient(window.vitra.invoke);
   standalone: true,
   template: ` + bt + `
     <h1>Vitra</h1>
-    <p>Vite + Angular starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+    <p>Vite + Angular starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
     <button type="button" (click)="run(() => client.demoGreet('Vitra'))">demo.greet</button>
     <button type="button" (click)="run(() => client.dialogOpen())">dialog.open</button>
     <button type="button" (click)="run(() => client.clipboardRead())">clipboard.read</button>
@@ -905,7 +906,7 @@ func scaffoldSvelteApp() string {
 
 <div style="font-family: Georgia, serif; margin: 2rem; background: #111; color: #eee; min-height: 100vh;">
   <h1>Vitra</h1>
-  <p>Vite + Svelte starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+  <p>Vite + Svelte starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
   <button onclick={() => run(() => client.demoGreet("Vitra"))}>demo.greet</button>
   <button onclick={() => run(() => client.dialogOpen())}>dialog.open</button>
   <button onclick={() => run(() => client.clipboardRead())}>clipboard.read</button>
@@ -974,7 +975,7 @@ async function run(fn: () => Promise<unknown>) {
 <template>
   <div style="font-family: Georgia, serif; margin: 2rem; background: #111; color: #eee; min-height: 100vh;">
     <h1>Vitra</h1>
-    <p>Vite + Vue starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+    <p>Vite + Vue starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
     <button @click="run(() => client.demoGreet('Vitra'))">demo.greet</button>
     <button @click="run(() => client.dialogOpen())">dialog.open</button>
     <button @click="run(() => client.clipboardRead())">clipboard.read</button>
@@ -1041,7 +1042,7 @@ export function App() {
   return (
     <div style={{ "font-family": "Georgia, serif", margin: "2rem", background: "#111", color: "#eee", "min-height": "100vh" }}>
       <h1>Vitra</h1>
-      <p>Vite + Solid starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+      <p>Vite + Solid starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
       <button onClick={() => run(() => client.demoGreet("Vitra"))}>demo.greet</button>{" "}
       <button onClick={() => run(() => client.dialogOpen())}>dialog.open</button>{" "}
       <button onClick={() => run(() => client.clipboardRead())}>clipboard.read</button>{" "}
@@ -1109,7 +1110,7 @@ export function App() {
   return (
     <div style={{ fontFamily: "Georgia, serif", margin: "2rem", background: "#111", color: "#eee", minHeight: "100vh" }}>
       <h1>Vitra</h1>
-      <p>Vite + Preact starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+      <p>Vite + Preact starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
       <button onClick={() => run(() => client.demoGreet("Vitra"))}>demo.greet</button>{" "}
       <button onClick={() => run(() => client.dialogOpen())}>dialog.open</button>{" "}
       <button onClick={() => run(() => client.clipboardRead())}>clipboard.read</button>{" "}
@@ -1222,7 +1223,7 @@ func scaffoldAlpineIndexHTML() string {
 <body>
   <div id="app" x-data="vitraApp">
     <h1>Vitra</h1>
-    <p>Vite + Alpine starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+    <p>Vite + Alpine starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
     <button type="button" @click="greet()">demo.greet</button>
     <button type="button" @click="openDialog()">dialog.open</button>
     <button type="button" @click="readClipboard()">clipboard.read</button>
@@ -1323,7 +1324,7 @@ func scaffoldHtmxIndexHTML() string {
 <body>
   <div id="app">
     <h1>Vitra</h1>
-    <p>Vite + HTMX starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+    <p>Vite + HTMX starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
     <button type="button" hx-on:click="vitraGreet()">demo.greet</button>
     <button type="button" hx-on:click="vitraOpen()">dialog.open</button>
     <button type="button" hx-on:click="vitraClip()">clipboard.read</button>
@@ -1386,7 +1387,7 @@ export class VitraApp extends LitElement {
   render() {
     return html` + bt + `
       <h1>Vitra</h1>
-      <p>Vite + Lit starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+      <p>Vite + Lit starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
       <button @click=${() => this.run(() => client.demoGreet("Vitra"))}>demo.greet</button>
       <button @click=${() => this.run(() => client.dialogOpen())}>dialog.open</button>
       <button @click=${() => this.run(() => client.clipboardRead())}>clipboard.read</button>
@@ -1457,7 +1458,7 @@ const client = createClient(window.vitra.invoke);
 const root = document.getElementById("app")!;
 root.innerHTML = ` + "`" + `
   <h1>Vitra</h1>
-  <p>Vite + TypeScript starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+  <p>Vite + TypeScript starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
   <button id="greet">demo.greet</button>
   <button id="open">dialog.open</button>
   <button id="clip">clipboard.read</button>
@@ -1532,7 +1533,7 @@ export function App() {
   return (
     <div style={{ fontFamily: "Georgia, serif", margin: "2rem", background: "#111", color: "#eee", minHeight: "100vh" }}>
       <h1>Vitra</h1>
-      <p>Vite + React starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+      <p>Vite + React starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
       <button onClick={() => run("greet", () => client.demoGreet("Vitra"))}>demo.greet</button>{" "}
       <button onClick={() => run("open", () => client.dialogOpen())}>dialog.open</button>{" "}
       <button onClick={() => run("clip", () => client.clipboardRead())}>clipboard.read</button>{" "}
@@ -1568,6 +1569,9 @@ func scaffoldTypeScriptClient() (string, error) {
 		return "", err
 	}
 	if err := rt.RegisterPlugin(ctx, officialnotification.New()); err != nil {
+		return "", err
+	}
+	if err := rt.RegisterPlugin(ctx, officialpath.New()); err != nil {
 		return "", err
 	}
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
@@ -1608,6 +1612,7 @@ import (
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
+	officialpath "go.klarlabs.de/vitra/plugin/official/path"
 )
 
 //go:embed ` + embedPattern + `
@@ -1657,6 +1662,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialnotification.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialpath.New()); err != nil {
 		return err
 	}
 	dialogs := &desktop.DialogService{
@@ -1782,6 +1790,19 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	paths := &desktop.PathService{
+		Gateway: rt,
+		Host:    host,
+		OnOpen: func(ctx context.Context, path string) error {
+			return host.OpenPath(ctx, path)
+		},
+	}
+	if err := rt.BindExecutor("path.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		path, _ := input.(string)
+		return nil, paths.Open(ctx, caller, path)
+	})); err != nil {
+		return err
+	}
 
 	grant, _ := domain.NewCapabilityGrant(
 		"demo", "demo", []domain.WindowID{"main"},
@@ -1798,6 +1819,7 @@ func run() error {
 			{Name: desktop.PermNotificationShow},
 			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
+			{Name: desktop.PermPathOpen, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 		},
 	)
 	_ = rt.RegisterGrant(grant)
@@ -1830,7 +1852,7 @@ func scaffoldIndexHTML() string {
 <html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
 <style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
 button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
-<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification plugins).</p>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
 <button id="greet">demo.greet</button>
 <button id="open">dialog.open</button>
 <button id="clip">clipboard.read</button>
@@ -2008,6 +2030,9 @@ func runGenerate(args []string) error {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialnotification.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialpath.New()); err != nil {
 		return err
 	}
 	var cmds []*domain.CommandDefinition
@@ -2746,8 +2771,8 @@ func runPackage(args []string) error {
 // officialPluginInventory returns Manifest-derived plugin rows for packaging
 // provenance (declared surface, not a claim that --bin embeds them).
 func officialPluginInventory() []provenance.PluginInfo {
-	out := make([]provenance.PluginInfo, 0, 6)
-	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New()} {
+	out := make([]provenance.PluginInfo, 0, 7)
+	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New()} {
 		m := p.Manifest()
 		perms := make([]string, 0, len(m.Permissions))
 		for _, perm := range m.Permissions {
@@ -2909,6 +2934,9 @@ func inspectDemo(args []string) error {
 	if err := rt.RegisterPlugin(ctx, officialnotification.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(ctx, officialpath.New()); err != nil {
+		return err
+	}
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err
 	}
@@ -2930,6 +2958,7 @@ func inspectDemo(args []string) error {
 			{Name: "browser.open"},
 			{Name: "os.info"},
 			{Name: "notifications.show"},
+			{Name: "path.open", PathScope: &domain.PathScope{Allow: []string{"${PROJECT_DIR}/**"}}},
 		},
 	)
 	if err != nil {

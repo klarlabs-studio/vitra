@@ -44,6 +44,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | OpenURL (`browser.open`) | Done (Linux `xdg-open`, Darwin `open`, Windows `cmd start` for http(s)/mailto); official `vitra.browser` plugin + scaffold/`generate` stubs |
 | Host info (`os.info`) | Done (stdlib GOOS/GOARCH/family + locale env); official `vitra.os` plugin + scaffold/`generate` stubs |
 | Notifications (`notifications.show`) | Done (title+body; Linux D-Bus Notifications, Darwin NSUserNotification, Windows tray balloon); official `vitra.notification` plugin + scaffold/`generate` stubs |
+| Open path (`path.open`) | Done (absolute local paths via `xdg-open` / `open` / `explorer`; PathScope-gated); official `vitra.path` plugin + scaffold/`generate` stubs |
 
 ## Security invariants preserved
 
