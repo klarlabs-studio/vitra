@@ -9,6 +9,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Package targets + signing identity refs | `packaging` |
 | Sign dry-run plan | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
 | Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}`; rejects `secret:`) |
+| Store publish dry-run | `packaging.PlanPublish` + `vitra package --publish` (Snap Store / Flathub step plans) |
 | Linux staged app directory | `packaging.StageLinux` + `vitra package` |
 | Windows staged dir + WiX/NSIS scripts | `StageWindows` / `BuildWiXDir` / `BuildNSISDir` |
 | Darwin staged `.app` bundle | `StageDarwinApp` + `vitra package --format app-dir` |
@@ -108,9 +109,10 @@ Still out of scope on main (do not claim otherwise):
 - Turnkey notarization credential bootstrap / CI secret stores beyond
   `env:`/`file:`/`keychain:` refs (`ExecuteSign` runs host tools when present;
   `secret:` refs stay plan-only until mapped)
-- Extra Linux store polish beyond stage+fold (Flathub/Snap Store publishing,
-  portal policy tuning) — `.rpm` / `.snap` / `.flatpak` generators ship via
-  `BuildRPM*` / `BuildSnap*` / `BuildFlatpak*`
+- Extra Linux store polish beyond publish *plans* (Flathub PR automation,
+  portal policy tuning, interactive store login) — `PlanPublish` /
+  `--publish` prints Snap Store / Flathub argv guidance; `.rpm` / `.snap` /
+  `.flatpak` generators ship via `BuildRPM*` / `BuildSnap*` / `BuildFlatpak*`
 - Wails-class template breadth beyond Vitra’s `vanilla` / `vite` / `react` /
   `svelte` / `vue` / `solid` starters (additional frameworks, richer presets)
 
