@@ -48,7 +48,15 @@ func AppStreamMetainfoXML(spec Spec) string {
 	for _, cat := range spec.EffectiveCategories() {
 		fmt.Fprintf(&b, "    <category>%s</category>\n", xmlEscape(cat))
 	}
-	b.WriteString("  </categories>\n</component>\n")
+	b.WriteString("  </categories>\n")
+	if kws := spec.EffectiveKeywords(); len(kws) > 0 {
+		b.WriteString("  <keywords>\n")
+		for _, kw := range kws {
+			fmt.Fprintf(&b, "    <keyword>%s</keyword>\n", xmlEscape(kw))
+		}
+		b.WriteString("  </keywords>\n")
+	}
+	b.WriteString("</component>\n")
 	return b.String()
 }
 

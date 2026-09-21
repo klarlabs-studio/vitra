@@ -108,7 +108,7 @@ Usage:
                              Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
-  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
+  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--keywords list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
                              Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints PlanSign; --sign-execute runs host tools; --publish prints store PlanPublish; --publish-execute runs non-interactive Executable steps
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
@@ -2873,6 +2873,7 @@ func runPackage(args []string) error {
 	description := ""
 	homepage := ""
 	categories := ""
+	keywords := ""
 	license := ""
 	sign := false
 	signExecute := false
@@ -2880,7 +2881,7 @@ func runPackage(args []string) error {
 	publish := false
 	publishExecute := false
 	signingIdentity := ""
-	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]"
+	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--keywords list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
@@ -2943,6 +2944,12 @@ func runPackage(args []string) error {
 				return fmt.Errorf("--categories requires a comma-separated list")
 			}
 			categories = args[i]
+		case "--keywords":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--keywords requires a comma-separated list")
+			}
+			keywords = args[i]
 		case "--license":
 			i++
 			if i >= len(args) {
@@ -3038,6 +3045,14 @@ func runPackage(args []string) error {
 			part = strings.TrimSpace(part)
 			if part != "" {
 				spec.Categories = append(spec.Categories, part)
+			}
+		}
+	}
+	if keywords != "" {
+		for _, part := range strings.Split(keywords, ",") {
+			part = strings.TrimSpace(part)
+			if part != "" {
+				spec.Keywords = append(spec.Keywords, part)
 			}
 		}
 	}
