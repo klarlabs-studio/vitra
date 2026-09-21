@@ -89,6 +89,7 @@ CLI:
 
 ```bash
 vitra update-check --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex>
+vitra update-apply --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex> --dest ./vitra-app
 vitra update-apply --manifest update.json --artifact app.bin --pubkey <hex> --dest ./vitra-app --policy production
 ```
 

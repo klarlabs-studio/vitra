@@ -96,8 +96,8 @@ Usage:
                              Emit TypeScript client stubs for official plugin commands
   vitra update-check --base-url <url> --app-id <id> --channel <name> --pubkey <hex>
                              Fetch + verify a signed channel manifest (HTTP(S) client; does not install)
-  vitra update-apply --manifest <json> --artifact <path> --pubkey <hex> --dest <path> [--policy production|development]
-                             Verify a signed update and atomically install it
+  vitra update-apply (--manifest <json> --artifact <path> | --base-url <url> --app-id <id> [--channel name]) --pubkey <hex> --dest <path> [--policy production|development]
+                             Verify a signed update and atomically install it (local files or HTTP channel fetch)
   vitra register-scheme <scheme> [app-id] [exec]
                              Register a URL scheme handler (Linux xdg / Darwin helper .app / Windows .reg)
   vitra register-files --mime <type> [--mime <type>] [--app-id id] [--exec path] [--name name]
@@ -1280,6 +1280,7 @@ func runGenerate(args []string) error {
 
 func runUpdateApply(args []string) error {
 	manifestPath, artifactPath, pubkeyHex, dest, policyEnv := "", "", "", "", ""
+	baseURL, appID, channel := "", "", "stable"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--manifest":
@@ -1294,6 +1295,24 @@ func runUpdateApply(args []string) error {
 				return fmt.Errorf("--artifact requires a path")
 			}
 			artifactPath = args[i]
+		case "--base-url":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--base-url requires a URL")
+			}
+			baseURL = args[i]
+		case "--app-id":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--app-id requires an id")
+			}
+			appID = args[i]
+		case "--channel":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--channel requires a name")
+			}
+			channel = args[i]
 		case "--pubkey":
 			i++
 			if i >= len(args) {
@@ -1316,25 +1335,61 @@ func runUpdateApply(args []string) error {
 			return fmt.Errorf("unknown update-apply flag %q", args[i])
 		}
 	}
-	if manifestPath == "" || artifactPath == "" || pubkeyHex == "" || dest == "" {
-		return fmt.Errorf("usage: vitra update-apply --manifest <json> --artifact <path> --pubkey <hex> --dest <path> [--policy production|development]")
+	usage := "usage: vitra update-apply (--manifest <json> --artifact <path> | --base-url <url> --app-id <id> [--channel name]) --pubkey <hex> --dest <path> [--policy production|development]"
+	if pubkeyHex == "" || dest == "" {
+		return fmt.Errorf("%s", usage)
 	}
-	rawManifest, err := os.ReadFile(manifestPath)
-	if err != nil {
-		return err
+	localMode := manifestPath != "" || artifactPath != ""
+	channelMode := baseURL != "" || appID != ""
+	if localMode && channelMode {
+		return fmt.Errorf("update-apply: use either local --manifest/--artifact or channel --base-url/--app-id, not both")
 	}
-	var m updater.Manifest
-	if err := json.Unmarshal(rawManifest, &m); err != nil {
-		return fmt.Errorf("manifest: %w", err)
+	if localMode && (manifestPath == "" || artifactPath == "") {
+		return fmt.Errorf("%s", usage)
 	}
+	if channelMode && (baseURL == "" || appID == "") {
+		return fmt.Errorf("%s", usage)
+	}
+	if !localMode && !channelMode {
+		return fmt.Errorf("%s", usage)
+	}
+
 	pubBytes, err := hex.DecodeString(strings.TrimSpace(pubkeyHex))
 	if err != nil || len(pubBytes) != ed25519.PublicKeySize {
 		return fmt.Errorf("pubkey must be %d-byte ed25519 key as hex", ed25519.PublicKeySize)
 	}
-	artifact, err := os.ReadFile(artifactPath)
-	if err != nil {
-		return err
+
+	var m updater.Manifest
+	var artifact []byte
+	if channelMode {
+		src := updater.ChannelSource{
+			BaseURL: baseURL,
+			AppID:   appID,
+			Channel: updater.Channel(channel),
+		}
+		f := &updater.Fetcher{}
+		m, err = f.FetchManifest(context.Background(), src)
+		if err != nil {
+			return err
+		}
+		artifact, err = f.FetchArtifact(context.Background(), src, m)
+		if err != nil {
+			return err
+		}
+	} else {
+		rawManifest, err := os.ReadFile(manifestPath)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(rawManifest, &m); err != nil {
+			return fmt.Errorf("manifest: %w", err)
+		}
+		artifact, err = os.ReadFile(artifactPath)
+		if err != nil {
+			return err
+		}
 	}
+
 	rt, err := vitra.New(vitra.Config{AppID: domain.AppID(m.AppID)})
 	if err != nil {
 		// Fall back if manifest app id empty / invalid for Config.
