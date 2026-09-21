@@ -414,3 +414,88 @@ func TestBuildWiXDir_HomepageARPURL(t *testing.T) {
 		t.Fatalf("unexpected ARPURLINFOABOUT when Homepage empty\n%s", raw)
 	}
 }
+
+func TestBuildNSISDir_ARPComments(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "nsis")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsNSIS}, Description: "Demo desktop app",
+	}
+	if _, err := BuildNSISDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "installer.nsi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `WriteRegStr HKCU "${UNINST_KEY}" "Comments" "Demo desktop app"`
+	if !strings.Contains(string(raw), want) {
+		t.Fatalf("missing Comments\n%s", raw)
+	}
+
+	outDefault := filepath.Join(tmp, "nsis-default")
+	spec.Description = ""
+	if _, err := BuildNSISDir(spec, bin, outDefault); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = os.ReadFile(filepath.Join(outDefault, "installer.nsi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantDefault := `WriteRegStr HKCU "${UNINST_KEY}" "Comments" "` + DefaultDescription + `"`
+	if !strings.Contains(string(raw), wantDefault) {
+		t.Fatalf("missing default Comments\n%s", raw)
+	}
+}
+
+func TestBuildWiXDir_ARPComments(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "wix")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsMSI}, Description: "Demo desktop app",
+	}
+	if _, err := BuildWiXDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "product.wxs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	for _, want := range []string{
+		`<Property Id="ARPCOMMENTS" Value="Demo desktop app"/>`,
+		`Description="Demo desktop app" Comments="Demo desktop app"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q\n%s", want, body)
+		}
+	}
+
+	outDefault := filepath.Join(tmp, "wix-default")
+	spec.Description = ""
+	if _, err := BuildWiXDir(spec, bin, outDefault); err != nil {
+		t.Fatal(err)
+	}
+	raw, err = os.ReadFile(filepath.Join(outDefault, "product.wxs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body = string(raw)
+	wantDefault := `<Property Id="ARPCOMMENTS" Value="` + DefaultDescription + `"/>`
+	if !strings.Contains(body, wantDefault) {
+		t.Fatalf("missing default ARPCOMMENTS\n%s", body)
+	}
+	if strings.Contains(body, "Vitra-packaged Windows installer") {
+		t.Fatalf("stale hardcoded Package Comments\n%s", body)
+	}
+}

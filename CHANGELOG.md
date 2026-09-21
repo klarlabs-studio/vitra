@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Windows ARP Comments: `Spec.Description` / `vitra package --description` (via `EffectiveDescription`) flow into NSIS `Comments` and WiX `ARPCOMMENTS` / Package Description+Comments.
 - Windows ARP support URL: `Spec.Homepage` / `vitra package --homepage` flow into NSIS `URLInfoAbout` and WiX `ARPURLINFOABOUT` (omitted when empty).
 - Official shortcut unregister: `shortcut.unregister` on `vitra.shortcut` (same `shortcut.register` grant) via `desktop.ShortcutService.Unregister` → `DesktopHost.UnregisterGlobalShortcut`; scaffold/competitive bind (Wayland remains `ErrUnsupported`).
 - Official tray clear: `tray.clear` on `vitra.tray` (same `tray.set` grant) via `desktop.TrayService.ClearTray` → `DesktopHost.ClearTray`; scaffold/competitive bind.
