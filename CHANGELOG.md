@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template stencil`: Vite + Stencil 4 + TypeScript starter (`vitra-app` component, `@stencil-community/unplugin-stencil`, `dist-custom-elements`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Darwin LSApplicationCategoryType: `Spec.Categories` / `vitra package --categories` (via `LSApplicationCategoryType`) set Info.plist `LSApplicationCategoryType` (e.g. Development→public.app-category.developer-tools; default Utility→public.app-category.utilities).
 - `vitra new --template inferno`: Vite + Inferno 9 + TypeScript starter (`App.tsx` class component, `vite-plugin-babel` + `babel-plugin-inferno`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Darwin Info.plist copyright: `Spec.License` / `vitra package --license` (via `EffectiveLicense`) flow into `NSHumanReadableCopyright` (default: `LicenseRef-proprietary`).
