@@ -46,13 +46,14 @@ type Spec struct {
 	// Description is a short package summary used as the Debian control extended
 	// Description and FreeDesktop Comment=. Empty defaults to DefaultDescription.
 	Description string
-	// Homepage is an optional project URL (Debian Homepage, AppStream <url type="homepage">).
+	// Homepage is an optional project URL (Debian Homepage, RPM URL, snap website,
+	// AppStream <url type="homepage">).
 	Homepage string
 	// Categories are FreeDesktop/AppStream categories (e.g. Utility, Development).
 	// Empty defaults to []string{"Utility"}.
 	Categories []string
-	// License is the AppStream <project_license> SPDX id or LicenseRef-*.
-	// Empty defaults to DefaultLicense.
+	// License is the SPDX id or LicenseRef-* used for AppStream <project_license>,
+	// RPM License:, and snap license:. Empty defaults to DefaultLicense.
 	License string
 }
 

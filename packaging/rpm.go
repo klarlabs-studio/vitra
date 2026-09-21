@@ -144,12 +144,16 @@ Terminal=false
 
 	filesSection := strings.Join(fileList, "\n")
 	changelogDate := time.Unix(0, 0).UTC().Format("Mon Jan 02 2006")
+	urlLine := ""
+	if home := strings.TrimSpace(spec.Homepage); home != "" {
+		urlLine = "URL: " + home + "\n"
+	}
 	specBody := fmt.Sprintf(`Name: %s
 Version: %s
 Release: %s
 Summary: %s
-License: Proprietary
-Packager: %s
+License: %s
+%sPackager: %s
 BuildArch: %s
 AutoReqProv: no
 
@@ -167,7 +171,7 @@ cp -a %%{_topdir}/payload/. %%{buildroot}/
 %%changelog
 * %s %s - %s-%s
 - Packaged by Vitra
-`, pkgName, ver, rel, spec.Name, spec.EffectiveMaintainer(), arch,
+`, pkgName, ver, rel, spec.Name, spec.EffectiveLicense(), urlLine, spec.EffectiveMaintainer(), arch,
 		spec.EffectiveDescription(), filesSection, changelogDate,
 		spec.EffectiveMaintainer(), ver, rel)
 

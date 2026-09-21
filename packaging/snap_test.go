@@ -25,6 +25,8 @@ func TestBuildSnapDir_Layout(t *testing.T) {
 		Targets:     []packaging.Target{packaging.TargetLinuxSnap},
 		IconPath:    icon,
 		Description: "Demo Snap",
+		Homepage:    "https://example.com/demo",
+		License:     "Apache-2.0",
 	}
 	art, err := packaging.BuildSnapDir(spec, bin, out)
 	if err != nil {
@@ -51,6 +53,8 @@ func TestBuildSnapDir_Layout(t *testing.T) {
 		"name: com-vitra-demo",
 		`version: "0.3.0"`,
 		"Demo Snap",
+		"license: Apache-2.0",
+		`website: "https://example.com/demo"`,
 		"command: usr/bin/Vitra-Demo",
 		"desktop: usr/share/applications/com.vitra.demo.desktop",
 		"confinement: strict",
@@ -59,6 +63,33 @@ func TestBuildSnapDir_Layout(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Fatalf("snap.yaml missing %q:\n%s", want, text)
 		}
+	}
+}
+
+func TestBuildSnapDir_DefaultLicenseOmitsWebsite(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "payload")
+	if err := os.WriteFile(bin, []byte("bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "prime")
+	spec := packaging.Spec{
+		AppID: "com.vitra.demo", Version: "1.0.0", Name: "Demo",
+		Targets: []packaging.Target{packaging.TargetLinuxSnap},
+	}
+	if _, err := packaging.BuildSnapDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	yaml, err := os.ReadFile(filepath.Join(out, "meta", "snap.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(yaml)
+	if !strings.Contains(text, "license: "+packaging.DefaultLicense) {
+		t.Fatalf("default license missing:\n%s", text)
+	}
+	if strings.Contains(text, "website:") {
+		t.Fatalf("unexpected website:\n%s", text)
 	}
 }
 

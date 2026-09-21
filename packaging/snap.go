@@ -103,12 +103,17 @@ Terminal=false
 		return Artifact{}, err
 	}
 	desc := indentYAMLBlock(spec.EffectiveDescription())
+	websiteLine := ""
+	if home := strings.TrimSpace(spec.Homepage); home != "" {
+		websiteLine = "website: " + yamlScalar(home) + "\n"
+	}
 	yaml := fmt.Sprintf(`name: %s
 version: %q
 summary: %s
 description: |
 %s
-architectures:
+license: %s
+%sarchitectures:
   - %s
 base: core22
 confinement: strict
@@ -117,7 +122,7 @@ apps:
   %s:
     command: usr/bin/%s
     desktop: %s
-`, snapName, spec.Version, yamlScalar(spec.Name), desc, arch, snapName, binName, desktopRel)
+`, snapName, spec.Version, yamlScalar(spec.Name), desc, yamlScalar(spec.EffectiveLicense()), websiteLine, arch, snapName, binName, desktopRel)
 	if err := os.WriteFile(filepath.Join(metaDir, "snap.yaml"), []byte(yaml), 0o644); err != nil {
 		return Artifact{}, err
 	}
