@@ -124,8 +124,10 @@ func BuildMSI(spec Spec, binaryPath, outPath string) (Artifact, error) {
 }
 
 // BuildWiXDir stages a Windows payload and writes product.wxs for WiX Toolset.
-// Producing a final .msi still requires candle/light (or VITRA_CANDLE /
-// VITRA_LIGHT); this layout is the portable intermediate those tools consume.
+// The script installs under LocalAppDataFolder, emits a Start Menu shortcut, and
+// uses a deterministic UpgradeCode GUID derived from AppID. Producing a final
+// .msi still requires candle/light (or VITRA_CANDLE / VITRA_LIGHT); this layout
+// is the portable intermediate those tools consume.
 func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	if err := spec.Validate(); err != nil {
 		return Artifact{}, err
@@ -157,6 +159,7 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	}
 	iconXML := ""
 	iconComp := ""
+	shortcutIcon := ""
 	if iconFile != "" {
 		iconID := "AppIconFile"
 		iconXML = fmt.Sprintf(`
@@ -166,11 +169,16 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
       <Component Id="AppIconComponent" Guid="*">
         <File Id="%s" Source="bin\%s" KeyPath="yes"/>
       </Component>`, iconID, iconFile)
+		shortcutIcon = `
+                  Icon="AppIcon"`
 	}
+	upgrade := deterministicGUID("vitra-wix-upgrade:" + spec.AppID)
+	regManufacturer := xmlEscape(safeName)
+	regProduct := xmlEscape(safeName)
 	wxs := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="*" Name="%s" Language="1033" Version="%s"
-           Manufacturer="%s" UpgradeCode="%s">
+           Manufacturer="%s" UpgradeCode="{%s}">
     <Package InstallerVersion="200" Compressed="yes" InstallScope="perUser"
              Description="%s" Comments="Vitra-packaged Windows installer"/>
     <MajorUpgrade DowngradeErrorMessage="A newer version is already installed."/>
@@ -184,6 +192,9 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
       <Directory Id="LocalAppDataFolder">
         <Directory Id="INSTALLFOLDER" Name="%s"/>
       </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="%s"/>
+      </Directory>
     </Directory>
   </Fragment>
   <Fragment>
@@ -191,17 +202,38 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
       <Component Id="MainExecutable" Guid="*">
         <File Id="AppExe" Source="bin\%s" KeyPath="yes" Checksum="yes"/>
       </Component>%s
+      <Component Id="StartMenuShortcut" Guid="*" Directory="ApplicationProgramsFolder">
+        <Shortcut Id="AppStartMenuShortcut" Name="%s"
+                  Description="%s"
+                  Target="[INSTALLFOLDER]%s"
+                  WorkingDirectory="INSTALLFOLDER"%s/>
+        <RemoveFolder Id="RemoveAppProgramsFolder" Directory="ApplicationProgramsFolder" On="uninstall"/>
+        <RegistryValue Root="HKCU" Key="Software\%s\%s" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes"/>
+      </Component>
     </ComponentGroup>
   </Fragment>
 </Wix>
-`, xmlEscape(spec.Name), xmlEscape(spec.Version), xmlEscape(spec.Name), xmlEscape(spec.AppID),
-		xmlEscape(spec.Name), iconXML, xmlEscape(spec.Name), xmlEscape(safeName), exeName, iconComp)
+`, xmlEscape(spec.Name), xmlEscape(spec.Version), xmlEscape(spec.Name), upgrade,
+		xmlEscape(spec.Name), iconXML, xmlEscape(spec.Name), xmlEscape(safeName), xmlEscape(safeName),
+		exeName, iconComp, xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIcon,
+		regManufacturer, regProduct)
 	_ = arch // recorded in Spec / provenance; WiX Platform can be set at candle time
 	if err := os.WriteFile(filepath.Join(outDir, "product.wxs"), []byte(wxs), 0o644); err != nil {
 		return Artifact{}, err
 	}
 	art.Target = TargetWindowsMSI
 	return art, nil
+}
+
+// deterministicGUID returns a stable UUID string (no braces) derived from seed.
+func deterministicGUID(seed string) string {
+	sum := sha256.Sum256([]byte(seed))
+	b := sum[:16]
+	b[6] = (b[6] & 0x0f) | 0x40 // version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // RFC 4122 variant
+	return fmt.Sprintf("%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+		b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+		b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15])
 }
 
 func withWindowsTargets(spec Spec, prefer Target) Spec {
