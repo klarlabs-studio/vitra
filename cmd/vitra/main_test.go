@@ -1163,6 +1163,66 @@ func TestRun_NewScaffoldPreact(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldLit(t *testing.T) {
+	dir := t.TempDir() + "/lit-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "lit"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=lit") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/src/vitra-app.ts", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"lit"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/vitra-app.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"LitElement", "createClient", "demoGreet", "dialogOpen", "clipboardRead", "@customElement"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("vitra-app.ts missing %q: %s", want, app)
+		}
+	}
+	idx, err := os.ReadFile(dir + "/frontend/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(idx), "<vitra-app>") {
+		t.Fatalf("index.html should mount vitra-app: %s", idx)
+	}
+	tsconfig, err := os.ReadFile(dir + "/frontend/tsconfig.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(tsconfig), "experimentalDecorators") {
+		t.Fatalf("tsconfig should enable decorators: %s", tsconfig)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Lit") {
+		t.Fatalf("lit README should mention Vite + Lit: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
