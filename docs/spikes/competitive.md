@@ -68,6 +68,7 @@ make e2e
 The competitive example selects `platform/linux`, `platform/darwin`, or
 `platform/windows` from `GOOS` so the same demo binary path exercises each
 DesktopHost adapter.
+
 ## Honest gap vs Wails 3
 
 Vitra is a **secure runtime you can run** on Linux, Darwin, and Windows with
@@ -76,13 +77,15 @@ including menus, tray, dialogs, chrome, drag-drop, deep links, and grant-gated
 desktop services. Global OS hotkeys ship on Windows, Darwin, and Linux/X11;
 Wayland keeps in-window accelerators only (no portable global hotkey API).
 
-Wails still leads on template ecosystem and packaging polish. Vitra leads on
-capability-oriented authority and inspectable grants. Core DesktopHost,
-installer-script, SIEM/MDM port, and X11 global-shortcut parity are in place —
-Wayland global hotkeys remain intentionally unsupported. `vitra dev` / `vitra build`
-enable `-tags vitra_native` on Linux, Darwin, and Windows. Windows MSI/NSIS
-staging and fold (`win-dir` / `wix` / `nsis-dir` / `msi` / `nsis`) ship; fold
-requires candle/light/makensis on the host (overridable via env). Darwin `.app`
-staging (`app-dir` / `StageDarwinApp`) and DMG fold (`dmg` / `hdiutil`, overridable
-via `VITRA_HDIUTIL`) ship. Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM
-JSON policy documents (`policy.LoadDocument`) plug into Phase 5 ports.
+Wails still leads on **template ecosystem** and **release polish** (rich
+scaffolds; turnkey codesign/notarization; broader store/package targets).
+Vitra leads on capability-oriented authority and inspectable grants. Core
+DesktopHost, installer stage+fold (`deb` / AppImage / WiX·MSI / NSIS /
+`.app`·DMG), SIEM/MDM ports, and X11 global-shortcut parity are on main —
+Wayland global hotkeys remain intentionally unsupported. `vitra dev` /
+`vitra build` enable `-tags vitra_native` on Linux, Darwin, and Windows.
+Fold still needs host tools (`appimagetool`, candle/light, makensis, `hdiutil`)
+or env overrides; `Spec.Sign` / `SigningIdentityRef` validate refs only (no
+codesign/signtool/notary orchestration). Audit SIEM exporters (`JSONLSink` /
+`CEFSink`) and MDM JSON policy documents (`policy.LoadDocument`) plug into
+Phase 5 ports.

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Docs: competitive/phase2/phase4/README status aligned with shipped DesktopHost + installer folds; honest gap reframed to templates/release polish (Wayland global hotkeys still unsupported).
 - NSIS installer UX: `BuildNSISDir` emits `WriteUninstaller`, HKCU Add/Remove Programs registry keys (`DisplayName`/`UninstallString`/…), and cleans them on uninstall; optional `DisplayIcon` when `--icon` is set.
 - Linux `.deb` package icons: `Spec.IconPath` / `--icon` stages `usr/share/pixmaps/<name>.<ext>` and sets `Icon=` on the FreeDesktop `.desktop` entry.
 - Darwin DMG drag-install layout: FoldDMG stages `.app` + `/Applications` symlink in the image root before `hdiutil create`.
@@ -17,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Package icons: optional `Spec.IconPath` / `vitra package --icon` stages `.png`/`.svg`/`.icns` into Linux dir/AppDir and Darwin `.app` Resources (`CFBundleIconFile`).
 - Competitive demo selects Linux / Darwin / Windows DesktopHost by `GOOS` (deep-link argv helpers included); Linux CI e2e unchanged.
 - Darwin DMG fold: `vitra package --format dmg` stages a `.app` then invokes `hdiutil` (`VITRA_HDIUTIL` override); CI covers fold with a fake tool.
-- Darwin `.app` stage: `vitra package --format app-dir` builds `<Name>.app/Contents/{Info.plist,MacOS/<exec>}` via `StageDarwinApp` (DMG fold remains follow-on).
+- Darwin `.app` stage: `vitra package --format app-dir` builds `<Name>.app/Contents/{Info.plist,MacOS/<exec>}` via `StageDarwinApp`.
 - CLI `vitra dev` / `vitra build` pass `-tags vitra_native` on Darwin and Windows (not only Linux), matching DesktopHost adapters; scaffold README points at `vitra dev`.
 - Linux X11 global shortcuts: `RegisterGlobalShortcut` / `UnregisterGlobalShortcut` via `XGrabKey` when not on Wayland; feature matrix stays false on Wayland / missing DISPLAY.
 - SIEM/MDM hooks: `audit.JSONLSink` (NDJSON) + `audit.CEFSink` (Common Event Format) + `MultiSink`; `policy.LoadDocument` / `Document.Save` for fleet JSON; competitive demo honors `VITRA_AUDIT=jsonl|cef`, `VITRA_AUDIT_PATH`, and `VITRA_POLICY_FILE`.

@@ -110,6 +110,7 @@ vitra doctor
 vitra new ./myapp
 vitra dev
 vitra build
+vitra package --out dist/ [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--icon path]
 vitra generate typescript --out frontend/vitra-client.ts
 vitra update-apply --manifest m.json --artifact a.bin --pubkey <hex> --dest ./vitra-app
 vitra inspect capabilities
@@ -121,7 +122,7 @@ vitra inspect capabilities
 vitra (root)     Runtime facade
 app/             Desktop application runtime (assets + host + gateway)
 bridge/          Injected frontend preload
-platform/        OS adapters (linux WebKitGTK, darwin WKWebView, windows Win32 scaffold)
+platform/        OS adapters (linux WebKitGTK, darwin WKWebView, windows Win32+WebView2)
 domain/          Aggregates + ports (stdlib only)
 application/     Use cases
 inmemory/        Default adapters

@@ -67,7 +67,17 @@ vitra update-apply --manifest update.json --artifact app.bin --pubkey <hex> --de
 - **10**: `packaging.Spec` accepts only `SigningIdentityRef` (e.g. `env:…` /
   keychain refs), never inline private key material
 
-## Non-goals in this PR
+## Honest remaining gaps
 
-Hosted update CDN, notarization API clients, and full installer generators —
-those are adapters that consume these contracts.
+Still out of scope on main (do not claim otherwise):
+
+- Hosted update CDN / auto-update channel hosting
+- Notarization / codesign / Authenticode *execution* (`Spec.Sign` +
+  `SigningIdentityRef` are validated refs only; stage/fold never invoke
+  `codesign` / `signtool` / notary)
+- Extra Linux targets (`.rpm`, Flatpak, Snap)
+- Wails-class multi-framework project templates
+
+Installer **generators** (stage scripts + fold to `.deb` / `.AppImage` /
+`.msi` / NSIS setup / `.dmg`) are delivered; fold still needs host tools
+(`appimagetool`, candle/light, makensis, `hdiutil`) or env overrides.
