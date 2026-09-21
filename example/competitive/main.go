@@ -25,6 +25,7 @@ import (
 	officialapp "go.klarlabs.de/vitra/plugin/official/app"
 	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
+	officialdeeplink "go.klarlabs.de/vitra/plugin/official/deeplink"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialdragdrop "go.klarlabs.de/vitra/plugin/official/dragdrop"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
@@ -233,6 +234,7 @@ func run() error {
 		return fmt.Errorf("single-instance acquire failed")
 	}
 
+	var application *app.App
 	deepLinks := &desktop.DeepLinkService{
 		Gateway:  rt,
 		Host:     host,
@@ -248,16 +250,9 @@ func run() error {
 			return
 		}
 		fmt.Println("deep link:", raw)
-		js := fmt.Sprintf(`(function(){var el=document.getElementById("out");if(el){el.textContent=%q;}})()`, "deep link: "+raw)
-		_ = host.Eval("main", js)
-	}
-	stopBridge, err := host.StartDeepLinkBridge(appID, handleDeepLink)
-	if err != nil {
-		return fmt.Errorf("deep-link bridge: %w", err)
-	}
-	defer stopBridge()
-	for _, u := range deepLinksFromArgs(os.Args[1:]) {
-		handleDeepLink(u)
+		if application != nil {
+			_ = application.Emit(context.Background(), "deeplink.open", map[string]any{"url": raw})
+		}
 	}
 
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet the user", "demo.greet")
@@ -335,6 +330,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialdragdrop.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialdeeplink.New()); err != nil {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialshortcut.New()); err != nil {
@@ -478,7 +476,6 @@ func run() error {
 		return err
 	}
 
-	var application *app.App
 	winSvc := &desktop.WindowService{
 		Gateway: rt,
 		Host:    host,
@@ -629,6 +626,14 @@ func run() error {
 			"paths":  paths,
 		})
 	})
+	stopBridge, err := host.StartDeepLinkBridge(appID, handleDeepLink)
+	if err != nil {
+		return fmt.Errorf("deep-link bridge: %w", err)
+	}
+	defer stopBridge()
+	for _, u := range deepLinksFromArgs(os.Args[1:]) {
+		handleDeepLink(u)
+	}
 	drops := &desktop.DragDropService{
 		Gateway: rt,
 		Host:    host,
@@ -665,6 +670,11 @@ func run() error {
 		} else if _, err := rt.SubscribeEvent("drop-sub", "dragdrop.drop", "main"); err == nil {
 			if os.Getenv("VITRA_INJECT_DROP") == "1" {
 				host.InjectFileDrop("main", []string{"/tmp/vitra-demo-drop.txt"})
+			}
+		}
+		if _, err := rt.SubscribeEvent("deeplink-sub", "deeplink.open", "main"); err == nil {
+			if os.Getenv("VITRA_INJECT_DEEPLINK") == "1" {
+				handleDeepLink("vitra://open/demo")
 			}
 		}
 		if os.Getenv("VITRA_SECOND_WINDOW") == "1" {

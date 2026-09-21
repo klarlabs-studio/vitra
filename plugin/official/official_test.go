@@ -9,6 +9,7 @@ import (
 	officialapp "go.klarlabs.de/vitra/plugin/official/app"
 	"go.klarlabs.de/vitra/plugin/official/browser"
 	"go.klarlabs.de/vitra/plugin/official/clipboard"
+	"go.klarlabs.de/vitra/plugin/official/deeplink"
 	"go.klarlabs.de/vitra/plugin/official/dialog"
 	"go.klarlabs.de/vitra/plugin/official/dragdrop"
 	"go.klarlabs.de/vitra/plugin/official/fs"
@@ -25,7 +26,7 @@ func TestOfficialPlugins_RegisterCleanly(t *testing.T) {
 	reg := plugin.NewRegistry(plugin.SemVer{Major: 0, Minor: 3, Patch: 0})
 	for _, p := range []plugin.Plugin{
 		fs.New(), dialog.New(), clipboard.New(), browser.New(),
-		officialos.New(), notification.New(), officialpath.New(), officialwindow.New(), menu.New(), tray.New(), dragdrop.New(), shortcut.New(), officialapp.New(),
+		officialos.New(), notification.New(), officialpath.New(), officialwindow.New(), menu.New(), tray.New(), dragdrop.New(), shortcut.New(), officialapp.New(), deeplink.New(),
 	} {
 		if err := reg.Register(context.Background(), p); err != nil {
 			t.Fatal(err)
@@ -33,7 +34,7 @@ func TestOfficialPlugins_RegisterCleanly(t *testing.T) {
 	}
 	for _, id := range []domain.PluginID{
 		fs.PluginID, clipboard.PluginID, browser.PluginID,
-		officialos.PluginID, notification.PluginID, officialpath.PluginID, officialwindow.PluginID, menu.PluginID, tray.PluginID, dragdrop.PluginID, shortcut.PluginID, officialapp.PluginID,
+		officialos.PluginID, notification.PluginID, officialpath.PluginID, officialwindow.PluginID, menu.PluginID, tray.PluginID, dragdrop.PluginID, shortcut.PluginID, officialapp.PluginID, deeplink.PluginID,
 	} {
 		if _, err := reg.Get(id); err != nil {
 			t.Fatal(err)

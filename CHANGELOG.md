@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official `vitra.deeplink` plugin: owns `deeplink.handle` and contributes `deeplink.open`; scaffold/competitive emit after `DeepLinkService.Handle` (host patterns; bridge + argv); `VITRA_INJECT_DEEPLINK=1` demo inject.
 - Snap contact: `Spec.Maintainer` / `vitra package --maintainer` (via `EffectiveMaintainer`) flow into `meta/snap.yaml` `contact:` (defaults to `DefaultMaintainer`).
 - `vitra new --template riot`: Vite + Riot.js 9 + TypeScript starter (`app.riot` + `rollup-plugin-riot`, `riot.component` mount) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Debian copyright: `Spec.License` / `vitra package --license` (via `EffectiveLicense`) write DEP-5 `usr/share/doc/<pkg>/copyright` in `BuildDeb` (Upstream-Name/Contact, optional Source from Homepage).
