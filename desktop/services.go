@@ -825,6 +825,18 @@ func (s *WindowService) SetAlwaysOnTop(ctx context.Context, caller domain.Caller
 	return s.Apply(ctx, caller, window, chrome)
 }
 
+// Restore authorizes window.chrome then clears minimized/maximized/fullscreen.
+func (s *WindowService) Restore(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.Minimized = false
+	chrome.Maximized = false
+	chrome.Fullscreen = false
+	return s.Apply(ctx, caller, window, chrome)
+}
+
 func (s *WindowService) setMinimized(ctx context.Context, caller domain.Caller, window domain.WindowID, minimized bool) error {
 	chrome, err := s.Read(ctx, caller, window)
 	if err != nil {
