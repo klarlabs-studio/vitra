@@ -83,7 +83,7 @@ Usage:
   vitra new <dir>            Scaffold a starter desktop app
   vitra dev [dir]            Watch + run the app with the native host (Linux: -tags vitra_native)
   vitra build [dir]          Build the app binary with the native host
-  vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir] [--bin path] [--app-id id] [--name name] [--version ver]
+  vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis] [--bin path] [--app-id id] [--name name] [--version ver]
                              Stage Linux dir, build .deb / AppDir / .AppImage + provenance.json
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
@@ -528,7 +528,7 @@ func runPackage(args []string) error {
 	name := "Vitra App"
 	version := vitra.Version
 	format := "dir"
-	usage := "usage: vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir] [--bin path] [--app-id id] [--name name] [--version ver]"
+	usage := "usage: vitra package --out <dir> [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis] [--bin path] [--app-id id] [--name name] [--version ver]"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
@@ -564,7 +564,7 @@ func runPackage(args []string) error {
 		case "--format":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("--format requires dir, deb, appdir, appimage, win-dir, wix, or nsis-dir")
+				return fmt.Errorf("--format requires dir, deb, appdir, appimage, win-dir, wix, nsis-dir, msi, or nsis")
 			}
 			format = args[i]
 		default:
@@ -588,12 +588,12 @@ func runPackage(args []string) error {
 		target = packaging.TargetLinuxAppImage
 	case "win-dir":
 		target = packaging.TargetWindowsDir
-	case "wix":
+	case "wix", "msi":
 		target = packaging.TargetWindowsMSI
-	case "nsis-dir":
+	case "nsis-dir", "nsis":
 		target = packaging.TargetWindowsNSIS
 	default:
-		return fmt.Errorf("unknown format %q (want dir, deb, appdir, appimage, win-dir, wix, or nsis-dir)", format)
+		return fmt.Errorf("unknown format %q (want dir, deb, appdir, appimage, win-dir, wix, nsis-dir, msi, or nsis)", format)
 	}
 	spec := packaging.Spec{
 		AppID:   appID,
@@ -630,6 +630,20 @@ func runPackage(args []string) error {
 		art, err = packaging.BuildWiXDir(spec, bin, outDir)
 	case "nsis-dir":
 		art, err = packaging.BuildNSISDir(spec, bin, outDir)
+	case "msi":
+		msiPath := outDir
+		if !strings.HasSuffix(strings.ToLower(outDir), ".msi") {
+			safe := strings.ReplaceAll(strings.ToLower(name), " ", "-")
+			msiPath = filepath.Join(outDir, fmt.Sprintf("%s-%s.msi", safe, version))
+		}
+		art, err = packaging.BuildMSI(spec, bin, msiPath)
+	case "nsis":
+		nsisPath := outDir
+		if !strings.HasSuffix(strings.ToLower(outDir), ".exe") {
+			safe := strings.ReplaceAll(strings.ToLower(name), " ", "-")
+			nsisPath = filepath.Join(outDir, fmt.Sprintf("%s-%s-setup.exe", safe, version))
+		}
+		art, err = packaging.BuildNSIS(spec, bin, nsisPath)
 	}
 	if err != nil {
 		return err
@@ -650,7 +664,7 @@ func runPackage(args []string) error {
 		return err
 	}
 	provDir := art.Path
-	if format == "deb" || format == "appimage" {
+	if format == "deb" || format == "appimage" || format == "msi" || format == "nsis" {
 		provDir = filepath.Dir(art.Path)
 	}
 	if err := os.MkdirAll(provDir, 0o755); err != nil {

@@ -73,8 +73,7 @@ desktop services. Global OS hotkeys ship on Windows and Darwin; Linux keeps
 in-window accelerators only (Wayland has no portable global hotkey API).
 
 Wails still leads on template ecosystem and packaging polish. Vitra leads on
-capability-oriented authority and inspectable grants. Remaining work is
-final MSI/NSIS fold tooling on Windows hosts, enterprise SIEM/MDM hooks, and
-optional X11-only global shortcuts — not core DesktopHost parity. Windows
-installer *staging* (`win-dir` / `wix` / `nsis-dir`) ships; candle/light/makensis
-fold is host-side.
+capability-oriented authority and inspectable grants. Remaining work is enterprise SIEM/MDM hooks and optional X11-only global
+shortcuts — not core DesktopHost or installer-script parity. Windows MSI/NSIS
+staging and fold (`win-dir` / `wix` / `nsis-dir` / `msi` / `nsis`) ship; fold
+requires candle/light/makensis on the host (overridable via env).

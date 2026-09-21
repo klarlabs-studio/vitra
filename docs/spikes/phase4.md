@@ -23,13 +23,15 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `appdir` | AppImage-ready AppDir (`BuildAppDir`) |
 | `appimage` | Final `.AppImage` (`BuildAppImage` → `appimagetool`) |
 | `win-dir` | Staged Windows `bin/<Name>.exe` (`StageWindows`) |
-| `wix` | Windows stage + `product.wxs` (`BuildWiXDir`; fold with WiX candle/light) |
-| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; fold with makensis) |
+| `wix` | Windows stage + `product.wxs` (`BuildWiXDir`) |
+| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`) |
+| `msi` | Final `.msi` (`BuildMSI` → candle/light or `VITRA_CANDLE`/`VITRA_LIGHT`) |
+| `nsis` | Final setup `.exe` (`BuildNSIS` → makensis or `VITRA_MAKENSIS`) |
 
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold
-externally. WiX/NSIS folds are left to external `candle`/`light`/`makensis`
-on Windows hosts — CI validates script emission only.
+externally. `BuildMSI` / `BuildNSIS` likewise stage then fold; without WiX/NSIS
+tools, use `--format wix` / `nsis-dir` and fold on a Windows host.
 
 ## Update apply
 
