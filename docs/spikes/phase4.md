@@ -7,7 +7,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
-| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`); Homepage / Categories / License / Description / Maintainer (`developer_name` + `update_contact`) via Spec (also RPM/snap, Debian `copyright`, Windows ARP URL/Comments/LegalCopyright, Darwin `NSHumanReadableCopyright`) |
+| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`); Homepage / Categories / License / Description / Maintainer (`developer_name` + `update_contact`) / OARS `content_rating` via Spec (also RPM/snap, Debian `copyright`, Windows ARP URL/Comments/LegalCopyright, Darwin `NSHumanReadableCopyright`) |
 | Sign dry-run plan | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
 | Notary credential bootstrap plan | `PlanNotaryCredentials` + `vitra notary-setup` (store-credentials argv; not executed) |
 | Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}` and `<secret:…>`→`VITRA_SECRET_*`; sets `Artifact.Signed`) |

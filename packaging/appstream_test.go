@@ -42,6 +42,7 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		`<launchable type="desktop-id">com.example.Demo.desktop</launchable>`,
 		`<developer_name>Klarlabs &lt;dev@klarlabs.de&gt;</developer_name>`,
 		`<update_contact>Klarlabs &lt;dev@klarlabs.de&gt;</update_contact>`,
+		`<content_rating type="oars-1.1"/>`,
 		`type="desktop-application"`,
 	} {
 		if !strings.Contains(xml, want) {
@@ -70,6 +71,9 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 	emptyXML := packaging.AppStreamMetainfoXML(empty)
 	if !strings.Contains(emptyXML, `<update_contact>Vitra Packaging &lt;vitra@klarlabs.de&gt;</update_contact>`) {
 		t.Fatalf("default update_contact missing:\n%s", emptyXML)
+	}
+	if !strings.Contains(emptyXML, `<content_rating type="oars-1.1"/>`) {
+		t.Fatalf("default OARS content_rating missing:\n%s", emptyXML)
 	}
 	if strings.Contains(emptyXML, `<url type="homepage">`) || strings.Contains(emptyXML, `<url type="help">`) || strings.Contains(emptyXML, `<url type="bugtracker">`) || strings.Contains(emptyXML, `<url type="vcs-browser">`) || strings.Contains(emptyXML, `<url type="donation">`) || strings.Contains(emptyXML, `<url type="contact">`) || strings.Contains(emptyXML, `<url type="faq">`) || strings.Contains(emptyXML, `<url type="contribute">`) || strings.Contains(emptyXML, `<url type="translate">`) {
 		t.Fatalf("unexpected homepage/help/bugtracker/vcs-browser/donation/contact/faq/contribute/translate urls when Homepage empty:\n%s", emptyXML)
@@ -100,5 +104,8 @@ func TestStageLinux_WritesAppStreamMetainfo(t *testing.T) {
 	}
 	if !strings.Contains(string(body), `<update_contact>Vitra Packaging &lt;vitra@klarlabs.de&gt;</update_contact>`) {
 		t.Fatalf("default update_contact missing:\n%s", body)
+	}
+	if !strings.Contains(string(body), `<content_rating type="oars-1.1"/>`) {
+		t.Fatalf("OARS content_rating missing:\n%s", body)
 	}
 }
