@@ -70,7 +70,7 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "project-files") {
 		t.Fatalf("inspect output: %q", out)
 	}
-	if !strings.Contains(out, "vitra.fs") || !strings.Contains(out, "vitra.dialog") || !strings.Contains(out, "vitra.clipboard") || !strings.Contains(out, "vitra.browser") || !strings.Contains(out, "vitra.os") || !strings.Contains(out, "vitra.notification") {
+	if !strings.Contains(out, "vitra.fs") || !strings.Contains(out, "vitra.dialog") || !strings.Contains(out, "vitra.clipboard") || !strings.Contains(out, "vitra.browser") || !strings.Contains(out, "vitra.os") || !strings.Contains(out, "vitra.notification") || !strings.Contains(out, "vitra.path") {
 		t.Fatalf("inspect missing plugin ownership: %q", out)
 	}
 
@@ -450,7 +450,7 @@ func TestRun_GenerateTypeScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(body)
-	for _, want := range []string{"kernel:", "fsRead", "dialogOpen", "dialogMessage", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", `invoke("fs.read"`, "onFsChanged", `on("fs.changed"`, "createEvents"} {
+	for _, want := range []string{"kernel:", "fsRead", "dialogOpen", "dialogMessage", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "pathOpen", `invoke("fs.read"`, "onFsChanged", `on("fs.changed"`, "createEvents"} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("missing %q in:\n%s", want, text)
 		}
@@ -512,7 +512,7 @@ func TestRun_PackageStagesLinuxDir(t *testing.T) {
 		t.Fatalf("expected modules from build info, got %s", raw)
 	}
 	s := string(raw)
-	for _, want := range []string{"vitra.fs", "vitra.dialog", "vitra.clipboard", "vitra.browser", "vitra.os", "vitra.notification", "fs.read", "dialog.open", "dialog.message", "clipboard.read", "browser.open", "os.info", "notifications.show"} {
+	for _, want := range []string{"vitra.fs", "vitra.dialog", "vitra.clipboard", "vitra.browser", "vitra.os", "vitra.notification", "vitra.path", "fs.read", "dialog.open", "dialog.message", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open"} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("provenance missing %q: %s", want, s)
 		}
@@ -1026,7 +1026,7 @@ func TestRun_NewScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "dialog.message", "fs.read", "clipboard.read", "browser.open", "os.info", "notifications.show"} {
+	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "dialog.message", "fs.read", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open"} {
 		if !strings.Contains(string(client), want) {
 			t.Fatalf("vitra-client.ts missing %q", want)
 		}

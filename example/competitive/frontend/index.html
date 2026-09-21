@@ -53,6 +53,7 @@
       <button id="save" class="secondary">Save file</button>
       <button id="msg" class="secondary">Message dialog</button>
       <button id="notify" class="secondary">Notify</button>
+      <button id="path" class="secondary">Open temp dir</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -120,6 +121,16 @@
           body: "Hello from competitive demo",
         });
         show({ notified: true });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("path").onclick = async () => {
+      try {
+        // Absolute path; grant PathScope is /** in the competitive demo.
+        const target = "/tmp";
+        await window.vitra.invoke("path.open", target);
+        show({ opened: target });
       } catch (e) {
         show(String(e.message || e), true);
       }

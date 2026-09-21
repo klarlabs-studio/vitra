@@ -174,6 +174,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureOpenURL, Available: true,
 			Detail: "open for http(s)/mailto; available without native WebView",
 		},
+		platform.FeaturePathOpen: {
+			Feature: platform.FeaturePathOpen, Available: true,
+			Detail: "open absolute local paths with OS default handler",
+		},
 	}
 }
 

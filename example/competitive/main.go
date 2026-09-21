@@ -28,6 +28,7 @@ import (
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
+	officialpath "go.klarlabs.de/vitra/plugin/official/path"
 	"go.klarlabs.de/vitra/policy"
 )
 
@@ -135,6 +136,7 @@ func run() error {
 			{Name: desktop.PermOpenURL},
 			{Name: desktop.PermOsInfo},
 			{Name: desktop.PermNotificationShow},
+			{Name: desktop.PermPathOpen, PathScope: &domain.PathScope{Allow: []string{"/**"}}},
 		},
 	)
 	if err != nil {
@@ -281,7 +283,7 @@ func run() error {
 	}
 	_ = register // kept for local demo commands if needed
 
-	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* / os.* / notifications.* permissions (invariant 6).
+	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* / os.* / notifications.* / path.* permissions (invariant 6).
 	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
 		return err
 	}
@@ -298,6 +300,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialnotification.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialpath.New()); err != nil {
 		return err
 	}
 	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
@@ -347,6 +352,19 @@ func run() error {
 			body, _ = v["body"].(string)
 		}
 		return nil, notifs.Show(ctx, caller, title, body)
+	})); err != nil {
+		return err
+	}
+	pathSvc := &desktop.PathService{
+		Gateway: rt,
+		Host:    host,
+		OnOpen: func(ctx context.Context, path string) error {
+			return host.OpenPath(ctx, path)
+		},
+	}
+	if err := rt.BindExecutor("path.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		path, _ := input.(string)
+		return nil, pathSvc.Open(ctx, caller, path)
 	})); err != nil {
 		return err
 	}

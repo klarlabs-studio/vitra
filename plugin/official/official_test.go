@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
 	"go.klarlabs.de/vitra/plugin/official/browser"
 	"go.klarlabs.de/vitra/plugin/official/clipboard"
@@ -11,45 +12,29 @@ import (
 	"go.klarlabs.de/vitra/plugin/official/fs"
 	"go.klarlabs.de/vitra/plugin/official/notification"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
+	officialpath "go.klarlabs.de/vitra/plugin/official/path"
 )
 
 func TestOfficialPlugins_RegisterCleanly(t *testing.T) {
 	reg := plugin.NewRegistry(plugin.SemVer{Major: 0, Minor: 3, Patch: 0})
-	if err := reg.Register(context.Background(), fs.New()); err != nil {
-		t.Fatal(err)
+	for _, p := range []plugin.Plugin{
+		fs.New(), dialog.New(), clipboard.New(), browser.New(),
+		officialos.New(), notification.New(), officialpath.New(),
+	} {
+		if err := reg.Register(context.Background(), p); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := reg.Register(context.Background(), dialog.New()); err != nil {
-		t.Fatal(err)
-	}
-	if err := reg.Register(context.Background(), clipboard.New()); err != nil {
-		t.Fatal(err)
-	}
-	if err := reg.Register(context.Background(), browser.New()); err != nil {
-		t.Fatal(err)
-	}
-	if err := reg.Register(context.Background(), officialos.New()); err != nil {
-		t.Fatal(err)
-	}
-	if err := reg.Register(context.Background(), notification.New()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := reg.Get(fs.PluginID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := reg.Get(clipboard.PluginID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := reg.Get(browser.PluginID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := reg.Get(officialos.PluginID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := reg.Get(notification.PluginID); err != nil {
-		t.Fatal(err)
+	for _, id := range []domain.PluginID{
+		fs.PluginID, clipboard.PluginID, browser.PluginID,
+		officialos.PluginID, notification.PluginID, officialpath.PluginID,
+	} {
+		if _, err := reg.Get(id); err != nil {
+			t.Fatal(err)
+		}
 	}
 	surface := reg.InspectSurface()
-	if len(surface) < 9 {
-		t.Fatalf("expected fs+dialog+clipboard+browser+os+notification permissions, got %v", surface)
+	if len(surface) < 10 {
+		t.Fatalf("expected official plugin permissions, got %v", surface)
 	}
 }
