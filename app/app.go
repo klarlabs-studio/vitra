@@ -28,6 +28,7 @@ type DesktopHost interface {
 	SetNavPolicy(fn func(windowID domain.WindowID, uri string) bool)
 	SetActionHandler(fn func(id string))
 	SetDragDropHandler(fn func(windowID domain.WindowID, paths []string))
+	SetDestroyHandler(fn func(windowID domain.WindowID))
 	EnableDragDrop(id domain.WindowID, enabled bool) error
 	Eval(id domain.WindowID, js string) error
 	ClipboardGet() (string, error)
@@ -137,6 +138,7 @@ func (a *App) Run(ctx context.Context) error {
 
 	a.host.SetInvokeHandler(a.handleInvoke)
 	a.host.SetNavPolicy(a.allowNav)
+	a.host.SetDestroyHandler(a.onNativeDestroy)
 
 	if err := a.OpenWindow(ctx, a.opts.Window); err != nil {
 		return err
@@ -220,6 +222,26 @@ func (a *App) CloseWindow(ctx context.Context, id domain.WindowID) error {
 		return hostErr
 	}
 	return rtErr
+}
+
+// onNativeDestroy syncs App/Runtime when the user closes a GTK window (titlebar).
+// API CloseWindow already drops the id before host.CloseWindow, so this is a
+// no-op when the destroy was driven by CloseWindow (avoids double Quit).
+func (a *App) onNativeDestroy(id domain.WindowID) {
+	a.mu.Lock()
+	_, tracked := a.windows[id]
+	if tracked {
+		delete(a.windows, id)
+	}
+	remaining := len(a.windows)
+	a.mu.Unlock()
+	if !tracked {
+		return
+	}
+	_ = a.rt.CloseWindow(context.Background(), id)
+	if remaining == 0 {
+		a.host.Quit()
+	}
 }
 
 // Windows returns a snapshot of open window ids.

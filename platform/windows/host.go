@@ -111,6 +111,7 @@ func (h *Host) SaveFileDialog() (string, error) {
 }
 func (h *Host) SetActionHandler(func(string))                      {}
 func (h *Host) SetDragDropHandler(func(domain.WindowID, []string)) {}
+func (h *Host) SetDestroyHandler(func(domain.WindowID))            {}
 func (h *Host) EnableDragDrop(domain.WindowID, bool) error {
 	return h.err(platform.FeatureDragDrop)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -15,16 +16,18 @@ import (
 )
 
 type fakeHost struct {
-	invoke  func(domain.WindowID, domain.Origin, []byte) []byte
-	nav     func(domain.WindowID, string) bool
-	opened  bool
-	opens   []platform.WindowSpec
-	uri     string
-	preload string
-	posted  []postedMsg
-	quit    chan struct{}
-	ran     chan struct{}
-	closed  []domain.WindowID
+	invoke    func(domain.WindowID, domain.Origin, []byte) []byte
+	nav       func(domain.WindowID, string) bool
+	onDestroy func(domain.WindowID)
+	opened    bool
+	opens     []platform.WindowSpec
+	uri       string
+	preload   string
+	posted    []postedMsg
+	quit      chan struct{}
+	ran       chan struct{}
+	closed    []domain.WindowID
+	quitOnce  sync.Once
 }
 
 type postedMsg struct {
@@ -62,6 +65,9 @@ func (h *fakeHost) PostMessage(_ context.Context, id domain.WindowID, message []
 func (h *fakeHost) Eval(domain.WindowID, string) error { return nil }
 func (h *fakeHost) CloseWindow(_ context.Context, id domain.WindowID) error {
 	h.closed = append(h.closed, id)
+	if h.onDestroy != nil {
+		h.onDestroy(id)
+	}
 	return nil
 }
 func (h *fakeHost) ClipboardGet() (string, error)                      { return "clip", nil }
@@ -70,6 +76,7 @@ func (h *fakeHost) OpenFileDialog() (string, error)                    { return 
 func (h *fakeHost) SaveFileDialog() (string, error)                    { return "/tmp/y", nil }
 func (h *fakeHost) SetActionHandler(func(string))                      {}
 func (h *fakeHost) SetDragDropHandler(func(domain.WindowID, []string)) {}
+func (h *fakeHost) SetDestroyHandler(fn func(domain.WindowID))         { h.onDestroy = fn }
 func (h *fakeHost) EnableDragDrop(domain.WindowID, bool) error         { return nil }
 func (h *fakeHost) SetMenuBar(domain.WindowID, []platform.MenuItem) error {
 	return nil
@@ -96,7 +103,9 @@ func (h *fakeHost) Run() error {
 	<-h.quit
 	return nil
 }
-func (h *fakeHost) Quit() { close(h.quit) }
+func (h *fakeHost) Quit() {
+	h.quitOnce.Do(func() { close(h.quit) })
+}
 
 func TestApp_RunInvokeAndNavPolicy(t *testing.T) {
 	host := &fakeHost{quit: make(chan struct{}), ran: make(chan struct{})}
@@ -312,5 +321,51 @@ func TestApp_OpenAndCloseWindow(t *testing.T) {
 	}
 	if len(host.closed) != 2 {
 		t.Fatalf("closed=%v", host.closed)
+	}
+}
+
+func TestApp_NativeDestroyQuitsLastWindow(t *testing.T) {
+	host := &fakeHost{quit: make(chan struct{}), ran: make(chan struct{})}
+	assets := fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("<html>ok</html>")}}
+	application, err := app.New(app.Options{
+		AppID:  "com.vitra.destroy",
+		Assets: assets,
+		Host:   host,
+		Window: app.WindowOptions{ID: "main"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	errCh := make(chan error, 1)
+	go func() { errCh <- application.Run(context.Background()) }()
+	select {
+	case <-host.ran:
+	case <-time.After(2 * time.Second):
+		t.Fatal("run timeout")
+	}
+	if err := application.OpenWindow(context.Background(), app.WindowOptions{ID: "aux"}); err != nil {
+		t.Fatal(err)
+	}
+	if host.onDestroy == nil {
+		t.Fatal("expected destroy handler")
+	}
+	// Simulate titlebar close of main; aux remains — must not quit.
+	host.onDestroy("main")
+	if len(application.Windows()) != 1 {
+		t.Fatalf("windows after main destroy: %v", application.Windows())
+	}
+	select {
+	case <-host.quit:
+		t.Fatal("quit must not fire while aux remains")
+	case <-time.After(50 * time.Millisecond):
+	}
+	host.onDestroy("aux")
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected quit after last native destroy")
 	}
 }

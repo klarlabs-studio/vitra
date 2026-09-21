@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Quit on last native window destroy: `SetDestroyHandler` syncs `App`/`Runtime` when GTK closes a window (titlebar); last window quits without double-Quit on API `CloseWindow`.
 - Multi-window `app.App`: `OpenWindow` / `CloseWindow` / `Windows`; closing the last window quits. Competitive demo honors `VITRA_SECOND_WINDOW=1`.
 - Linux window chrome minimize/hide: `WindowChrome.Minimized` / `Hidden` map to GTK iconify and hide; zero-value `Hidden` stays visible (compatible with existing apply calls).
 - Worker IPC transport: newline-delimited JSON `Session` (`Send`/`Recv`/`Request`) over in-memory pipes or OS-process stdio (`StdioIPC`); oversized/malformed frames fail closed.

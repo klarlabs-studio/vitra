@@ -13,10 +13,11 @@ import (
 // Host is a stub when the native WebKitGTK host is not linked.
 // Enable with: CGO_ENABLED=1 go build -tags vitra_native
 type Host struct {
-	onInvoke func(domain.WindowID, domain.Origin, []byte) []byte
-	onNav    func(domain.WindowID, string) bool
-	onAction func(id string)
-	onDrop   func(windowID domain.WindowID, paths []string)
+	onInvoke  func(domain.WindowID, domain.Origin, []byte) []byte
+	onNav     func(domain.WindowID, string) bool
+	onAction  func(id string)
+	onDrop    func(windowID domain.WindowID, paths []string)
+	onDestroy func(windowID domain.WindowID)
 }
 
 // New returns a stub host that reports why native UI is unavailable.
@@ -86,6 +87,9 @@ func (h *Host) SetNavPolicy(fn func(domain.WindowID, string) bool) { h.onNav = f
 func (h *Host) SetActionHandler(fn func(id string))                { h.onAction = fn }
 func (h *Host) SetDragDropHandler(fn func(domain.WindowID, []string)) {
 	h.onDrop = fn
+}
+func (h *Host) SetDestroyHandler(fn func(domain.WindowID)) {
+	h.onDestroy = fn
 }
 func (h *Host) EnableDragDrop(domain.WindowID, bool) error { return h.err() }
 func (h *Host) InjectFileDrop(id domain.WindowID, paths []string) {
