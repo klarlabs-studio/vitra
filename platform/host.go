@@ -53,6 +53,9 @@ type WindowChrome struct {
 	Minimized   bool
 	// Hidden hides the window when true; the zero value keeps it visible.
 	Hidden bool
+	// IconPath is an optional filesystem path to a window icon image.
+	// Empty leaves the current icon unchanged.
+	IconPath string
 }
 
 // Support describes whether a feature is available on the current host.

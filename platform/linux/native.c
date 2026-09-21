@@ -136,6 +136,7 @@ void vitra_win_free(VitraWin *w) {
 		w->accels = NULL;
 	}
 	g_free(w->id);
+	g_free(w->icon_path);
 	g_free(w);
 }
 
@@ -146,7 +147,7 @@ void vitra_win_flush(void) {
 	}
 }
 
-void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden) {
+void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden, const char *icon_path) {
 	if (!w || !w->window) {
 		return;
 	}
@@ -186,6 +187,17 @@ void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int heigh
 	} else {
 		gtk_widget_show(w->window);
 	}
+	if (icon_path && icon_path[0] != '\0') {
+		GError *err = NULL;
+		if (!gtk_window_set_icon_from_file(win, icon_path, &err)) {
+			if (err) {
+				g_error_free(err);
+			}
+		} else {
+			g_free(w->icon_path);
+			w->icon_path = g_strdup(icon_path);
+		}
+	}
 	vitra_win_flush();
 }
 
@@ -193,6 +205,7 @@ VitraChrome vitra_win_chrome(VitraWin *w) {
 	VitraChrome c;
 	memset(&c, 0, sizeof(c));
 	c.title = g_strdup("");
+	c.icon_path = g_strdup("");
 	if (!w || !w->window) {
 		return c;
 	}
@@ -200,6 +213,8 @@ VitraChrome vitra_win_chrome(VitraWin *w) {
 	const gchar *t = gtk_window_get_title(win);
 	g_free(c.title);
 	c.title = g_strdup(t ? t : "");
+	g_free(c.icon_path);
+	c.icon_path = g_strdup(w->icon_path ? w->icon_path : "");
 	int dw = 0;
 	int dh = 0;
 	gtk_window_get_default_size(win, &dw, &dh);

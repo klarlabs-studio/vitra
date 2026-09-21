@@ -18,6 +18,7 @@ typedef struct {
 	int hidden;
 	int req_width;
 	int req_height;
+	char *icon_path;
 } VitraWin;
 
 typedef struct {
@@ -29,6 +30,7 @@ typedef struct {
 	int above;
 	int minimized;
 	int hidden;
+	char *icon_path;
 } VitraChrome;
 
 void vitra_gtk_init(void);
@@ -57,7 +59,7 @@ void vitra_tray_clear(void);
 
 void vitra_win_set_drag_drop(VitraWin *w, int enabled);
 void vitra_win_flush(void);
-void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden);
+void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden, const char *icon_path);
 VitraChrome vitra_win_chrome(VitraWin *w);
 
 #endif
