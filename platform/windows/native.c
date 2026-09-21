@@ -8,6 +8,7 @@
 #include <windows.h>
 #include <commdlg.h>
 #include <shellapi.h>
+#include <shobjidl.h>
 
 extern void goVitraIdle(void *);
 extern void goVitraDestroy(char *);
@@ -55,6 +56,7 @@ static const char *kClassName = "VitraWinClass";
 static const char *kTrayClassName = "VitraTrayClass";
 static int g_class_registered = 0;
 static int g_tray_class_registered = 0;
+static char *g_program_name = NULL;
 static int g_quit = 0;
 
 static HWND g_tray_hwnd = NULL;
@@ -435,7 +437,20 @@ static void ensure_tray_window(void) {
 		HWND_MESSAGE, NULL, GetModuleHandle(NULL), NULL);
 }
 
-void vitra_win32_init(void) {
+void vitra_win32_init(const char *prgname) {
+	if (prgname != NULL && prgname[0] != '\0') {
+		int n = MultiByteToWideChar(CP_UTF8, 0, prgname, -1, NULL, 0);
+		if (n > 0) {
+			wchar_t *w = (wchar_t *)malloc(sizeof(wchar_t) * (size_t)n);
+			if (w) {
+				MultiByteToWideChar(CP_UTF8, 0, prgname, -1, w, n);
+				(void)SetCurrentProcessExplicitAppUserModelID(w);
+				free(w);
+			}
+		}
+		free(g_program_name);
+		g_program_name = _strdup(prgname);
+	}
 	if (g_class_registered) {
 		return;
 	}
@@ -450,6 +465,10 @@ void vitra_win32_init(void) {
 	wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	RegisterClassExA(&wc);
 	g_class_registered = 1;
+}
+
+const char *vitra_get_program_name(void) {
+	return g_program_name;
 }
 
 void vitra_win32_main(void) {
@@ -481,7 +500,7 @@ void vitra_idle_add(void *data) {
 
 VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload) {
 	(void)preload;
-	vitra_win32_init();
+	vitra_win32_init(NULL);
 	VitraWin *w = (VitraWin *)calloc(1, sizeof(VitraWin));
 	if (!w) {
 		return NULL;

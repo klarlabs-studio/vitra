@@ -16,6 +16,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -29,18 +31,19 @@ func init() { runtime.LockOSThread() }
 
 // Host is a WKWebView desktop host.
 type Host struct {
-	mu        sync.Mutex
-	windows   map[domain.WindowID]*nativeWindow
-	origins   map[domain.WindowID]domain.Origin
-	onInvoke  func(domain.WindowID, domain.Origin, []byte) []byte
-	onNav     func(domain.WindowID, string) bool
-	onAction  func(id string)
-	onDrop    func(windowID domain.WindowID, paths []string)
-	onDestroy func(windowID domain.WindowID)
-	looping   bool
-	inited    bool
-	jobs      sync.Map // uint64 -> func()
-	jobSeq    uint64
+	mu          sync.Mutex
+	windows     map[domain.WindowID]*nativeWindow
+	origins     map[domain.WindowID]domain.Origin
+	onInvoke    func(domain.WindowID, domain.Origin, []byte) []byte
+	onNav       func(domain.WindowID, string) bool
+	onAction    func(id string)
+	onDrop      func(windowID domain.WindowID, paths []string)
+	onDestroy   func(windowID domain.WindowID)
+	looping     bool
+	inited      bool
+	programName string
+	jobs        sync.Map // uint64 -> func()
+	jobSeq      uint64
 }
 
 type nativeWindow struct{ ptr *C.VitraWin }
@@ -62,11 +65,48 @@ func New() *Host {
 	return h
 }
 
-func (h *Host) ensureInit() {
-	if !h.inited {
-		C.vitra_app_init()
-		h.inited = true
+// SetProgramName sets NSProcessInfo processName for dock identity. Must be
+// called before the first window/event-loop call. Empty keeps the default.
+func (h *Host) SetProgramName(name string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.inited {
+		return
 	}
+	h.programName = strings.TrimSpace(name)
+}
+
+func (h *Host) ensureInit() {
+	if h.inited {
+		return
+	}
+	h.mu.Lock()
+	if h.inited {
+		h.mu.Unlock()
+		return
+	}
+	name := h.programName
+	h.inited = true
+	h.mu.Unlock()
+	if name == "" && len(os.Args) > 0 {
+		name = filepath.Base(os.Args[0])
+	}
+	var cname *C.char
+	if name != "" {
+		cname = C.CString(name)
+		defer C.free(unsafe.Pointer(cname))
+	}
+	C.vitra_app_init(cname)
+}
+
+// ProgramName returns the process name after init (empty before).
+func (h *Host) ProgramName() string {
+	h.ensureInit()
+	p := C.vitra_get_program_name()
+	if p == nil {
+		return ""
+	}
+	return C.GoString(p)
 }
 
 // OS returns darwin.

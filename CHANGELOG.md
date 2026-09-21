@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Cross-host process identity: Darwin `SetProgramName` → `NSProcessInfo.setProcessName`; Windows → `SetCurrentProcessExplicitAppUserModelID`; WiX shortcuts emit `System.AppUserModel.ID` from `AppID`; competitive demo sets `vitra-competitive` on all hosts.
 - Packaging provenance: `WithModulesFromBuildInfo` fills Go module inventory from the packaged binary (or CLI build info fallback); plugin/capability rows are derived from official plugin Manifests via `WithPluginInventory`.
 - `vitra new` scaffold registers official `fs` + `dialog` plugins (bound dialog/fs executors + scoped grant), emits `frontend/vitra-client.ts`, and documents `vitra generate typescript` / `vitra package`.
 - Linux host WM_CLASS: `vitra_gtk_init` calls `g_set_prgname` / `gdk_set_program_class` (default `filepath.Base(os.Args[0])`, overridable via `Host.SetProgramName`) so docks match FreeDesktop `StartupWMClass`.

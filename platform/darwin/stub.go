@@ -24,6 +24,12 @@ type Host struct {
 // New returns a stub host that reports why native UI is unavailable.
 func New() *Host { return &Host{} }
 
+// SetProgramName is a no-op on the stub host.
+func (h *Host) SetProgramName(string) {}
+
+// ProgramName returns empty on the stub host.
+func (h *Host) ProgramName() string { return "" }
+
 func (h *Host) OS() platform.OS { return platform.OSDarwin }
 
 func (h *Host) Features() platform.FeatureSet {

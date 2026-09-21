@@ -159,7 +159,7 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	}
 	iconXML := ""
 	iconComp := ""
-	shortcutIcon := ""
+	shortcutIconAttr := ""
 	if iconFile != "" {
 		iconID := "AppIconFile"
 		iconXML = fmt.Sprintf(`
@@ -169,9 +169,11 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
       <Component Id="AppIconComponent" Guid="*">
         <File Id="%s" Source="bin\%s" KeyPath="yes"/>
       </Component>`, iconID, iconFile)
-		shortcutIcon = `
+		shortcutIconAttr = `
                   Icon="AppIcon"`
 	}
+	aumidProp := fmt.Sprintf(`
+                  <ShortcutProperty Key="System.AppUserModel.ID" Value="%s"/>`, xmlEscape(spec.AppID))
 	upgrade := deterministicGUID("vitra-wix-upgrade:" + spec.AppID)
 	regManufacturer := xmlEscape(safeName)
 	regProduct := xmlEscape(safeName)
@@ -207,7 +209,8 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
         <Shortcut Id="AppStartMenuShortcut" Name="%s"
                   Description="%s"
                   Target="[INSTALLFOLDER]%s"
-                  WorkingDirectory="INSTALLFOLDER"%s/>
+                  WorkingDirectory="INSTALLFOLDER"%s>%s
+        </Shortcut>
         <RemoveFolder Id="RemoveAppProgramsFolder" Directory="ApplicationProgramsFolder" On="uninstall"/>
         <RegistryValue Root="HKCU" Key="Software\%s\%s" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes"/>
       </Component>
@@ -215,7 +218,8 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
         <Shortcut Id="AppDesktopShortcut" Name="%s"
                   Description="%s"
                   Target="[INSTALLFOLDER]%s"
-                  WorkingDirectory="INSTALLFOLDER"%s/>
+                  WorkingDirectory="INSTALLFOLDER"%s>%s
+        </Shortcut>
         <RegistryValue Root="HKCU" Key="Software\%s\%s" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes"/>
       </Component>
     </ComponentGroup>
@@ -224,8 +228,8 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 `, xmlEscape(spec.Name), xmlEscape(spec.Version), xmlEscape(spec.EffectivePublisher()), upgrade,
 		xmlEscape(spec.Name), iconXML, xmlEscape(spec.Name), xmlEscape(safeName), xmlEscape(safeName),
 		exeName, iconComp,
-		xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIcon, regManufacturer, regProduct,
-		xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIcon, regManufacturer, regProduct)
+		xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIconAttr, aumidProp, regManufacturer, regProduct,
+		xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIconAttr, aumidProp, regManufacturer, regProduct)
 	_ = arch // recorded in Spec / provenance; WiX Platform can be set at candle time
 	if err := os.WriteFile(filepath.Join(outDir, "product.wxs"), []byte(wxs), 0o644); err != nil {
 		return Artifact{}, err

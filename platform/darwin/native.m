@@ -165,9 +165,23 @@ struct VitraWin {
 	char *icon_path;
 };
 
-void vitra_app_init(void) {
+static char *g_program_name = NULL;
+
+void vitra_app_init(const char *prgname) {
 	[NSApplication sharedApplication];
 	[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+	if (prgname != NULL && prgname[0] != '\0') {
+		NSString *name = [NSString stringWithUTF8String:prgname];
+		if (name != nil) {
+			[[NSProcessInfo processInfo] setProcessName:name];
+		}
+		free(g_program_name);
+		g_program_name = strdup(prgname);
+	}
+}
+
+const char *vitra_get_program_name(void) {
+	return g_program_name;
 }
 
 void vitra_app_run(void) {
