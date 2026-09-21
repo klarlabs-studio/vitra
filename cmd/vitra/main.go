@@ -2186,6 +2186,10 @@ func run() error {
 			}
 			return host.SetTray(tooltip, native)
 		},
+		OnClear: func(ctx context.Context) error {
+			host.ClearTray()
+			return nil
+		},
 	}
 	if err := rt.BindExecutor("tray.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		tooltip, items, err := desktop.ParseTraySet(input)
@@ -2193,6 +2197,11 @@ func run() error {
 			return nil, err
 		}
 		return nil, trays.SetTray(ctx, caller, tooltip, items)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("tray.clear", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return nil, trays.ClearTray(ctx, caller)
 	})); err != nil {
 		return err
 	}
@@ -2329,6 +2338,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="getChrome">window.getChrome</button>
 <button id="menu">menu.set</button>
 <button id="tray">tray.set</button>
+<button id="trayClear">tray.clear</button>
 <button id="drop">dragdrop.receive</button>
 <button id="shortcut">shortcut.register</button>
 <button id="quit">app.quit</button>
@@ -2395,6 +2405,12 @@ document.getElementById("tray").onclick = async () => {
       ],
     });
     out.textContent = JSON.stringify({ tray: "set" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("trayClear").onclick = async () => {
+  try {
+    await invoke("tray.clear");
+    out.textContent = JSON.stringify({ tray: "cleared" }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
 document.getElementById("drop").onclick = async () => {

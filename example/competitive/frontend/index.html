@@ -60,6 +60,7 @@
       <button id="getChrome" class="secondary">Read window.getChrome</button>
       <button id="menu" class="secondary">Set menu bar</button>
       <button id="tray" class="secondary">Set tray</button>
+      <button id="trayClear" class="secondary">Clear tray</button>
       <button id="drop" class="secondary">Enable file drops</button>
       <button id="shortcut" class="secondary">Register shortcut</button>
       <button id="quit" class="secondary">Quit app</button>
@@ -218,6 +219,14 @@
           ],
         });
         show({ tray: "set" });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("trayClear").onclick = async () => {
+      try {
+        await window.vitra.invoke("tray.clear");
+        show({ tray: "cleared" });
       } catch (e) {
         show(String(e.message || e), true);
       }

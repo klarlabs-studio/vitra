@@ -19,8 +19,11 @@ func TestTrayPlugin_Contribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.Commands) != 1 || string(c.Commands[0].Name()) != "tray.set" {
+	if len(c.Commands) != 2 || string(c.Commands[0].Name()) != "tray.set" || string(c.Commands[1].Name()) != "tray.clear" {
 		t.Fatalf("commands: %v", c.Commands)
+	}
+	if string(c.Commands[1].Permission()) != "tray.set" {
+		t.Fatalf("tray.clear permission: %s", c.Commands[1].Permission())
 	}
 	if len(c.Events) != 1 || string(c.Events[0]) != "tray.action" {
 		t.Fatalf("events: %v", c.Events)

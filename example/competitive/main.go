@@ -181,6 +181,10 @@ func run() error {
 			}
 			return host.SetTray(tooltip, native)
 		},
+		OnClear: func(ctx context.Context) error {
+			host.ClearTray()
+			return nil
+		},
 	}
 	dialogs := &desktop.DialogService{
 		Gateway: rt,
@@ -551,6 +555,11 @@ func run() error {
 			return nil, err
 		}
 		return nil, trays.SetTray(ctx, caller, tooltip, items)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("tray.clear", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return nil, trays.ClearTray(ctx, caller)
 	})); err != nil {
 		return err
 	}
