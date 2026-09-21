@@ -28,5 +28,8 @@ func TestHost_ExplicitUnsupported(t *testing.T) {
 	}
 	h.SetInvokeHandler(func(domain.WindowID, domain.Origin, []byte) []byte { return nil })
 	h.SetNavPolicy(func(domain.WindowID, string) bool { return false })
+	if err := h.ApplyWindowChrome("main", platform.WindowChrome{Width: 100, Height: 100}); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureWindowChrome {
+		t.Fatalf("chrome: %v", err)
+	}
 	h.Quit()
 }

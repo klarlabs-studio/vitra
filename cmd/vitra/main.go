@@ -146,7 +146,7 @@ func doctor() error {
 		fmt.Println("  note:     WKWebView DesktopHost under -tags vitra_native; OpenURL/clipboard/single-instance/deep-link/scheme/files without WebView")
 	case "windows":
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native (Win32 shell; WebView2 next)")
-		fmt.Println("  note:     OpenURL/clipboard/single-instance/deep-link/scheme/files without native host; WebView2 Eval/message TBD")
+		fmt.Println("  note:     Win32 chrome under -tags vitra_native; OpenURL/clipboard/SI/deep-link/scheme/files without WebView2; Eval TBD")
 	}
 	return nil
 }

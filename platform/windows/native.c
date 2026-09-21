@@ -13,6 +13,16 @@ struct VitraWin {
 	HWND hwnd;
 	char *id;
 	char *pending_uri;
+	char *icon_path;
+	int maximized;
+	int fullscreen;
+	int above;
+	int minimized;
+	int hidden;
+	int req_width;
+	int req_height;
+	WINDOWPLACEMENT saved_placement;
+	LONG_PTR saved_style;
 };
 
 static const char *kClassName = "VitraWinClass";
@@ -84,6 +94,8 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 	}
 	int wpx = width > 0 ? width : 1024;
 	int hpx = height > 0 ? height : 768;
+	w->req_width = wpx;
+	w->req_height = hpx;
 	w->hwnd = CreateWindowExA(
 		0, kClassName, title ? title : "",
 		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
@@ -139,6 +151,106 @@ void vitra_win_free(VitraWin *w) {
 		w->hwnd = NULL;
 	}
 	free(w->pending_uri);
+	free(w->icon_path);
 	free(w->id);
 	free(w);
+}
+
+void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden, const char *icon_path) {
+	if (!w || !w->hwnd) {
+		return;
+	}
+	HWND hwnd = w->hwnd;
+	if (title) {
+		SetWindowTextA(hwnd, title);
+	}
+	if (width > 0 && height > 0) {
+		w->req_width = width;
+		w->req_height = height;
+		RECT rc;
+		GetWindowRect(hwnd, &rc);
+		MoveWindow(hwnd, rc.left, rc.top, width, height, TRUE);
+	}
+	w->maximized = maximized ? 1 : 0;
+	w->fullscreen = fullscreen ? 1 : 0;
+	w->above = above ? 1 : 0;
+	w->minimized = minimized ? 1 : 0;
+	w->hidden = hidden ? 1 : 0;
+
+	if (fullscreen) {
+		if (!w->saved_style) {
+			w->saved_placement.length = sizeof(WINDOWPLACEMENT);
+			GetWindowPlacement(hwnd, &w->saved_placement);
+			w->saved_style = GetWindowLongPtr(hwnd, GWL_STYLE);
+		}
+		SetWindowLongPtr(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+		MONITORINFO mi;
+		mi.cbSize = sizeof(mi);
+		HMONITOR mon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+		GetMonitorInfo(mon, &mi);
+		SetWindowPos(hwnd, HWND_TOP, mi.rcMonitor.left, mi.rcMonitor.top,
+			mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top,
+			SWP_FRAMECHANGED);
+	} else if (w->saved_style) {
+		SetWindowLongPtr(hwnd, GWL_STYLE, w->saved_style);
+		SetWindowPlacement(hwnd, &w->saved_placement);
+		w->saved_style = 0;
+	}
+
+	if (!fullscreen) {
+		if (maximized) {
+			ShowWindow(hwnd, SW_MAXIMIZE);
+		} else if (minimized) {
+			ShowWindow(hwnd, SW_MINIMIZE);
+		} else if (hidden) {
+			ShowWindow(hwnd, SW_HIDE);
+		} else {
+			ShowWindow(hwnd, SW_RESTORE);
+		}
+	}
+
+	SetWindowPos(hwnd, above ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0,
+		SWP_NOMOVE | SWP_NOSIZE);
+
+	if (icon_path && icon_path[0] != '\0') {
+		HICON icon = (HICON)LoadImageA(NULL, icon_path, IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE);
+		if (icon) {
+			SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)icon);
+			SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)icon);
+			free(w->icon_path);
+			w->icon_path = _strdup(icon_path);
+		}
+	}
+}
+
+VitraChrome vitra_win_chrome(VitraWin *w) {
+	VitraChrome c;
+	memset(&c, 0, sizeof(c));
+	c.title = _strdup("");
+	c.icon_path = _strdup("");
+	if (!w || !w->hwnd) {
+		return c;
+	}
+	char title[512];
+	GetWindowTextA(w->hwnd, title, sizeof(title));
+	free(c.title);
+	c.title = _strdup(title);
+	free(c.icon_path);
+	c.icon_path = _strdup(w->icon_path ? w->icon_path : "");
+	RECT rc;
+	GetClientRect(w->hwnd, &rc);
+	c.width = (int)(rc.right - rc.left);
+	c.height = (int)(rc.bottom - rc.top);
+	if (c.width <= 0) {
+		c.width = w->req_width;
+	}
+	if (c.height <= 0) {
+		c.height = w->req_height;
+	}
+	c.maximized = IsZoomed(w->hwnd) ? 1 : 0;
+	c.fullscreen = w->fullscreen;
+	c.above = w->above;
+	c.minimized = IsIconic(w->hwnd) ? 1 : 0;
+	c.hidden = !IsWindowVisible(w->hwnd) ? 1 : 0;
+	return c;
 }
