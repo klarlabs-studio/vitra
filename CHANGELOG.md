@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template rescript`: Vite + ReScript 11 + React (`App.res` + `@jihchi/vite-plugin-rescript`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream bugtracker URL: `Spec.Homepage` / `vitra package --homepage` also flow into metainfo `<url type="bugtracker">` alongside homepage/help (omitted when empty).
 - Official window always-on-top: `window.setAlwaysOnTop` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.SetAlwaysOnTop` + `ParseWindowAlwaysOnTop` (`{ id, alwaysOnTop }`); scaffold/competitive bind.
 - `vitra new --template elm`: Vite + Elm 0.19 + TypeScript bridge (`Main.elm` ports + `vite-plugin-elm`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
