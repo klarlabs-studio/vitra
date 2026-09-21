@@ -75,21 +75,21 @@ func ParseMenuItems(input any) ([]MenuItem, error) {
 		if items, ok := v["items"].([]any); ok {
 			raw = items
 		} else {
-			return nil, &domain.ErrValidation{Message: "menu.set input must be an array or {items:[]}"}
+			return nil, &domain.ErrValidation{Message: "menu items input must be an array or {items:[]}"}
 		}
 	default:
-		return nil, &domain.ErrValidation{Message: "menu.set input must be an array or {items:[]}"}
+		return nil, &domain.ErrValidation{Message: "menu items input must be an array or {items:[]}"}
 	}
 	out := make([]MenuItem, 0, len(raw))
 	for _, entry := range raw {
 		m, ok := entry.(map[string]any)
 		if !ok || m == nil {
-			return nil, &domain.ErrValidation{Message: "menu.set items must be objects"}
+			return nil, &domain.ErrValidation{Message: "menu items must be objects"}
 		}
 		id, _ := m["id"].(string)
 		label, _ := m["label"].(string)
 		if id == "" || label == "" {
-			return nil, &domain.ErrValidation{Message: "menu.set item requires id and label"}
+			return nil, &domain.ErrValidation{Message: "menu item requires id and label"}
 		}
 		item := MenuItem{ID: id, Label: label}
 		if menu, ok := m["menu"].(string); ok {
@@ -122,6 +122,27 @@ type TrayService struct {
 	Gateway Gateway
 	Host    platform.Host
 	OnSet   func(ctx context.Context, tooltip string, items []MenuItem) error
+}
+
+// ParseTraySet extracts tooltip + menu items from an invoke payload.
+// Accepts { tooltip?, items: [...] } or a bare items array.
+func ParseTraySet(input any) (string, []MenuItem, error) {
+	switch v := input.(type) {
+	case nil:
+		return "", nil, nil
+	case []any:
+		items, err := ParseMenuItems(v)
+		return "", items, err
+	case map[string]any:
+		tooltip, _ := v["tooltip"].(string)
+		if raw, ok := v["items"]; ok {
+			items, err := ParseMenuItems(raw)
+			return tooltip, items, err
+		}
+		return tooltip, nil, nil
+	default:
+		return "", nil, &domain.ErrValidation{Message: "tray.set input must be an array or {tooltip?, items:[]}"}
+	}
 }
 
 // SetTray authorizes tray.set then applies tray state.

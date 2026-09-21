@@ -114,6 +114,19 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	}).SetTray(ctx, caller, "Vitra", nil); err != nil {
 		t.Fatal(err)
 	}
+	tip, items, err := desktop.ParseTraySet(map[string]any{
+		"tooltip": "Demo",
+		"items": []any{
+			map[string]any{"id": "tray.quit", "label": "Quit"},
+		},
+	})
+	if err != nil || tip != "Demo" || len(items) != 1 || items[0].ID != "tray.quit" {
+		t.Fatalf("parse tray: tip=%q items=%+v err=%v", tip, items, err)
+	}
+	tip, items, err = desktop.ParseTraySet([]any{map[string]any{"id": "a", "label": "A"}})
+	if err != nil || tip != "" || len(items) != 1 || items[0].ID != "a" {
+		t.Fatalf("parse tray array: tip=%q items=%+v err=%v", tip, items, err)
+	}
 
 	dlg := &desktop.DialogService{
 		Gateway: allowAll{}, Host: host,

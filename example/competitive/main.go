@@ -30,6 +30,7 @@ import (
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	officialpath "go.klarlabs.de/vitra/plugin/official/path"
+	officialtray "go.klarlabs.de/vitra/plugin/official/tray"
 	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
 	"go.klarlabs.de/vitra/policy"
 )
@@ -319,6 +320,9 @@ func run() error {
 	if err := rt.RegisterPlugin(context.Background(), officialmenu.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(context.Background(), officialtray.New()); err != nil {
+		return err
+	}
 	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return clips.Read(ctx, caller)
 	})); err != nil {
@@ -516,6 +520,15 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("tray.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		tooltip, items, err := desktop.ParseTraySet(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, trays.SetTray(ctx, caller, tooltip, items)
+	})); err != nil {
+		return err
+	}
 
 	application, err = app.New(app.Options{
 		AppID:   "com.vitra.competitive",
@@ -531,7 +544,9 @@ func run() error {
 
 	host.SetActionHandler(func(id string) {
 		fmt.Println("native action:", id)
-		_ = application.Emit(context.Background(), "menu.action", map[string]any{"id": id})
+		payload := map[string]any{"id": id}
+		_ = application.Emit(context.Background(), "menu.action", payload)
+		_ = application.Emit(context.Background(), "tray.action", payload)
 		if id == "app.quit" || id == "tray.quit" || id == "tray.activate" {
 			application.Quit()
 		}
