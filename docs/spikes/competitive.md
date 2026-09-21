@@ -78,14 +78,14 @@ desktop services. Global OS hotkeys ship on Windows, Darwin, and Linux/X11;
 Wayland keeps in-window accelerators only (no portable global hotkey API).
 
 Wails still leads on **template ecosystem** and **release polish** (rich
-scaffolds; turnkey codesign/notarization; broader store/package targets).
-Vitra leads on capability-oriented authority and inspectable grants. Core
-DesktopHost, installer stage+fold (`deb` / AppImage / WiX·MSI / NSIS /
-`.app`·DMG), SIEM/MDM ports, and X11 global-shortcut parity are on main —
-Wayland global hotkeys remain intentionally unsupported. `vitra dev` /
+scaffolds; turnkey codesign/notarization; broader store/package targets such as
+Flatpak/Snap). Vitra leads on capability-oriented authority and inspectable
+grants. Core DesktopHost, installer stage+fold (`deb` / `.rpm` / AppImage /
+WiX·MSI / NSIS / `.app`·DMG), SIEM/MDM ports, and X11 global-shortcut parity are
+on main — Wayland global hotkeys remain intentionally unsupported. `vitra dev` /
 `vitra build` enable `-tags vitra_native` on Linux, Darwin, and Windows.
-Fold still needs host tools (`appimagetool`, candle/light, makensis, `hdiutil`)
-or env overrides; `Spec.Sign` / `SigningIdentityRef` validate refs only (no
-codesign/signtool/notary orchestration). Audit SIEM exporters (`JSONLSink` /
-`CEFSink`) and MDM JSON policy documents (`policy.LoadDocument`) plug into
-Phase 5 ports.
+Fold still needs host tools (`appimagetool`, `rpmbuild`, candle/light, makensis,
+`hdiutil`) or env overrides; `Spec.Sign` / `SigningIdentityRef` validate refs
+only (no codesign/signtool/notary orchestration). Audit SIEM exporters
+(`JSONLSink` / `CEFSink`) and MDM JSON policy documents (`policy.LoadDocument`)
+plug into Phase 5 ports.

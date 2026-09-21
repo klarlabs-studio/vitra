@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"go/parser"
 	"go/token"
 	"io"
@@ -45,7 +46,7 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "packaging fold tools:") {
 		t.Fatalf("doctor missing packaging tools: %q", out)
 	}
-	for _, tool := range []string{"appimagetool:", "candle:", "light:", "makensis:", "hdiutil:"} {
+	for _, tool := range []string{"appimagetool:", "rpmbuild:", "candle:", "light:", "makensis:", "hdiutil:"} {
 		if !strings.Contains(out, tool) {
 			t.Fatalf("doctor missing %q: %q", tool, out)
 		}
@@ -335,6 +336,53 @@ func TestRun_PackageDeb(t *testing.T) {
 		if !found {
 			t.Fatalf("no deb in %v (%v)", entries, err)
 		}
+	}
+}
+
+func TestRun_PackageRPM(t *testing.T) {
+	tmp := t.TempDir()
+	tool := filepath.Join(tmp, "fake-rpmbuild")
+	if err := os.WriteFile(tool, []byte(`#!/bin/sh
+top=""
+prev=""
+for a in "$@"; do
+  if [ "$prev" = "--define" ]; then
+    case "$a" in
+      _topdir\ *) top="${a#_topdir }" ;;
+    esac
+  fi
+  prev="$a"
+done
+mkdir -p "$top/RPMS/x86_64"
+printf 'RPM' > "$top/RPMS/x86_64/out.rpm"
+`), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VITRA_RPMBUILD", tool)
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "rpm", "--out", out, "--bin", bin, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	rpm := filepath.Join(out, fmt.Sprintf("com-vitra-t-0.1.0.%s.rpm", packaging.DefaultArch()))
+	raw, err := os.ReadFile(rpm)
+	if err != nil || string(raw) != "RPM" {
+		entries, _ := os.ReadDir(out)
+		t.Fatalf("rpm=%v raw=%q entries=%v", err, raw, entries)
+	}
+	stage := filepath.Join(tmp, "rpm-stage")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "rpm-dir", "--out", stage, "--bin", bin, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if _, err := os.Stat(filepath.Join(stage, "SPECS", "com-vitra-t.spec")); err != nil {
+		t.Fatal(err)
 	}
 }
 

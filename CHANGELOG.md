@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Linux RPM packaging: `vitra package --format rpm-dir|rpm` stages an rpmbuild `_topdir` (`BuildRPMDir`: FreeDesktop payload + `SPECS/*.spec`) and folds via `rpmbuild` (`VITRA_RPMBUILD`); `vitra doctor` reports `rpmbuild`.
 - Official `vitra.clipboard` plugin: declares `clipboard.read`/`clipboard.write`; scaffold, `vitra generate typescript`, packaging provenance inventory, and competitive demo register + bind clipboard executors alongside `fs`/`dialog`.
 - Cross-host process identity: Darwin `SetProgramName` → `NSProcessInfo.setProcessName`; Windows → `SetCurrentProcessExplicitAppUserModelID`; WiX shortcuts emit `System.AppUserModel.ID` from `AppID`; competitive demo sets `vitra-competitive` on all hosts.
 - Packaging provenance: `WithModulesFromBuildInfo` fills Go module inventory from the packaged binary (or CLI build info fallback); plugin/capability rows are derived from official plugin Manifests via `WithPluginInventory`.
