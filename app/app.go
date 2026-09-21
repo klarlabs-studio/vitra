@@ -45,6 +45,8 @@ type DesktopHost interface {
 	ApplyWindowChrome(id domain.WindowID, chrome platform.WindowChrome) error
 	ReadWindowChrome(id domain.WindowID) (platform.WindowChrome, error)
 	OpenURL(ctx context.Context, rawURL string) error
+	RegisterGlobalShortcut(accelerator, actionID string) error
+	UnregisterGlobalShortcut(accelerator string) error
 	Run() error
 	Quit()
 }

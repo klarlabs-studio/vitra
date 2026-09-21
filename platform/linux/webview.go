@@ -507,6 +507,24 @@ func (h *Host) ClearTray() {
 	h.dispatch(func() { C.vitra_tray_clear() })
 }
 
+// RegisterGlobalShortcut is unsupported on Linux (Wayland has no portable global hotkeys).
+func (h *Host) RegisterGlobalShortcut(string, string) error {
+	return &platform.ErrUnsupported{
+		Feature: platform.FeatureGlobalShortcut,
+		OS:      platform.OSLinux,
+		Detail:  "global shortcuts unsupported on Wayland; use MenuItem.Shortcut for in-window accelerators",
+	}
+}
+
+// UnregisterGlobalShortcut is unsupported on Linux.
+func (h *Host) UnregisterGlobalShortcut(string) error {
+	return &platform.ErrUnsupported{
+		Feature: platform.FeatureGlobalShortcut,
+		OS:      platform.OSLinux,
+		Detail:  "global shortcuts unsupported on Wayland; use MenuItem.Shortcut for in-window accelerators",
+	}
+}
+
 // Run runs the GTK main loop (blocking). Must be called from the main OS thread.
 func (h *Host) Run() error {
 	h.ensureInit()

@@ -121,6 +121,8 @@ func (h *Host) SaveFileDialog() (string, error)                            { ret
 func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error      { return h.err() }
 func (h *Host) SetTray(string, []platform.MenuItem) error                  { return h.err() }
 func (h *Host) ClearTray()                                                 {}
+func (h *Host) RegisterGlobalShortcut(string, string) error                { return h.err() }
+func (h *Host) UnregisterGlobalShortcut(string) error                      { return h.err() }
 func (h *Host) Run() error                                                 { return h.err() }
 func (h *Host) Quit()                                                      {}
 func (h *Host) err() error {

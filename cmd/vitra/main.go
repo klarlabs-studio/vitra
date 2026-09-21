@@ -116,6 +116,7 @@ func doctor() error {
 		platform.FeatureMenuBar,
 		platform.FeatureTray,
 		platform.FeatureSingleInstance,
+		platform.FeatureGlobalShortcut,
 		platform.FeatureDeepLink,
 		platform.FeatureDragDrop,
 		platform.FeatureFileAssociation,
@@ -147,7 +148,7 @@ func doctor() error {
 		fmt.Println("  note:     WKWebView DesktopHost under -tags vitra_native; OpenURL/clipboard/single-instance/deep-link/scheme/files without WebView")
 	case "windows":
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native (Win32 + WebView2Loader.dll)")
-		fmt.Println("  note:     WebView2 Navigate/Eval/message require Evergreen Runtime + WebView2Loader.dll beside the binary")
+		fmt.Println("  note:     WebView2 Navigate/Eval/message need Evergreen Runtime; global shortcuts via RegisterHotKey")
 	}
 	return nil
 }

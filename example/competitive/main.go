@@ -106,7 +106,7 @@ func run() error {
 
 	chromeGrant, err := domain.NewCapabilityGrant(
 		"desktop-chrome",
-		"clipboard, dialogs, menu, tray, single-instance, deeplink, drag-drop, window chrome, open url",
+		"clipboard, dialogs, menu, tray, shortcuts, single-instance, deeplink, drag-drop, window chrome, open url",
 		[]domain.WindowID{"main"},
 		[]domain.Origin{domain.OriginPackagedLocal},
 		[]domain.PermissionSpec{
@@ -116,6 +116,7 @@ func run() error {
 			{Name: desktop.PermDialogSave},
 			{Name: desktop.PermMenuSet},
 			{Name: desktop.PermTraySet},
+			{Name: desktop.PermShortcutRegister},
 			{Name: desktop.PermSingleInstance},
 			{Name: desktop.PermDeepLinkHandle},
 			{Name: desktop.PermDragDrop},
@@ -175,6 +176,13 @@ func run() error {
 		Host:    host,
 		OnRead:  func(ctx context.Context) (string, error) { return host.ClipboardGet() },
 		OnWrite: func(ctx context.Context, text string) error { return host.ClipboardSet(text) },
+	}
+	shortcuts := &desktop.ShortcutService{
+		Gateway: rt,
+		Host:    host,
+		OnRegister: func(_ context.Context, accelerator, actionID string) error {
+			return host.RegisterGlobalShortcut(accelerator, actionID)
+		},
 	}
 	single := &desktop.SingleInstanceService{
 		Gateway: rt,
@@ -369,6 +377,9 @@ func run() error {
 			{ID: "help.about", Label: "About Vitra"},
 			{ID: "tray.quit", Label: "Quit"},
 		})
+		if err := shortcuts.Register(context.Background(), caller, "Ctrl+Shift+Q", "app.quit"); err != nil {
+			fmt.Fprintf(os.Stderr, "global shortcut: %v\n", err)
+		}
 		if err := drops.Enable(context.Background(), caller, "main", true); err != nil {
 			fmt.Fprintf(os.Stderr, "drag-drop enable: %v\n", err)
 		} else if _, err := rt.SubscribeEvent("drop-sub", "dragdrop.drop", "main"); err == nil {

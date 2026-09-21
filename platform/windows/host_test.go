@@ -46,5 +46,8 @@ func TestHost_ExplicitUnsupported(t *testing.T) {
 	if err := h.EnableDragDrop("main", true); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureDragDrop {
 		t.Fatalf("dragdrop: %v", err)
 	}
+	if err := h.RegisterGlobalShortcut("Ctrl+Shift+P", "app.palette"); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureGlobalShortcut {
+		t.Fatalf("shortcut: %v", err)
+	}
 	h.Quit()
 }

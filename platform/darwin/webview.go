@@ -495,6 +495,16 @@ func (h *Host) ClearTray() {
 	h.dispatch(func() { C.vitra_tray_clear() })
 }
 
+// RegisterGlobalShortcut is not yet implemented on Darwin.
+func (h *Host) RegisterGlobalShortcut(string, string) error {
+	return h.err(platform.FeatureGlobalShortcut)
+}
+
+// UnregisterGlobalShortcut is not yet implemented on Darwin.
+func (h *Host) UnregisterGlobalShortcut(string) error {
+	return h.err(platform.FeatureGlobalShortcut)
+}
+
 // Run runs the Cocoa main loop (blocking). Must be called from the main OS thread.
 func (h *Host) Run() error {
 	h.ensureInit()

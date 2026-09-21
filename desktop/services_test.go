@@ -135,13 +135,16 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 
 	sc := &desktop.ShortcutService{
 		Gateway: allowAll{}, Host: host,
-		OnRegister: func(context.Context, string) error { return nil },
+		OnRegister: func(context.Context, string, string) error { return nil },
 	}
-	if err := sc.Register(ctx, caller, "Ctrl+Shift+P"); err != nil {
+	if err := sc.Register(ctx, caller, "Ctrl+Shift+P", "app.palette"); err != nil {
 		t.Fatal(err)
 	}
-	if err := sc.Register(ctx, caller, ""); err == nil {
+	if err := sc.Register(ctx, caller, "", "app.palette"); err == nil {
 		t.Fatal("expected empty accelerator validation")
+	}
+	if err := sc.Register(ctx, caller, "Ctrl+Shift+P", ""); err == nil {
+		t.Fatal("expected empty action validation")
 	}
 
 	si := &desktop.SingleInstanceService{

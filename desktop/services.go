@@ -162,13 +162,16 @@ func (s *ClipboardService) Write(ctx context.Context, caller domain.Caller, text
 type ShortcutService struct {
 	Gateway    Gateway
 	Host       platform.Host
-	OnRegister func(ctx context.Context, accelerator string) error
+	OnRegister func(ctx context.Context, accelerator, actionID string) error
 }
 
-// Register authorizes shortcut.register.
-func (s *ShortcutService) Register(ctx context.Context, caller domain.Caller, accelerator string) error {
+// Register authorizes shortcut.register then binds accelerator → actionID.
+func (s *ShortcutService) Register(ctx context.Context, caller domain.Caller, accelerator, actionID string) error {
 	if accelerator == "" {
 		return &domain.ErrValidation{Message: "accelerator is required"}
+	}
+	if actionID == "" {
+		return &domain.ErrValidation{Message: "action id is required"}
 	}
 	if err := authorize(s.Gateway, caller, PermShortcutRegister); err != nil {
 		return err
@@ -179,7 +182,7 @@ func (s *ShortcutService) Register(ctx context.Context, caller domain.Caller, ac
 	if s.OnRegister == nil {
 		return &platform.ErrUnsupported{Feature: platform.FeatureGlobalShortcut, OS: s.Host.OS(), Detail: "no shortcut adapter bound"}
 	}
-	return s.OnRegister(ctx, accelerator)
+	return s.OnRegister(ctx, accelerator, actionID)
 }
 
 // SingleInstanceService enforces single-instance behaviour.
