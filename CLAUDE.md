@@ -33,7 +33,7 @@ Zero external dependencies in the kernel — standard library only.
 vitra (root)     Fluent Runtime facade
 app/             Desktop application runtime (assets + host + gateway)
 bridge/          Injected frontend preload
-platform/        OS adapters (linux WebKitGTK, darwin/windows stubs)
+platform/        OS adapters (linux WebKitGTK, darwin WKWebView scaffold, windows stub)
 domain/          Aggregates, services, ports (zero deps)
 application/     Use cases
 inmemory/        Default adapters

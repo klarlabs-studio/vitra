@@ -131,7 +131,8 @@ func doctor() error {
 		fmt.Printf("  %-18s %s\n", string(f)+":", status)
 	}
 
-	if runtime.GOOS == "linux" {
+	switch runtime.GOOS {
+	case "linux":
 		if out, err := exec.Command("pkg-config", "--exists", "webkit2gtk-4.1").CombinedOutput(); err != nil {
 			fmt.Printf("  pkg-config: webkit2gtk-4.1 not found (%v %s)\n", err, strings.TrimSpace(string(out)))
 			fmt.Println("  hint:     sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev")
@@ -139,6 +140,10 @@ func doctor() error {
 			fmt.Println("  pkg-config: webkit2gtk-4.1 ok")
 		}
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native")
+	case "darwin":
+		fmt.Println("  frameworks: Cocoa + WebKit (system)")
+		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native")
+		fmt.Println("  note:     first WKWebView slice — window/navigate/message; chrome/dialogs/tray TBD")
 	}
 	return nil
 }

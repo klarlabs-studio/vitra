@@ -1,3 +1,5 @@
+//go:build !darwin || !cgo || !vitra_native
+
 package darwin
 
 import (
