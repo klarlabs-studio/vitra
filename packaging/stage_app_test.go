@@ -50,6 +50,7 @@ func TestStageDarwinApp_LayoutAndPlist(t *testing.T) {
 	body := string(raw)
 	for _, want := range []string{
 		"com.vitra.demo", "Demo App", "1.2.3", "Demo-App", "CFBundleExecutable", "APPL",
+		"CFBundleDisplayName",
 		"NSHumanReadableCopyright", DefaultLicense,
 		"LSApplicationCategoryType", "public.app-category.utilities",
 		"CFBundleGetInfoString", DefaultDescription,
@@ -57,6 +58,10 @@ func TestStageDarwinApp_LayoutAndPlist(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Fatalf("plist missing %q\n%s", want, body)
 		}
+	}
+	wantDisplay := "<key>CFBundleDisplayName</key>\n\t<string>Demo App</string>"
+	if !strings.Contains(body, wantDisplay) {
+		t.Fatalf("missing DisplayName\n%s", body)
 	}
 	if _, err := os.Stat(filepath.Join(bundle, "Contents", "Resources")); err != nil {
 		t.Fatal(err)
@@ -141,6 +146,36 @@ func TestStageDarwinApp_GetInfoString(t *testing.T) {
 	wantDefault := "<key>CFBundleGetInfoString</key>\n\t<string>" + DefaultDescription + "</string>"
 	if !strings.Contains(string(raw), wantDefault) {
 		t.Fatalf("missing default GetInfoString\n%s", raw)
+	}
+}
+
+func TestStageDarwinApp_CFBundleDisplayName(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "stage")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "My Cool App",
+		Targets: []Target{TargetDarwinApp},
+	}
+	art, err := StageDarwinApp(spec, bin, out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(art.Path, "Contents", "Info.plist"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	wantDisplay := "<key>CFBundleDisplayName</key>\n\t<string>My Cool App</string>"
+	if !strings.Contains(body, wantDisplay) {
+		t.Fatalf("missing DisplayName\n%s", body)
+	}
+	wantName := "<key>CFBundleName</key>\n\t<string>My Cool App</string>"
+	if !strings.Contains(body, wantName) {
+		t.Fatalf("missing CFBundleName\n%s", body)
 	}
 }
 
