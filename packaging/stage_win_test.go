@@ -83,7 +83,7 @@ func TestBuildNSISDir_IncludesIcon(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(raw)
-	for _, want := range []string{`PRODUCT_ICON`, `File "bin\${PRODUCT_ICON}"`, `${PRODUCT_ICON}" 0`} {
+	for _, want := range []string{`PRODUCT_ICON`, `File "bin\${PRODUCT_ICON}"`, `${PRODUCT_ICON}" 0`, `$DESKTOP\${PRODUCT_NAME}.lnk`} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q\n%s", want, body)
 		}
@@ -254,6 +254,8 @@ func TestBuildNSISDir_WritesInstallerNSI(t *testing.T) {
 		`WriteRegStr HKCU "${UNINST_KEY}" "UninstallString"`,
 		`DeleteRegKey HKCU "${UNINST_KEY}"`,
 		`Delete "$INSTDIR\Uninstall.exe"`,
+		`CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk"`,
+		`Delete "$DESKTOP\${PRODUCT_NAME}.lnk"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("nsi missing %q\n%s", want, body)
