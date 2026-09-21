@@ -733,6 +733,25 @@ func (s *WindowService) Focus(ctx context.Context, caller domain.Caller, window 
 	return s.OnFocus(ctx, window)
 }
 
+// Hide authorizes window.chrome then hides the window via chrome.Hidden.
+func (s *WindowService) Hide(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	return s.setHidden(ctx, caller, window, true)
+}
+
+// Show authorizes window.chrome then shows the window via chrome.Hidden=false.
+func (s *WindowService) Show(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	return s.setHidden(ctx, caller, window, false)
+}
+
+func (s *WindowService) setHidden(ctx context.Context, caller domain.Caller, window domain.WindowID, hidden bool) error {
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.Hidden = hidden
+	return s.Apply(ctx, caller, window, chrome)
+}
+
 // Create authorizes window.create then opens a window via the bound adapter.
 func (s *WindowService) Create(ctx context.Context, caller domain.Caller, opts WindowCreateOptions) (domain.WindowID, error) {
 	if opts.ID == "" {

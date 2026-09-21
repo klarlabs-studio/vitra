@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official window hide/show: `window.hide` / `window.show` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Hide` / `Show` (read chrome → set `Hidden` → `Apply`); scaffold/competitive bind.
 - `vitra new --template aurelia`: Vite + Aurelia 2 + TypeScript starter (`my-app` custom element, `@aurelia/vite-plugin`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - `vitra new --template marko`: Vite + Marko 5 + TypeScript starter (`App.marko` class component, `@marko/vite` with `linked: false`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - `vitra new --template ember`: Vite + Ember 7 + Embroider (`@embroider/vite`, Glimmer `vitra-app` component) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
