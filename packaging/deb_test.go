@@ -113,6 +113,10 @@ func TestBuildDeb_StagesIcon(t *testing.T) {
 	if string(pixmap) != "PNGICON" {
 		t.Fatalf("pixmap=%q", pixmap)
 	}
+	hicolor := files["usr/share/icons/hicolor/256x256/apps/Vitra-Demo.png"]
+	if string(hicolor) != "PNGICON" {
+		t.Fatalf("hicolor=%q", hicolor)
+	}
 	desktop := string(files["usr/share/applications/com.vitra.demo.desktop"])
 	if !strings.Contains(desktop, "Icon=Vitra-Demo") {
 		t.Fatalf("desktop:\n%s", desktop)

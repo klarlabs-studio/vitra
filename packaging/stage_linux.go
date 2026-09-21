@@ -61,7 +61,7 @@ func StageLinux(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	sum := hex.EncodeToString(h.Sum(nil))
 
 	iconKey := safeName
-	if _, _, err := stageIconFile(spec.IconPath, outDir, safeName); err != nil {
+	if _, _, err := stageFreedesktopIcons(spec.IconPath, outDir, safeName, false); err != nil {
 		return Artifact{}, err
 	}
 

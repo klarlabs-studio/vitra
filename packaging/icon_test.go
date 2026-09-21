@@ -7,6 +7,15 @@ import (
 	"testing"
 )
 
+func TestHicolorIconRel(t *testing.T) {
+	if got := hicolorIconRel("App.png"); got != "usr/share/icons/hicolor/256x256/apps/App.png" {
+		t.Fatalf("png: %q", got)
+	}
+	if got := hicolorIconRel("App.svg"); got != "usr/share/icons/hicolor/scalable/apps/App.svg" {
+		t.Fatalf("svg: %q", got)
+	}
+}
+
 func TestStageIconFile_CopiesPNG(t *testing.T) {
 	tmp := t.TempDir()
 	src := filepath.Join(tmp, "logo.png")
@@ -46,6 +55,36 @@ func TestStageIconFile_RejectsUnknownExt(t *testing.T) {
 	}
 }
 
+func TestBuildAppDir_StagesIcon(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	icon := filepath.Join(tmp, "app.png")
+	if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(icon, []byte("PNG"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "Demo.AppDir")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "1.0.0", Name: "Demo",
+		Targets: []Target{TargetLinuxAppImage}, IconPath: icon,
+	}
+	if _, err := BuildAppDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "Demo.png")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(out, ".DirIcon")); err != nil {
+		t.Fatal(err)
+	}
+	hicolor := filepath.Join(out, "usr", "share", "icons", "hicolor", "256x256", "apps", "Demo.png")
+	if _, err := os.Stat(hicolor); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestStageLinux_StagesIcon(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "app.bin")
@@ -67,27 +106,8 @@ func TestStageLinux_StagesIcon(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(out, "Demo.png")); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func TestBuildAppDir_StagesIcon(t *testing.T) {
-	tmp := t.TempDir()
-	bin := filepath.Join(tmp, "app.bin")
-	icon := filepath.Join(tmp, "app.png")
-	if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(icon, []byte("PNG"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	out := filepath.Join(tmp, "Demo.AppDir")
-	spec := Spec{
-		AppID: "com.vitra.demo", Version: "1.0.0", Name: "Demo",
-		Targets: []Target{TargetLinuxAppImage}, IconPath: icon,
-	}
-	if _, err := BuildAppDir(spec, bin, out); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(out, "Demo.png")); err != nil {
+	hicolor := filepath.Join(out, "usr", "share", "icons", "hicolor", "256x256", "apps", "Demo.png")
+	if _, err := os.Stat(hicolor); err != nil {
 		t.Fatal(err)
 	}
 }
