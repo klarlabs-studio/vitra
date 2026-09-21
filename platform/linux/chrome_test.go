@@ -4,7 +4,9 @@ package linux
 
 import (
 	"context"
+	"encoding/base64"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -121,6 +123,29 @@ func TestNativeWindowChrome(t *testing.T) {
 	}
 	if got.Hidden || got.Minimized {
 		t.Fatalf("shown: %+v", got)
+	}
+
+	// 1x1 PNG
+	png, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+	if err != nil {
+		t.Fatal(err)
+	}
+	iconPath := filepath.Join(t.TempDir(), "icon.png")
+	if err := os.WriteFile(iconPath, png, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	withIcon := want
+	withIcon.AlwaysOnTop = false
+	withIcon.IconPath = iconPath
+	if err := h.ApplyWindowChrome("main", withIcon); err != nil {
+		t.Fatal(err)
+	}
+	got, err = h.ReadWindowChrome("main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.IconPath != iconPath {
+		t.Fatalf("icon path: got %q want %q", got.IconPath, iconPath)
 	}
 
 	if err := h.ApplyWindowChrome("missing", want); err == nil {

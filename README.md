@@ -147,7 +147,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Host→frontend events | **Done** (`vitra.on` / `App.Emit`) |
 | Multi-window App API | **Done** (`OpenWindow` / `CloseWindow`; quit on last native destroy) |
 | Linux file drag-drop | **Done** (grant-gated GTK URI drops) |
-| Linux window chrome | **Done** (title, size, maximize, fullscreen, keep-above, minimize, hide) |
+| Linux window chrome | **Done** (title, size, maximize, fullscreen, keep-above, minimize, hide, icon) |
 | Linux menu accelerators | **Done** (in-window `MenuItem.Shortcut`; not global) |
 | Linux OpenURL | **Done** (grant-gated `xdg-open` for http(s)/mailto) |
 | Save dialog + single-instance lock | Linux native |
