@@ -70,7 +70,7 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "project-files") {
 		t.Fatalf("inspect output: %q", out)
 	}
-	if !strings.Contains(out, "vitra.fs") || !strings.Contains(out, "vitra.dialog") || !strings.Contains(out, "vitra.clipboard") || !strings.Contains(out, "vitra.browser") || !strings.Contains(out, "vitra.os") || !strings.Contains(out, "vitra.notification") || !strings.Contains(out, "vitra.path") || !strings.Contains(out, "vitra.window") || !strings.Contains(out, "vitra.menu") || !strings.Contains(out, "vitra.tray") {
+	if !strings.Contains(out, "vitra.fs") || !strings.Contains(out, "vitra.dialog") || !strings.Contains(out, "vitra.clipboard") || !strings.Contains(out, "vitra.browser") || !strings.Contains(out, "vitra.os") || !strings.Contains(out, "vitra.notification") || !strings.Contains(out, "vitra.path") || !strings.Contains(out, "vitra.window") || !strings.Contains(out, "vitra.menu") || !strings.Contains(out, "vitra.tray") || !strings.Contains(out, "vitra.dragdrop") {
 		t.Fatalf("inspect missing plugin ownership: %q", out)
 	}
 
@@ -512,7 +512,7 @@ func TestRun_PackageStagesLinuxDir(t *testing.T) {
 		t.Fatalf("expected modules from build info, got %s", raw)
 	}
 	s := string(raw)
-	for _, want := range []string{"vitra.fs", "vitra.dialog", "vitra.clipboard", "vitra.browser", "vitra.os", "vitra.notification", "vitra.path", "vitra.window", "vitra.menu", "vitra.tray", "fs.read", "dialog.open", "dialog.openDirectory", "dialog.message", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close", "window.chrome", "menu.set", "tray.set"} {
+	for _, want := range []string{"vitra.fs", "vitra.dialog", "vitra.clipboard", "vitra.browser", "vitra.os", "vitra.notification", "vitra.path", "vitra.window", "vitra.menu", "vitra.tray", "vitra.dragdrop", "fs.read", "dialog.open", "dialog.openDirectory", "dialog.message", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close", "window.chrome", "menu.set", "tray.set", "dragdrop.receive"} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("provenance missing %q: %s", want, s)
 		}
@@ -1014,6 +1014,7 @@ func TestRun_NewScaffold(t *testing.T) {
 		"go.klarlabs.de/vitra/plugin/official/browser",
 		"go.klarlabs.de/vitra/plugin/official/clipboard",
 		"go.klarlabs.de/vitra/plugin/official/dialog",
+		"go.klarlabs.de/vitra/plugin/official/dragdrop",
 		"go.klarlabs.de/vitra/plugin/official/fs",
 		"go.klarlabs.de/vitra/plugin/official/menu",
 		"go.klarlabs.de/vitra/plugin/official/tray",
@@ -1030,7 +1031,7 @@ func TestRun_NewScaffold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "dialog.openDirectory", "dialog.message", "fs.read", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close", "window.chrome", "menu.set", "tray.set", "onMenuAction", "onTrayAction", "createEvents"} {
+	for _, want := range []string{"createClient", "demo.greet", "dialog.open", "dialog.openDirectory", "dialog.message", "fs.read", "clipboard.read", "browser.open", "os.info", "notifications.show", "path.open", "window.create", "window.close", "window.chrome", "menu.set", "tray.set", "dragdrop.receive", "onMenuAction", "onTrayAction", "onDragdropDrop", "createEvents"} {
 		if !strings.Contains(string(client), want) {
 			t.Fatalf("vitra-client.ts missing %q", want)
 		}

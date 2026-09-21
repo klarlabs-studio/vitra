@@ -332,6 +332,14 @@ func TestDragDropService_GrantFeatureAndHook(t *testing.T) {
 	if err := missing.Enable(ctx, caller, "main", true); err == nil {
 		t.Fatal("expected missing adapter")
 	}
+	win, enabled, err := desktop.ParseDragDropEnable(map[string]any{"window": "aux", "enabled": false})
+	if err != nil || win != "aux" || enabled {
+		t.Fatalf("parse: %s %v err=%v", win, enabled, err)
+	}
+	win, enabled, err = desktop.ParseDragDropEnable(true)
+	if err != nil || win != "main" || !enabled {
+		t.Fatalf("parse bool: %s %v err=%v", win, enabled, err)
+	}
 }
 
 func TestWindowService_GrantFeatureAndHook(t *testing.T) {

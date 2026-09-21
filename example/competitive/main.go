@@ -25,6 +25,7 @@ import (
 	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
+	officialdragdrop "go.klarlabs.de/vitra/plugin/official/dragdrop"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	officialmenu "go.klarlabs.de/vitra/plugin/official/menu"
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
@@ -323,6 +324,9 @@ func run() error {
 	if err := rt.RegisterPlugin(context.Background(), officialtray.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(context.Background(), officialdragdrop.New()); err != nil {
+		return err
+	}
 	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return clips.Read(ctx, caller)
 	})); err != nil {
@@ -564,6 +568,15 @@ func run() error {
 		OnEnable: func(_ context.Context, window domain.WindowID, enabled bool) error {
 			return host.EnableDragDrop(window, enabled)
 		},
+	}
+	if err := rt.BindExecutor("dragdrop.receive", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		win, enabled, err := desktop.ParseDragDropEnable(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, drops.Enable(ctx, caller, win, enabled)
+	})); err != nil {
+		return err
 	}
 
 	go func() {

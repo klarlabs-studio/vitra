@@ -396,6 +396,32 @@ type DragDropService struct {
 	OnEnable func(ctx context.Context, window domain.WindowID, enabled bool) error
 }
 
+// ParseDragDropEnable extracts window id + enabled flag from an invoke payload.
+// Accepts a bool (window defaults to "main") or { id|window?, enabled? }.
+func ParseDragDropEnable(input any) (domain.WindowID, bool, error) {
+	switch v := input.(type) {
+	case bool:
+		return "main", v, nil
+	case map[string]any:
+		id, _ := v["id"].(string)
+		if id == "" {
+			id, _ = v["window"].(string)
+		}
+		if id == "" {
+			id = "main"
+		}
+		enabled := true
+		if e, ok := asBool(v["enabled"]); ok {
+			enabled = e
+		}
+		return domain.WindowID(id), enabled, nil
+	case nil:
+		return "main", true, nil
+	default:
+		return "", false, &domain.ErrValidation{Message: "dragdrop.receive input must be a bool or object"}
+	}
+}
+
 // Enable authorizes dragdrop.receive then toggles native drop targets.
 func (s *DragDropService) Enable(ctx context.Context, caller domain.Caller, window domain.WindowID, enabled bool) error {
 	if window == "" {

@@ -29,6 +29,7 @@ import (
 	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
+	officialdragdrop "go.klarlabs.de/vitra/plugin/official/dragdrop"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	officialmenu "go.klarlabs.de/vitra/plugin/official/menu"
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
@@ -1694,6 +1695,9 @@ func scaffoldTypeScriptClient() (string, error) {
 	if err := rt.RegisterPlugin(ctx, officialtray.New()); err != nil {
 		return "", err
 	}
+	if err := rt.RegisterPlugin(ctx, officialdragdrop.New()); err != nil {
+		return "", err
+	}
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
 	if err != nil {
 		return "", err
@@ -1730,6 +1734,7 @@ import (
 	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
+	officialdragdrop "go.klarlabs.de/vitra/plugin/official/dragdrop"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	officialmenu "go.klarlabs.de/vitra/plugin/official/menu"
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
@@ -1799,6 +1804,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialtray.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialdragdrop.New()); err != nil {
 		return err
 	}
 	dialogs := &desktop.DialogService{
@@ -2041,6 +2049,22 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	drops := &desktop.DragDropService{
+		Gateway: rt,
+		Host:    host,
+		OnEnable: func(_ context.Context, window domain.WindowID, enabled bool) error {
+			return host.EnableDragDrop(window, enabled)
+		},
+	}
+	if err := rt.BindExecutor("dragdrop.receive", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		win, enabled, err := desktop.ParseDragDropEnable(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, drops.Enable(ctx, caller, win, enabled)
+	})); err != nil {
+		return err
+	}
 
 	grant, _ := domain.NewCapabilityGrant(
 		"demo", "demo", []domain.WindowID{"main", "aux"},
@@ -2061,6 +2085,7 @@ func run() error {
 			{Name: desktop.PermWindowChrome},
 			{Name: desktop.PermMenuSet},
 			{Name: desktop.PermTraySet},
+			{Name: desktop.PermDragDrop},
 			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermPathOpen, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
@@ -2083,6 +2108,12 @@ func run() error {
 			application.Quit()
 		}
 	})
+	host.SetDragDropHandler(func(windowID domain.WindowID, paths []string) {
+		_ = application.Emit(context.Background(), "dragdrop.drop", map[string]any{
+			"window": string(windowID),
+			"paths":  paths,
+		})
+	})
 	return application.Run(context.Background())
 }
 
@@ -2104,7 +2135,7 @@ func scaffoldIndexHTML() string {
 <html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
 <style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
 button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
-<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path + window + menu + tray plugins).</p>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path + window + menu + tray + dragdrop plugins).</p>
 <button id="greet">demo.greet</button>
 <button id="open">dialog.open</button>
 <button id="opendir">dialog.openDirectory</button>
@@ -2116,6 +2147,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="chrome">window.chrome</button>
 <button id="menu">menu.set</button>
 <button id="tray">tray.set</button>
+<button id="drop">dragdrop.receive</button>
 <pre id="out"></pre>
 <script>
 const out = document.getElementById("out");
@@ -2177,9 +2209,16 @@ document.getElementById("tray").onclick = async () => {
     out.textContent = JSON.stringify({ tray: "set" }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
+document.getElementById("drop").onclick = async () => {
+  try {
+    await invoke("dragdrop.receive", { id: "main", enabled: true });
+    out.textContent = JSON.stringify({ dragdrop: "enabled" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
 if (window.vitra && window.vitra.on) {
   window.vitra.on("menu.action", (payload) => { out.textContent = JSON.stringify({ event: "menu.action", payload }, null, 2); });
   window.vitra.on("tray.action", (payload) => { out.textContent = JSON.stringify({ event: "tray.action", payload }, null, 2); });
+  window.vitra.on("dragdrop.drop", (payload) => { out.textContent = JSON.stringify({ event: "dragdrop.drop", payload }, null, 2); });
 }
 // Typed stubs: frontend/vitra-client.ts (vitra generate typescript)
 </script></body></html>
@@ -2336,6 +2375,9 @@ func runGenerate(args []string) error {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialtray.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialdragdrop.New()); err != nil {
 		return err
 	}
 	var cmds []*domain.CommandDefinition
@@ -3075,7 +3117,7 @@ func runPackage(args []string) error {
 // provenance (declared surface, not a claim that --bin embeds them).
 func officialPluginInventory() []provenance.PluginInfo {
 	out := make([]provenance.PluginInfo, 0, 7)
-	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New(), officialwindow.New(), officialmenu.New(), officialtray.New()} {
+	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New(), officialwindow.New(), officialmenu.New(), officialtray.New(), officialdragdrop.New()} {
 		m := p.Manifest()
 		perms := make([]string, 0, len(m.Permissions))
 		for _, perm := range m.Permissions {
@@ -3249,6 +3291,9 @@ func inspectDemo(args []string) error {
 	if err := rt.RegisterPlugin(ctx, officialtray.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(ctx, officialdragdrop.New()); err != nil {
+		return err
+	}
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err
 	}
@@ -3276,6 +3321,7 @@ func inspectDemo(args []string) error {
 			{Name: "window.chrome"},
 			{Name: "menu.set"},
 			{Name: "tray.set"},
+			{Name: "dragdrop.receive"},
 		},
 	)
 	if err != nil {
