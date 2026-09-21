@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template hyperapp`: Vite + Hyperapp 2 + TypeScript starter (`h`/`text`/`app` with effectful actions) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Windows ARP URLUpdateInfo: `Spec.Homepage` / `vitra package --homepage` also flow into NSIS `URLUpdateInfo` and WiX `ARPURLUPDATEINFO` (alongside URLInfoAbout / HelpLink; omitted when empty).
 - `vitra new --template petite-vue`: Vite + Petite-Vue 0.4 + TypeScript starter (`createApp` + `v-scope`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - `vitra new --template stimulus`: Vite + Hotwired Stimulus 3 + TypeScript starter (`vitra` controller, `data-action` bindings) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
