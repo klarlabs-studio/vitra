@@ -115,15 +115,15 @@ func (h *Host) Features() platform.FeatureSet {
 		},
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: true,
-			Detail: "argv + socket handoff",
+			Detail: "argv + socket handoff + HKCU Classes .reg URL-scheme registration",
 		},
 		platform.FeatureDragDrop: {
 			Feature: platform.FeatureDragDrop, Available: false,
 			Detail: "not yet implemented on Windows host",
 		},
 		platform.FeatureFileAssociation: {
-			Feature: platform.FeatureFileAssociation, Available: false,
-			Detail: "not yet implemented on Windows host",
+			Feature: platform.FeatureFileAssociation, Available: true,
+			Detail: "HKCU ProgID + MIME .reg; available without native WebView",
 		},
 		platform.FeatureWindowChrome: {
 			Feature: platform.FeatureWindowChrome, Available: false,
@@ -264,9 +264,6 @@ func (h *Host) SetTray(string, []platform.MenuItem) error {
 	return h.err(platform.FeatureTray)
 }
 func (h *Host) ClearTray() {}
-func (h *Host) RegisterURLScheme(string, string, string) error {
-	return h.err(platform.FeatureDeepLink)
-}
 
 func (h *Host) Run() error {
 	h.ensureInit()

@@ -27,7 +27,9 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Linux file drag-drop (`dragdrop.receive`) | Done (GTK URI drops + inject helper) |
 | Darwin file drag-drop (`dragdrop.receive`) | Done (NSFilenamesPboardType + inject helper) |
 | In-window menu accelerators (`MenuItem.Shortcut`) | Done (Linux GTK; Darwin NSMenu Ctrl→Command) |
-| `platform/windows` DesktopHost | Win32 shell scaffold + OpenURL/clipboard/single-instance/deep-link; WebView2 Eval TBD |
+| `platform/windows` DesktopHost | Win32 shell scaffold + OpenURL/clipboard/single-instance/deep-link/scheme/files; WebView2 Eval TBD |
+| Windows URL-scheme registration (`RegisterURLScheme`) | Done (HKCU Classes `.reg`) |
+| Windows MIME file associations (`RegisterFileAssociations`) | Done (HKCU ProgID + MIME `.reg`) |
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |
 | Host→frontend events (`vitra.on` / `App.Emit`) | Done |
 | Linux window chrome (`window.chrome`) | Done (GTK title, size, maximize, fullscreen, keep-above, minimize, hide, icon) |
