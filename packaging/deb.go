@@ -56,12 +56,13 @@ func BuildAppDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	body := fmt.Sprintf(`[Desktop Entry]
 Type=Application
 Name=%s
+Comment=%s
 Exec=AppRun
 Icon=%s
 StartupWMClass=%s
 Categories=Utility;
 Terminal=false
-`, spec.Name, iconKey, binName)
+`, spec.Name, spec.EffectiveDescription(), iconKey, binName)
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}
@@ -132,15 +133,18 @@ func BuildDeb(spec Spec, binaryPath, outPath string) (Artifact, error) {
 	desktopBody := fmt.Sprintf(`[Desktop Entry]
 Type=Application
 Name=%s
+Comment=%s
 Exec=/usr/bin/%s
 Icon=%s
 StartupWMClass=%s
 Categories=Utility;
 Terminal=false
-`, spec.Name, binName, iconKey, binName)
+`, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName)
 	dataFiles[desktopPath] = fileEntry{data: []byte(desktopBody), mode: 0o644}
 
 	installedSize := (payloadSize + 1023) / 1024
+	// Debian Description: synopsis on first line, extended body indented with a space.
+	extDesc := " " + strings.ReplaceAll(spec.EffectiveDescription(), "\n", "\n ")
 	control := fmt.Sprintf(`Package: %s
 Version: %s
 Section: utils
@@ -149,8 +153,8 @@ Architecture: %s
 Maintainer: %s
 Installed-Size: %d
 Description: %s
- Secure Go + web desktop application packaged by Vitra.
-`, pkgName, spec.Version, arch, spec.EffectiveMaintainer(), installedSize, spec.Name)
+%s
+`, pkgName, spec.Version, arch, spec.EffectiveMaintainer(), installedSize, spec.Name, extDesc)
 
 	controlTGZ, err := tarGz(map[string]fileEntry{
 		"control": {data: []byte(control), mode: 0o644},

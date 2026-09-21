@@ -130,6 +130,43 @@ func TestBuildDeb_StagesIcon(t *testing.T) {
 	}
 }
 
+func TestBuildDeb_CustomDescription(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "payload")
+	if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "vitra.deb")
+	spec := packaging.Spec{
+		AppID: "com.vitra.demo", Version: "0.3.0", Name: "Vitra Demo",
+		Targets: []packaging.Target{packaging.TargetLinuxDeb},
+		Arch:    "amd64", Description: "Custom demo package for CI.",
+	}
+	if _, err := packaging.BuildDeb(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	control := debControlFile(t, out)
+	if !strings.Contains(control, " Custom demo package for CI.") {
+		t.Fatalf("control:\n%s", control)
+	}
+	files := debDataFiles(t, out)
+	desktop := string(files["usr/share/applications/com.vitra.demo.desktop"])
+	if !strings.Contains(desktop, "Comment=Custom demo package for CI.") {
+		t.Fatalf("desktop:\n%s", desktop)
+	}
+}
+
+func TestSpec_EffectiveDescription(t *testing.T) {
+	s := packaging.Spec{Name: "Demo"}
+	if s.EffectiveDescription() != packaging.DefaultDescription {
+		t.Fatalf("default: %q", s.EffectiveDescription())
+	}
+	s.Description = "Hello"
+	if s.EffectiveDescription() != "Hello" {
+		t.Fatalf("custom: %q", s.EffectiveDescription())
+	}
+}
+
 func TestBuildDeb_CustomMaintainer(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "payload")

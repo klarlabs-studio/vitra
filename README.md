@@ -110,7 +110,7 @@ vitra doctor
 vitra new ./myapp
 vitra dev
 vitra build
-vitra package --out dist/ [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--icon path] [--maintainer name]
+vitra package --out dist/ [--format dir|deb|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--icon path] [--maintainer name] [--description text]
 vitra generate typescript --out frontend/vitra-client.ts
 vitra update-apply --manifest m.json --artifact a.bin --pubkey <hex> --dest ./vitra-app
 vitra inspect capabilities

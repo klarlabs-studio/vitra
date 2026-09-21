@@ -69,12 +69,13 @@ func StageLinux(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	body := fmt.Sprintf(`[Desktop Entry]
 Type=Application
 Name=%s
+Comment=%s
 Exec=%s
 Icon=%s
 StartupWMClass=%s
 Categories=Utility;
 StartupNotify=true
-`, spec.Name, destPath, iconKey, safeName)
+`, spec.Name, spec.EffectiveDescription(), destPath, iconKey, safeName)
 	if err := os.WriteFile(desktop, []byte(body), 0o644); err != nil {
 		return Artifact{}, err
 	}
