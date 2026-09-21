@@ -22,6 +22,7 @@ import (
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
+	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	"go.klarlabs.de/vitra/policy"
@@ -269,23 +270,27 @@ func run() error {
 		}
 		return rt.RegisterCommand(def, exec)
 	}
-	if err := register("clipboard.read", "Read clipboard", desktop.PermClipboardRead, domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
-		return clips.Read(ctx, caller)
-	})); err != nil {
-		return err
-	}
-	if err := register("clipboard.write", "Write clipboard", desktop.PermClipboardWrite, domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
-		text, _ := input.(string)
-		return nil, clips.Write(ctx, caller, text)
-	})); err != nil {
-		return err
-	}
+	_ = register // kept for local demo commands if needed
 
-	// Official plugins own dialog.* / fs.* permissions (invariant 6).
+	// Official plugins own dialog.* / fs.* / clipboard.* permissions (invariant 6).
 	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialfs.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialclipboard.New()); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return clips.Read(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("clipboard.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		text, _ := input.(string)
+		return nil, clips.Write(ctx, caller, text)
+	})); err != nil {
 		return err
 	}
 	if err := rt.BindExecutor("dialog.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
