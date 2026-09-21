@@ -120,7 +120,7 @@ vitra inspect capabilities
 vitra (root)     Runtime facade
 app/             Desktop application runtime (assets + host + gateway)
 bridge/          Injected frontend preload
-platform/        OS adapters (linux WebKitGTK, darwin/windows stubs)
+platform/        OS adapters (linux WebKitGTK, darwin WKWebView scaffold, windows stub)
 domain/          Aggregates + ports (stdlib only)
 application/     Use cases
 inmemory/        Default adapters
@@ -154,7 +154,8 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Deep-link argv / secondary handoff | Linux native |
 | Linux xdg URL-scheme registration | Linux native (`vitra register-scheme`) |
 | Linux xdg MIME file associations | Linux (`vitra register-files`) |
-| Darwin WKWebView / Windows WebView2 | Stubs (explicit unsupported) |
+| Darwin WKWebView | Scaffold (`-tags vitra_native`; window/navigate/message) |
+| Windows WebView2 | Stub (explicit unsupported) |
 
 ## Development
 

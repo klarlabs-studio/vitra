@@ -23,7 +23,8 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done |
 | `vitra doctor/new/dev/build` | Done |
-| `platform/darwin`, `platform/windows` DesktopHost stubs | Explicit unsupported |
+| `platform/darwin` WKWebView host (`-tags vitra_native`) | Scaffold (Open/Eval/Run/Quit + bridge); chrome/dialogs/tray TBD |
+| `platform/windows` DesktopHost stub | Explicit unsupported |
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |
 | Host→frontend events (`vitra.on` / `App.Emit`) | Done |
 | Linux file drag-drop (`dragdrop.receive`) | Done (GTK URI drops + inject helper) |
