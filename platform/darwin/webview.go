@@ -122,8 +122,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "not yet implemented on Darwin WKWebView host",
 		},
 		platform.FeatureOpenURL: {
-			Feature: platform.FeatureOpenURL, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureOpenURL, Available: true,
+			Detail: "open for http(s)/mailto; available without native WebView",
 		},
 	}
 }
@@ -348,11 +348,6 @@ func (h *Host) ForwardToPrimary(string, []string) (bool, error) {
 // RegisterURLScheme is not yet implemented on Darwin.
 func (h *Host) RegisterURLScheme(string, string, string) error {
 	return h.err(platform.FeatureDeepLink)
-}
-
-// OpenURL is not yet implemented on Darwin.
-func (h *Host) OpenURL(context.Context, string) error {
-	return h.err(platform.FeatureOpenURL)
 }
 
 // Run runs the Cocoa main loop (blocking). Must be called from the main OS thread.

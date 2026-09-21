@@ -77,8 +77,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "requires native darwin host",
 		},
 		platform.FeatureOpenURL: {
-			Feature: platform.FeatureOpenURL, Available: false,
-			Detail: "requires native darwin host",
+			Feature: platform.FeatureOpenURL, Available: true,
+			Detail: "open for http(s)/mailto; available without native WebView",
 		},
 		platform.FeatureDragDrop: {
 			Feature: platform.FeatureDragDrop, Available: false,
@@ -152,9 +152,6 @@ func (h *Host) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error {
 }
 func (h *Host) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, error) {
 	return platform.WindowChrome{}, h.err(platform.FeatureWindowChrome)
-}
-func (h *Host) OpenURL(context.Context, string) error {
-	return h.err(platform.FeatureOpenURL)
 }
 func (h *Host) Run() error { return h.err(platform.FeatureWindowCreate) }
 func (h *Host) Quit()      {}
