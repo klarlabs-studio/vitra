@@ -11,7 +11,7 @@ Phase 3 stabilizes how privileged native surface enters a Vitra app: through
 | Contribution (commands/events) | `plugin.Contribution` |
 | Registry + permission ownership | `plugin.Registry` |
 | Lifecycle hooks | `plugin.Lifecycle` |
-| Official `fs` / `dialog` / `clipboard` / `browser` / `os` / `notification` / `path` contracts | `plugin/official/{fs,dialog,clipboard,browser,os,notification,path}` |
+| Official `fs` / `dialog` / `clipboard` / `browser` / `os` / `notification` / `path` / `window` contracts | `plugin/official/{fs,dialog,clipboard,browser,os,notification,path,window}` |
 | Runtime wiring | `Runtime.RegisterPlugin` / `BindExecutor` / `Plugins()` |
 | TypeScript binding stub generator | `bindings.GenerateTypeScript` + `vitra generate typescript` |
 
@@ -22,6 +22,7 @@ competitive demo binds `dialog.open`/`dialog.save`/`dialog.openDirectory`/`dialo
 `browser.open` to `desktop.BrowserService`, `os.info` to `desktop.OsService`,
 `notifications.show` to `desktop.NotificationService`,
 `path.open` to `desktop.PathService`,
+`window.create`/`window.close` to `desktop.WindowService` (via `app.App`),
 and `fs.read`/`fs.write` to
 `desktop.FileService` with a PathScope grant.
 

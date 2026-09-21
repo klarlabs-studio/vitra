@@ -354,6 +354,47 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	if err := missing.Apply(ctx, caller, "main", chrome); err == nil {
 		t.Fatal("expected missing adapter")
 	}
+
+	createHost := withFeatures(platform.OSLinux, platform.FeatureWindowCreate)
+	var created desktop.WindowCreateOptions
+	lifecycle := &desktop.WindowService{
+		Gateway: allowAll{},
+		Host:    createHost,
+		OnCreate: func(_ context.Context, opts desktop.WindowCreateOptions) error {
+			created = opts
+			return nil
+		},
+		OnClose: func(_ context.Context, window domain.WindowID) error {
+			if window != "aux" {
+				t.Fatalf("close window=%s", window)
+			}
+			return nil
+		},
+	}
+	id, err := lifecycle.Create(ctx, caller, desktop.WindowCreateOptions{ID: "aux", Title: "Aux", Width: 400, Height: 300})
+	if err != nil || id != "aux" || created.Title != "Aux" {
+		t.Fatalf("create: id=%s opts=%+v err=%v", id, created, err)
+	}
+	if err := lifecycle.Close(ctx, caller, "aux"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := lifecycle.Create(ctx, caller, desktop.WindowCreateOptions{}); err == nil {
+		t.Fatal("expected empty id validation")
+	}
+	bareLife := &desktop.WindowService{Gateway: allowAll{}, Host: createHost}
+	if _, err := bareLife.Create(ctx, caller, desktop.WindowCreateOptions{ID: "x"}); err == nil {
+		t.Fatal("expected missing create adapter")
+	}
+	opts, err := desktop.ParseWindowCreateOptions(map[string]any{
+		"id": "aux", "title": "T", "path": "/x", "width": 320.0, "height": 240.0,
+	})
+	if err != nil || opts.ID != "aux" || opts.Width != 320 || opts.Height != 240 {
+		t.Fatalf("parse create: %+v err=%v", opts, err)
+	}
+	wid, err := desktop.ParseWindowID("aux")
+	if err != nil || wid != "aux" {
+		t.Fatalf("parse id: %v %v", wid, err)
+	}
 }
 
 func TestBrowserService_GrantFeatureAndHook(t *testing.T) {

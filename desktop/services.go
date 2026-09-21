@@ -32,6 +32,8 @@ const (
 	PermSingleInstance      domain.PermissionName = "app.single_instance"
 	PermDragDrop            domain.PermissionName = "dragdrop.receive"
 	PermWindowChrome        domain.PermissionName = "window.chrome"
+	PermWindowCreate        domain.PermissionName = "window.create"
+	PermWindowClose         domain.PermissionName = "window.close"
 	PermOpenURL             domain.PermissionName = "browser.open"
 	PermOsInfo              domain.PermissionName = "os.info"
 	PermNotificationShow    domain.PermissionName = "notifications.show"
@@ -348,11 +350,88 @@ func (s *DragDropService) Enable(ctx context.Context, caller domain.Caller, wind
 	return s.OnEnable(ctx, window, enabled)
 }
 
-// WindowService applies native window presentation when permitted.
+// WindowCreateOptions configures desktop.WindowService.Create.
+type WindowCreateOptions struct {
+	ID     domain.WindowID
+	Title  string
+	Path   string
+	Width  int
+	Height int
+}
+
+// ParseWindowCreateOptions extracts create options from an invoke payload.
+func ParseWindowCreateOptions(input any) (WindowCreateOptions, error) {
+	var opts WindowCreateOptions
+	switch v := input.(type) {
+	case string:
+		opts.ID = domain.WindowID(v)
+	case map[string]any:
+		if id, ok := v["id"].(string); ok {
+			opts.ID = domain.WindowID(id)
+		}
+		if t, ok := v["title"].(string); ok {
+			opts.Title = t
+		}
+		if p, ok := v["path"].(string); ok {
+			opts.Path = p
+		}
+		if w, ok := asPositiveInt(v["width"]); ok {
+			opts.Width = w
+		}
+		if h, ok := asPositiveInt(v["height"]); ok {
+			opts.Height = h
+		}
+	default:
+		if input != nil {
+			return opts, &domain.ErrValidation{Message: "window.create input must be a string id or object"}
+		}
+	}
+	if opts.ID == "" {
+		return opts, &domain.ErrValidation{Message: "window id is required"}
+	}
+	return opts, nil
+}
+
+func asPositiveInt(v any) (int, bool) {
+	switch n := v.(type) {
+	case int:
+		return n, n > 0
+	case int64:
+		return int(n), n > 0
+	case float64:
+		i := int(n)
+		return i, n == float64(i) && i > 0
+	default:
+		return 0, false
+	}
+}
+
+// ParseWindowID extracts a window id from string or {id} payload.
+func ParseWindowID(input any) (domain.WindowID, error) {
+	switch v := input.(type) {
+	case string:
+		if v == "" {
+			return "", &domain.ErrValidation{Message: "window id is required"}
+		}
+		return domain.WindowID(v), nil
+	case map[string]any:
+		id, _ := v["id"].(string)
+		if id == "" {
+			return "", &domain.ErrValidation{Message: "window id is required"}
+		}
+		return domain.WindowID(id), nil
+	default:
+		return "", &domain.ErrValidation{Message: "window id is required"}
+	}
+}
+
+// WindowService applies native window presentation and lifecycle when permitted.
 type WindowService struct {
-	Gateway Gateway
-	Host    platform.Host
-	OnApply func(ctx context.Context, window domain.WindowID, chrome platform.WindowChrome) error
+	Gateway  Gateway
+	Host     platform.Host
+	OnApply  func(ctx context.Context, window domain.WindowID, chrome platform.WindowChrome) error
+	OnCreate func(ctx context.Context, opts WindowCreateOptions) error
+	OnClose  func(ctx context.Context, window domain.WindowID) error
 }
 
 // Apply authorizes window.chrome then updates title, size, and presentation hints.
@@ -373,6 +452,43 @@ func (s *WindowService) Apply(ctx context.Context, caller domain.Caller, window 
 		return &platform.ErrUnsupported{Feature: platform.FeatureWindowChrome, OS: s.Host.OS(), Detail: "no window chrome adapter bound"}
 	}
 	return s.OnApply(ctx, window, chrome)
+}
+
+// Create authorizes window.create then opens a window via the bound adapter.
+func (s *WindowService) Create(ctx context.Context, caller domain.Caller, opts WindowCreateOptions) (domain.WindowID, error) {
+	if opts.ID == "" {
+		return "", &domain.ErrValidation{Message: "window id is required"}
+	}
+	if err := authorize(s.Gateway, caller, PermWindowCreate); err != nil {
+		return "", err
+	}
+	if err := platform.Require(s.Host, platform.FeatureWindowCreate); err != nil {
+		return "", err
+	}
+	if s.OnCreate == nil {
+		return "", &platform.ErrUnsupported{Feature: platform.FeatureWindowCreate, OS: s.Host.OS(), Detail: "no window create adapter bound"}
+	}
+	if err := s.OnCreate(ctx, opts); err != nil {
+		return "", err
+	}
+	return opts.ID, nil
+}
+
+// Close authorizes window.close then closes a window via the bound adapter.
+func (s *WindowService) Close(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	if window == "" {
+		return &domain.ErrValidation{Message: "window id is required"}
+	}
+	if err := authorize(s.Gateway, caller, PermWindowClose); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeatureWindowCreate); err != nil {
+		return err
+	}
+	if s.OnClose == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureWindowCreate, OS: s.Host.OS(), Detail: "no window close adapter bound"}
+	}
+	return s.OnClose(ctx, window)
 }
 
 // BrowserService opens URLs in the system default browser when permitted.

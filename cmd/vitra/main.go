@@ -33,6 +33,7 @@ import (
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	officialpath "go.klarlabs.de/vitra/plugin/official/path"
+	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
 	"go.klarlabs.de/vitra/policy"
 	"go.klarlabs.de/vitra/provenance"
 	"go.klarlabs.de/vitra/updater"
@@ -1682,6 +1683,9 @@ func scaffoldTypeScriptClient() (string, error) {
 	if err := rt.RegisterPlugin(ctx, officialpath.New()); err != nil {
 		return "", err
 	}
+	if err := rt.RegisterPlugin(ctx, officialwindow.New()); err != nil {
+		return "", err
+	}
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
 	if err != nil {
 		return "", err
@@ -1711,6 +1715,7 @@ import (
 	"go.klarlabs.de/vitra/app"
 	"go.klarlabs.de/vitra/desktop"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/platform"
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
@@ -1721,6 +1726,7 @@ import (
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
 	officialpath "go.klarlabs.de/vitra/plugin/official/path"
+	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
 )
 
 //go:embed ` + embedPattern + `
@@ -1743,7 +1749,8 @@ func run() error {
 		return err
 	}
 	host := desktopHost()
-	caller := domain.Caller{WindowID: "main", Origin: domain.OriginPackagedLocal}
+	caller := domain.Caller{Window: "main", Origin: domain.OriginPackagedLocal}
+	var application *app.App
 
 	greet, _ := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
 	_ = rt.RegisterCommand(greet, domain.CommandExecutorFunc(func(ctx context.Context, name domain.CommandName, input any) (any, error) {
@@ -1773,6 +1780,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialpath.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialwindow.New()); err != nil {
 		return err
 	}
 	dialogs := &desktop.DialogService{
@@ -1919,9 +1929,49 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	winSvc := &desktop.WindowService{
+		Gateway: rt,
+		Host:    host,
+		OnCreate: func(ctx context.Context, opts desktop.WindowCreateOptions) error {
+			if application == nil {
+				return fmt.Errorf("app is not ready")
+			}
+			return application.OpenWindow(ctx, app.WindowOptions{
+				ID: opts.ID, Title: opts.Title, Path: opts.Path, Width: opts.Width, Height: opts.Height,
+			})
+		},
+		OnClose: func(ctx context.Context, id domain.WindowID) error {
+			if application == nil {
+				return fmt.Errorf("app is not ready")
+			}
+			return application.CloseWindow(ctx, id)
+		},
+	}
+	if err := rt.BindExecutor("window.create", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		opts, err := desktop.ParseWindowCreateOptions(input)
+		if err != nil {
+			return nil, err
+		}
+		id, err := winSvc.Create(ctx, caller, opts)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"id": string(id)}, nil
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.close", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Close(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
 
 	grant, _ := domain.NewCapabilityGrant(
-		"demo", "demo", []domain.WindowID{"main"},
+		"demo", "demo", []domain.WindowID{"main", "aux"},
 		[]domain.Origin{domain.OriginPackagedLocal},
 		[]domain.PermissionSpec{
 			{Name: "demo.greet"},
@@ -1934,6 +1984,8 @@ func run() error {
 			{Name: desktop.PermOpenURL},
 			{Name: desktop.PermOsInfo},
 			{Name: desktop.PermNotificationShow},
+			{Name: desktop.PermWindowCreate},
+			{Name: desktop.PermWindowClose},
 			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermPathOpen, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
@@ -1941,7 +1993,7 @@ func run() error {
 	)
 	_ = rt.RegisterGrant(grant)
 
-	application, err := app.New(app.Options{
+	application, err = app.New(app.Options{
 		AppID: "com.example.app", Title: "Vitra App", Assets: assets, Host: host, Runtime: rt,
 		Window: app.WindowOptions{ID: "main", Width: 960, Height: 640},
 	})
@@ -1969,7 +2021,7 @@ func scaffoldIndexHTML() string {
 <html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
 <style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
 button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
-<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path + window plugins).</p>
 <button id="greet">demo.greet</button>
 <button id="open">dialog.open</button>
 <button id="opendir">dialog.openDirectory</button>
@@ -1977,6 +2029,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="browser">browser.open</button>
 <button id="os">os.info</button>
 <button id="notify">notifications.show</button>
+<button id="win">window.create</button>
 <pre id="out"></pre>
 <script>
 const out = document.getElementById("out");
@@ -2007,6 +2060,10 @@ document.getElementById("os").onclick = async () => {
 };
 document.getElementById("notify").onclick = async () => {
   try { out.textContent = JSON.stringify(await invoke("notifications.show", { title: "Vitra", body: "Hello from scaffold" }), null, 2); }
+  catch (e) { out.textContent = String(e); }
+};
+document.getElementById("win").onclick = async () => {
+  try { out.textContent = JSON.stringify(await invoke("window.create", { id: "aux", title: "Aux", width: 480, height: 360 }), null, 2); }
   catch (e) { out.textContent = String(e); }
 };
 // Typed stubs: frontend/vitra-client.ts (vitra generate typescript)
@@ -2155,6 +2212,9 @@ func runGenerate(args []string) error {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialpath.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialwindow.New()); err != nil {
 		return err
 	}
 	var cmds []*domain.CommandDefinition
@@ -2894,7 +2954,7 @@ func runPackage(args []string) error {
 // provenance (declared surface, not a claim that --bin embeds them).
 func officialPluginInventory() []provenance.PluginInfo {
 	out := make([]provenance.PluginInfo, 0, 7)
-	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New()} {
+	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New(), officialwindow.New()} {
 		m := p.Manifest()
 		perms := make([]string, 0, len(m.Permissions))
 		for _, perm := range m.Permissions {
@@ -3059,6 +3119,9 @@ func inspectDemo(args []string) error {
 	if err := rt.RegisterPlugin(ctx, officialpath.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(ctx, officialwindow.New()); err != nil {
+		return err
+	}
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err
 	}
@@ -3081,6 +3144,8 @@ func inspectDemo(args []string) error {
 			{Name: "os.info"},
 			{Name: "notifications.show"},
 			{Name: "path.open", PathScope: &domain.PathScope{Allow: []string{"${PROJECT_DIR}/**"}}},
+			{Name: "window.create"},
+			{Name: "window.close"},
 		},
 	)
 	if err != nil {

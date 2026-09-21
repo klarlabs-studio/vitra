@@ -55,6 +55,7 @@
       <button id="msg" class="secondary">Message dialog</button>
       <button id="notify" class="secondary">Notify</button>
       <button id="path" class="secondary">Open temp dir</button>
+      <button id="win" class="secondary">Open aux window</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -148,6 +149,20 @@
         const target = "/tmp";
         await window.vitra.invoke("path.open", target);
         show({ opened: target });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("win").onclick = async () => {
+      try {
+        show({
+          window: await window.vitra.invoke("window.create", {
+            id: "aux",
+            title: "Vitra Aux",
+            width: 480,
+            height: 360,
+          }),
+        });
       } catch (e) {
         show(String(e.message || e), true);
       }
