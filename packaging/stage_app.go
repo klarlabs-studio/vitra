@@ -109,6 +109,8 @@ func StageDarwinApp(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	<string>11.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
 %s</dict>
 </plist>
 `, xmlEscapeText(safeName), xmlEscapeText(spec.AppID), xmlEscapeText(spec.Name), xmlEscapeText(spec.Name), xmlEscapeText(spec.Version), xmlEscapeText(spec.Version), xmlEscapeText(spec.EffectiveDescription()), xmlEscapeText(spec.EffectiveLicense()), xmlEscapeText(spec.LSApplicationCategoryType()), iconExtra)
