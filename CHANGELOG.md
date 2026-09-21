@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- SIEM/MDM hooks: `audit.JSONLSink` (NDJSON) + `audit.CEFSink` (Common Event Format) + `MultiSink`; `policy.LoadDocument` / `Document.Save` for fleet JSON; competitive demo honors `VITRA_AUDIT=jsonl|cef`, `VITRA_AUDIT_PATH`, and `VITRA_POLICY_FILE`.
 - Windows MSI/NSIS fold: `vitra package --format msi|nsis` stages then invokes candle/light or makensis (`VITRA_CANDLE`/`VITRA_LIGHT`/`VITRA_MAKENSIS` overrides); CI covers fold with fake tools.
 - Windows packaging stage: `vitra package --format win-dir|wix|nsis-dir` stages `bin/<Name>.exe` and emits WiX `product.wxs` / NSIS `installer.nsi` intermediates (fold with candle/light/makensis externally).
 - Competitive docs: DesktopHost parity called out for Linux/Darwin/Windows; honest gap vs Wails reframed to templates/packaging and Wayland global hotkeys (not missing OS adapters).

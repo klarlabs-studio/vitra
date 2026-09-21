@@ -12,8 +12,9 @@ Klarlabs conventions. The repository delivers the **secure runtime kernel**
 and **runnable DesktopHost adapters** on Linux (`platform/linux`), Darwin
 (`platform/darwin`), and Windows (`platform/windows`) under `-tags vitra_native`.
 Linux global OS hotkeys stay explicit unsupported on Wayland; other remaining
-gaps (MSI/NSIS polish, SIEM/MDM) are called out as explicit unsupported or
-follow-on distribution work.
+gaps (optional X11-only global hotkeys) are called out as follow-on work.
+SIEM/MDM hooks ship as portable audit exporters (JSONL/CEF) and JSON policy
+documents on the Phase 5 ports.
 
 ## Why Vitra Exists
 

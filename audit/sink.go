@@ -1,5 +1,5 @@
 // Package audit provides Phase 5 structured audit logging for enterprise
-// diagnostics and policy review.
+// diagnostics, policy review, and SIEM export (JSONL / CEF).
 package audit
 
 import (

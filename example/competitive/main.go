@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -45,7 +46,9 @@ func run() error {
 	if err := installOptionalPolicy(rt); err != nil {
 		return err
 	}
-	installOptionalAudit(rt)
+	if err := installOptionalAudit(rt); err != nil {
+		return err
+	}
 	host := linux.New()
 	const appID = "com.vitra.competitive"
 
@@ -465,8 +468,8 @@ func run() error {
 }
 
 // installOptionalPolicy wires Phase 5 enterprise overlay when VITRA_POLICY is set
-// to "production" or "development". Optional VITRA_POLICY_DENY is a comma-separated
-// permission list (e.g. shell.exec,clipboard.read).
+// to "production" or "development". Optional VITRA_POLICY_FILE loads an MDM JSON
+// document; VITRA_POLICY_DENY appends a comma-separated permission deny list.
 func installOptionalPolicy(rt *vitra.Runtime) error {
 	envName := os.Getenv("VITRA_POLICY")
 	if envName == "" {
@@ -482,6 +485,13 @@ func installOptionalPolicy(rt *vitra.Runtime) error {
 		return fmt.Errorf("VITRA_POLICY: want %q or %q, got %q", policy.EnvProduction, policy.EnvDevelopment, envName)
 	}
 	doc := policy.Document{}
+	if path := os.Getenv("VITRA_POLICY_FILE"); path != "" {
+		loaded, err := policy.LoadDocument(path)
+		if err != nil {
+			return fmt.Errorf("VITRA_POLICY_FILE: %w", err)
+		}
+		doc = loaded
+	}
 	if raw := os.Getenv("VITRA_POLICY_DENY"); raw != "" {
 		for _, p := range strings.Split(raw, ",") {
 			p = strings.TrimSpace(p)
@@ -496,14 +506,56 @@ func installOptionalPolicy(rt *vitra.Runtime) error {
 		return err
 	}
 	rt.SetPolicy(eng)
-	fmt.Printf("enterprise policy: env=%s deny=%v\n", env, doc.DenyPermissions)
+	fmt.Printf("enterprise policy: env=%s deny=%v file=%q\n", env, eng.Document().DenyPermissions, os.Getenv("VITRA_POLICY_FILE"))
 	return nil
 }
 
-func installOptionalAudit(rt *vitra.Runtime) {
-	if os.Getenv("VITRA_AUDIT") != "1" {
-		return
+// installOptionalAudit wires Phase 5 audit sinks when VITRA_AUDIT is set.
+// Values: "1"/"memory" (in-memory), "jsonl" (NDJSON), "cef" (Common Event Format).
+// VITRA_AUDIT_PATH selects the export file (default: stderr for jsonl/cef).
+func installOptionalAudit(rt *vitra.Runtime) error {
+	mode := os.Getenv("VITRA_AUDIT")
+	if mode == "" {
+		return nil
 	}
-	rt.SetAudit(&audit.MemorySink{})
-	fmt.Println("audit sink: memory")
+	mem := &audit.MemorySink{}
+	sinks := []audit.Sink{mem}
+	path := os.Getenv("VITRA_AUDIT_PATH")
+	switch mode {
+	case "1", "memory":
+		rt.SetAudit(mem)
+		fmt.Println("audit sink: memory")
+		return nil
+	case "jsonl":
+		w, label, err := openAuditWriter(path)
+		if err != nil {
+			return err
+		}
+		sinks = append(sinks, &audit.JSONLSink{W: w})
+		rt.SetAudit(&audit.MultiSink{Sinks: sinks})
+		fmt.Printf("audit sink: memory+jsonl (%s)\n", label)
+		return nil
+	case "cef":
+		w, label, err := openAuditWriter(path)
+		if err != nil {
+			return err
+		}
+		sinks = append(sinks, &audit.CEFSink{W: w})
+		rt.SetAudit(&audit.MultiSink{Sinks: sinks})
+		fmt.Printf("audit sink: memory+cef (%s)\n", label)
+		return nil
+	default:
+		return fmt.Errorf("VITRA_AUDIT: want 1|memory|jsonl|cef, got %q", mode)
+	}
+}
+
+func openAuditWriter(path string) (io.Writer, string, error) {
+	if path == "" {
+		return os.Stderr, "stderr", nil
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return nil, "", fmt.Errorf("VITRA_AUDIT_PATH: %w", err)
+	}
+	return f, path, nil
 }
