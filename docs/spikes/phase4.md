@@ -98,8 +98,8 @@ Still out of scope on main (do not claim otherwise):
 - Extra Linux store polish beyond stage+fold (Flathub/Snap Store publishing,
   portal policy tuning) — `.rpm` / `.snap` / `.flatpak` generators ship via
   `BuildRPM*` / `BuildSnap*` / `BuildFlatpak*`
-- Wails-class multi-framework project templates (React/Svelte/…) — `vitra new`
-  ships `vanilla` + `vite` starters; richer frameworks still out
+- Wails-class multi-framework project templates (Svelte/…) — `vitra new`
+  ships `vanilla` + `vite` + `react` starters; other frameworks still out
 
 Installer **generators** (stage scripts + fold to `.deb` / `.rpm` / `.snap` /
 `.flatpak` / `.AppImage` / `.msi` / NSIS setup / `.dmg`) are delivered; fold

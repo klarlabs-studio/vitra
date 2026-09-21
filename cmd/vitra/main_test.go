@@ -682,6 +682,59 @@ func TestRun_NewScaffoldVite(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldReact(t *testing.T) {
+	dir := t.TempDir() + "/react-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", "--template", "react", dir}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=react") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.tsx", "frontend/src/App.tsx", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"react"`, `"@vitejs/plugin-react"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "plugin-react") && !strings.Contains(string(cfg), "plugins: [react()]") {
+		t.Fatalf("vite config missing react plugin: %s", cfg)
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/App.tsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "useState"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("App.tsx missing %q: %s", want, app)
+		}
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "//go:embed all:frontend/dist") {
+		t.Fatalf("react embed missing: %s", src)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
