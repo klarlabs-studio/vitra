@@ -29,6 +29,7 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		`<url type="homepage">https://example.com/demo</url>`,
 		`<url type="help">https://example.com/demo</url>`,
 		`<url type="bugtracker">https://example.com/demo</url>`,
+		`<url type="vcs-browser">https://example.com/demo</url>`,
 		`<category>Utility</category>`,
 		`<category>Development</category>`,
 		`<keyword>desktop</keyword>`,
@@ -65,8 +66,8 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 	if !strings.Contains(emptyXML, `<update_contact>Vitra Packaging &lt;vitra@klarlabs.de&gt;</update_contact>`) {
 		t.Fatalf("default update_contact missing:\n%s", emptyXML)
 	}
-	if strings.Contains(emptyXML, `<url type="homepage">`) || strings.Contains(emptyXML, `<url type="help">`) || strings.Contains(emptyXML, `<url type="bugtracker">`) {
-		t.Fatalf("unexpected homepage/help/bugtracker urls when Homepage empty:\n%s", emptyXML)
+	if strings.Contains(emptyXML, `<url type="homepage">`) || strings.Contains(emptyXML, `<url type="help">`) || strings.Contains(emptyXML, `<url type="bugtracker">`) || strings.Contains(emptyXML, `<url type="vcs-browser">`) {
+		t.Fatalf("unexpected homepage/help/bugtracker/vcs-browser urls when Homepage empty:\n%s", emptyXML)
 	}
 }
 
