@@ -190,3 +190,50 @@ func TestAuthorize_NilGateway(t *testing.T) {
 		t.Fatal("expected gateway required")
 	}
 }
+
+func TestDragDropService_GrantFeatureAndHook(t *testing.T) {
+	caller, _ := domain.NewCaller("main", domain.OriginPackagedLocal)
+	host := null.New(platform.OSLinux)
+	ctx := context.Background()
+
+	denied := &desktop.DragDropService{Gateway: denyAll{}, Host: host}
+	err := denied.Enable(ctx, caller, "main", true)
+	var d *domain.ErrDenied
+	if !errors.As(err, &d) || d.Code != domain.DenialNoGrant {
+		t.Fatalf("expected denial, got %v", err)
+	}
+
+	bare := &desktop.DragDropService{Gateway: allowAll{}, Host: host}
+	err = bare.Enable(ctx, caller, "main", true)
+	var un *platform.ErrUnsupported
+	if !errors.As(err, &un) || un.Feature != platform.FeatureDragDrop {
+		t.Fatalf("expected unsupported drag_drop, got %v", err)
+	}
+
+	okHost := withFeatures(platform.OSLinux, platform.FeatureDragDrop)
+	called := false
+	ok := &desktop.DragDropService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnEnable: func(_ context.Context, window domain.WindowID, enabled bool) error {
+			called = true
+			if window != "main" || !enabled {
+				t.Fatalf("window=%s enabled=%v", window, enabled)
+			}
+			return nil
+		},
+	}
+	if err := ok.Enable(ctx, caller, "main", true); err != nil {
+		t.Fatal(err)
+	}
+	if !called {
+		t.Fatal("expected OnEnable")
+	}
+	if err := ok.Enable(ctx, caller, "", true); err == nil {
+		t.Fatal("expected empty window validation")
+	}
+	missing := &desktop.DragDropService{Gateway: allowAll{}, Host: okHost}
+	if err := missing.Enable(ctx, caller, "main", true); err == nil {
+		t.Fatal("expected missing adapter")
+	}
+}

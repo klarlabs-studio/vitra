@@ -101,7 +101,12 @@ func (h *Host) OpenFileDialog() (string, error) {
 func (h *Host) SaveFileDialog() (string, error) {
 	return "", h.err(platform.FeatureDialogSave)
 }
-func (h *Host) SetActionHandler(func(string)) {}
+func (h *Host) SetActionHandler(func(string))                      {}
+func (h *Host) SetDragDropHandler(func(domain.WindowID, []string)) {}
+func (h *Host) EnableDragDrop(domain.WindowID, bool) error {
+	return h.err(platform.FeatureDragDrop)
+}
+func (h *Host) InjectFileDrop(domain.WindowID, []string) {}
 func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error {
 	return h.err(platform.FeatureMenuBar)
 }

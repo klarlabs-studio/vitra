@@ -223,6 +223,30 @@ func (s *DeepLinkService) Handle(caller domain.Caller, raw string) (bool, error)
 	return false, &domain.ErrValidation{Message: "deep link does not match registered patterns"}
 }
 
+// DragDropService enables receiving file drops into a window.
+type DragDropService struct {
+	Gateway  Gateway
+	Host     platform.Host
+	OnEnable func(ctx context.Context, window domain.WindowID, enabled bool) error
+}
+
+// Enable authorizes dragdrop.receive then toggles native drop targets.
+func (s *DragDropService) Enable(ctx context.Context, caller domain.Caller, window domain.WindowID, enabled bool) error {
+	if window == "" {
+		return &domain.ErrValidation{Message: "window id is required"}
+	}
+	if err := authorize(s.Gateway, caller, PermDragDrop); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeatureDragDrop); err != nil {
+		return err
+	}
+	if s.OnEnable == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureDragDrop, OS: s.Host.OS(), Detail: "no drag-drop adapter bound"}
+	}
+	return s.OnEnable(ctx, window, enabled)
+}
+
 func authorize(gw Gateway, caller domain.Caller, perm domain.PermissionName) error {
 	return authorizePath(gw, caller, perm, "")
 }

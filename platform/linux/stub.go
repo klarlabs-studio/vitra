@@ -16,6 +16,7 @@ type Host struct {
 	onInvoke func(domain.WindowID, domain.Origin, []byte) []byte
 	onNav    func(domain.WindowID, string) bool
 	onAction func(id string)
+	onDrop   func(windowID domain.WindowID, paths []string)
 }
 
 // New returns a stub host that reports why native UI is unavailable.
@@ -60,6 +61,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDeepLink, Available: true,
 			Detail: "argv + socket handoff + xdg URL-scheme registration",
 		},
+		platform.FeatureDragDrop: {
+			Feature: platform.FeatureDragDrop, Available: false,
+			Detail: "requires native linux host",
+		},
 	}
 }
 func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) []byte) {
@@ -67,6 +72,15 @@ func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) 
 }
 func (h *Host) SetNavPolicy(fn func(domain.WindowID, string) bool) { h.onNav = fn }
 func (h *Host) SetActionHandler(fn func(id string))                { h.onAction = fn }
+func (h *Host) SetDragDropHandler(fn func(domain.WindowID, []string)) {
+	h.onDrop = fn
+}
+func (h *Host) EnableDragDrop(domain.WindowID, bool) error { return h.err() }
+func (h *Host) InjectFileDrop(id domain.WindowID, paths []string) {
+	if h.onDrop != nil {
+		h.onDrop(id, append([]string(nil), paths...))
+	}
+}
 func (h *Host) CreateWindow(context.Context, platform.WindowSpec) error {
 	return h.err()
 }

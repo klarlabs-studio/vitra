@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"runtime"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -32,6 +33,7 @@ type Host struct {
 	onInvoke func(domain.WindowID, domain.Origin, []byte) []byte
 	onNav    func(domain.WindowID, string) bool
 	onAction func(id string)
+	onDrop   func(windowID domain.WindowID, paths []string)
 	looping  bool
 	inited   bool
 	jobs     sync.Map // uint64 -> func()
@@ -87,6 +89,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDeepLink, Available: true,
 			Detail: "argv + socket handoff + xdg URL-scheme registration",
 		},
+		platform.FeatureDragDrop: {
+			Feature: platform.FeatureDragDrop, Available: true,
+			Detail: "GTK URI file drops on the WebView",
+		},
 	}
 }
 
@@ -100,6 +106,40 @@ func (h *Host) SetNavPolicy(fn func(domain.WindowID, string) bool) { h.onNav = f
 
 // SetActionHandler registers menu/tray action callbacks.
 func (h *Host) SetActionHandler(fn func(id string)) { h.onAction = fn }
+
+// SetDragDropHandler registers file-drop callbacks (absolute paths).
+func (h *Host) SetDragDropHandler(fn func(windowID domain.WindowID, paths []string)) {
+	h.onDrop = fn
+}
+
+// EnableDragDrop toggles GTK URI drop targets on a window's WebView.
+func (h *Host) EnableDragDrop(id domain.WindowID, enabled bool) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		en := C.int(0)
+		if enabled {
+			en = 1
+		}
+		C.vitra_win_set_drag_drop(w.ptr, en)
+		errCh <- nil
+	})
+	return <-errCh
+}
+
+// InjectFileDrop synthesizes a file drop for tests/headless demos.
+func (h *Host) InjectFileDrop(id domain.WindowID, paths []string) {
+	if h.onDrop == nil {
+		return
+	}
+	h.onDrop(id, append([]string(nil), paths...))
+}
 
 // CreateWindow implements platform.Host.
 func (h *Host) CreateWindow(_ context.Context, spec platform.WindowSpec) error {
@@ -465,4 +505,26 @@ func goVitraAction(actionID *C.char) {
 		return
 	}
 	h.onAction(C.GoString(actionID))
+}
+
+//export goVitraDrop
+func goVitraDrop(windowID, pathsJoined *C.char) {
+	activeMu.Lock()
+	h := active
+	activeMu.Unlock()
+	if h == nil || h.onDrop == nil {
+		return
+	}
+	raw := C.GoString(pathsJoined)
+	var paths []string
+	for _, line := range strings.Split(raw, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			paths = append(paths, line)
+		}
+	}
+	if len(paths) == 0 {
+		return
+	}
+	h.onDrop(domain.WindowID(C.GoString(windowID)), paths)
 }

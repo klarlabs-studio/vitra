@@ -26,6 +26,8 @@ type DesktopHost interface {
 	SetInvokeHandler(fn func(windowID domain.WindowID, origin domain.Origin, raw []byte) []byte)
 	SetNavPolicy(fn func(windowID domain.WindowID, uri string) bool)
 	SetActionHandler(fn func(id string))
+	SetDragDropHandler(fn func(windowID domain.WindowID, paths []string))
+	EnableDragDrop(id domain.WindowID, enabled bool) error
 	Eval(id domain.WindowID, js string) error
 	ClipboardGet() (string, error)
 	ClipboardSet(text string) error

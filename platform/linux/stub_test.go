@@ -65,6 +65,11 @@ func TestStubHost_ReportsNativeRequirement(t *testing.T) {
 	if fs.Available(platform.FeatureDialogSave) {
 		t.Fatal("stub should not claim dialog.save without native host")
 	}
+	if fs.Available(platform.FeatureDragDrop) {
+		t.Fatal("stub should not claim drag_drop without native host")
+	}
+	h.SetDragDropHandler(func(domain.WindowID, []string) {})
+	mustErr(h.EnableDragDrop("main", true))
 	h.Quit()
 	mustErr(h.Run())
 }
