@@ -16,7 +16,7 @@ import (
 //
 // If outDir already ends with ".app", that path is used as the bundle root.
 // SigningIdentityRef must remain a reference (Spec.Validate); this stage never
-// embeds secrets. DMG fold is a separate follow-on.
+// embeds secrets. Fold into a DMG with BuildDMG / FoldDMG (hdiutil).
 func StageDarwinApp(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	if err := spec.Validate(); err != nil {
 		return Artifact{}, err

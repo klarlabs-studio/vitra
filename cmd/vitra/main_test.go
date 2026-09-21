@@ -190,6 +190,33 @@ func TestRun_PackageStagesLinuxDir(t *testing.T) {
 	}
 }
 
+func TestRun_PackageDMG(t *testing.T) {
+	tmp := t.TempDir()
+	tool := filepath.Join(tmp, "fake-hdiutil")
+	if err := os.WriteFile(tool, []byte("#!/bin/sh\nlast=\"\"\nfor a in \"$@\"; do last=\"$a\"; done\nprintf 'DMG' > \"$last\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VITRA_HDIUTIL", tool)
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("mach-o"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist-dmg")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "dmg", "--out", out, "--bin", bin, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	dmg := filepath.Join(out, "t-0.1.0.dmg")
+	raw, err := os.ReadFile(dmg)
+	if err != nil || string(raw) != "DMG" {
+		t.Fatalf("dmg=%q err=%v", raw, err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "provenance.json")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRun_PackageDarwinApp(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "vitra-app")
