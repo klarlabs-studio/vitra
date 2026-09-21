@@ -12,7 +12,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | `app.App` — assets + WebView + invoke→gateway | Done (multi-window `OpenWindow` / `CloseWindow`; quit on last native destroy) |
 | `bridge.PreloadJS` — `window.vitra.invoke` | Done |
 | `platform/linux` WebKitGTK host (`-tags vitra_native`) | Done |
-| Clipboard + open/save/directory/message dialogs | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste, Windows PowerShell); dialogs Linux GTK + Darwin NSOpen/SavePanel/NSAlert + Windows GetOpen/SaveFileName/IFileOpenDialog/MessageBox |
+| Clipboard + open/save/directory/message dialogs | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste, Windows PowerShell); dialogs Linux GTK + Darwin NSOpen/SavePanel/NSAlert + Windows GetOpen/SaveFileName/IFileOpenDialog/MessageBox; open/save accept title/defaultPath/filters |
 | Single-instance lock (flock) | Done (Linux + Darwin + Windows) |
 | Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin + Windows) |
 | Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem; Windows Shell_NotifyIcon) |

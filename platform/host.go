@@ -7,6 +7,7 @@ package platform
 
 import (
 	"context"
+	"strings"
 
 	"go.klarlabs.de/vitra/domain"
 )
@@ -60,6 +61,50 @@ type WindowChrome struct {
 	// IconPath is an optional filesystem path to a window icon image.
 	// Empty leaves the current icon unchanged.
 	IconPath string
+}
+
+// FileFilter describes a named set of file extensions for open/save dialogs.
+// Extensions are without a leading dot (e.g. "png", not ".png").
+type FileFilter struct {
+	Name       string
+	Extensions []string
+}
+
+// DialogFileOptions configures native open/save file dialogs.
+// Zero values preserve previous unfiltered, untitled behavior.
+type DialogFileOptions struct {
+	Title       string
+	DefaultPath string
+	Filters     []FileFilter
+}
+
+// EncodeFileFilters serializes filters as "Name:ext1,ext2;Other:txt" for C hosts.
+// Empty input yields "".
+func EncodeFileFilters(filters []FileFilter) string {
+	if len(filters) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(filters))
+	for _, f := range filters {
+		name := strings.TrimSpace(f.Name)
+		exts := make([]string, 0, len(f.Extensions))
+		for _, e := range f.Extensions {
+			e = strings.TrimSpace(e)
+			e = strings.TrimPrefix(e, ".")
+			if e == "" {
+				continue
+			}
+			exts = append(exts, e)
+		}
+		if name == "" && len(exts) == 0 {
+			continue
+		}
+		if name == "" {
+			name = strings.Join(exts, ",")
+		}
+		parts = append(parts, name+":"+strings.Join(exts, ","))
+	}
+	return strings.Join(parts, ";")
 }
 
 // Support describes whether a feature is available on the current host.

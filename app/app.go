@@ -33,8 +33,8 @@ type DesktopHost interface {
 	Eval(id domain.WindowID, js string) error
 	ClipboardGet() (string, error)
 	ClipboardSet(text string) error
-	OpenFileDialog() (string, error)
-	SaveFileDialog() (string, error)
+	OpenFileDialog(opts platform.DialogFileOptions) (string, error)
+	SaveFileDialog(opts platform.DialogFileOptions) (string, error)
 	OpenDirectoryDialog() (string, error)
 	MessageDialog(title, message, kind string) (bool, error)
 	ShowNotification(title, body string) error

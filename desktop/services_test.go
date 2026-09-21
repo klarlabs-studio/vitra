@@ -101,23 +101,50 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 
 	dlg := &desktop.DialogService{
 		Gateway: allowAll{}, Host: host,
-		OnOpen: func(context.Context) ([]string, error) { return []string{"/tmp/a"}, nil },
-		OnSave: func(context.Context) (string, error) { return "/tmp/b", nil },
+		OnOpen: func(_ context.Context, opts platform.DialogFileOptions) ([]string, error) {
+			if opts.Title != "Open me" || len(opts.Filters) != 1 || opts.Filters[0].Name != "Images" {
+				t.Fatalf("open opts: %+v", opts)
+			}
+			return []string{"/tmp/a"}, nil
+		},
+		OnSave: func(_ context.Context, opts platform.DialogFileOptions) (string, error) {
+			if opts.DefaultPath != "/tmp/out.txt" {
+				t.Fatalf("save opts: %+v", opts)
+			}
+			return "/tmp/b", nil
+		},
 	}
-	paths, err := dlg.OpenFile(ctx, caller)
+	paths, err := dlg.OpenFile(ctx, caller, platform.DialogFileOptions{
+		Title:   "Open me",
+		Filters: []platform.FileFilter{{Name: "Images", Extensions: []string{"png"}}},
+	})
 	if err != nil || len(paths) != 1 {
 		t.Fatalf("open: %v %v", paths, err)
 	}
-	save, err := dlg.SaveFile(ctx, caller)
+	save, err := dlg.SaveFile(ctx, caller, platform.DialogFileOptions{DefaultPath: "/tmp/out.txt"})
 	if err != nil || save != "/tmp/b" {
 		t.Fatalf("save: %v %v", save, err)
 	}
 	bare := &desktop.DialogService{Gateway: allowAll{}, Host: host}
-	if _, err := bare.OpenFile(ctx, caller); err == nil {
+	if _, err := bare.OpenFile(ctx, caller, platform.DialogFileOptions{}); err == nil {
 		t.Fatal("expected missing open adapter")
 	}
-	if _, err := bare.SaveFile(ctx, caller); err == nil {
+	if _, err := bare.SaveFile(ctx, caller, platform.DialogFileOptions{}); err == nil {
 		t.Fatal("expected missing save adapter")
+	}
+	parsed := desktop.ParseDialogFileOptions(map[string]any{
+		"title":       "T",
+		"defaultPath": "/home",
+		"filters": []any{
+			map[string]any{"name": "Docs", "extensions": []any{"pdf", "txt"}},
+		},
+	})
+	if parsed.Title != "T" || parsed.DefaultPath != "/home" || len(parsed.Filters) != 1 ||
+		parsed.Filters[0].Name != "Docs" || len(parsed.Filters[0].Extensions) != 2 {
+		t.Fatalf("parse: %+v", parsed)
+	}
+	if got := desktop.ParseDialogFileOptions(nil); got.Title != "" || len(got.Filters) != 0 {
+		t.Fatalf("nil parse: %+v", got)
 	}
 	dirHost := withFeatures(platform.OSLinux, platform.FeatureDialogOpenDirectory)
 	dirDlg := &desktop.DialogService{

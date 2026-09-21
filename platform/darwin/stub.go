@@ -133,10 +133,10 @@ func (h *Host) Eval(domain.WindowID, string) error { return h.err(platform.Featu
 func (h *Host) CloseWindow(context.Context, domain.WindowID) error {
 	return h.err(platform.FeatureWindowCreate)
 }
-func (h *Host) OpenFileDialog() (string, error) {
+func (h *Host) OpenFileDialog(platform.DialogFileOptions) (string, error) {
 	return "", h.err(platform.FeatureDialogOpen)
 }
-func (h *Host) SaveFileDialog() (string, error) {
+func (h *Host) SaveFileDialog(platform.DialogFileOptions) (string, error) {
 	return "", h.err(platform.FeatureDialogSave)
 }
 func (h *Host) OpenDirectoryDialog() (string, error) {

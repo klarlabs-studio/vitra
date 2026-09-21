@@ -21,7 +21,7 @@ func (dialogPlugin) Manifest() plugin.Manifest {
 		ID:          PluginID,
 		Name:        "Dialogs",
 		Version:     plugin.SemVer{Major: 1},
-		Description: "Native open/save/directory/message dialogs",
+		Description: "Native open/save/directory/message dialogs (open/save accept title, defaultPath, filters)",
 		Permissions: []domain.PermissionName{"dialog.open", "dialog.save", "dialog.openDirectory", "dialog.message"},
 		MinKernel:   plugin.SemVer{Major: 0, Minor: 3},
 	}

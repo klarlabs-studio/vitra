@@ -95,16 +95,28 @@
       }
     };
     document.getElementById("open").onclick = async () => {
-      try { show({ open: await window.vitra.invoke("dialog.open") }); }
-      catch (e) { show(String(e.message || e), true); }
+      try {
+        show({
+          open: await window.vitra.invoke("dialog.open", {
+            title: "Open file",
+            filters: [{ name: "Text", extensions: ["txt", "md"] }],
+          }),
+        });
+      } catch (e) { show(String(e.message || e), true); }
     };
     document.getElementById("opendir").onclick = async () => {
       try { show({ openDirectory: await window.vitra.invoke("dialog.openDirectory") }); }
       catch (e) { show(String(e.message || e), true); }
     };
     document.getElementById("save").onclick = async () => {
-      try { show({ save: await window.vitra.invoke("dialog.save") }); }
-      catch (e) { show(String(e.message || e), true); }
+      try {
+        show({
+          save: await window.vitra.invoke("dialog.save", {
+            title: "Save file",
+            filters: [{ name: "Text", extensions: ["txt"] }],
+          }),
+        });
+      } catch (e) { show(String(e.message || e), true); }
     };
     document.getElementById("msg").onclick = async () => {
       try {

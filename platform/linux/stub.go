@@ -138,8 +138,8 @@ func (h *Host) Eval(domain.WindowID, string) error                         { ret
 func (h *Host) CloseWindow(context.Context, domain.WindowID) error         { return h.err() }
 func (h *Host) ClipboardGet() (string, error)                              { return "", h.err() }
 func (h *Host) ClipboardSet(string) error                                  { return h.err() }
-func (h *Host) OpenFileDialog() (string, error)                            { return "", h.err() }
-func (h *Host) SaveFileDialog() (string, error)                            { return "", h.err() }
+func (h *Host) OpenFileDialog(platform.DialogFileOptions) (string, error)  { return "", h.err() }
+func (h *Host) SaveFileDialog(platform.DialogFileOptions) (string, error)  { return "", h.err() }
 func (h *Host) OpenDirectoryDialog() (string, error)                       { return "", h.err() }
 func (h *Host) MessageDialog(string, string, string) (bool, error)         { return false, h.err() }
 func (h *Host) ShowNotification(string, string) error                      { return h.err() }
