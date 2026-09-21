@@ -2038,6 +2038,68 @@ func TestRun_NewScaffoldMarko(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldEmber(t *testing.T) {
+	dir := t.TempDir() + "/ember-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "ember"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=ember") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.mjs",
+		"frontend/babel.config.mjs", "frontend/ember-cli-build.mjs",
+		"frontend/app/app.js", "frontend/app/components/vitra-app.gjs",
+		"frontend/app/templates/application.gjs", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"ember-source"`, `"@embroider/vite"`, `"@glimmer/component"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/app/components/vitra-app.gjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "@glimmer/component"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("vitra-app.gjs missing %q: %s", want, app)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "@embroider/vite") || !strings.Contains(string(cfg), "classicEmberSupport") {
+		t.Fatalf("vite.config missing embroider ember plugin: %s", cfg)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("ember embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Ember") {
+		t.Fatalf("ember README should mention Vite + Ember: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
