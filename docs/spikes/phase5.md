@@ -7,7 +7,7 @@ the WebView host’s privilege.
 
 | Area | Package |
 |------|---------|
-| Supervised workers | `worker.Supervisor` + `CommandRunner` + `Runtime.StartWorker` |
+| Supervised workers | `worker.Supervisor` + `CommandRunner` + `StdioIPC` + `Runtime.StartWorker` |
 | Crash-safe bookkeeping | worker records survive runner failures |
 | Audit log sink | `audit.MemorySink` (+ `Sink` port) |
 | Enterprise policy overlay | `policy.Engine` |
@@ -34,8 +34,9 @@ the WebView host’s privilege.
 
 `Runtime.StartWorker` supervises in-process runners and OS processes
 (`worker.CommandRunner`: direct exec, context cancel stops the process).
-Elevated work stays off the WebView host (invariant 8). Worker IPC transport
-remains a future adapter.
+Host↔worker messaging uses `worker.Session` (JSON lines) via `PipePair` or
+`StdioIPC` on the child's stdin/stdout. Elevated work stays off the WebView
+host (invariant 8).
 
 Production engines force signed updates and strip development privileges
 (invariants 9 / 11). The competitive demo honors optional env hooks:
@@ -55,6 +56,6 @@ VITRA_AUDIT=1
 
 ## Non-goals in this PR
 
-Worker IPC transport, SIEM exporters, and MDM-specific policy document formats
-— those plug into these ports. OS processes are supervised via
-`worker.CommandRunner` (direct exec, no shell).
+SIEM exporters and MDM-specific policy document formats — those plug into these
+ports. OS processes are supervised via `worker.CommandRunner` / `StdioIPC`
+(direct exec, no shell).
