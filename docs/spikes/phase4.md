@@ -43,7 +43,9 @@ icon).
 externally. `BuildMSI` / `BuildNSIS` likewise stage then fold; without WiX/NSIS
 tools, use `--format wix` / `nsis-dir` and fold on a Windows host. `BuildDMG`
 stages a `.app` then folds with `hdiutil`; without it, use `--format app-dir`
-and fold on macOS.
+and fold on macOS. `vitra doctor` reports whether those fold tools are on PATH
+(or set via `VITRA_APPIMAGETOOL` / `VITRA_CANDLE` / `VITRA_LIGHT` /
+`VITRA_MAKENSIS` / `VITRA_HDIUTIL`).
 
 ## Update apply
 
