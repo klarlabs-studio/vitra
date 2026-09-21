@@ -56,6 +56,14 @@ func StageWindows(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	}
 	sum := hex.EncodeToString(h.Sum(nil))
 
+	base := strings.TrimSuffix(safeName, filepath.Ext(safeName))
+	if base == "" {
+		base = "app"
+	}
+	if _, _, err := stageIconFile(spec.IconPath, binDir, base); err != nil {
+		return Artifact{}, err
+	}
+
 	return Artifact{
 		Target: TargetWindowsDir,
 		Path:   outDir,
