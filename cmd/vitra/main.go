@@ -29,6 +29,7 @@ import (
 	officialapp "go.klarlabs.de/vitra/plugin/official/app"
 	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
+	officialdeeplink "go.klarlabs.de/vitra/plugin/official/deeplink"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialdragdrop "go.klarlabs.de/vitra/plugin/official/dragdrop"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
@@ -1967,6 +1968,9 @@ func scaffoldTypeScriptClient() (string, error) {
 	if err := rt.RegisterPlugin(ctx, officialdragdrop.New()); err != nil {
 		return "", err
 	}
+	if err := rt.RegisterPlugin(ctx, officialdeeplink.New()); err != nil {
+		return "", err
+	}
 	if err := rt.RegisterPlugin(ctx, officialshortcut.New()); err != nil {
 		return "", err
 	}
@@ -2010,6 +2014,7 @@ import (
 	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
+	officialdeeplink "go.klarlabs.de/vitra/plugin/official/deeplink"
 	officialdragdrop "go.klarlabs.de/vitra/plugin/official/dragdrop"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
 	officialmenu "go.klarlabs.de/vitra/plugin/official/menu"
@@ -2084,6 +2089,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialdragdrop.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialdeeplink.New()); err != nil {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialshortcut.New()); err != nil {
@@ -2433,6 +2441,7 @@ func run() error {
 			{Name: desktop.PermMenuSet},
 			{Name: desktop.PermTraySet},
 			{Name: desktop.PermDragDrop},
+			{Name: desktop.PermDeepLinkHandle},
 			{Name: desktop.PermShortcutRegister},
 			{Name: desktop.PermAppQuit},
 			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
@@ -2464,7 +2473,36 @@ func run() error {
 			"paths":  paths,
 		})
 	})
+	deepLinks := &desktop.DeepLinkService{
+		Gateway:  rt,
+		Host:     host,
+		Patterns: []domain.DeepLinkPattern{{Scheme: "vitra"}},
+	}
+	handleDeepLink := func(raw string) {
+		ok, err := deepLinks.Handle(caller, raw)
+		if err != nil || !ok {
+			return
+		}
+		_ = application.Emit(context.Background(), "deeplink.open", map[string]any{"url": raw})
+	}
+	if stop, err := host.StartDeepLinkBridge("com.example.app", handleDeepLink); err == nil {
+		defer stop()
+	}
+	for _, u := range deepLinksFromArgs(os.Args[1:]) {
+		handleDeepLink(u)
+	}
 	return application.Run(context.Background())
+}
+
+func deepLinksFromArgs(args []string) []string {
+	switch runtime.GOOS {
+	case "darwin":
+		return darwin.DeepLinksFromArgs(args)
+	case "windows":
+		return windows.DeepLinksFromArgs(args)
+	default:
+		return linux.DeepLinksFromArgs(args)
+	}
 }
 
 func desktopHost() app.DesktopHost {
@@ -2485,7 +2523,7 @@ func scaffoldIndexHTML() string {
 <html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
 <style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
 button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
-<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path + window + menu + tray + dragdrop + shortcut + app plugins).</p>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path + window + menu + tray + dragdrop + deeplink + shortcut + app plugins).</p>
 <button id="greet">demo.greet</button>
 <button id="open">dialog.open</button>
 <button id="opendir">dialog.openDirectory</button>
@@ -2602,6 +2640,7 @@ if (window.vitra && window.vitra.on) {
   window.vitra.on("menu.action", (payload) => { out.textContent = JSON.stringify({ event: "menu.action", payload }, null, 2); });
   window.vitra.on("tray.action", (payload) => { out.textContent = JSON.stringify({ event: "tray.action", payload }, null, 2); });
   window.vitra.on("dragdrop.drop", (payload) => { out.textContent = JSON.stringify({ event: "dragdrop.drop", payload }, null, 2); });
+  window.vitra.on("deeplink.open", (payload) => { out.textContent = JSON.stringify({ event: "deeplink.open", payload }, null, 2); });
   window.vitra.on("shortcut.action", (payload) => { out.textContent = JSON.stringify({ event: "shortcut.action", payload }, null, 2); });
 }
 // Typed stubs: frontend/vitra-client.ts (vitra generate typescript)
@@ -2762,6 +2801,9 @@ func runGenerate(args []string) error {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialdragdrop.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialdeeplink.New()); err != nil {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialshortcut.New()); err != nil {
@@ -3522,7 +3564,7 @@ func runPackage(args []string) error {
 // provenance (declared surface, not a claim that --bin embeds them).
 func officialPluginInventory() []provenance.PluginInfo {
 	out := make([]provenance.PluginInfo, 0, 7)
-	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New(), officialwindow.New(), officialmenu.New(), officialtray.New(), officialdragdrop.New(), officialshortcut.New(), officialapp.New()} {
+	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New(), officialwindow.New(), officialmenu.New(), officialtray.New(), officialdragdrop.New(), officialdeeplink.New(), officialshortcut.New(), officialapp.New()} {
 		m := p.Manifest()
 		perms := make([]string, 0, len(m.Permissions))
 		for _, perm := range m.Permissions {
@@ -3697,6 +3739,9 @@ func inspectDemo(args []string) error {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialdragdrop.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialdeeplink.New()); err != nil {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialshortcut.New()); err != nil {

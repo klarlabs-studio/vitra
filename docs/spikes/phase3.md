@@ -11,7 +11,7 @@ Phase 3 stabilizes how privileged native surface enters a Vitra app: through
 | Contribution (commands/events) | `plugin.Contribution` |
 | Registry + permission ownership | `plugin.Registry` |
 | Lifecycle hooks | `plugin.Lifecycle` |
-| Official `fs` / `dialog` / `clipboard` / `browser` / `os` / `notification` / `path` / `window` / `menu` / `tray` / `dragdrop` / `shortcut` / `app` contracts | `plugin/official/{fs,dialog,clipboard,browser,os,notification,path,window,menu,tray,dragdrop,shortcut,app}` |
+| Official `fs` / `dialog` / `clipboard` / `browser` / `os` / `notification` / `path` / `window` / `menu` / `tray` / `dragdrop` / `deeplink` / `shortcut` / `app` contracts | `plugin/official/{fs,dialog,clipboard,browser,os,notification,path,window,menu,tray,dragdrop,deeplink,shortcut,app}` |
 | Runtime wiring | `Runtime.RegisterPlugin` / `BindExecutor` / `Plugins()` |
 | TypeScript binding stub generator | `bindings.GenerateTypeScript` + `vitra generate typescript` |
 
@@ -27,6 +27,7 @@ competitive demo binds `dialog.open`/`dialog.save`/`dialog.openDirectory`/`dialo
 `menu.set` to `desktop.MenuService` (via `DesktopHost.SetMenuBar`; actions emit `menu.action`),
 `tray.set`/`tray.clear` to `desktop.TrayService` (via `DesktopHost.SetTray`/`ClearTray`; actions emit `tray.action`),
 `dragdrop.receive` to `desktop.DragDropService` (via `EnableDragDrop`; drops emit `dragdrop.drop`),
+host deep links via `desktop.DeepLinkService` (emit `deeplink.open` after `deeplink.handle`),
 `shortcut.register`/`shortcut.unregister` to `desktop.ShortcutService` (via `RegisterGlobalShortcut`/`UnregisterGlobalShortcut`; actions emit `shortcut.action`; Wayland unsupported),
 `app.quit` to `desktop.AppService` (via `App.Quit`),
 and `fs.read`/`fs.write` to

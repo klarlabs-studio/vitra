@@ -77,6 +77,7 @@
     if (window.vitra && window.vitra.on) {
       window.vitra.on("demo.tick", (payload) => show({ event: "demo.tick", payload }));
       window.vitra.on("dragdrop.drop", (payload) => show({ event: "dragdrop.drop", payload }));
+      window.vitra.on("deeplink.open", (payload) => show({ event: "deeplink.open", payload }));
       window.vitra.on("menu.action", (payload) => show({ event: "menu.action", payload }));
       window.vitra.on("tray.action", (payload) => show({ event: "tray.action", payload }));
       window.vitra.on("shortcut.action", (payload) => show({ event: "shortcut.action", payload }));

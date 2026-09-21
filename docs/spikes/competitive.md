@@ -14,7 +14,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | `platform/linux` WebKitGTK host (`-tags vitra_native`) | Done |
 | Clipboard + open/save/directory/message dialogs | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste, Windows PowerShell); dialogs Linux GTK + Darwin NSOpen/SavePanel/NSAlert + Windows GetOpen/SaveFileName/IFileOpenDialog/MessageBox; open/save accept title/defaultPath/filters |
 | Single-instance lock (flock) | Done (Linux + Darwin + Windows) |
-| Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin + Windows) |
+| Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin + Windows); official `vitra.deeplink` (`deeplink.open` event) + scaffold/`generate` stubs |
 | Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem; Windows Shell_NotifyIcon) |
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done; official `vitra.menu` (`menu.set` + `menu.action`) and `vitra.tray` (`tray.set` / `tray.clear` + `tray.action`) + scaffold/`generate` stubs |
