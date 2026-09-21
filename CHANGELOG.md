@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Darwin LSApplicationCategoryType: `Spec.Categories` / `vitra package --categories` (via `LSApplicationCategoryType`) set Info.plist `LSApplicationCategoryType` (e.g. Development→public.app-category.developer-tools; default Utility→public.app-category.utilities).
 - `vitra new --template inferno`: Vite + Inferno 9 + TypeScript starter (`App.tsx` class component, `vite-plugin-babel` + `babel-plugin-inferno`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Darwin Info.plist copyright: `Spec.License` / `vitra package --license` (via `EffectiveLicense`) flow into `NSHumanReadableCopyright` (default: `LicenseRef-proprietary`).
 - Directory dialog options: optional `title` and `defaultPath` on `dialog.openDirectory` (same payload shape as open/save; filters ignored); native hosts apply them (GTK folder chooser, NSOpenPanel, IFileOpenDialog SetTitle/SetFolder); empty payload keeps prior defaults.

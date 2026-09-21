@@ -51,6 +51,7 @@ func TestStageDarwinApp_LayoutAndPlist(t *testing.T) {
 	for _, want := range []string{
 		"com.vitra.demo", "Demo App", "1.2.3", "Demo-App", "CFBundleExecutable", "APPL",
 		"NSHumanReadableCopyright", DefaultLicense,
+		"LSApplicationCategoryType", "public.app-category.utilities",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("plist missing %q\n%s", want, body)
@@ -99,6 +100,65 @@ func TestStageDarwinApp_LicenseCopyright(t *testing.T) {
 	wantDefault := "<key>NSHumanReadableCopyright</key>\n\t<string>" + DefaultLicense + "</string>"
 	if !strings.Contains(string(raw), wantDefault) {
 		t.Fatalf("missing default copyright\n%s", raw)
+	}
+}
+
+func TestStageDarwinApp_LSApplicationCategoryType(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "stage")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetDarwinApp}, Categories: []string{"Development", "Utility"},
+	}
+	art, err := StageDarwinApp(spec, bin, out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(art.Path, "Contents", "Info.plist"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "<key>LSApplicationCategoryType</key>\n\t<string>public.app-category.developer-tools</string>"
+	if !strings.Contains(string(raw), want) {
+		t.Fatalf("missing category\n%s", raw)
+	}
+
+	outDefault := filepath.Join(tmp, "stage-default")
+	spec.Categories = nil
+	art, err = StageDarwinApp(spec, bin, outDefault)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err = os.ReadFile(filepath.Join(art.Path, "Contents", "Info.plist"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantDefault := "<key>LSApplicationCategoryType</key>\n\t<string>public.app-category.utilities</string>"
+	if !strings.Contains(string(raw), wantDefault) {
+		t.Fatalf("missing default category\n%s", raw)
+	}
+}
+
+func TestSpec_LSApplicationCategoryType(t *testing.T) {
+	cases := []struct {
+		cats []string
+		want string
+	}{
+		{nil, "public.app-category.utilities"},
+		{[]string{"Utility"}, "public.app-category.utilities"},
+		{[]string{"Development"}, "public.app-category.developer-tools"},
+		{[]string{"Network", "Utility"}, "public.app-category.social-networking"},
+		{[]string{"UnknownCat"}, "public.app-category.utilities"},
+	}
+	for _, tc := range cases {
+		got := Spec{Categories: tc.cats}.LSApplicationCategoryType()
+		if got != tc.want {
+			t.Fatalf("cats=%v: got %q want %q", tc.cats, got, tc.want)
+		}
 	}
 }
 

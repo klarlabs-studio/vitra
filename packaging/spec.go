@@ -53,8 +53,9 @@ type Spec struct {
 	Homepage string
 	// Categories are FreeDesktop/AppStream categories (e.g. Utility, Development).
 	// Empty defaults to []string{"Utility"}. The first mapped category also
-	// selects the Debian control Section: (see DebianSection) and RPM Group:
-	// (see RPMGroup).
+	// selects the Debian control Section: (see DebianSection), RPM Group:
+	// (see RPMGroup), and Darwin Info.plist LSApplicationCategoryType
+	// (see LSApplicationCategoryType).
 	Categories []string
 	// Keywords are optional FreeDesktop/AppStream search terms (desktop Keywords=,
 	// AppStream <keyword>, snap keywords). Empty omits them.
@@ -190,6 +191,37 @@ func (s Spec) RPMGroup() string {
 		}
 	}
 	return "Applications/System"
+}
+
+// LSApplicationCategoryType returns the Darwin Info.plist
+// LSApplicationCategoryType UTI derived from EffectiveCategories.
+// Unknown categories fall back to "public.app-category.utilities".
+func (s Spec) LSApplicationCategoryType() string {
+	for _, cat := range s.EffectiveCategories() {
+		switch strings.ToLower(strings.TrimSpace(cat)) {
+		case "audiovideo", "audio", "music":
+			return "public.app-category.music"
+		case "video":
+			return "public.app-category.video"
+		case "development":
+			return "public.app-category.developer-tools"
+		case "education":
+			return "public.app-category.education"
+		case "game":
+			return "public.app-category.games"
+		case "graphics":
+			return "public.app-category.graphics-design"
+		case "network":
+			return "public.app-category.social-networking"
+		case "office":
+			return "public.app-category.productivity"
+		case "science":
+			return "public.app-category.reference"
+		case "settings", "system", "utility":
+			return "public.app-category.utilities"
+		}
+	}
+	return "public.app-category.utilities"
 }
 
 // EffectiveKeywords returns trimmed Spec.Keywords (no default; empty means omit).
