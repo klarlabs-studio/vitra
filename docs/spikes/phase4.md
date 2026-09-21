@@ -40,8 +40,8 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `appdir` | AppImage-ready AppDir (`BuildAppDir`) |
 | `appimage` | Final `.AppImage` (`BuildAppImage` → `appimagetool`) |
 | `win-dir` | Staged Windows `bin/<Name>.exe` (`StageWindows`) |
-| `wix` | Windows stage + `product.wxs` (`BuildWiXDir`; Start Menu + Desktop shortcuts + stable UpgradeCode + ARP URL/comments/copyright) |
-| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP + Desktop/Start Menu shortcuts + URLInfoAbout/Comments/LegalCopyright) |
+| `wix` | Windows stage + `product.wxs` (`BuildWiXDir`; Start Menu + Desktop shortcuts + stable UpgradeCode + ARP URL/helplink/comments/copyright) |
+| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP + Desktop/Start Menu shortcuts + URLInfoAbout/HelpLink/Comments/LegalCopyright) |
 | `msi` | Final `.msi` (`BuildMSI` → candle/light or `VITRA_CANDLE`/`VITRA_LIGHT`) |
 | `nsis` | Final setup `.exe` (`BuildNSIS` → makensis or `VITRA_MAKENSIS`) |
 | `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`; Info.plist + `NSHumanReadableCopyright` + `LSApplicationCategoryType` + `CFBundleGetInfoString`) |
@@ -52,8 +52,8 @@ Linux stages (root + `usr/share/icons/hicolor/…/apps/`, `Icon=<name>`), AppDir
 (`.DirIcon` symlink + hicolor), `.deb` packages (`usr/share/pixmaps/` + hicolor +
 `Icon=`), Darwin `Contents/Resources` (`CFBundleIconFile`), and Windows `bin/`
 (WiX `ARPPRODUCTICON` + NSIS shortcut icon). Optional `--homepage` sets Debian
-`Homepage`, AppStream/RPM/snap URLs, and Windows ARP support URL
-(`URLInfoAbout` / `ARPURLINFOABOUT`) when provided. Optional `--maintainer` sets Debian
+`Homepage`, AppStream/RPM/snap URLs, and Windows ARP support/help URLs
+(`URLInfoAbout` / `ARPURLINFOABOUT`, `HelpLink` / `ARPHELPLINK`) when provided. Optional `--maintainer` sets Debian
 `Maintainer`, snap `contact:`, DEP-5 Upstream-Contact, and, when provided, WiX
 `Manufacturer` / NSIS `PRODUCT_PUBLISHER` (otherwise WiX/NSIS use `Name`). Optional `--description` sets the Debian
 extended Description, FreeDesktop `Comment=`, Windows ARP Comments /
