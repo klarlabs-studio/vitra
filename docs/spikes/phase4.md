@@ -134,7 +134,7 @@ Still out of scope on main (do not claim otherwise):
   `.snap` / `.flatpak` generators ship via `BuildRPM*` / `BuildSnap*` /
   `BuildFlatpak*`
 - Wails-class template breadth beyond Vitra’s `vanilla` / `vite` / `react` /
-  `svelte` / `vue` / `solid` / `preact` / `lit` starters (additional frameworks, richer presets)
+  `svelte` / `vue` / `solid` / `preact` / `lit` / `alpine` starters (additional frameworks, richer presets)
 
 Installer **generators** (stage scripts + fold to `.deb` / `.rpm` / `.snap` /
 `.flatpak` / `.AppImage` / `.msi` / NSIS setup / `.dmg`) are delivered; fold

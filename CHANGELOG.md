@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template alpine`: Vite + Alpine.js + TypeScript starter (`x-data` / Alpine.data, alpinejs) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Store publish execution: `packaging.ExecutePublish` + `vitra package --publish-execute` runs Executable plan steps only (`snapcraft upload`, `flatpak-builder`); never `snapcraft login` / Flathub `gh pr create`.
 - Update signing CLI: `updater.GenerateKeyPair` / `BuildSignedManifest` / `LoadPrivateKeyRef` + `vitra update-keygen` / `update-sign` (env:/file:/secret: privkey refs; bare hex rejected).
 - Update channel stage: `updater.StageChannel` + `vitra update-stage --out` writes `{out}/{app}/{channel}/manifest.json` + artifact for static CDN upload (digest-checked, signed manifests only).
