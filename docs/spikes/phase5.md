@@ -10,6 +10,8 @@ the WebView host’s privilege.
 | Supervised workers | `worker.Supervisor` + `CommandRunner` + `StdioIPC` + `Runtime.StartWorker` |
 | Crash-safe bookkeeping | worker records survive runner failures |
 | Audit log sink | `audit.MemorySink` (+ `Sink` port) |
+| SIEM exporters | `audit.JSONLSink` (NDJSON) + `audit.CEFSink` (Common Event Format) + `MultiSink` |
+| MDM policy documents | `policy.LoadDocument` / `Document.Save` (JSON; unknown fields rejected) |
 | Enterprise policy overlay | `policy.Engine` |
 | Live Runtime wiring | `Runtime.SetPolicy` / `SetAudit` / workers on Authorize, Invoke, plugins, updates |
 
@@ -32,6 +34,16 @@ the WebView host’s privilege.
 | `update.plan` | `ApplyUpdate` |
 | `worker.lifecycle` | `StartWorker` / `StopWorker` / crash·stop transitions |
 
+SIEM exporters implement the same `Sink` port:
+
+- `JSONLSink` — one JSON object per line for file/pipe agents
+- `CEFSink` — ArcSight-compatible CEF lines (`FormatCEF` for custom writers)
+- `MultiSink` — fan-out (e.g. memory + JSONL)
+
+MDM/fleet policy documents are JSON `policy.Document` values (`LoadDocument` /
+`Save` / `ParseDocument`). `Engine.Document()` returns the effective document
+(including production-forced signature and dev-privilege flags).
+
 `Runtime.StartWorker` supervises in-process runners and OS processes
 (`worker.CommandRunner`: direct exec, context cancel stops the process).
 Host↔worker messaging uses `worker.Session` (JSON lines) via `PipePair` or
@@ -43,8 +55,11 @@ Production engines force signed updates and strip development privileges
 
 ```bash
 VITRA_POLICY=production
+VITRA_POLICY_FILE=/etc/vitra/fleet.json   # optional MDM JSON document
 VITRA_POLICY_DENY=shell.exec,clipboard.read
-VITRA_AUDIT=1
+VITRA_AUDIT=1                             # memory
+VITRA_AUDIT=jsonl VITRA_AUDIT_PATH=audit.ndjson
+VITRA_AUDIT=cef   VITRA_AUDIT_PATH=audit.cef
 ```
 
 ## Invariants
@@ -54,8 +69,9 @@ VITRA_AUDIT=1
 - **Reliability 4**: worker crashes update `Record` state; they do not wipe supervisor maps
 - Audit events cover capability decisions, plugin registration, worker lifecycle, updates
 
-## Non-goals in this PR
+## Non-goals
 
-SIEM exporters and MDM-specific policy document formats — those plug into these
-ports. OS processes are supervised via `worker.CommandRunner` / `StdioIPC`
-(direct exec, no shell).
+Vendor-specific SIEM connectors (Splunk HEC, Sentinel, etc.) and proprietary MDM
+wire protocols — JSONL/CEF and JSON policy documents are the portable ports those
+systems plug into. OS processes are supervised via `worker.CommandRunner` /
+`StdioIPC` (direct exec, no shell).
