@@ -674,13 +674,20 @@ char *vitra_open_dialog(const char *title, const char *default_path, const char 
 	return strdup(url.fileSystemRepresentation);
 }
 
-char *vitra_open_directory_dialog(void) {
+char *vitra_open_directory_dialog(const char *title, const char *default_path) {
 	NSOpenPanel *panel = [NSOpenPanel openPanel];
 	panel.canChooseFiles = NO;
 	panel.canChooseDirectories = YES;
 	panel.allowsMultipleSelection = NO;
 	panel.resolvesAliases = YES;
 	panel.canCreateDirectories = YES;
+	if (title && title[0]) {
+		panel.title = [NSString stringWithUTF8String:title];
+		panel.message = panel.title;
+	}
+	if (default_path && default_path[0]) {
+		panel.directoryURL = [NSURL fileURLWithPath:[NSString stringWithUTF8String:default_path] isDirectory:YES];
+	}
 	if ([panel runModal] != NSModalResponseOK) {
 		return NULL;
 	}

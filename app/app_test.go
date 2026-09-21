@@ -74,13 +74,15 @@ func (h *fakeHost) ClipboardGet() (string, error)                             { 
 func (h *fakeHost) ClipboardSet(string) error                                 { return nil }
 func (h *fakeHost) OpenFileDialog(platform.DialogFileOptions) (string, error) { return "/tmp/x", nil }
 func (h *fakeHost) SaveFileDialog(platform.DialogFileOptions) (string, error) { return "/tmp/y", nil }
-func (h *fakeHost) OpenDirectoryDialog() (string, error)                      { return "/tmp/d", nil }
-func (h *fakeHost) MessageDialog(string, string, string) (bool, error)        { return true, nil }
-func (h *fakeHost) ShowNotification(string, string) error                     { return nil }
-func (h *fakeHost) SetActionHandler(func(string))                             {}
-func (h *fakeHost) SetDragDropHandler(func(domain.WindowID, []string))        {}
-func (h *fakeHost) SetDestroyHandler(fn func(domain.WindowID))                { h.onDestroy = fn }
-func (h *fakeHost) EnableDragDrop(domain.WindowID, bool) error                { return nil }
+func (h *fakeHost) OpenDirectoryDialog(platform.DialogFileOptions) (string, error) {
+	return "/tmp/d", nil
+}
+func (h *fakeHost) MessageDialog(string, string, string) (bool, error) { return true, nil }
+func (h *fakeHost) ShowNotification(string, string) error              { return nil }
+func (h *fakeHost) SetActionHandler(func(string))                      {}
+func (h *fakeHost) SetDragDropHandler(func(domain.WindowID, []string)) {}
+func (h *fakeHost) SetDestroyHandler(fn func(domain.WindowID))         { h.onDestroy = fn }
+func (h *fakeHost) EnableDragDrop(domain.WindowID, bool) error         { return nil }
 func (h *fakeHost) SetMenuBar(domain.WindowID, []platform.MenuItem) error {
 	return nil
 }

@@ -203,8 +203,8 @@ func run() error {
 		OnSave: func(ctx context.Context, opts platform.DialogFileOptions) (string, error) {
 			return host.SaveFileDialog(opts)
 		},
-		OnOpenDirectory: func(ctx context.Context) (string, error) {
-			return host.OpenDirectoryDialog()
+		OnOpenDirectory: func(ctx context.Context, opts platform.DialogFileOptions) (string, error) {
+			return host.OpenDirectoryDialog(opts)
 		},
 		OnMessage: func(ctx context.Context, title, message, kind string) (bool, error) {
 			return host.MessageDialog(title, message, kind)
@@ -417,8 +417,8 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("dialog.openDirectory", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
-		return dialogs.OpenDirectory(ctx, caller)
+	if err := rt.BindExecutor("dialog.openDirectory", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		return dialogs.OpenDirectory(ctx, caller, desktop.ParseDialogFileOptions(input))
 	})); err != nil {
 		return err
 	}

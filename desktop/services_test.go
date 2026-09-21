@@ -201,14 +201,19 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	dirHost := withFeatures(platform.OSLinux, platform.FeatureDialogOpenDirectory)
 	dirDlg := &desktop.DialogService{
 		Gateway: allowAll{}, Host: dirHost,
-		OnOpenDirectory: func(context.Context) (string, error) { return "/tmp/d", nil },
+		OnOpenDirectory: func(_ context.Context, opts platform.DialogFileOptions) (string, error) {
+			if opts.Title != "Pick folder" || opts.DefaultPath != "/tmp" {
+				t.Fatalf("dir opts: %+v", opts)
+			}
+			return "/tmp/d", nil
+		},
 	}
-	dir, err := dirDlg.OpenDirectory(ctx, caller)
+	dir, err := dirDlg.OpenDirectory(ctx, caller, platform.DialogFileOptions{Title: "Pick folder", DefaultPath: "/tmp"})
 	if err != nil || dir != "/tmp/d" {
 		t.Fatalf("opendir: %v %v", dir, err)
 	}
 	bareDir := &desktop.DialogService{Gateway: allowAll{}, Host: dirHost}
-	if _, err := bareDir.OpenDirectory(ctx, caller); err == nil {
+	if _, err := bareDir.OpenDirectory(ctx, caller, platform.DialogFileOptions{}); err == nil {
 		t.Fatal("expected missing directory adapter")
 	}
 	msgHost := withFeatures(platform.OSLinux, platform.FeatureDialogMessage)

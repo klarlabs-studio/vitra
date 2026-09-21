@@ -139,7 +139,7 @@ func (h *Host) OpenFileDialog(platform.DialogFileOptions) (string, error) {
 func (h *Host) SaveFileDialog(platform.DialogFileOptions) (string, error) {
 	return "", h.err(platform.FeatureDialogSave)
 }
-func (h *Host) OpenDirectoryDialog() (string, error) {
+func (h *Host) OpenDirectoryDialog(platform.DialogFileOptions) (string, error) {
 	return "", h.err(platform.FeatureDialogOpenDirectory)
 }
 func (h *Host) MessageDialog(string, string, string) (bool, error) {

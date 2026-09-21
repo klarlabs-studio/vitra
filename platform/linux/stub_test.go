@@ -51,7 +51,7 @@ func TestStubHost_ReportsNativeRequirement(t *testing.T) {
 	mustErr(err)
 	_, err = h.SaveFileDialog(platform.DialogFileOptions{})
 	mustErr(err)
-	_, err = h.OpenDirectoryDialog()
+	_, err = h.OpenDirectoryDialog(platform.DialogFileOptions{})
 	mustErr(err)
 	mustErr(h.SetMenuBar("main", []platform.MenuItem{{Menu: "File", ID: "quit", Label: "Quit"}}))
 	mustErr(h.SetTray("tip", []platform.MenuItem{{ID: "quit", Label: "Quit"}}))

@@ -503,11 +503,15 @@ func (h *Host) SaveFileDialog(opts platform.DialogFileOptions) (string, error) {
 }
 
 // OpenDirectoryDialog opens a native folder chooser (NSOpenPanel directories).
-func (h *Host) OpenDirectoryDialog() (string, error) {
+func (h *Host) OpenDirectoryDialog(opts platform.DialogFileOptions) (string, error) {
 	ch := make(chan string, 1)
 	h.dispatch(func() {
 		h.ensureInit()
-		p := C.vitra_open_directory_dialog()
+		ctitle := C.CString(opts.Title)
+		cdefault := C.CString(opts.DefaultPath)
+		p := C.vitra_open_directory_dialog(ctitle, cdefault)
+		C.free(unsafe.Pointer(ctitle))
+		C.free(unsafe.Pointer(cdefault))
 		if p == nil {
 			ch <- ""
 			return
