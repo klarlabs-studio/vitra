@@ -463,6 +463,63 @@ int vitra_win_activate_accel(VitraWin *w, const char *shortcut) {
 	return activate_in_menu([NSApp mainMenu], key, mods);
 }
 
+static NSStatusItem *g_tray = nil;
+static VitraMenuTarget *g_tray_target = nil;
+
+void vitra_tray_set(const char *tooltip) {
+	if (!g_tray_target) {
+		g_tray_target = [[VitraMenuTarget alloc] init];
+	}
+	if (!g_tray) {
+		g_tray = [[[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength] retain];
+		g_tray.button.title = @"vitra";
+	}
+	g_tray.button.toolTip = tooltip ? [NSString stringWithUTF8String:tooltip] : @"";
+	g_tray.visible = YES;
+}
+
+void vitra_tray_clear_menu(void) {
+	if (g_tray) {
+		g_tray.menu = nil;
+	}
+}
+
+void vitra_tray_add_menu_item(const char *item_id, const char *item_label) {
+	if (!item_id || !item_label) {
+		return;
+	}
+	if (!g_tray) {
+		vitra_tray_set("");
+	}
+	if (!g_tray_target) {
+		g_tray_target = [[VitraMenuTarget alloc] init];
+	}
+	NSMenu *menu = g_tray.menu;
+	if (!menu) {
+		menu = [[NSMenu alloc] initWithTitle:@"Tray"];
+		g_tray.menu = menu;
+		[menu release];
+		menu = g_tray.menu;
+	}
+	NSMenuItem *item = [[NSMenuItem alloc]
+	    initWithTitle:[NSString stringWithUTF8String:item_label]
+		   action:@selector(onAction:)
+	    keyEquivalent:@""];
+	item.target = g_tray_target;
+	item.representedObject = [NSString stringWithUTF8String:item_id];
+	[menu addItem:item];
+	[item release];
+}
+
+void vitra_tray_clear(void) {
+	vitra_tray_clear_menu();
+	if (g_tray) {
+		[[NSStatusBar systemStatusBar] removeStatusItem:g_tray];
+		[g_tray release];
+		g_tray = nil;
+	}
+}
+
 char *vitra_open_dialog(void) {
 	NSOpenPanel *panel = [NSOpenPanel openPanel];
 	panel.canChooseFiles = YES;

@@ -35,6 +35,11 @@ void vitra_win_clear_menu(VitraWin *w);
 void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut);
 int vitra_win_activate_accel(VitraWin *w, const char *shortcut);
 
+void vitra_tray_set(const char *tooltip);
+void vitra_tray_clear_menu(void);
+void vitra_tray_add_menu_item(const char *item_id, const char *item_label);
+void vitra_tray_clear(void);
+
 char *vitra_open_dialog(void);
 char *vitra_save_dialog(void);
 

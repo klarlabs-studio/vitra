@@ -94,8 +94,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "NSApp main menu; MenuItem.Shortcut maps Ctrl→Command",
 		},
 		platform.FeatureTray: {
-			Feature: platform.FeatureTray, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureTray, Available: true,
+			Detail: "NSStatusItem with context menu",
 		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,
@@ -446,13 +446,32 @@ func (h *Host) ActivateMenuAccel(id domain.WindowID, shortcut string) (bool, err
 	return got.ok, got.err
 }
 
-// SetTray is not yet implemented on Darwin.
-func (h *Host) SetTray(string, []platform.MenuItem) error {
-	return h.err(platform.FeatureTray)
+// SetTray shows a status-item tray entry with tooltip and optional context menu.
+func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
+	done := make(chan struct{}, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ct := C.CString(tooltip)
+		defer C.free(unsafe.Pointer(ct))
+		C.vitra_tray_set(ct)
+		C.vitra_tray_clear_menu()
+		for _, it := range items {
+			cid := C.CString(it.ID)
+			clabel := C.CString(it.Label)
+			C.vitra_tray_add_menu_item(cid, clabel)
+			C.free(unsafe.Pointer(cid))
+			C.free(unsafe.Pointer(clabel))
+		}
+		done <- struct{}{}
+	})
+	<-done
+	return nil
 }
 
-// ClearTray is a no-op until tray lands on Darwin.
-func (h *Host) ClearTray() {}
+// ClearTray hides the tray icon.
+func (h *Host) ClearTray() {
+	h.dispatch(func() { C.vitra_tray_clear() })
+}
 
 // RegisterURLScheme is not yet implemented on Darwin.
 func (h *Host) RegisterURLScheme(string, string, string) error {
