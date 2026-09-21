@@ -113,6 +113,9 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "update-check") {
 		t.Fatalf("help missing update-check: %q", out)
 	}
+	if !strings.Contains(out, "notary-setup") {
+		t.Fatalf("help missing notary-setup: %q", out)
+	}
 }
 
 func TestRun_UpdateApply(t *testing.T) {
@@ -284,6 +287,23 @@ func TestRun_UpdateCheck(t *testing.T) {
 	}
 }
 
+func TestRun_NotarySetup(t *testing.T) {
+	out := capture(t, func() {
+		if err := run([]string{"notary-setup", "--profile", "AC_TEST"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "notary credentials plan") || !strings.Contains(out, "store-credentials") {
+		t.Fatalf("stdout: %q", out)
+	}
+	if !strings.Contains(out, "AC_TEST") || !strings.Contains(out, "${APPLE_ID}") {
+		t.Fatalf("stdout: %q", out)
+	}
+	if err := run([]string{"notary-setup", "--nope"}); err == nil {
+		t.Fatal("expected unknown flag error")
+	}
+}
+
 func TestRun_GenerateTypeScript(t *testing.T) {
 	dir := t.TempDir()
 	outPath := filepath.Join(dir, "frontend", "vitra-client.ts")
@@ -394,6 +414,9 @@ func TestRun_PackageSignPlan(t *testing.T) {
 	}
 	if !strings.Contains(printed, "notarytool") || !strings.Contains(printed, "stapler") {
 		t.Fatalf("expected notarize/staple follow-ups: %q", printed)
+	}
+	if !strings.Contains(printed, "store-credentials") || !strings.Contains(printed, "prep 1:") {
+		t.Fatalf("expected notary credentials prep: %q", printed)
 	}
 	if strings.Contains(printed, "not-leaked-value") {
 		t.Fatalf("leaked identity value: %q", printed)
