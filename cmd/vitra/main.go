@@ -66,6 +66,8 @@ func run(args []string) error {
 		return runGenerate(args[1:])
 	case "update-apply":
 		return runUpdateApply(args[1:])
+	case "update-check":
+		return runUpdateCheck(args[1:])
 	case "register-scheme":
 		return registerScheme(args[1:])
 	case "register-files":
@@ -92,6 +94,8 @@ Usage:
                              Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints a dry-run plan only
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
+  vitra update-check --base-url <url> --app-id <id> --channel <name> --pubkey <hex>
+                             Fetch + verify a signed channel manifest (HTTP(S) client; does not install)
   vitra update-apply --manifest <json> --artifact <path> --pubkey <hex> --dest <path> [--policy production|development]
                              Verify a signed update and atomically install it
   vitra register-scheme <scheme> [app-id] [exec]
@@ -1253,6 +1257,67 @@ func runUpdateApply(args []string) error {
 		return err
 	}
 	fmt.Printf("installed %s v%s (%s) → %s\n  sha256: %s\n", plan.AppID, plan.Version, plan.Channel, dest, plan.SHA256)
+	return nil
+}
+
+func runUpdateCheck(args []string) error {
+	baseURL, appID, channel, pubkeyHex := "", "", "stable", ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--base-url":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--base-url requires a URL")
+			}
+			baseURL = args[i]
+		case "--app-id":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--app-id requires an id")
+			}
+			appID = args[i]
+		case "--channel":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--channel requires a name")
+			}
+			channel = args[i]
+		case "--pubkey":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--pubkey requires hex-encoded ed25519 public key")
+			}
+			pubkeyHex = args[i]
+		default:
+			return fmt.Errorf("unknown update-check flag %q", args[i])
+		}
+	}
+	if baseURL == "" || appID == "" || pubkeyHex == "" {
+		return fmt.Errorf("usage: vitra update-check --base-url <url> --app-id <id> --channel <name> --pubkey <hex>")
+	}
+	pubBytes, err := hex.DecodeString(strings.TrimSpace(pubkeyHex))
+	if err != nil || len(pubBytes) != ed25519.PublicKeySize {
+		return fmt.Errorf("pubkey must be %d-byte ed25519 key as hex", ed25519.PublicKeySize)
+	}
+	src := updater.ChannelSource{
+		BaseURL: baseURL,
+		AppID:   appID,
+		Channel: updater.Channel(channel),
+	}
+	manifestURL, err := src.ManifestURL()
+	if err != nil {
+		return err
+	}
+	f := &updater.Fetcher{}
+	m, err := f.FetchManifest(context.Background(), src)
+	if err != nil {
+		return err
+	}
+	if err := updater.VerifyManifest(m, ed25519.PublicKey(pubBytes)); err != nil {
+		return err
+	}
+	fmt.Printf("update available: %s v%s (%s)\n  manifest: %s\n  artifact: %s\n  sha256: %s\n",
+		m.AppID, m.Version, m.Channel, manifestURL, m.Artifact, m.SHA256)
 	return nil
 }
 

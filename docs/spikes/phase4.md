@@ -13,6 +13,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Darwin staged `.app` bundle | `StageDarwinApp` + `vitra package --format app-dir` |
 | Darwin DMG fold | `BuildDMG` / `FoldDMG` (`hdiutil` or `VITRA_HDIUTIL`) |
 | Signed update manifests (ed25519) | `updater` |
+| HTTP(S) channel fetch (client only) | `updater.ChannelSource` / `Fetcher` + `vitra update-check` |
 | Install plans only after verify | `updater.PlanInstall` |
 | Atomic install after plan | `updater.ApplyInstall` / `Runtime.ApplyUpdate` |
 | SBOM / plugin / capability inventory | `provenance` |
@@ -75,9 +76,18 @@ Pipeline: optional `policy.AuthorizeUpdate` (channel + unsigned reject) →
 `PlanInstall` (signature + digest) → `ApplyInstall` (re-check digest, atomic
 rename into place). No filesystem mutation occurs unless verification succeeds.
 
+Channel fetch (client only — Vitra does not host a CDN):
+
+```go
+src := updater.ChannelSource{BaseURL: "https://updates.example/", AppID: "com.example.app", Channel: updater.ChannelStable}
+m, err := (&updater.Fetcher{}).FetchManifest(ctx, src)
+// VerifyManifest / PlanInstall / ApplyUpdate as usual
+```
+
 CLI:
 
 ```bash
+vitra update-check --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex>
 vitra update-apply --manifest update.json --artifact app.bin --pubkey <hex> --dest ./vitra-app --policy production
 ```
 
@@ -91,7 +101,8 @@ vitra update-apply --manifest update.json --artifact app.bin --pubkey <hex> --de
 
 Still out of scope on main (do not claim otherwise):
 
-- Hosted update CDN / auto-update channel hosting
+- Hosted update CDN / auto-update channel *hosting* (HTTP(S) *client* fetch
+  via `ChannelSource` / `Fetcher` / `vitra update-check` ships)
 - Notarization / codesign / Authenticode / Linux package-sign *execution*
   (`Spec.Sign` + `SigningIdentityRef` validate refs; `PlanSign` / `--sign`
   print argv plans for Darwin/Windows/Linux — stage/fold never invoke

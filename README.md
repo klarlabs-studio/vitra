@@ -114,6 +114,7 @@ vitra dev
 vitra build
 vitra package --out dist/ [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--icon path] [--maintainer name] [--description text] [--sign --signing-identity ref]
 vitra generate typescript --out frontend/vitra-client.ts
+vitra update-check --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex>
 vitra update-apply --manifest m.json --artifact a.bin --pubkey <hex> --dest ./vitra-app
 vitra inspect capabilities
 ```

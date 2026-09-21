@@ -91,5 +91,7 @@ Fold still needs host tools (`appimagetool`, `rpmbuild`, `snapcraft`,
 `Spec.Sign` / `SigningIdentityRef` validate refs and `vitra package --sign`
 prints a dry-run plan (`PlanSign`: Darwin codesign + notarytool/stapler,
 Windows signtool, Linux dpkg-sig/rpmsign/snapcraft/gpg) — no host signing
-execution. Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM JSON policy
-documents (`policy.LoadDocument`) plug into Phase 5 ports.
+execution. Update channel *client* fetch (`updater.Fetcher` /
+`vitra update-check`) verifies signed HTTP(S) manifests; hosted CDN remains
+out of scope. Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM JSON
+policy documents (`policy.LoadDocument`) plug into Phase 5 ports.

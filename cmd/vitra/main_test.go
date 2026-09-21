@@ -10,6 +10,8 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -108,6 +110,9 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "update-apply") {
 		t.Fatalf("help missing update-apply: %q", out)
 	}
+	if !strings.Contains(out, "update-check") {
+		t.Fatalf("help missing update-check: %q", out)
+	}
 }
 
 func TestRun_UpdateApply(t *testing.T) {
@@ -158,6 +163,60 @@ func TestRun_UpdateApply(t *testing.T) {
 	}
 	if err := run([]string{"update-apply"}); err == nil {
 		t.Fatal("expected usage error")
+	}
+}
+
+func TestRun_UpdateCheck(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact := []byte("channel-check")
+	sum := sha256.Sum256(artifact)
+	m := updater.Manifest{
+		AppID: "com.vitra.channel", Version: "9.1.0", Channel: updater.ChannelStable,
+		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
+		CreatedAt: time.Now().UTC(),
+	}
+	m, err = updater.SignManifest(m, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/com.vitra.channel/stable/manifest.json", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(body)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	out := capture(t, func() {
+		if err := run([]string{
+			"update-check",
+			"--base-url", srv.URL,
+			"--app-id", "com.vitra.channel",
+			"--channel", "stable",
+			"--pubkey", hex.EncodeToString(pub),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "9.1.0") || !strings.Contains(out, "update available") {
+		t.Fatalf("stdout: %q", out)
+	}
+	if err := run([]string{"update-check"}); err == nil {
+		t.Fatal("expected usage error")
+	}
+	if err := run([]string{
+		"update-check",
+		"--base-url", srv.URL,
+		"--app-id", "com.vitra.channel",
+		"--pubkey", hex.EncodeToString(make([]byte, ed25519.PublicKeySize)),
+	}); err == nil {
+		t.Fatal("expected signature verification failure")
 	}
 }
 
