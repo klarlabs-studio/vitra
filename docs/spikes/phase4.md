@@ -36,7 +36,8 @@ Optional `--icon <path>` copies a `.png` / `.svg` / `.icns` / `.ico` / `.xpm` in
 Linux stages (next to the `.desktop`, `Icon=<name>`), `.deb` packages
 (`usr/share/pixmaps/` + `Icon=`), Darwin `Contents/Resources`
 (`CFBundleIconFile`), and Windows `bin/` (WiX `ARPPRODUCTICON` + NSIS shortcut
-icon).
+icon). Optional `--maintainer` sets Debian `Maintainer` and, when provided,
+WiX `Manufacturer` / NSIS `PRODUCT_PUBLISHER` (otherwise WiX/NSIS use `Name`).
 
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold

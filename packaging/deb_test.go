@@ -119,6 +119,41 @@ func TestBuildDeb_StagesIcon(t *testing.T) {
 	}
 }
 
+func TestBuildDeb_CustomMaintainer(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "payload")
+	if err := os.WriteFile(bin, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "vitra.deb")
+	spec := packaging.Spec{
+		AppID: "com.vitra.demo", Version: "0.3.0", Name: "Vitra Demo",
+		Targets: []packaging.Target{packaging.TargetLinuxDeb},
+		Arch:    "amd64", Maintainer: "Acme <packaging@acme.example>",
+	}
+	if _, err := packaging.BuildDeb(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	control := debControlFile(t, out)
+	if !strings.Contains(control, "Maintainer: Acme <packaging@acme.example>") {
+		t.Fatalf("control:\n%s", control)
+	}
+}
+
+func TestSpec_EffectiveMaintainerPublisher(t *testing.T) {
+	s := packaging.Spec{Name: "Demo"}
+	if s.EffectiveMaintainer() != packaging.DefaultMaintainer {
+		t.Fatalf("default maintainer: %q", s.EffectiveMaintainer())
+	}
+	if s.EffectivePublisher() != "Demo" {
+		t.Fatalf("default publisher: %q", s.EffectivePublisher())
+	}
+	s.Maintainer = "Acme <a@b.c>"
+	if s.EffectiveMaintainer() != "Acme <a@b.c>" || s.EffectivePublisher() != "Acme <a@b.c>" {
+		t.Fatalf("custom: maint=%q pub=%q", s.EffectiveMaintainer(), s.EffectivePublisher())
+	}
+}
+
 func TestBuildDeb_IconMissing(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "payload")
@@ -136,7 +171,22 @@ func TestBuildDeb_IconMissing(t *testing.T) {
 	}
 }
 
+func debControlFile(t *testing.T, debPath string) string {
+	t.Helper()
+	files := debArMemberFiles(t, debPath, "control.tar.gz")
+	body, ok := files["control"]
+	if !ok {
+		t.Fatal("missing control in control.tar.gz")
+	}
+	return string(body)
+}
+
 func debDataFiles(t *testing.T, debPath string) map[string][]byte {
+	t.Helper()
+	return debArMemberFiles(t, debPath, "data.tar.gz")
+}
+
+func debArMemberFiles(t *testing.T, debPath, member string) map[string][]byte {
 	t.Helper()
 	raw, err := os.ReadFile(debPath)
 	if err != nil {
@@ -146,7 +196,7 @@ func debDataFiles(t *testing.T, debPath string) map[string][]byte {
 		t.Fatal("not an ar archive")
 	}
 	pos := 8
-	var dataTGZ []byte
+	var tgz []byte
 	for pos+60 <= len(raw) {
 		hdr := raw[pos : pos+60]
 		name := strings.TrimSpace(string(hdr[0:16]))
@@ -160,15 +210,15 @@ func debDataFiles(t *testing.T, debPath string) map[string][]byte {
 		if size%2 == 1 {
 			pos++
 		}
-		if name == "data.tar.gz" {
-			dataTGZ = body
+		if name == member {
+			tgz = body
 			break
 		}
 	}
-	if dataTGZ == nil {
-		t.Fatal("missing data.tar.gz")
+	if tgz == nil {
+		t.Fatalf("missing %s", member)
 	}
-	gr, err := gzip.NewReader(bytes.NewReader(dataTGZ))
+	gr, err := gzip.NewReader(bytes.NewReader(tgz))
 	if err != nil {
 		t.Fatal(err)
 	}

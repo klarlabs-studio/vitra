@@ -264,6 +264,52 @@ func TestBuildNSISDir_WritesInstallerNSI(t *testing.T) {
 	}
 }
 
+func TestBuildNSISDir_CustomPublisher(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "nsis")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsNSIS}, Maintainer: "Acme Labs",
+	}
+	if _, err := BuildNSISDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "installer.nsi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `!define PRODUCT_PUBLISHER "Acme Labs"`) {
+		t.Fatalf("publisher missing\n%s", raw)
+	}
+}
+
+func TestBuildWiXDir_CustomManufacturer(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "wix")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsMSI}, Maintainer: "Acme Labs",
+	}
+	if _, err := BuildWiXDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "product.wxs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `Manufacturer="Acme Labs"`) {
+		t.Fatalf("manufacturer missing\n%s", raw)
+	}
+}
+
 func TestBuildNSISDir_ARPDisplayIcon(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "app.bin")

@@ -34,6 +34,29 @@ type Spec struct {
 	// IconPath is an optional filesystem path to an app icon (.png / .svg / .icns).
 	// Empty leaves packages without a staged icon file.
 	IconPath string
+	// Maintainer is the Debian control Maintainer field (and Windows publisher when set).
+	// Empty defaults to DefaultMaintainer for .deb; WiX/NSIS fall back to Name.
+	Maintainer string
+}
+
+// DefaultMaintainer is used when Spec.Maintainer is empty for .deb packages.
+const DefaultMaintainer = "Vitra Packaging <vitra@klarlabs.de>"
+
+// EffectiveMaintainer returns Spec.Maintainer or DefaultMaintainer.
+func (s Spec) EffectiveMaintainer() string {
+	if m := strings.TrimSpace(s.Maintainer); m != "" {
+		return m
+	}
+	return DefaultMaintainer
+}
+
+// EffectivePublisher returns Spec.Maintainer when set, otherwise Spec.Name
+// (WiX Manufacturer / NSIS PRODUCT_PUBLISHER).
+func (s Spec) EffectivePublisher() string {
+	if m := strings.TrimSpace(s.Maintainer); m != "" {
+		return m
+	}
+	return s.Name
 }
 
 // Validate checks packaging invariants.

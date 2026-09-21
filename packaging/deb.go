@@ -143,11 +143,11 @@ Version: %s
 Section: utils
 Priority: optional
 Architecture: %s
-Maintainer: Vitra Packaging <vitra@klarlabs.de>
+Maintainer: %s
 Installed-Size: %d
 Description: %s
  Secure Go + web desktop application packaged by Vitra.
-`, pkgName, spec.Version, arch, installedSize, spec.Name)
+`, pkgName, spec.Version, arch, spec.EffectiveMaintainer(), installedSize, spec.Name)
 
 	controlTGZ, err := tarGz(map[string]fileEntry{
 		"control": {data: []byte(control), mode: 0o644},
