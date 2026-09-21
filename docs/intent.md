@@ -11,7 +11,7 @@ This document is the product charter. Implementation follows DDD/TDD under
 Klarlabs conventions. The repository delivers the **secure runtime kernel**
 and a **runnable Linux WebView host** (`app` + `platform/linux` with
 `-tags vitra_native`). Darwin ships a full WKWebView DesktopHost under the same
-tag; Windows ships a Win32 window-shell scaffold with chrome, dialogs, menu, tray, and drag-drop (WebView2 Eval/message next).
+tag; Windows ships a Win32 + WebView2 host (Navigate/Eval/message via WebView2Loader.dll + Evergreen Runtime).
 Remaining gaps are called out as explicit unsupported features.
 
 ## Why Vitra Exists

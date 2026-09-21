@@ -34,11 +34,11 @@ func (h *Host) Features() platform.FeatureSet {
 		},
 		platform.FeatureWindowNavigate: {
 			Feature: platform.FeatureWindowNavigate, Available: false,
-			Detail: "requires native windows host",
+			Detail: "requires CGO_ENABLED=1 -tags vitra_native + WebView2Loader.dll",
 		},
 		platform.FeatureWebViewMessage: {
 			Feature: platform.FeatureWebViewMessage, Available: false,
-			Detail: "requires native windows host + WebView2",
+			Detail: "requires CGO_ENABLED=1 -tags vitra_native + WebView2Loader.dll",
 		},
 		platform.FeatureClipboard: {
 			Feature: platform.FeatureClipboard, Available: true,

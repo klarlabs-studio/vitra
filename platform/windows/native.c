@@ -1,6 +1,7 @@
 //go:build windows && cgo && vitra_native
 
 #include "native.h"
+#include "webview2.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,6 +48,7 @@ struct VitraWin {
 	HACCEL accel;
 	UINT next_cmd;
 	int drop_enabled;
+	VitraWV2 *wv2;
 };
 
 static const char *kClassName = "VitraWinClass";
@@ -274,6 +276,11 @@ static LRESULT CALLBACK vitra_wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 	case WM_DROPFILES:
 		handle_dropfiles(w, (HDROP)wParam);
 		return 0;
+	case WM_SIZE:
+		if (w && w->wv2) {
+			vitra_wv2_resize(w->wv2);
+		}
+		return DefWindowProc(hwnd, msg, wParam, lParam);
 	case WM_DESTROY:
 		if (w && w->id) {
 			goVitraDestroy(w->id);
@@ -326,6 +333,7 @@ void vitra_win32_init(void) {
 	if (g_class_registered) {
 		return;
 	}
+	(void)vitra_wv2_loader_available();
 	WNDCLASSEXA wc;
 	memset(&wc, 0, sizeof(wc));
 	wc.cbSize = sizeof(wc);
@@ -395,8 +403,9 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 	SetWindowLongPtr(w->hwnd, GWLP_USERDATA, (LONG_PTR)w);
 	ShowWindow(w->hwnd, SW_SHOW);
 	UpdateWindow(w->hwnd);
-	if (w->pending_uri) {
-		/* WebView2 navigation lands in a follow-up slice; still consult nav policy. */
+	w->wv2 = vitra_wv2_attach(w->hwnd, w->id, uri, preload);
+	if (!w->wv2 && w->pending_uri) {
+		/* Shell-only fallback: still consult nav policy without a WebView. */
 		(void)goVitraNav(w->id, w->pending_uri);
 	}
 	return w;
@@ -408,14 +417,18 @@ void vitra_win_navigate(VitraWin *w, const char *uri) {
 	}
 	free(w->pending_uri);
 	w->pending_uri = _strdup(uri);
+	if (w->wv2) {
+		vitra_wv2_navigate(w->wv2, uri);
+		return;
+	}
 	(void)goVitraNav(w->id, w->pending_uri);
 }
 
 int vitra_win_eval(VitraWin *w, const char *js) {
-	(void)w;
-	(void)js;
-	/* WebView2 EvaluateScript lands with the WebView2 SDK slice. */
-	return 0;
+	if (!w || !w->wv2 || !js) {
+		return 0;
+	}
+	return vitra_wv2_eval(w->wv2, js);
 }
 
 void vitra_win_close(VitraWin *w) {
@@ -514,6 +527,10 @@ void vitra_win_free(VitraWin *w) {
 		return;
 	}
 	vitra_win_clear_menu(w);
+	if (w->wv2) {
+		vitra_wv2_free(w->wv2);
+		w->wv2 = NULL;
+	}
 	if (w->hwnd) {
 		SetWindowLongPtr(w->hwnd, GWLP_USERDATA, 0);
 		DestroyWindow(w->hwnd);

@@ -13,6 +13,10 @@ const PreloadJS = `
   let seq = 0;
   function post(obj) {
     const payload = JSON.stringify(obj);
+    if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {
+      window.chrome.webview.postMessage(payload);
+      return;
+    }
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.vitra) {
       window.webkit.messageHandlers.vitra.postMessage(payload);
       return;
