@@ -239,6 +239,16 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	if err := sc.Register(ctx, caller, "Ctrl+Shift+P", ""); err == nil {
 		t.Fatal("expected empty action validation")
 	}
+	acc, act, err := desktop.ParseShortcutRegister(map[string]any{
+		"accelerator": "Ctrl+Shift+Q", "action": "app.quit",
+	})
+	if err != nil || acc != "Ctrl+Shift+Q" || act != "app.quit" {
+		t.Fatalf("parse: %s %s err=%v", acc, act, err)
+	}
+	_, _, err = desktop.ParseShortcutRegister(map[string]any{"accelerator": "Ctrl+A"})
+	if err == nil {
+		t.Fatal("expected missing action validation")
+	}
 
 	si := &desktop.SingleInstanceService{
 		Gateway: allowAll{}, Host: host,

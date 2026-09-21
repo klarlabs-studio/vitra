@@ -325,6 +325,30 @@ type ShortcutService struct {
 	OnRegister func(ctx context.Context, accelerator, actionID string) error
 }
 
+// ParseShortcutRegister extracts accelerator + action id from an invoke payload.
+// Accepts { accelerator, action|actionID|id }.
+func ParseShortcutRegister(input any) (accelerator, actionID string, err error) {
+	m, ok := input.(map[string]any)
+	if !ok || m == nil {
+		return "", "", &domain.ErrValidation{Message: "shortcut.register input must be an object"}
+	}
+	accelerator, _ = m["accelerator"].(string)
+	actionID, _ = m["action"].(string)
+	if actionID == "" {
+		actionID, _ = m["actionID"].(string)
+	}
+	if actionID == "" {
+		actionID, _ = m["id"].(string)
+	}
+	if accelerator == "" {
+		return "", "", &domain.ErrValidation{Message: "accelerator is required"}
+	}
+	if actionID == "" {
+		return "", "", &domain.ErrValidation{Message: "action id is required"}
+	}
+	return accelerator, actionID, nil
+}
+
 // Register authorizes shortcut.register then binds accelerator → actionID.
 func (s *ShortcutService) Register(ctx context.Context, caller domain.Caller, accelerator, actionID string) error {
 	if accelerator == "" {

@@ -11,7 +11,7 @@ Phase 3 stabilizes how privileged native surface enters a Vitra app: through
 | Contribution (commands/events) | `plugin.Contribution` |
 | Registry + permission ownership | `plugin.Registry` |
 | Lifecycle hooks | `plugin.Lifecycle` |
-| Official `fs` / `dialog` / `clipboard` / `browser` / `os` / `notification` / `path` / `window` / `menu` / `tray` / `dragdrop` contracts | `plugin/official/{fs,dialog,clipboard,browser,os,notification,path,window,menu,tray,dragdrop}` |
+| Official `fs` / `dialog` / `clipboard` / `browser` / `os` / `notification` / `path` / `window` / `menu` / `tray` / `dragdrop` / `shortcut` contracts | `plugin/official/{fs,dialog,clipboard,browser,os,notification,path,window,menu,tray,dragdrop,shortcut}` |
 | Runtime wiring | `Runtime.RegisterPlugin` / `BindExecutor` / `Plugins()` |
 | TypeScript binding stub generator | `bindings.GenerateTypeScript` + `vitra generate typescript` |
 
@@ -27,6 +27,7 @@ competitive demo binds `dialog.open`/`dialog.save`/`dialog.openDirectory`/`dialo
 `menu.set` to `desktop.MenuService` (via `DesktopHost.SetMenuBar`; actions emit `menu.action`),
 `tray.set` to `desktop.TrayService` (via `DesktopHost.SetTray`; actions emit `tray.action`),
 `dragdrop.receive` to `desktop.DragDropService` (via `EnableDragDrop`; drops emit `dragdrop.drop`),
+`shortcut.register` to `desktop.ShortcutService` (via `RegisterGlobalShortcut`; actions emit `shortcut.action`; Wayland unsupported),
 and `fs.read`/`fs.write` to
 `desktop.FileService` with a PathScope grant.
 
