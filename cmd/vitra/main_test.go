@@ -170,6 +170,27 @@ func TestRun_GenerateTypeScript(t *testing.T) {
 	}
 }
 
+func TestRun_PackageStagesIcon(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "vitra-app")
+	icon := filepath.Join(tmp, "logo.png")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(icon, []byte("PNG"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist")
+	capture(t, func() {
+		if err := run([]string{"package", "--out", out, "--bin", bin, "--icon", icon, "--app-id", "com.vitra.t", "--name", "T", "--version", "0.1.0"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if _, err := os.Stat(filepath.Join(out, "T.png")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRun_PackageStagesLinuxDir(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "vitra-app")
