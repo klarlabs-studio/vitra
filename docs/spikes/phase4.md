@@ -26,7 +26,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `appimage` | Final `.AppImage` (`BuildAppImage` → `appimagetool`) |
 | `win-dir` | Staged Windows `bin/<Name>.exe` (`StageWindows`) |
 | `wix` | Windows stage + `product.wxs` (`BuildWiXDir`) |
-| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`) |
+| `nsis-dir` | Windows stage + `installer.nsi` (`BuildNSISDir`; WriteUninstaller + ARP) |
 | `msi` | Final `.msi` (`BuildMSI` → candle/light or `VITRA_CANDLE`/`VITRA_LIGHT`) |
 | `nsis` | Final setup `.exe` (`BuildNSIS` → makensis or `VITRA_MAKENSIS`) |
 | `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`) |

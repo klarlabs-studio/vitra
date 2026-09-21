@@ -184,9 +184,46 @@ func TestBuildNSISDir_WritesInstallerNSI(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(raw)
-	for _, want := range []string{"PRODUCT_NAME", "Demo", "0.4.0", "com.vitra.demo", `File "bin\${PRODUCT_EXE}"`} {
+	for _, want := range []string{
+		"PRODUCT_NAME", "Demo", "0.4.0", "com.vitra.demo",
+		`File "bin\${PRODUCT_EXE}"`,
+		`WriteUninstaller "$INSTDIR\Uninstall.exe"`,
+		`UNINST_KEY`,
+		`WriteRegStr HKCU "${UNINST_KEY}" "DisplayName"`,
+		`WriteRegStr HKCU "${UNINST_KEY}" "UninstallString"`,
+		`DeleteRegKey HKCU "${UNINST_KEY}"`,
+		`Delete "$INSTDIR\Uninstall.exe"`,
+	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("nsi missing %q\n%s", want, body)
 		}
+	}
+}
+
+func TestBuildNSISDir_ARPDisplayIcon(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	icon := filepath.Join(tmp, "app.ico")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(icon, []byte("ICO"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "nsis")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsNSIS}, IconPath: icon,
+	}
+	if _, err := BuildNSISDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "installer.nsi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	if !strings.Contains(body, `WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\${PRODUCT_ICON}"`) {
+		t.Fatalf("missing DisplayIcon ARP entry\n%s", body)
 	}
 }
