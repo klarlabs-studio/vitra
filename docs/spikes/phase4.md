@@ -111,7 +111,7 @@ Still out of scope on main (do not claim otherwise):
   portal policy tuning) — `.rpm` / `.snap` / `.flatpak` generators ship via
   `BuildRPM*` / `BuildSnap*` / `BuildFlatpak*`
 - Wails-class template breadth beyond Vitra’s `vanilla` / `vite` / `react` /
-  `svelte` / `vue` starters (additional frameworks, richer presets)
+  `svelte` / `vue` / `solid` starters (additional frameworks, richer presets)
 
 Installer **generators** (stage scripts + fold to `.deb` / `.rpm` / `.snap` /
 `.flatpak` / `.AppImage` / `.msi` / NSIS setup / `.dmg`) are delivered; fold
