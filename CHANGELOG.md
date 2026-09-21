@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template riot`: Vite + Riot.js 9 + TypeScript starter (`app.riot` + `rollup-plugin-riot`, `riot.component` mount) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Debian copyright: `Spec.License` / `vitra package --license` (via `EffectiveLicense`) write DEP-5 `usr/share/doc/<pkg>/copyright` in `BuildDeb` (Upstream-Name/Contact, optional Source from Homepage).
 - Windows ARP Comments: `Spec.Description` / `vitra package --description` (via `EffectiveDescription`) flow into NSIS `Comments` and WiX `ARPCOMMENTS` / Package Description+Comments.
 - Windows ARP support URL: `Spec.Homepage` / `vitra package --homepage` flow into NSIS `URLInfoAbout` and WiX `ARPURLINFOABOUT` (omitted when empty).
