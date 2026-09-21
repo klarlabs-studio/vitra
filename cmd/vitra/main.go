@@ -104,7 +104,7 @@ func printUsage() {
 Usage:
   vitra version              Print kernel version
   vitra doctor               Diagnose WebView / CGO prerequisites
-  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik]
+  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril]
                              Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
@@ -253,7 +253,7 @@ func scaffoldNew(args []string) error {
 		case "--template":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, or qwik")
+				return fmt.Errorf("--template requires vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, or mithril")
 			}
 			tmpl = args[i]
 		default:
@@ -261,18 +261,18 @@ func scaffoldNew(args []string) error {
 				return fmt.Errorf("unknown new flag %q", args[i])
 			}
 			if dir != "" {
-				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik]")
+				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril]")
 			}
 			dir = args[i]
 		}
 	}
 	if dir == "" {
-		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik]")
+		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril]")
 	}
 	switch tmpl {
-	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik":
+	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril":
 	default:
-		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, or qwik)", tmpl)
+		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, or mithril)", tmpl)
 	}
 
 	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
@@ -311,6 +311,8 @@ func scaffoldNew(args []string) error {
 		files = scaffoldAngularFiles(modPath, tsClient)
 	case "qwik":
 		files = scaffoldQwikFiles(modPath, tsClient)
+	case "mithril":
+		files = scaffoldMithrilFiles(modPath, tsClient)
 	default:
 		files = scaffoldVanillaFiles(modPath, tsClient)
 	}
@@ -325,7 +327,7 @@ func scaffoldNew(args []string) error {
 	}
 	fmt.Printf("created %s (template=%s)\n", dir, tmpl)
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril":
 		fmt.Println("next: cd", dir, "&& (optional: cd frontend && npm install && npm run build) && vitra dev")
 	default:
 		fmt.Println("next: cd", dir, "&& vitra dev")
@@ -486,6 +488,121 @@ func scaffoldAlpineFiles(modPath, tsClient string) map[string]string {
 		".gitignore":                 "frontend/node_modules/\nvitra-app\n",
 		"README.md":                  scaffoldREADME("alpine"),
 	}
+}
+
+func scaffoldMithrilFiles(modPath, tsClient string) map[string]string {
+	return map[string]string{
+		"go.mod":                     scaffoldGoMod(modPath),
+		"main.go":                    scaffoldMainGo("all:frontend/dist", "frontend/dist"),
+		"frontend/package.json":      scaffoldMithrilPackageJSON(),
+		"frontend/vite.config.js":    scaffoldViteConfig(""),
+		"frontend/tsconfig.json":     scaffoldViteTSConfig(""),
+		"frontend/index.html":        scaffoldMithrilIndexHTML(),
+		"frontend/src/main.ts":       scaffoldMithrilMainTS(),
+		"frontend/src/vite-env.d.ts": "/// <reference types=\"vite/client\" />\n",
+		"frontend/vitra-client.ts":   tsClient,
+		"frontend/dist/index.html":   scaffoldIndexHTML(),
+		".gitignore":                 "frontend/node_modules/\nvitra-app\n",
+		"README.md":                  scaffoldREADME("mithril"),
+	}
+}
+
+func scaffoldMithrilPackageJSON() string {
+	return `{
+  "name": "vitra-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "mithril": "^2.2.2"
+  },
+  "devDependencies": {
+    "@types/mithril": "^2.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0"
+  }
+}
+`
+}
+
+func scaffoldMithrilMainTS() string {
+	return `import m from "mithril";
+import { createClient } from "../vitra-client";
+
+declare global {
+  interface Window {
+    vitra: { invoke: (cmd: string, input?: unknown) => Promise<unknown> };
+  }
+}
+
+const client = createClient(window.vitra.invoke);
+
+let out = "";
+
+const App: m.Component = {
+  view() {
+    const run = async (fn: () => Promise<unknown>) => {
+      try {
+        out = JSON.stringify(await fn(), null, 2);
+      } catch (e) {
+        out = String(e);
+      }
+      m.redraw();
+    };
+    return m(
+      "div",
+      {
+        style: {
+          fontFamily: "Georgia, serif",
+          margin: "2rem",
+          background: "#111",
+          color: "#eee",
+          minHeight: "100vh",
+        },
+      },
+      m("h1", "Vitra"),
+      m("p", "Vite + Mithril starter (official fs + dialog + clipboard + browser + os + notification + path plugins)."),
+      m("button", { onclick: () => run(() => client.demoGreet("Vitra")) }, "demo.greet"),
+      " ",
+      m("button", { onclick: () => run(() => client.dialogOpen()) }, "dialog.open"),
+      " ",
+      m("button", { onclick: () => run(() => client.clipboardRead()) }, "clipboard.read"),
+      " ",
+      m("button", { onclick: () => run(() => client.browserOpen("https://go.klarlabs.de/vitra")) }, "browser.open"),
+      " ",
+      m("button", { onclick: () => run(() => client.osInfo()) }, "os.info"),
+      " ",
+      m(
+        "button",
+        { onclick: () => run(() => client.notificationsShow({ title: "Vitra", body: "Hello from scaffold" })) },
+        "notifications.show",
+      ),
+      m("pre", out),
+    );
+  },
+};
+
+m.mount(document.getElementById("app")!, App);
+`
+}
+
+func scaffoldMithrilIndexHTML() string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Vitra App</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
+`
 }
 
 func scaffoldAngularFiles(modPath, tsClient string) map[string]string {
@@ -713,7 +830,7 @@ vitra package --out dist/ --format dir
 ` + "```" + `
 `
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril":
 		label := "Vite"
 		switch tmpl {
 		case "react":
@@ -736,6 +853,8 @@ vitra package --out dist/ --format dir
 			label = "Vite + Angular"
 		case "qwik":
 			label = "Vite + Qwik"
+		case "mithril":
+			label = "Vite + Mithril"
 		}
 		body += `
 ## ` + label + ` frontend

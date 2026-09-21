@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template mithril`: Vite + Mithril 2 + TypeScript starter (`mithril` hyperscript `m.Component`, `m.mount`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Package keywords: `Spec.Keywords` / `vitra package --keywords` flow into FreeDesktop `.desktop` `Keywords=`, AppStream `<keyword>`, and snap `keywords:` (omitted when empty).
 - Official `vitra.app` plugin: declares `app.quit`; `desktop.AppService` + scaffold/generate/provenance/competitive bind → `App.Quit`.
 - Official `vitra.shortcut` plugin: declares `shortcut.register` + `shortcut.action` event; `desktop.ParseShortcutRegister` + scaffold/generate/provenance/competitive bind `ShortcutService` → `RegisterGlobalShortcut` (Wayland remains `ErrUnsupported`).
