@@ -31,7 +31,7 @@ func TestPlanSign_DarwinCodesign(t *testing.T) {
 	if strings.Contains(plan.String(), "Developer ID Application") {
 		t.Fatalf("plan leaked env value: %s", plan.String())
 	}
-	if !strings.Contains(plan.String(), "dry-run only") {
+	if !strings.Contains(plan.String(), "plan only until ExecuteSign") {
 		t.Fatalf("plan=%s", plan.String())
 	}
 	if len(plan.FollowUps) != 2 {
@@ -217,5 +217,90 @@ func TestResolveCodesign_Missing(t *testing.T) {
 	_, err := packaging.ResolveCodesign()
 	if err == nil || !strings.Contains(err.Error(), "VITRA_CODESIGN") {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestExecuteSign_RunsPrimaryWithEnvExpansion(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "argv.log")
+	tool := filepath.Join(dir, "fake-dpkg-sig")
+	script := "#!/bin/sh\nprintf '%s\\n' \"$*\" > " + logPath + "\n"
+	if err := os.WriteFile(tool, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VITRA_DPKGSIG", tool)
+	t.Setenv("GPG_KEY_ID", "DEADBEEF")
+
+	spec := packaging.Spec{
+		AppID: "com.example.app", Version: "1.0.0", Name: "Demo",
+		Targets:            []packaging.Target{packaging.TargetLinuxDeb},
+		Sign:               true,
+		SigningIdentityRef: "env:GPG_KEY_ID",
+	}
+	plan, err := packaging.PlanSign(spec, "/tmp/demo.deb")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := packaging.ExecuteSign(plan, packaging.ExecuteSignOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	line := strings.TrimSpace(string(got))
+	if !strings.Contains(line, "DEADBEEF") || !strings.Contains(line, "/tmp/demo.deb") {
+		t.Fatalf("argv log=%q", line)
+	}
+	if strings.Contains(line, "${") {
+		t.Fatalf("placeholder not expanded: %q", line)
+	}
+}
+
+func TestExecuteSign_FollowUpsAndSecretReject(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "calls.log")
+	makeTool := func(name string) string {
+		p := filepath.Join(dir, name)
+		script := "#!/bin/sh\necho \"" + name + " $*\" >> " + logPath + "\n"
+		if err := os.WriteFile(p, []byte(script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	t.Setenv("VITRA_CODESIGN", makeTool("fake-codesign"))
+	t.Setenv("VITRA_NOTARYTOOL", makeTool("fake-notarytool"))
+	t.Setenv("VITRA_STAPLER", makeTool("fake-stapler"))
+	t.Setenv("APPLE_IDENTITY", "Developer ID Application: Example")
+	t.Setenv("NOTARYTOOL_PROFILE", "AC_PROFILE")
+
+	spec := packaging.Spec{
+		AppID: "com.example.app", Version: "1.0.0", Name: "Demo",
+		Targets:            []packaging.Target{packaging.TargetDarwinDMG},
+		Sign:               true,
+		SigningIdentityRef: "env:APPLE_IDENTITY",
+	}
+	plan, err := packaging.PlanSign(spec, "/tmp/Demo.dmg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := packaging.ExecuteSign(plan, packaging.ExecuteSignOptions{FollowUps: true}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(got)
+	for _, want := range []string{"fake-codesign", "fake-notarytool", "fake-stapler", "Developer ID Application: Example", "AC_PROFILE"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("log missing %q:\n%s", want, text)
+		}
+	}
+
+	secretPlan := plan
+	secretPlan.IdentityRef = "secret:ci/apple"
+	if err := packaging.ExecuteSign(secretPlan, packaging.ExecuteSignOptions{}); err == nil || !strings.Contains(err.Error(), "secret:") {
+		t.Fatalf("expected secret reject, got %v", err)
 	}
 }

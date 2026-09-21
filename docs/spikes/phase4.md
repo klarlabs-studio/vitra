@@ -7,7 +7,8 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
-| Sign dry-run plan (no host execution) | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
+| Sign dry-run plan | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
+| Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}`; rejects `secret:`) |
 | Linux staged app directory | `packaging.StageLinux` + `vitra package` |
 | Windows staged dir + WiX/NSIS scripts | `StageWindows` / `BuildWiXDir` / `BuildNSISDir` |
 | Darwin staged `.app` bundle | `StageDarwinApp` + `vitra package --format app-dir` |
@@ -103,10 +104,9 @@ Still out of scope on main (do not claim otherwise):
 
 - Hosted update CDN / auto-update channel *hosting* (HTTP(S) *client* fetch
   via `ChannelSource` / `Fetcher` / `vitra update-check` ships)
-- Notarization / codesign / Authenticode / Linux package-sign *execution*
-  (`Spec.Sign` + `SigningIdentityRef` validate refs; `PlanSign` / `--sign`
-  print argv plans for Darwin/Windows/Linux — stage/fold never invoke
-  `codesign` / `signtool` / notary / stapler / `dpkg-sig` / `rpmsign` / `gpg`)
+- Turnkey notarization credential bootstrap / CI secret stores beyond
+  `env:`/`file:`/`keychain:` refs (`ExecuteSign` runs host tools when present;
+  `secret:` refs stay plan-only until mapped)
 - Extra Linux store polish beyond stage+fold (Flathub/Snap Store publishing,
   portal policy tuning) — `.rpm` / `.snap` / `.flatpak` generators ship via
   `BuildRPM*` / `BuildSnap*` / `BuildFlatpak*`

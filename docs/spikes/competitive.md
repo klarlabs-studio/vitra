@@ -78,9 +78,9 @@ desktop services. Global OS hotkeys ship on Windows, Darwin, and Linux/X11;
 Wayland keeps in-window accelerators only (no portable global hotkey API).
 
 Wails still leads on **template ecosystem** and **release polish** (richer
-presets beyond Vitra’s `vanilla`/`vite`/`react`/`svelte`/`vue` starters; turnkey
-codesign/notarization execution; Flathub/Snap Store publishing). Vitra leads on
-capability-oriented authority and inspectable grants. Core DesktopHost,
+presets beyond Vitra’s `vanilla`/`vite`/`react`/`svelte`/`vue` starters;
+Flathub/Snap Store publishing; turnkey notarize credential bootstrap). Vitra
+leads on capability-oriented authority and inspectable grants. Core DesktopHost,
 installer stage+fold (`deb` / `.rpm` / `.snap` / `.flatpak` / AppImage /
 WiX·MSI / NSIS / `.app`·DMG), SIEM/MDM ports, and X11 global-shortcut parity
 are on main — Wayland global hotkeys remain intentionally unsupported.
@@ -89,9 +89,10 @@ dev` / `vitra build` enable `-tags vitra_native` on Linux, Darwin, and Windows.
 Fold still needs host tools (`appimagetool`, `rpmbuild`, `snapcraft`,
 `flatpak-builder`, candle/light, makensis, `hdiutil`) or env overrides;
 `Spec.Sign` / `SigningIdentityRef` validate refs and `vitra package --sign`
-prints a dry-run plan (`PlanSign`: Darwin codesign + notarytool/stapler,
-Windows signtool, Linux dpkg-sig/rpmsign/snapcraft/gpg) — no host signing
-execution. Update channel *client* fetch (`updater.Fetcher` /
-`vitra update-check`) verifies signed HTTP(S) manifests; hosted CDN remains
-out of scope. Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM JSON
-policy documents (`policy.LoadDocument`) plug into Phase 5 ports.
+prints a plan (`PlanSign`); `--sign-execute` runs host tools via
+`ExecuteSign` (Darwin codesign + optional notarytool/stapler follow-ups,
+Windows signtool, Linux dpkg-sig/rpmsign/snapcraft/gpg). Update channel
+*client* fetch (`updater.Fetcher` / `vitra update-check`) verifies signed
+HTTP(S) manifests; hosted CDN remains out of scope. Audit SIEM exporters
+(`JSONLSink` / `CEFSink`) and MDM JSON policy documents (`policy.LoadDocument`)
+plug into Phase 5 ports.

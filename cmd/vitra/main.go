@@ -90,8 +90,8 @@ Usage:
                              Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
-  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign --signing-identity ref]
-                             Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints a dry-run plan only
+  vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref]
+                             Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints PlanSign; --sign-execute runs host tools
   vitra generate typescript [--out path] [--module name]
                              Emit TypeScript client stubs for official plugin commands
   vitra update-check --base-url <url> --app-id <id> --channel <name> --pubkey <hex>
@@ -170,10 +170,11 @@ func doctor() error {
 	reportPackagingTool("light", packaging.ResolveLight, "VITRA_LIGHT")
 	reportPackagingTool("makensis", packaging.ResolveMakensis, "VITRA_MAKENSIS")
 	reportPackagingTool("hdiutil", packaging.ResolveHdiutil, "VITRA_HDIUTIL")
-	fmt.Println("  packaging sign tools (plan only; not executed):")
+	fmt.Println("  packaging sign tools (ExecuteSign via --sign-execute):")
 	reportPackagingTool("codesign", packaging.ResolveCodesign, "VITRA_CODESIGN")
 	reportPackagingTool("signtool", packaging.ResolveSigntool, "VITRA_SIGNTOOL")
 	reportPackagingTool("notarytool", packaging.ResolveNotarytool, "VITRA_NOTARYTOOL")
+	reportPackagingTool("stapler", packaging.ResolveStapler, "VITRA_STAPLER")
 	reportPackagingTool("gpg", packaging.ResolveGPG, "VITRA_GPG")
 	reportPackagingTool("dpkg-sig", packaging.ResolveDpkgSig, "VITRA_DPKGSIG")
 	reportPackagingTool("rpmsign", packaging.ResolveRpmsign, "VITRA_RPMSIGN")
@@ -1332,8 +1333,10 @@ func runPackage(args []string) error {
 	maintainer := ""
 	description := ""
 	sign := false
+	signExecute := false
+	signFollowUps := false
 	signingIdentity := ""
-	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign --signing-identity ref]"
+	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref]"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
@@ -1386,6 +1389,11 @@ func runPackage(args []string) error {
 			description = args[i]
 		case "--sign":
 			sign = true
+		case "--sign-execute":
+			sign = true
+			signExecute = true
+		case "--sign-follow-ups":
+			signFollowUps = true
 		case "--signing-identity":
 			i++
 			if i >= len(args) {
@@ -1401,6 +1409,9 @@ func runPackage(args []string) error {
 		default:
 			return fmt.Errorf("unknown package flag %q", args[i])
 		}
+	}
+	if signFollowUps && !signExecute {
+		return fmt.Errorf("--sign-follow-ups requires --sign-execute")
 	}
 	if outDir == "" {
 		return fmt.Errorf("%s", usage)
@@ -1569,6 +1580,12 @@ func runPackage(args []string) error {
 			return err
 		}
 		fmt.Print(plan.String())
+		if signExecute {
+			if err := packaging.ExecuteSign(plan, packaging.ExecuteSignOptions{FollowUps: signFollowUps}); err != nil {
+				return err
+			}
+			fmt.Printf("signed %s with %s\n", art.Path, plan.Tool)
+		}
 	}
 	return nil
 }

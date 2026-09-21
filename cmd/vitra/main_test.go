@@ -325,8 +325,8 @@ func TestRun_PackageSignPlan(t *testing.T) {
 	if !strings.Contains(printed, "sign plan") || !strings.Contains(printed, "codesign") {
 		t.Fatalf("expected sign plan, got %q", printed)
 	}
-	if !strings.Contains(printed, "dry-run only") {
-		t.Fatalf("expected dry-run note: %q", printed)
+	if !strings.Contains(printed, "plan only until ExecuteSign") {
+		t.Fatalf("expected plan-only note: %q", printed)
 	}
 	if !strings.Contains(printed, "notarytool") || !strings.Contains(printed, "stapler") {
 		t.Fatalf("expected notarize/staple follow-ups: %q", printed)
@@ -339,6 +339,39 @@ func TestRun_PackageSignPlan(t *testing.T) {
 		"--sign",
 	}); err == nil {
 		t.Fatal("expected --sign without identity to fail")
+	}
+}
+
+func TestRun_PackageSignExecute(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("elf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	tool := filepath.Join(tmp, "fake-gpg")
+	if err := os.WriteFile(tool, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VITRA_GPG", tool)
+	t.Setenv("GPG_KEY_ID", "TESTKEY")
+	out := filepath.Join(tmp, "stage")
+	printed := capture(t, func() {
+		if err := run([]string{
+			"package", "--format", "appdir", "--out", out, "--bin", bin,
+			"--app-id", "com.vitra.t", "--name", "Demo", "--version", "0.1.0",
+			"--sign-execute", "--signing-identity", "env:GPG_KEY_ID",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(printed, "signed") || !strings.Contains(printed, "gpg") {
+		t.Fatalf("expected execute confirmation: %q", printed)
+	}
+	if err := run([]string{
+		"package", "--format", "dir", "--out", filepath.Join(tmp, "nofu"), "--bin", bin,
+		"--sign-follow-ups", "--signing-identity", "env:GPG_KEY_ID",
+	}); err == nil {
+		t.Fatal("expected --sign-follow-ups without --sign-execute to fail")
 	}
 }
 

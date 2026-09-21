@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -12,16 +13,23 @@ var (
 	lookPathCodesign   = exec.LookPath
 	lookPathSigntool   = exec.LookPath
 	lookPathNotarytool = exec.LookPath
+	lookPathStapler    = exec.LookPath
 	lookPathGPG        = exec.LookPath
 	lookPathDpkgSig    = exec.LookPath
 	lookPathRpmsign    = exec.LookPath
 	lookupEnv          = os.LookupEnv
 	statPath           = os.Stat
+	runSignCommand     = func(tool string, args []string) error {
+		cmd := exec.Command(tool, args...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
 )
 
 // SignPlan is a dry-run description of how an artifact would be signed.
 // It never embeds secret material — only the SigningIdentityRef and a
-// non-secret resolvability note. Execution is intentionally out of scope.
+// non-secret resolvability note. Use ExecuteSign to invoke host tools.
 type SignPlan struct {
 	Target       Target
 	ArtifactPath string
@@ -41,6 +49,12 @@ type CommandPlan struct {
 	Tool string
 	Args []string
 	Note string
+}
+
+// ExecuteSignOptions controls whether Darwin notarize/staple follow-ups run.
+type ExecuteSignOptions struct {
+	// FollowUps runs plan.FollowUps after the primary sign tool succeeds.
+	FollowUps bool
 }
 
 // PlanSign validates Spec signing fields and returns an argv plan for the
@@ -77,50 +91,153 @@ func PlanSign(spec Spec, artifactPath string) (SignPlan, error) {
 			"--force", "--options", "runtime", "--timestamp",
 			"--sign", display, artifactPath,
 		}
-		plan.Note = "dry-run only; codesign is not invoked and Artifact.Signed stays false"
+		plan.Note = "plan only until ExecuteSign; Artifact.Signed stays false until then"
 		profile := notarizeProfileDisplay(spec.SigningIdentityRef)
 		plan.FollowUps = []CommandPlan{
 			{
 				Tool: "notarytool",
 				Args: []string{"submit", artifactPath, "--keychain-profile", profile, "--wait"},
-				Note: "dry-run only; notarytool is not invoked (store-credentials first)",
+				Note: "follow-up; run via ExecuteSign with FollowUps (store-credentials first)",
 			},
 			{
 				Tool: "stapler",
 				Args: []string{"staple", artifactPath},
-				Note: "dry-run only; stapler is not invoked",
+				Note: "follow-up; run via ExecuteSign with FollowUps",
 			},
 		}
 	case TargetWindowsMSI, TargetWindowsNSIS:
 		plan.Supported = true
 		plan.Tool = "signtool"
 		plan.Args = windowsSignArgs(spec.SigningIdentityRef, display, artifactPath)
-		plan.Note = "dry-run only; signtool is not invoked and Artifact.Signed stays false"
+		plan.Note = "plan only until ExecuteSign; Artifact.Signed stays false until then"
 	case TargetLinuxDeb:
 		plan.Supported = true
 		plan.Tool = "dpkg-sig"
 		plan.Args = []string{"--sign", "builder", "-k", display, artifactPath}
-		plan.Note = "dry-run only; dpkg-sig is not invoked and Artifact.Signed stays false"
+		plan.Note = "plan only until ExecuteSign; Artifact.Signed stays false until then"
 	case TargetLinuxRPM:
 		plan.Supported = true
 		plan.Tool = "rpmsign"
 		plan.Args = []string{"--addsign", artifactPath}
-		plan.Note = "dry-run only; configure %_gpg_name to " + display + "; rpmsign is not invoked and Artifact.Signed stays false"
+		plan.Note = "plan only until ExecuteSign; configure %_gpg_name to " + display
 	case TargetLinuxSnap:
 		plan.Supported = true
 		plan.Tool = "snapcraft"
 		plan.Args = []string{"upload", artifactPath, "--release", "stable"}
-		plan.Note = "dry-run only; Snap Store login required; snapcraft is not invoked and Artifact.Signed stays false"
+		plan.Note = "plan only until ExecuteSign; Snap Store login required"
 	case TargetLinuxAppImage, TargetLinuxFlatpak:
 		plan.Supported = true
 		plan.Tool = "gpg"
 		plan.Args = []string{"--local-user", display, "--detach-sign", "--armor", artifactPath}
-		plan.Note = "dry-run only; gpg is not invoked and Artifact.Signed stays false"
+		plan.Note = "plan only until ExecuteSign; Artifact.Signed stays false until then"
 	default:
 		plan.Supported = false
 		plan.Note = "package signing for this target is not orchestrated yet; ref validated only"
 	}
 	return plan, nil
+}
+
+// ExecuteSign resolves host tools, expands ${ENV} placeholders in argv, and
+// runs the primary sign command. secret: identity refs are rejected (map to
+// env: in CI). Follow-ups (notarytool/stapler) run only when opts.FollowUps.
+func ExecuteSign(plan SignPlan, opts ExecuteSignOptions) error {
+	if !plan.Supported {
+		return fmt.Errorf("sign plan is not supported for target %s", plan.Target)
+	}
+	if plan.Tool == "" {
+		return fmt.Errorf("sign plan has no tool")
+	}
+	if strings.HasPrefix(strings.TrimSpace(plan.IdentityRef), "secret:") {
+		return fmt.Errorf("secret: identity refs cannot be executed; map to env:/file:/keychain: first")
+	}
+	if !plan.IdentityOK {
+		return fmt.Errorf("signing identity is not resolvable: %s", plan.IdentityNote)
+	}
+	toolPath, err := resolvePlanTool(plan.Tool)
+	if err != nil {
+		return err
+	}
+	args, err := expandPlanArgs(plan.Args)
+	if err != nil {
+		return err
+	}
+	if err := runSignCommand(toolPath, args); err != nil {
+		return fmt.Errorf("%s: %w", plan.Tool, err)
+	}
+	if !opts.FollowUps {
+		return nil
+	}
+	for i, step := range plan.FollowUps {
+		stepPath, err := resolvePlanTool(step.Tool)
+		if err != nil {
+			return fmt.Errorf("follow-up %d (%s): %w", i+1, step.Tool, err)
+		}
+		stepArgs, err := expandPlanArgs(step.Args)
+		if err != nil {
+			return fmt.Errorf("follow-up %d (%s): %w", i+1, step.Tool, err)
+		}
+		if err := runSignCommand(stepPath, stepArgs); err != nil {
+			return fmt.Errorf("follow-up %d (%s): %w", i+1, step.Tool, err)
+		}
+	}
+	return nil
+}
+
+func resolvePlanTool(name string) (string, error) {
+	switch name {
+	case "codesign":
+		return ResolveCodesign()
+	case "signtool":
+		return ResolveSigntool()
+	case "notarytool":
+		return ResolveNotarytool()
+	case "stapler":
+		return ResolveStapler()
+	case "gpg":
+		return ResolveGPG()
+	case "dpkg-sig":
+		return ResolveDpkgSig()
+	case "rpmsign":
+		return ResolveRpmsign()
+	case "snapcraft":
+		return ResolveSnapcraft()
+	default:
+		return "", fmt.Errorf("unknown sign tool %q", name)
+	}
+}
+
+var envPlaceholder = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
+
+func expandPlanArgs(args []string) ([]string, error) {
+	out := make([]string, len(args))
+	for i, arg := range args {
+		expanded, err := expandEnvPlaceholders(arg)
+		if err != nil {
+			return nil, err
+		}
+		if strings.Contains(expanded, "<secret:") {
+			return nil, fmt.Errorf("argument still contains unresolved secret placeholder")
+		}
+		out[i] = expanded
+	}
+	return out, nil
+}
+
+func expandEnvPlaceholders(s string) (string, error) {
+	var firstErr error
+	out := envPlaceholder.ReplaceAllStringFunc(s, func(match string) string {
+		if firstErr != nil {
+			return match
+		}
+		name := envPlaceholder.FindStringSubmatch(match)[1]
+		val, set := lookupEnv(name)
+		if !set || val == "" {
+			firstErr = fmt.Errorf("env %s is unset or empty (needed to expand %s)", name, match)
+			return match
+		}
+		return val
+	})
+	return out, firstErr
 }
 
 func (p SignPlan) String() string {
@@ -231,6 +348,11 @@ func ResolveSigntool() (string, error) {
 // ResolveNotarytool returns the notarytool binary (VITRA_NOTARYTOOL or PATH).
 func ResolveNotarytool() (string, error) {
 	return resolveSignTool("notarytool", "VITRA_NOTARYTOOL", lookPathNotarytool)
+}
+
+// ResolveStapler returns the stapler binary (VITRA_STAPLER or PATH).
+func ResolveStapler() (string, error) {
+	return resolveSignTool("stapler", "VITRA_STAPLER", lookPathStapler)
 }
 
 // ResolveGPG returns the gpg binary (VITRA_GPG or PATH).
