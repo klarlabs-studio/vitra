@@ -32,6 +32,9 @@ void vitra_win_free(VitraWin *w);
 void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden, const char *icon_path);
 VitraChrome vitra_win_chrome(VitraWin *w);
 
+char *vitra_open_dialog(void);
+char *vitra_save_dialog(void);
+
 #ifdef __cplusplus
 }
 #endif

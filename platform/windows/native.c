@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
+#include <commdlg.h>
 
 extern void goVitraIdle(void *);
 extern void goVitraDestroy(char *);
@@ -253,4 +254,38 @@ VitraChrome vitra_win_chrome(VitraWin *w) {
 	c.minimized = IsIconic(w->hwnd) ? 1 : 0;
 	c.hidden = !IsWindowVisible(w->hwnd) ? 1 : 0;
 	return c;
+}
+
+char *vitra_open_dialog(void) {
+	char path[MAX_PATH];
+	path[0] = '\0';
+	OPENFILENAMEA ofn;
+	memset(&ofn, 0, sizeof(ofn));
+	ofn.lStructSize = sizeof(ofn);
+	ofn.lpstrFile = path;
+	ofn.nMaxFile = (DWORD)sizeof(path);
+	ofn.lpstrFilter = "All Files\0*.*\0";
+	ofn.nFilterIndex = 1;
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+	if (!GetOpenFileNameA(&ofn)) {
+		return NULL;
+	}
+	return _strdup(path);
+}
+
+char *vitra_save_dialog(void) {
+	char path[MAX_PATH];
+	path[0] = '\0';
+	OPENFILENAMEA ofn;
+	memset(&ofn, 0, sizeof(ofn));
+	ofn.lStructSize = sizeof(ofn);
+	ofn.lpstrFile = path;
+	ofn.nMaxFile = (DWORD)sizeof(path);
+	ofn.lpstrFilter = "All Files\0*.*\0";
+	ofn.nFilterIndex = 1;
+	ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+	if (!GetSaveFileNameA(&ofn)) {
+		return NULL;
+	}
+	return _strdup(path);
 }

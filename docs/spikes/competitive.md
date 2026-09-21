@@ -12,7 +12,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | `app.App` — assets + WebView + invoke→gateway | Done (multi-window `OpenWindow` / `CloseWindow`; quit on last native destroy) |
 | `bridge.PreloadJS` — `window.vitra.invoke` | Done |
 | `platform/linux` WebKitGTK host (`-tags vitra_native`) | Done |
-| Clipboard + open/save file dialogs (GTK) | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste); dialogs Linux GTK + Darwin NSOpen/SavePanel |
+| Clipboard + open/save file dialogs | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste, Windows PowerShell); dialogs Linux GTK + Darwin NSOpen/SavePanel + Windows GetOpen/SaveFileName |
 | Single-instance lock (flock) | Done (Linux + Darwin) |
 | Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin) |
 | Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem) |
@@ -27,8 +27,9 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Linux file drag-drop (`dragdrop.receive`) | Done (GTK URI drops + inject helper) |
 | Darwin file drag-drop (`dragdrop.receive`) | Done (NSFilenamesPboardType + inject helper) |
 | In-window menu accelerators (`MenuItem.Shortcut`) | Done (Linux GTK; Darwin NSMenu Ctrl→Command) |
-| `platform/windows` DesktopHost | Win32 shell + chrome + OpenURL/clipboard/single-instance/deep-link/scheme/files; WebView2 Eval TBD |
+| `platform/windows` DesktopHost | Win32 shell + chrome + dialogs + OpenURL/clipboard/single-instance/deep-link/scheme/files; WebView2 Eval TBD |
 | Windows window chrome (`window.chrome`) | Done (Win32 title, size, maximize, fullscreen, topmost, minimize, hide, icon) |
+| Windows open/save file dialogs | Done (GetOpenFileName / GetSaveFileName) |
 | Windows URL-scheme registration (`RegisterURLScheme`) | Done (HKCU Classes `.reg`) |
 | Windows MIME file associations (`RegisterFileAssociations`) | Done (HKCU ProgID + MIME `.reg`) |
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |
