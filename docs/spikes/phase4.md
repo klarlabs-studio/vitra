@@ -36,6 +36,13 @@ Optional `--icon <path>` copies a `.png` / `.svg` / `.icns` / `.ico` / `.xpm` in
 Linux stages (next to the `.desktop`, `Icon=<name>`) and Darwin
 `Contents/Resources` (`CFBundleIconFile`).
 
+`BuildAppImage` stages an AppDir then invokes `appimagetool` (or
+`VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold
+externally. `BuildMSI` / `BuildNSIS` likewise stage then fold; without WiX/NSIS
+tools, use `--format wix` / `nsis-dir` and fold on a Windows host. `BuildDMG`
+stages a `.app` then folds with `hdiutil`; without it, use `--format app-dir`
+and fold on macOS.
+
 ## Update apply
 
 ```go
