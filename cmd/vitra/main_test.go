@@ -3430,6 +3430,55 @@ func TestRun_NewScaffoldRactive(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldMoon(t *testing.T) {
+	dir := t.TempDir() + "/moon-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "moon"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=moon") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"moonjs"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	src, err := os.ReadFile(dir + "/frontend/src/main.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "moonjs", "Moon", "view"} {
+		if !strings.Contains(string(src), want) {
+			t.Fatalf("main.ts missing %q: %s", want, src)
+		}
+	}
+	if _, err := os.Stat(dir + "/frontend/dist/index.html"); err != nil {
+		t.Fatalf("moon embed missing: %s", err)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Moon") {
+		t.Fatalf("moon README should mention Vite + Moon: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
