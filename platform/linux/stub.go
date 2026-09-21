@@ -48,6 +48,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDialogSave, Available: false,
 			Detail: "requires native linux host",
 		},
+		platform.FeatureDialogOpenDirectory: {
+			Feature: platform.FeatureDialogOpenDirectory, Available: false,
+			Detail: "requires native linux host",
+		},
 		platform.FeatureDialogMessage: {
 			Feature: platform.FeatureDialogMessage, Available: false,
 			Detail: "requires native linux host",
@@ -136,6 +140,7 @@ func (h *Host) ClipboardGet() (string, error)                              { ret
 func (h *Host) ClipboardSet(string) error                                  { return h.err() }
 func (h *Host) OpenFileDialog() (string, error)                            { return "", h.err() }
 func (h *Host) SaveFileDialog() (string, error)                            { return "", h.err() }
+func (h *Host) OpenDirectoryDialog() (string, error)                       { return "", h.err() }
 func (h *Host) MessageDialog(string, string, string) (bool, error)         { return false, h.err() }
 func (h *Host) ShowNotification(string, string) error                      { return h.err() }
 func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error      { return h.err() }

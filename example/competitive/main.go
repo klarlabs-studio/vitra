@@ -125,6 +125,7 @@ func run() error {
 			{Name: desktop.PermClipboardWrite},
 			{Name: desktop.PermDialogOpen},
 			{Name: desktop.PermDialogSave},
+			{Name: desktop.PermDialogOpenDirectory},
 			{Name: desktop.PermDialogMessage},
 			{Name: desktop.PermMenuSet},
 			{Name: desktop.PermTraySet},
@@ -184,6 +185,9 @@ func run() error {
 		},
 		OnSave: func(ctx context.Context) (string, error) {
 			return host.SaveFileDialog()
+		},
+		OnOpenDirectory: func(ctx context.Context) (string, error) {
+			return host.OpenDirectoryDialog()
 		},
 		OnMessage: func(ctx context.Context, title, message, kind string) (bool, error) {
 			return host.MessageDialog(title, message, kind)
@@ -375,6 +379,11 @@ func run() error {
 	}
 	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
 		return dialogs.SaveFile(ctx, caller)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("dialog.openDirectory", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return dialogs.OpenDirectory(ctx, caller)
 	})); err != nil {
 		return err
 	}

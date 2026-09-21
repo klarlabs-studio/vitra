@@ -633,6 +633,23 @@ char *vitra_open_dialog(void) {
 	return strdup(url.fileSystemRepresentation);
 }
 
+char *vitra_open_directory_dialog(void) {
+	NSOpenPanel *panel = [NSOpenPanel openPanel];
+	panel.canChooseFiles = NO;
+	panel.canChooseDirectories = YES;
+	panel.allowsMultipleSelection = NO;
+	panel.resolvesAliases = YES;
+	panel.canCreateDirectories = YES;
+	if ([panel runModal] != NSModalResponseOK) {
+		return NULL;
+	}
+	NSURL *url = panel.URL;
+	if (!url || !url.path) {
+		return NULL;
+	}
+	return strdup(url.fileSystemRepresentation);
+}
+
 char *vitra_save_dialog(void) {
 	NSSavePanel *panel = [NSSavePanel savePanel];
 	panel.canCreateDirectories = YES;

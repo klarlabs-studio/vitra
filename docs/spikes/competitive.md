@@ -12,7 +12,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | `app.App` — assets + WebView + invoke→gateway | Done (multi-window `OpenWindow` / `CloseWindow`; quit on last native destroy) |
 | `bridge.PreloadJS` — `window.vitra.invoke` | Done |
 | `platform/linux` WebKitGTK host (`-tags vitra_native`) | Done |
-| Clipboard + open/save/message dialogs | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste, Windows PowerShell); dialogs Linux GTK + Darwin NSOpen/SavePanel/NSAlert + Windows GetOpen/SaveFileName/MessageBox |
+| Clipboard + open/save/directory/message dialogs | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste, Windows PowerShell); dialogs Linux GTK + Darwin NSOpen/SavePanel/NSAlert + Windows GetOpen/SaveFileName/IFileOpenDialog/MessageBox |
 | Single-instance lock (flock) | Done (Linux + Darwin + Windows) |
 | Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin + Windows) |
 | Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem; Windows Shell_NotifyIcon) |
@@ -33,7 +33,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | `platform/windows` DesktopHost | Win32 + WebView2 Navigate/Eval/message; chrome/dialogs/menu/tray/drag-drop/global shortcuts/OpenURL/clipboard/SI/deep-link/scheme/files |
 | Windows global shortcuts (`shortcut.global`) | Done (`RegisterHotKey` → action handler) |
 | Windows window chrome (`window.chrome`) | Done (Win32 title, size, maximize, fullscreen, topmost, minimize, hide, icon) |
-| Windows open/save file dialogs | Done (GetOpenFileName / GetSaveFileName) |
+| Windows open/save/directory file dialogs | Done (GetOpenFileName / GetSaveFileName / IFileOpenDialog FOS_PICKFOLDERS) |
 | Windows menu bar + tray | Done (CreateMenu/HACCEL; Shell_NotifyIcon + TrackPopupMenu) |
 | Windows URL-scheme registration (`RegisterURLScheme`) | Done (HKCU Classes `.reg`) |
 | Windows MIME file associations (`RegisterFileAssociations`) | Done (HKCU ProgID + MIME `.reg`) |

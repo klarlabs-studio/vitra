@@ -19,22 +19,23 @@ import (
 
 // Permission names for Phase 2 desktop surfaces.
 const (
-	PermMenuSet          domain.PermissionName = "menu.set"
-	PermTraySet          domain.PermissionName = "tray.set"
-	PermDialogOpen       domain.PermissionName = "dialog.open"
-	PermDialogSave       domain.PermissionName = "dialog.save"
-	PermDialogMessage    domain.PermissionName = "dialog.message"
-	PermClipboardRead    domain.PermissionName = "clipboard.read"
-	PermClipboardWrite   domain.PermissionName = "clipboard.write"
-	PermShortcutRegister domain.PermissionName = "shortcut.register"
-	PermDeepLinkHandle   domain.PermissionName = "deeplink.handle"
-	PermSingleInstance   domain.PermissionName = "app.single_instance"
-	PermDragDrop         domain.PermissionName = "dragdrop.receive"
-	PermWindowChrome     domain.PermissionName = "window.chrome"
-	PermOpenURL          domain.PermissionName = "browser.open"
-	PermOsInfo           domain.PermissionName = "os.info"
-	PermNotificationShow domain.PermissionName = "notifications.show"
-	PermPathOpen         domain.PermissionName = "path.open"
+	PermMenuSet             domain.PermissionName = "menu.set"
+	PermTraySet             domain.PermissionName = "tray.set"
+	PermDialogOpen          domain.PermissionName = "dialog.open"
+	PermDialogSave          domain.PermissionName = "dialog.save"
+	PermDialogMessage       domain.PermissionName = "dialog.message"
+	PermDialogOpenDirectory domain.PermissionName = "dialog.openDirectory"
+	PermClipboardRead       domain.PermissionName = "clipboard.read"
+	PermClipboardWrite      domain.PermissionName = "clipboard.write"
+	PermShortcutRegister    domain.PermissionName = "shortcut.register"
+	PermDeepLinkHandle      domain.PermissionName = "deeplink.handle"
+	PermSingleInstance      domain.PermissionName = "app.single_instance"
+	PermDragDrop            domain.PermissionName = "dragdrop.receive"
+	PermWindowChrome        domain.PermissionName = "window.chrome"
+	PermOpenURL             domain.PermissionName = "browser.open"
+	PermOsInfo              domain.PermissionName = "os.info"
+	PermNotificationShow    domain.PermissionName = "notifications.show"
+	PermPathOpen            domain.PermissionName = "path.open"
 )
 
 // Gateway evaluates desktop permissions for a caller.
@@ -93,13 +94,14 @@ func (s *TrayService) SetTray(ctx context.Context, caller domain.Caller, tooltip
 	return nil
 }
 
-// DialogService opens native file and message dialogs.
+// DialogService opens native file, directory, and message dialogs.
 type DialogService struct {
-	Gateway   Gateway
-	Host      platform.Host
-	OnOpen    func(ctx context.Context) ([]string, error)
-	OnSave    func(ctx context.Context) (string, error)
-	OnMessage func(ctx context.Context, title, message, kind string) (bool, error)
+	Gateway         Gateway
+	Host            platform.Host
+	OnOpen          func(ctx context.Context) ([]string, error)
+	OnSave          func(ctx context.Context) (string, error)
+	OnOpenDirectory func(ctx context.Context) (string, error)
+	OnMessage       func(ctx context.Context, title, message, kind string) (bool, error)
 }
 
 // OpenFile authorizes dialog.open.
@@ -128,6 +130,20 @@ func (s *DialogService) SaveFile(ctx context.Context, caller domain.Caller) (str
 		return "", &platform.ErrUnsupported{Feature: platform.FeatureDialogSave, OS: s.Host.OS(), Detail: "no dialog adapter bound"}
 	}
 	return s.OnSave(ctx)
+}
+
+// OpenDirectory authorizes dialog.openDirectory.
+func (s *DialogService) OpenDirectory(ctx context.Context, caller domain.Caller) (string, error) {
+	if err := authorize(s.Gateway, caller, PermDialogOpenDirectory); err != nil {
+		return "", err
+	}
+	if err := platform.Require(s.Host, platform.FeatureDialogOpenDirectory); err != nil {
+		return "", err
+	}
+	if s.OnOpenDirectory == nil {
+		return "", &platform.ErrUnsupported{Feature: platform.FeatureDialogOpenDirectory, OS: s.Host.OS(), Detail: "no directory dialog adapter bound"}
+	}
+	return s.OnOpenDirectory(ctx)
 }
 
 // Message authorizes dialog.message. kind is "info" (OK) or "confirm" (Yes/No).

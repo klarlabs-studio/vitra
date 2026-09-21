@@ -130,6 +130,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDialogSave, Available: true,
 			Detail: "NSSavePanel",
 		},
+		platform.FeatureDialogOpenDirectory: {
+			Feature: platform.FeatureDialogOpenDirectory, Available: true,
+			Detail: "NSOpenPanel directories",
+		},
 		platform.FeatureDialogMessage: {
 			Feature: platform.FeatureDialogMessage, Available: true,
 			Detail: "NSAlert info/confirm",
@@ -459,6 +463,22 @@ func (h *Host) SaveFileDialog() (string, error) {
 	h.dispatch(func() {
 		h.ensureInit()
 		p := C.vitra_save_dialog()
+		if p == nil {
+			ch <- ""
+			return
+		}
+		ch <- C.GoString(p)
+		C.free(unsafe.Pointer(p))
+	})
+	return <-ch, nil
+}
+
+// OpenDirectoryDialog opens a native folder chooser (NSOpenPanel directories).
+func (h *Host) OpenDirectoryDialog() (string, error) {
+	ch := make(chan string, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		p := C.vitra_open_directory_dialog()
 		if p == nil {
 			ch <- ""
 			return

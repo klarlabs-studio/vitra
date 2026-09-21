@@ -119,6 +119,19 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	if _, err := bare.SaveFile(ctx, caller); err == nil {
 		t.Fatal("expected missing save adapter")
 	}
+	dirHost := withFeatures(platform.OSLinux, platform.FeatureDialogOpenDirectory)
+	dirDlg := &desktop.DialogService{
+		Gateway: allowAll{}, Host: dirHost,
+		OnOpenDirectory: func(context.Context) (string, error) { return "/tmp/d", nil },
+	}
+	dir, err := dirDlg.OpenDirectory(ctx, caller)
+	if err != nil || dir != "/tmp/d" {
+		t.Fatalf("opendir: %v %v", dir, err)
+	}
+	bareDir := &desktop.DialogService{Gateway: allowAll{}, Host: dirHost}
+	if _, err := bareDir.OpenDirectory(ctx, caller); err == nil {
+		t.Fatal("expected missing directory adapter")
+	}
 	msgHost := withFeatures(platform.OSLinux, platform.FeatureDialogMessage)
 	msgDlg := &desktop.DialogService{
 		Gateway: allowAll{}, Host: msgHost,

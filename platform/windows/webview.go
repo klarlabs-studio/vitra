@@ -8,7 +8,7 @@
 package windows
 
 /*
-#cgo LDFLAGS: -luser32 -lgdi32 -lcomdlg32 -lshell32 -lole32
+#cgo LDFLAGS: -luser32 -lgdi32 -lcomdlg32 -lshell32 -lole32 -luuid
 #include "native.h"
 #include <stdlib.h>
 */
@@ -138,6 +138,10 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureDialogSave: {
 			Feature: platform.FeatureDialogSave, Available: true,
 			Detail: "Win32 GetSaveFileName save-file dialog",
+		},
+		platform.FeatureDialogOpenDirectory: {
+			Feature: platform.FeatureDialogOpenDirectory, Available: true,
+			Detail: "IFileOpenDialog FOS_PICKFOLDERS",
 		},
 		platform.FeatureDialogMessage: {
 			Feature: platform.FeatureDialogMessage, Available: true,
@@ -459,6 +463,22 @@ func (h *Host) SaveFileDialog() (string, error) {
 	h.dispatch(func() {
 		h.ensureInit()
 		p := C.vitra_save_dialog()
+		if p == nil {
+			ch <- ""
+			return
+		}
+		ch <- C.GoString(p)
+		C.free(unsafe.Pointer(p))
+	})
+	return <-ch, nil
+}
+
+// OpenDirectoryDialog opens a native folder chooser (IFileOpenDialog).
+func (h *Host) OpenDirectoryDialog() (string, error) {
+	ch := make(chan string, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		p := C.vitra_open_directory_dialog()
 		if p == nil {
 			ch <- ""
 			return

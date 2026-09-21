@@ -17,7 +17,7 @@ Phase 3 stabilizes how privileged native surface enters a Vitra app: through
 
 Official plugins contribute **command definitions and permission ownership**.
 Hosts bind executors (`BindExecutor`) for commands they implement — e.g. the
-competitive demo binds `dialog.open`/`dialog.save`/`dialog.message` to native dialogs,
+competitive demo binds `dialog.open`/`dialog.save`/`dialog.openDirectory`/`dialog.message` to native dialogs,
 `clipboard.read`/`clipboard.write` to `desktop.ClipboardService`,
 `browser.open` to `desktop.BrowserService`, `os.info` to `desktop.OsService`,
 `notifications.show` to `desktop.NotificationService`,

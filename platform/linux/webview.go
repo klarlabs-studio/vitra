@@ -120,6 +120,10 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureDialogOpen:       {Feature: platform.FeatureDialogOpen, Available: true},
 		platform.FeatureDialogSave:       {Feature: platform.FeatureDialogSave, Available: true},
 		platform.FeatureDialogMessage:    {Feature: platform.FeatureDialogMessage, Available: true},
+		platform.FeatureDialogOpenDirectory: {
+			Feature: platform.FeatureDialogOpenDirectory, Available: true,
+			Detail: "GTK SELECT_FOLDER",
+		},
 		platform.FeatureNotificationShow: {Feature: platform.FeatureNotificationShow, Available: true, Detail: "org.freedesktop.Notifications"},
 		platform.FeatureClipboard:        {Feature: platform.FeatureClipboard, Available: true},
 		platform.FeatureMenuBar:          {Feature: platform.FeatureMenuBar, Available: true},
@@ -460,6 +464,22 @@ func (h *Host) SaveFileDialog() (string, error) {
 	h.dispatch(func() {
 		h.ensureInit()
 		p := C.vitra_save_dialog()
+		if p == nil {
+			ch <- ""
+			return
+		}
+		ch <- C.GoString(p)
+		C.g_free(C.gpointer(p))
+	})
+	return <-ch, nil
+}
+
+// OpenDirectoryDialog opens a native folder chooser.
+func (h *Host) OpenDirectoryDialog() (string, error) {
+	ch := make(chan string, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		p := C.vitra_open_directory_dialog()
 		if p == nil {
 			ch <- ""
 			return
