@@ -149,13 +149,74 @@ func TestBuildWiXDir_WritesProductWXS(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(raw)
-	for _, want := range []string{"Demo", "0.4.0", "com.vitra.demo", `Source="bin\Demo.exe"`, "<Wix"} {
+	for _, want := range []string{
+		"Demo", "0.4.0", `Source="bin\Demo.exe"`, "<Wix",
+		"ProgramMenuFolder", "ApplicationProgramsFolder",
+		"AppStartMenuShortcut", `Target="[INSTALLFOLDER]Demo.exe"`,
+		"RemoveAppProgramsFolder",
+		"UpgradeCode=\"{",
+	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("wxs missing %q\n%s", want, body)
 		}
 	}
+	if strings.Contains(body, `UpgradeCode="com.vitra.demo"`) {
+		t.Fatal("UpgradeCode should be a GUID, not raw AppID")
+	}
 	if _, err := os.Stat(filepath.Join(out, "bin", "Demo.exe")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestBuildWiXDir_UpgradeCodeStable(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsMSI},
+	}
+	out1 := filepath.Join(tmp, "a")
+	out2 := filepath.Join(tmp, "b")
+	if _, err := BuildWiXDir(spec, bin, out1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := BuildWiXDir(spec, bin, out2); err != nil {
+		t.Fatal(err)
+	}
+	a, _ := os.ReadFile(filepath.Join(out1, "product.wxs"))
+	b, _ := os.ReadFile(filepath.Join(out2, "product.wxs"))
+	if !strings.Contains(string(a), "UpgradeCode=") || string(a) != string(b) {
+		t.Fatalf("UpgradeCode not stable across runs")
+	}
+}
+
+func TestBuildWiXDir_ShortcutUsesIcon(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	icon := filepath.Join(tmp, "app.ico")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(icon, []byte("ICO"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "wix")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsMSI}, IconPath: icon,
+	}
+	if _, err := BuildWiXDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "product.wxs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `Icon="AppIcon"`) {
+		t.Fatalf("shortcut missing Icon=AppIcon\n%s", raw)
 	}
 }
 
