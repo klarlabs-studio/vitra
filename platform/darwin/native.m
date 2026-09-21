@@ -11,6 +11,7 @@ extern void goVitraMessage(char *, char *);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
 extern void goVitraAction(char *);
+extern void goVitraDrop(char *, char *);
 
 @interface VitraWinDelegate : NSObject <WKScriptMessageHandler, WKNavigationDelegate, NSWindowDelegate> {
 	char *windowID;
@@ -30,6 +31,68 @@ extern void goVitraAction(char *);
 		goVitraAction((char *)[actionID UTF8String]);
 	}
 }
+@end
+
+@interface VitraDropView : NSView {
+	char *windowID;
+	int dropEnabled;
+}
+- (instancetype)initWithFrame:(NSRect)frame windowID:(char *)wid;
+- (void)setDropEnabled:(int)enabled;
+@end
+
+@implementation VitraDropView
+
+- (instancetype)initWithFrame:(NSRect)frame windowID:(char *)wid {
+	self = [super initWithFrame:frame];
+	if (self) {
+		windowID = wid;
+		dropEnabled = 0;
+		self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+	}
+	return self;
+}
+
+- (void)setDropEnabled:(int)enabled {
+	dropEnabled = enabled ? 1 : 0;
+	if (dropEnabled) {
+		[self registerForDraggedTypes:@[NSFilenamesPboardType]];
+	} else {
+		[self unregisterDraggedTypes];
+	}
+}
+
+- (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+	(void)sender;
+	return dropEnabled ? NSDragOperationCopy : NSDragOperationNone;
+}
+
+- (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
+	if (!dropEnabled || !windowID) {
+		return NO;
+	}
+	NSPasteboard *pb = [sender draggingPasteboard];
+	NSArray *files = [pb propertyListForType:NSFilenamesPboardType];
+	if (![files isKindOfClass:[NSArray class]] || files.count == 0) {
+		return NO;
+	}
+	NSMutableString *joined = [NSMutableString string];
+	for (NSString *path in files) {
+		if (![path isKindOfClass:[NSString class]] || path.length == 0) {
+			continue;
+		}
+		if (joined.length > 0) {
+			[joined appendString:@"\n"];
+		}
+		[joined appendString:path];
+	}
+	if (joined.length == 0) {
+		return NO;
+	}
+	goVitraDrop(windowID, (char *)[joined UTF8String]);
+	return YES;
+}
+
 @end
 
 @implementation VitraWinDelegate
@@ -86,6 +149,7 @@ extern void goVitraAction(char *);
 struct VitraWin {
 	NSWindow *window;
 	WKWebView *view;
+	VitraDropView *dropView;
 	VitraWinDelegate *delegate;
 	VitraMenuTarget *menuTarget;
 	char *id;
@@ -161,6 +225,10 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 	w->view = [[WKWebView alloc] initWithFrame:frame configuration:config];
 	[config release];
 	w->view.navigationDelegate = w->delegate;
+	w->view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+	w->dropView = [[VitraDropView alloc] initWithFrame:frame windowID:w->id];
+	[w->dropView addSubview:w->view];
 
 	NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
 			   NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
@@ -169,7 +237,7 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 					      backing:NSBackingStoreBuffered
 						defer:NO];
 	w->window.title = title ? [NSString stringWithUTF8String:title] : @"";
-	w->window.contentView = w->view;
+	w->window.contentView = w->dropView;
 	w->window.delegate = w->delegate;
 	[w->window center];
 	[w->window makeKeyAndOrderFront:nil];
@@ -220,8 +288,13 @@ void vitra_win_free(VitraWin *w) {
 	if (w->view) {
 		[w->view.configuration.userContentController removeScriptMessageHandlerForName:@"vitra"];
 		w->view.navigationDelegate = nil;
+		[w->view removeFromSuperview];
 		[w->view release];
 		w->view = nil;
+	}
+	if (w->dropView) {
+		[w->dropView release];
+		w->dropView = nil;
 	}
 	if (w->window) {
 		[w->window release];
@@ -518,6 +591,13 @@ void vitra_tray_clear(void) {
 		[g_tray release];
 		g_tray = nil;
 	}
+}
+
+void vitra_win_set_drag_drop(VitraWin *w, int enabled) {
+	if (!w || !w->dropView) {
+		return;
+	}
+	[w->dropView setDropEnabled:enabled];
 }
 
 char *vitra_open_dialog(void) {

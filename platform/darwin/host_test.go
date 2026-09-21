@@ -40,5 +40,8 @@ func TestHost_ExplicitUnsupported(t *testing.T) {
 	if err := h.SetTray("tip", nil); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureTray {
 		t.Fatalf("tray: %v", err)
 	}
+	if err := h.EnableDragDrop("main", true); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureDragDrop {
+		t.Fatalf("dragdrop: %v", err)
+	}
 	h.Quit()
 }

@@ -147,6 +147,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Host→frontend events | **Done** (`vitra.on` / `App.Emit`) |
 | Multi-window App API | **Done** (`OpenWindow` / `CloseWindow`; quit on last native destroy) |
 | Linux file drag-drop | **Done** (grant-gated GTK URI drops) |
+| Darwin file drag-drop | **Done** (NSFilenamesPboardType drops) |
 | Linux window chrome | **Done** (title, size, maximize, fullscreen, keep-above, minimize, hide, icon) |
 | Linux menu accelerators | **Done** (in-window `MenuItem.Shortcut`; not global) |
 | Linux OpenURL | **Done** (grant-gated `xdg-open` for http(s)/mailto) |
@@ -154,7 +155,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Save dialog + single-instance lock | Linux + Darwin dialogs; single-instance Linux + Darwin |
 | Linux xdg URL-scheme registration | Linux native (`vitra register-scheme`) |
 | Linux xdg MIME file associations | Linux (`vitra register-files`) |
-| Darwin WKWebView | Scaffold (`-tags vitra_native`; core host + OpenURL/clipboard/single-instance/deep-link/dialogs/chrome/menu/tray) |
+| Darwin WKWebView | Near-complete (`-tags vitra_native`; file associations TBD) |
 | Windows WebView2 | Stub (explicit unsupported) |
 
 ## Development
