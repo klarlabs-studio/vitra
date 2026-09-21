@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"runtime/debug"
+	"sort"
 	"time"
 )
 
@@ -47,6 +49,56 @@ func NewDocument(appID, version, goVersion string) Document {
 func (d Document) WithArtifactDigest(artifact []byte) Document {
 	sum := sha256.Sum256(artifact)
 	d.ArtifactSHA256 = hex.EncodeToString(sum[:])
+	return d
+}
+
+// WithModulesFromBuildInfo copies the main module and dependency list from bi.
+// Nil bi leaves Modules unchanged.
+func (d Document) WithModulesFromBuildInfo(bi *debug.BuildInfo) Document {
+	if bi == nil {
+		return d
+	}
+	mods := make([]Module, 0, len(bi.Deps)+1)
+	if bi.Main.Path != "" {
+		ver := bi.Main.Version
+		if ver == "" {
+			ver = "(devel)"
+		}
+		mods = append(mods, Module{Path: bi.Main.Path, Version: ver})
+	}
+	for _, m := range bi.Deps {
+		if m == nil || m.Path == "" {
+			continue
+		}
+		ver := m.Version
+		if ver == "" {
+			ver = "(unknown)"
+		}
+		mods = append(mods, Module{Path: m.Path, Version: ver})
+	}
+	d.Modules = mods
+	return d
+}
+
+// WithPluginInventory sets Plugins and the sorted Capabilities union of their perms.
+func (d Document) WithPluginInventory(plugins []PluginInfo) Document {
+	d.Plugins = append([]PluginInfo(nil), plugins...)
+	seen := map[string]struct{}{}
+	var caps []string
+	for _, p := range plugins {
+		for _, perm := range p.Perms {
+			if perm == "" {
+				continue
+			}
+			if _, ok := seen[perm]; ok {
+				continue
+			}
+			seen[perm] = struct{}{}
+			caps = append(caps, perm)
+		}
+	}
+	sort.Strings(caps)
+	d.Capabilities = caps
 	return d
 }
 
