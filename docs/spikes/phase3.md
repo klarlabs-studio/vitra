@@ -11,7 +11,7 @@ Phase 3 stabilizes how privileged native surface enters a Vitra app: through
 | Contribution (commands/events) | `plugin.Contribution` |
 | Registry + permission ownership | `plugin.Registry` |
 | Lifecycle hooks | `plugin.Lifecycle` |
-| Official `fs` / `dialog` / `clipboard` / `browser` contracts | `plugin/official/fs`, `plugin/official/dialog`, `plugin/official/clipboard`, `plugin/official/browser` |
+| Official `fs` / `dialog` / `clipboard` / `browser` / `os` contracts | `plugin/official/fs`, `plugin/official/dialog`, `plugin/official/clipboard`, `plugin/official/browser`, `plugin/official/os` |
 | Runtime wiring | `Runtime.RegisterPlugin` / `BindExecutor` / `Plugins()` |
 | TypeScript binding stub generator | `bindings.GenerateTypeScript` + `vitra generate typescript` |
 
@@ -19,7 +19,8 @@ Official plugins contribute **command definitions and permission ownership**.
 Hosts bind executors (`BindExecutor`) for commands they implement — e.g. the
 competitive demo binds `dialog.open`/`dialog.save`/`dialog.message` to native dialogs,
 `clipboard.read`/`clipboard.write` to `desktop.ClipboardService`,
-`browser.open` to `desktop.BrowserService`, and `fs.read`/`fs.write` to
+`browser.open` to `desktop.BrowserService`, `os.info` to `desktop.OsService`,
+and `fs.read`/`fs.write` to
 `desktop.FileService` with a PathScope grant.
 
 ## Security invariant 6

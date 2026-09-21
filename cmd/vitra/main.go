@@ -30,6 +30,7 @@ import (
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
+	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	"go.klarlabs.de/vitra/policy"
 	"go.klarlabs.de/vitra/provenance"
 	"go.klarlabs.de/vitra/updater"
@@ -757,11 +758,12 @@ func scaffoldSvelteApp() string {
 
 <div style="font-family: Georgia, serif; margin: 2rem; background: #111; color: #eee; min-height: 100vh;">
   <h1>Vitra</h1>
-  <p>Vite + Svelte starter (official fs + dialog + clipboard + browser plugins).</p>
+  <p>Vite + Svelte starter (official fs + dialog + clipboard + browser + os plugins).</p>
   <button onclick={() => run(() => client.demoGreet("Vitra"))}>demo.greet</button>
   <button onclick={() => run(() => client.dialogOpen())}>dialog.open</button>
   <button onclick={() => run(() => client.clipboardRead())}>clipboard.read</button>
   <button onclick={() => run(() => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>
+  <button onclick={() => run(() => client.osInfo())}>os.info</button>
   <pre>{out}</pre>
 </div>
 `
@@ -824,11 +826,12 @@ async function run(fn: () => Promise<unknown>) {
 <template>
   <div style="font-family: Georgia, serif; margin: 2rem; background: #111; color: #eee; min-height: 100vh;">
     <h1>Vitra</h1>
-    <p>Vite + Vue starter (official fs + dialog + clipboard + browser plugins).</p>
+    <p>Vite + Vue starter (official fs + dialog + clipboard + browser + os plugins).</p>
     <button @click="run(() => client.demoGreet('Vitra'))">demo.greet</button>
     <button @click="run(() => client.dialogOpen())">dialog.open</button>
     <button @click="run(() => client.clipboardRead())">clipboard.read</button>
     <button @click="run(() => client.browserOpen('https://go.klarlabs.de/vitra'))">browser.open</button>
+    <button @click="run(() => client.osInfo())">os.info</button>
     <pre>{{ out }}</pre>
   </div>
 </template>
@@ -889,11 +892,12 @@ export function App() {
   return (
     <div style={{ "font-family": "Georgia, serif", margin: "2rem", background: "#111", color: "#eee", "min-height": "100vh" }}>
       <h1>Vitra</h1>
-      <p>Vite + Solid starter (official fs + dialog + clipboard + browser plugins).</p>
+      <p>Vite + Solid starter (official fs + dialog + clipboard + browser + os plugins).</p>
       <button onClick={() => run(() => client.demoGreet("Vitra"))}>demo.greet</button>{" "}
       <button onClick={() => run(() => client.dialogOpen())}>dialog.open</button>{" "}
       <button onClick={() => run(() => client.clipboardRead())}>clipboard.read</button>{" "}
-      <button onClick={() => run(() => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>
+      <button onClick={() => run(() => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>{" "}
+      <button onClick={() => run(() => client.osInfo())}>os.info</button>
       <pre>{out()}</pre>
     </div>
   );
@@ -955,11 +959,12 @@ export function App() {
   return (
     <div style={{ fontFamily: "Georgia, serif", margin: "2rem", background: "#111", color: "#eee", minHeight: "100vh" }}>
       <h1>Vitra</h1>
-      <p>Vite + Preact starter (official fs + dialog + clipboard + browser plugins).</p>
+      <p>Vite + Preact starter (official fs + dialog + clipboard + browser + os plugins).</p>
       <button onClick={() => run(() => client.demoGreet("Vitra"))}>demo.greet</button>{" "}
       <button onClick={() => run(() => client.dialogOpen())}>dialog.open</button>{" "}
       <button onClick={() => run(() => client.clipboardRead())}>clipboard.read</button>{" "}
-      <button onClick={() => run(() => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>
+      <button onClick={() => run(() => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>{" "}
+      <button onClick={() => run(() => client.osInfo())}>os.info</button>
       <pre>{out}</pre>
     </div>
   );
@@ -1043,6 +1048,9 @@ Alpine.data("vitraApp", () => ({
   openBrowser() {
     return this.run(() => client.browserOpen("https://go.klarlabs.de/vitra"));
   },
+  readOsInfo() {
+    return this.run(() => client.osInfo());
+  },
 }));
 
 window.Alpine = Alpine;
@@ -1060,11 +1068,12 @@ func scaffoldAlpineIndexHTML() string {
 <body>
   <div id="app" x-data="vitraApp">
     <h1>Vitra</h1>
-    <p>Vite + Alpine starter (official fs + dialog + clipboard + browser plugins).</p>
+    <p>Vite + Alpine starter (official fs + dialog + clipboard + browser + os plugins).</p>
     <button type="button" @click="greet()">demo.greet</button>
     <button type="button" @click="openDialog()">dialog.open</button>
     <button type="button" @click="readClipboard()">clipboard.read</button>
     <button type="button" @click="openBrowser()">browser.open</button>
+    <button type="button" @click="readOsInfo()">os.info</button>
     <pre x-text="out"></pre>
   </div>
   <script type="module" src="/src/main.ts"></script>
@@ -1123,6 +1132,7 @@ declare global {
     vitraOpen: () => Promise<void>;
     vitraClip: () => Promise<void>;
     vitraBrowser: () => Promise<void>;
+    vitraOs: () => Promise<void>;
   }
 }
 
@@ -1141,6 +1151,7 @@ window.vitraOpen = () => window.vitraRun(() => client.dialogOpen());
 window.vitraClip = () => window.vitraRun(() => client.clipboardRead());
 window.vitraBrowser = () =>
   window.vitraRun(() => client.browserOpen("https://go.klarlabs.de/vitra"));
+window.vitraOs = () => window.vitraRun(() => client.osInfo());
 `
 }
 
@@ -1154,11 +1165,12 @@ func scaffoldHtmxIndexHTML() string {
 <body>
   <div id="app">
     <h1>Vitra</h1>
-    <p>Vite + HTMX starter (official fs + dialog + clipboard + browser plugins).</p>
+    <p>Vite + HTMX starter (official fs + dialog + clipboard + browser + os plugins).</p>
     <button type="button" hx-on:click="vitraGreet()">demo.greet</button>
     <button type="button" hx-on:click="vitraOpen()">dialog.open</button>
     <button type="button" hx-on:click="vitraClip()">clipboard.read</button>
     <button type="button" hx-on:click="vitraBrowser()">browser.open</button>
+    <button type="button" hx-on:click="vitraOs()">os.info</button>
     <pre id="out"></pre>
   </div>
   <script type="module" src="/src/main.ts"></script>
@@ -1215,11 +1227,12 @@ export class VitraApp extends LitElement {
   render() {
     return html` + bt + `
       <h1>Vitra</h1>
-      <p>Vite + Lit starter (official fs + dialog + clipboard + browser plugins).</p>
+      <p>Vite + Lit starter (official fs + dialog + clipboard + browser + os plugins).</p>
       <button @click=${() => this.run(() => client.demoGreet("Vitra"))}>demo.greet</button>
       <button @click=${() => this.run(() => client.dialogOpen())}>dialog.open</button>
       <button @click=${() => this.run(() => client.clipboardRead())}>clipboard.read</button>
       <button @click=${() => this.run(() => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>
+      <button @click=${() => this.run(() => client.osInfo())}>os.info</button>
       <pre>${this.out}</pre>
     ` + bt + `;
   }
@@ -1284,11 +1297,12 @@ const client = createClient(window.vitra.invoke);
 const root = document.getElementById("app")!;
 root.innerHTML = ` + "`" + `
   <h1>Vitra</h1>
-  <p>Vite + TypeScript starter (official fs + dialog + clipboard + browser plugins).</p>
+  <p>Vite + TypeScript starter (official fs + dialog + clipboard + browser + os plugins).</p>
   <button id="greet">demo.greet</button>
   <button id="open">dialog.open</button>
   <button id="clip">clipboard.read</button>
   <button id="browser">browser.open</button>
+  <button id="os">os.info</button>
   <pre id="out"></pre>
 ` + "`" + `;
 
@@ -1307,6 +1321,10 @@ document.getElementById("clip")!.onclick = async () => {
 };
 document.getElementById("browser")!.onclick = async () => {
   try { out.textContent = JSON.stringify(await client.browserOpen("https://go.klarlabs.de/vitra"), null, 2); }
+  catch (e) { out.textContent = String(e); }
+};
+document.getElementById("os")!.onclick = async () => {
+  try { out.textContent = JSON.stringify(await client.osInfo(), null, 2); }
   catch (e) { out.textContent = String(e); }
 };
 `
@@ -1349,11 +1367,12 @@ export function App() {
   return (
     <div style={{ fontFamily: "Georgia, serif", margin: "2rem", background: "#111", color: "#eee", minHeight: "100vh" }}>
       <h1>Vitra</h1>
-      <p>Vite + React starter (official fs + dialog + clipboard + browser plugins).</p>
+      <p>Vite + React starter (official fs + dialog + clipboard + browser + os plugins).</p>
       <button onClick={() => run("greet", () => client.demoGreet("Vitra"))}>demo.greet</button>{" "}
       <button onClick={() => run("open", () => client.dialogOpen())}>dialog.open</button>{" "}
       <button onClick={() => run("clip", () => client.clipboardRead())}>clipboard.read</button>{" "}
-      <button onClick={() => run("browser", () => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>
+      <button onClick={() => run("browser", () => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>{" "}
+      <button onClick={() => run("os", () => client.osInfo())}>os.info</button>
       <pre>{out}</pre>
     </div>
   );
@@ -1377,6 +1396,9 @@ func scaffoldTypeScriptClient() (string, error) {
 		return "", err
 	}
 	if err := rt.RegisterPlugin(ctx, officialbrowser.New()); err != nil {
+		return "", err
+	}
+	if err := rt.RegisterPlugin(ctx, officialos.New()); err != nil {
 		return "", err
 	}
 	greet, err := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
@@ -1415,6 +1437,7 @@ import (
 	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
 	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
 	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
+	officialos "go.klarlabs.de/vitra/plugin/official/os"
 )
 
 //go:embed ` + embedPattern + `
@@ -1458,6 +1481,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialbrowser.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialos.New()); err != nil {
 		return err
 	}
 	dialogs := &desktop.DialogService{
@@ -1533,6 +1559,12 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	osInfo := &desktop.OsService{Gateway: rt}
+	if err := rt.BindExecutor("os.info", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+		return osInfo.Info(ctx, caller)
+	})); err != nil {
+		return err
+	}
 
 	demoRoot := filepath.Join(os.TempDir(), "vitra-scaffold-fs")
 	if err := os.MkdirAll(demoRoot, 0o755); err != nil {
@@ -1569,6 +1601,7 @@ func run() error {
 			{Name: desktop.PermClipboardRead},
 			{Name: desktop.PermClipboardWrite},
 			{Name: desktop.PermOpenURL},
+			{Name: desktop.PermOsInfo},
 			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 		},
@@ -1603,11 +1636,12 @@ func scaffoldIndexHTML() string {
 <html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
 <style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
 button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
-<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser plugins).</p>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os plugins).</p>
 <button id="greet">demo.greet</button>
 <button id="open">dialog.open</button>
 <button id="clip">clipboard.read</button>
 <button id="browser">browser.open</button>
+<button id="os">os.info</button>
 <pre id="out"></pre>
 <script>
 const out = document.getElementById("out");
@@ -1626,6 +1660,10 @@ document.getElementById("clip").onclick = async () => {
 };
 document.getElementById("browser").onclick = async () => {
   try { out.textContent = JSON.stringify(await invoke("browser.open", "https://go.klarlabs.de/vitra"), null, 2); }
+  catch (e) { out.textContent = String(e); }
+};
+document.getElementById("os").onclick = async () => {
+  try { out.textContent = JSON.stringify(await invoke("os.info"), null, 2); }
   catch (e) { out.textContent = String(e); }
 };
 // Typed stubs: frontend/vitra-client.ts (vitra generate typescript)
@@ -1765,6 +1803,9 @@ func runGenerate(args []string) error {
 		return err
 	}
 	if err := rt.RegisterPlugin(ctx, officialbrowser.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(ctx, officialos.New()); err != nil {
 		return err
 	}
 	var cmds []*domain.CommandDefinition
@@ -2503,8 +2544,8 @@ func runPackage(args []string) error {
 // officialPluginInventory returns Manifest-derived plugin rows for packaging
 // provenance (declared surface, not a claim that --bin embeds them).
 func officialPluginInventory() []provenance.PluginInfo {
-	out := make([]provenance.PluginInfo, 0, 4)
-	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New()} {
+	out := make([]provenance.PluginInfo, 0, 5)
+	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New()} {
 		m := p.Manifest()
 		perms := make([]string, 0, len(m.Permissions))
 		for _, perm := range m.Permissions {
@@ -2660,6 +2701,9 @@ func inspectDemo(args []string) error {
 	if err := rt.RegisterPlugin(ctx, officialbrowser.New()); err != nil {
 		return err
 	}
+	if err := rt.RegisterPlugin(ctx, officialos.New()); err != nil {
+		return err
+	}
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err
 	}
@@ -2679,6 +2723,7 @@ func inspectDemo(args []string) error {
 			{Name: "dialog.open"},
 			{Name: "clipboard.read"},
 			{Name: "browser.open"},
+			{Name: "os.info"},
 		},
 	)
 	if err != nil {

@@ -359,3 +359,37 @@ func TestBrowserService_GrantFeatureAndHook(t *testing.T) {
 		t.Fatal("expected missing adapter")
 	}
 }
+
+func TestOsService_GrantAndDefault(t *testing.T) {
+	caller, _ := domain.NewCaller("main", domain.OriginPackagedLocal)
+	ctx := context.Background()
+
+	denied := &desktop.OsService{Gateway: denyAll{}}
+	_, err := denied.Info(ctx, caller)
+	var d *domain.ErrDenied
+	if !errors.As(err, &d) || d.Code != domain.DenialNoGrant {
+		t.Fatalf("expected denial, got %v", err)
+	}
+
+	ok := &desktop.OsService{Gateway: allowAll{}}
+	info, err := ok.Info(ctx, caller)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.OS == "" || info.Arch == "" || info.Family == "" {
+		t.Fatalf("incomplete default info: %+v", info)
+	}
+
+	var called bool
+	custom := &desktop.OsService{
+		Gateway: allowAll{},
+		OnInfo: func(_ context.Context) (desktop.OsInfo, error) {
+			called = true
+			return desktop.OsInfo{OS: "test", Arch: "cpu", Family: "unix", Version: "1"}, nil
+		},
+	}
+	got, err := custom.Info(ctx, caller)
+	if err != nil || !called || got.Version != "1" {
+		t.Fatalf("custom OnInfo: got=%+v err=%v called=%v", got, err, called)
+	}
+}
