@@ -111,8 +111,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "exclusive lock file; available without native WebView",
 		},
 		platform.FeatureGlobalShortcut: {
-			Feature: platform.FeatureGlobalShortcut, Available: false,
-			Detail: "not yet implemented on Windows host",
+			Feature: platform.FeatureGlobalShortcut, Available: true,
+			Detail: "RegisterHotKey OS-wide accelerators → SetActionHandler",
 		},
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: true,
@@ -491,6 +491,45 @@ func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
 // ClearTray hides the tray icon.
 func (h *Host) ClearTray() {
 	h.dispatch(func() { C.vitra_tray_clear() })
+}
+
+// RegisterGlobalShortcut binds an OS-wide accelerator to an action id.
+func (h *Host) RegisterGlobalShortcut(accelerator, actionID string) error {
+	if accelerator == "" || actionID == "" {
+		return &domain.ErrValidation{Message: "accelerator and action id are required"}
+	}
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ca := C.CString(accelerator)
+		cid := C.CString(actionID)
+		defer C.free(unsafe.Pointer(ca))
+		defer C.free(unsafe.Pointer(cid))
+		if C.vitra_register_hotkey(ca, cid) == 0 {
+			errCh <- errors.New("failed to register global shortcut")
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
+}
+
+// UnregisterGlobalShortcut removes a previously registered accelerator.
+func (h *Host) UnregisterGlobalShortcut(accelerator string) error {
+	if accelerator == "" {
+		return &domain.ErrValidation{Message: "accelerator is required"}
+	}
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		ca := C.CString(accelerator)
+		defer C.free(unsafe.Pointer(ca))
+		if C.vitra_unregister_hotkey(ca) == 0 {
+			errCh <- errors.New("global shortcut not found")
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
 }
 
 func (h *Host) Run() error {

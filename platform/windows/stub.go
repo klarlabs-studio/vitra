@@ -131,6 +131,12 @@ func (h *Host) SetTray(string, []platform.MenuItem) error {
 	return h.err(platform.FeatureTray)
 }
 func (h *Host) ClearTray() {}
+func (h *Host) RegisterGlobalShortcut(string, string) error {
+	return h.err(platform.FeatureGlobalShortcut)
+}
+func (h *Host) UnregisterGlobalShortcut(string) error {
+	return h.err(platform.FeatureGlobalShortcut)
+}
 func (h *Host) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error {
 	return h.err(platform.FeatureWindowChrome)
 }

@@ -98,6 +98,10 @@ func (h *fakeHost) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, err
 	return platform.WindowChrome{}, nil
 }
 func (h *fakeHost) OpenURL(context.Context, string) error { return nil }
+func (h *fakeHost) RegisterGlobalShortcut(string, string) error {
+	return nil
+}
+func (h *fakeHost) UnregisterGlobalShortcut(string) error { return nil }
 func (h *fakeHost) Run() error {
 	close(h.ran)
 	<-h.quit

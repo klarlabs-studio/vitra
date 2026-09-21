@@ -152,6 +152,109 @@ static int parse_shortcut(const char *shortcut, ACCEL *out) {
 	return 1;
 }
 
+static int parse_hotkey(const char *shortcut, UINT *mods, UINT *vk) {
+	if (!shortcut || !mods || !vk) {
+		return 0;
+	}
+	*mods = 0;
+	*vk = 0;
+	char buf[128];
+	strncpy(buf, shortcut, sizeof(buf) - 1);
+	buf[sizeof(buf) - 1] = '\0';
+	for (char *p = buf; *p; p++) {
+		if (*p == '<' || *p == '>') {
+			*p = '+';
+		}
+	}
+	char key = 0;
+	char *cursor = buf;
+	while (*cursor) {
+		while (*cursor == '+') {
+			cursor++;
+		}
+		if (*cursor == '\0') {
+			break;
+		}
+		char *tok = cursor;
+		while (*cursor && *cursor != '+') {
+			cursor++;
+		}
+		if (*cursor == '+') {
+			*cursor++ = '\0';
+		}
+		while (*tok && isspace((unsigned char)*tok)) {
+			tok++;
+		}
+		char *end = tok + strlen(tok);
+		while (end > tok && isspace((unsigned char)end[-1])) {
+			*--end = '\0';
+		}
+		char lower[64];
+		size_t n = strlen(tok);
+		if (n >= sizeof(lower)) {
+			n = sizeof(lower) - 1;
+		}
+		for (size_t i = 0; i < n; i++) {
+			lower[i] = (char)tolower((unsigned char)tok[i]);
+		}
+		lower[n] = '\0';
+		if (strcmp(lower, "ctrl") == 0 || strcmp(lower, "control") == 0) {
+			*mods |= MOD_CONTROL;
+		} else if (strcmp(lower, "shift") == 0) {
+			*mods |= MOD_SHIFT;
+		} else if (strcmp(lower, "alt") == 0 || strcmp(lower, "option") == 0) {
+			*mods |= MOD_ALT;
+		} else if (strcmp(lower, "win") == 0 || strcmp(lower, "meta") == 0 || strcmp(lower, "super") == 0) {
+			*mods |= MOD_WIN;
+		} else if (n == 1) {
+			key = (char)toupper((unsigned char)lower[0]);
+		}
+	}
+	if (key == 0 || *mods == 0) {
+		/* Require at least one modifier for global hotkeys. */
+		return 0;
+	}
+	*vk = (UINT)key;
+	return 1;
+}
+
+#define VITRA_MAX_HOTKEYS 64
+#define VITRA_HOTKEY_ID_BASE 1
+
+typedef struct {
+	UINT id;
+	char *accel;
+	char *action;
+} HotkeyEntry;
+
+static HotkeyEntry g_hotkeys[VITRA_MAX_HOTKEYS];
+static int g_hotkey_n = 0;
+static UINT g_hotkey_next = VITRA_HOTKEY_ID_BASE;
+
+static void free_hotkeys(void) {
+	for (int i = 0; i < g_hotkey_n; i++) {
+		if (g_tray_hwnd && g_hotkeys[i].id) {
+			UnregisterHotKey(g_tray_hwnd, (int)g_hotkeys[i].id);
+		}
+		free(g_hotkeys[i].accel);
+		free(g_hotkeys[i].action);
+		g_hotkeys[i].accel = NULL;
+		g_hotkeys[i].action = NULL;
+		g_hotkeys[i].id = 0;
+	}
+	g_hotkey_n = 0;
+	g_hotkey_next = VITRA_HOTKEY_ID_BASE;
+}
+
+static void dispatch_hotkey(UINT id) {
+	for (int i = 0; i < g_hotkey_n; i++) {
+		if (g_hotkeys[i].id == id && g_hotkeys[i].action) {
+			goVitraAction(g_hotkeys[i].action);
+			return;
+		}
+	}
+}
+
 static HMENU find_or_create_popup(HMENU menubar, const char *menu_label) {
 	int count = GetMenuItemCount(menubar);
 	for (int i = 0; i < count; i++) {
@@ -296,6 +399,9 @@ static LRESULT CALLBACK vitra_wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 
 static LRESULT CALLBACK tray_wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	switch (msg) {
+	case WM_HOTKEY:
+		dispatch_hotkey((UINT)wParam);
+		return 0;
 	case WM_TRAYICON:
 		if (lParam == WM_RBUTTONUP || lParam == WM_CONTEXTMENU) {
 			show_tray_menu(hwnd);
@@ -739,4 +845,66 @@ void vitra_win_set_drag_drop(VitraWin *w, int enabled) {
 	}
 	w->drop_enabled = enabled ? 1 : 0;
 	DragAcceptFiles(w->hwnd, enabled ? TRUE : FALSE);
+}
+
+int vitra_register_hotkey(const char *accelerator, const char *action_id) {
+	if (!accelerator || !action_id || accelerator[0] == '\0' || action_id[0] == '\0') {
+		return 0;
+	}
+	UINT mods = 0, vk = 0;
+	if (!parse_hotkey(accelerator, &mods, &vk)) {
+		return 0;
+	}
+	ensure_tray_window();
+	if (!g_tray_hwnd) {
+		return 0;
+	}
+	/* Replace existing binding for the same accelerator. */
+	for (int i = 0; i < g_hotkey_n; i++) {
+		if (g_hotkeys[i].accel && strcmp(g_hotkeys[i].accel, accelerator) == 0) {
+			UnregisterHotKey(g_tray_hwnd, (int)g_hotkeys[i].id);
+			free(g_hotkeys[i].action);
+			g_hotkeys[i].action = _strdup(action_id);
+			if (!RegisterHotKey(g_tray_hwnd, (int)g_hotkeys[i].id, mods, vk)) {
+				return 0;
+			}
+			return 1;
+		}
+	}
+	if (g_hotkey_n >= VITRA_MAX_HOTKEYS) {
+		return 0;
+	}
+	UINT id = g_hotkey_next++;
+	if (!RegisterHotKey(g_tray_hwnd, (int)id, mods, vk)) {
+		return 0;
+	}
+	g_hotkeys[g_hotkey_n].id = id;
+	g_hotkeys[g_hotkey_n].accel = _strdup(accelerator);
+	g_hotkeys[g_hotkey_n].action = _strdup(action_id);
+	g_hotkey_n++;
+	return 1;
+}
+
+int vitra_unregister_hotkey(const char *accelerator) {
+	if (!accelerator || !g_tray_hwnd) {
+		return 0;
+	}
+	for (int i = 0; i < g_hotkey_n; i++) {
+		if (g_hotkeys[i].accel && strcmp(g_hotkeys[i].accel, accelerator) == 0) {
+			UnregisterHotKey(g_tray_hwnd, (int)g_hotkeys[i].id);
+			free(g_hotkeys[i].accel);
+			free(g_hotkeys[i].action);
+			g_hotkeys[i] = g_hotkeys[g_hotkey_n - 1];
+			g_hotkeys[g_hotkey_n - 1].accel = NULL;
+			g_hotkeys[g_hotkey_n - 1].action = NULL;
+			g_hotkeys[g_hotkey_n - 1].id = 0;
+			g_hotkey_n--;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void vitra_clear_hotkeys(void) {
+	free_hotkeys();
 }

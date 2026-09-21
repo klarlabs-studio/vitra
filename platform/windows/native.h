@@ -46,6 +46,10 @@ void vitra_tray_clear(void);
 
 void vitra_win_set_drag_drop(VitraWin *w, int enabled);
 
+int vitra_register_hotkey(const char *accelerator, const char *action_id);
+int vitra_unregister_hotkey(const char *accelerator);
+void vitra_clear_hotkeys(void);
+
 #ifdef __cplusplus
 }
 #endif
