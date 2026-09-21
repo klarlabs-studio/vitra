@@ -89,6 +89,9 @@ func (h *Host) InjectFileDrop(id domain.WindowID, paths []string) {
 		h.onDrop(id, append([]string(nil), paths...))
 	}
 }
+func (h *Host) ActivateMenuAccel(domain.WindowID, string) (bool, error) {
+	return false, h.err()
+}
 func (h *Host) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error { return h.err() }
 func (h *Host) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, error) {
 	return platform.WindowChrome{}, h.err()

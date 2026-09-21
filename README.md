@@ -147,6 +147,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Host→frontend events | **Done** (`vitra.on` / `App.Emit`) |
 | Linux file drag-drop | **Done** (grant-gated GTK URI drops) |
 | Linux window chrome | **Done** (title, size, maximize, fullscreen, keep-above) |
+| Linux menu accelerators | **Done** (in-window `MenuItem.Shortcut`; not global) |
 | Save dialog + single-instance lock | Linux native |
 | Deep-link argv / secondary handoff | Linux native |
 | Linux xdg URL-scheme registration | Linux native (`vitra register-scheme`) |
@@ -160,6 +161,6 @@ make test
 make build-native   # requires WebKitGTK
 make demo           # xvfb competitive example
 make e2e            # Eval→invoke→gateway round-trip
-make test-native    # GTK window chrome under xvfb
+make test-native    # GTK window chrome + menu accelerators under xvfb
 make check
 ```
