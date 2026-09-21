@@ -98,11 +98,11 @@ func TestPlanSign_WindowsSigntoolFile(t *testing.T) {
 func TestPlanSign_LinuxUnsupported(t *testing.T) {
 	spec := packaging.Spec{
 		AppID: "com.example.app", Version: "1.0.0", Name: "Demo",
-		Targets:            []packaging.Target{packaging.TargetLinuxDeb},
+		Targets:            []packaging.Target{packaging.TargetLinuxDir},
 		Sign:               true,
 		SigningIdentityRef: "secret:ci/gpg",
 	}
-	plan, err := packaging.PlanSign(spec, "/tmp/demo.deb")
+	plan, err := packaging.PlanSign(spec, "/tmp/demo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,6 +111,73 @@ func TestPlanSign_LinuxUnsupported(t *testing.T) {
 	}
 	if !strings.Contains(plan.Note, "not orchestrated") {
 		t.Fatalf("note=%q", plan.Note)
+	}
+}
+
+func TestPlanSign_LinuxDeb(t *testing.T) {
+	spec := packaging.Spec{
+		AppID: "com.example.app", Version: "1.0.0", Name: "Demo",
+		Targets:            []packaging.Target{packaging.TargetLinuxDeb},
+		Sign:               true,
+		SigningIdentityRef: "env:GPG_KEY_ID",
+	}
+	t.Setenv("GPG_KEY_ID", "ABCDEF01")
+	plan, err := packaging.PlanSign(spec, "/tmp/demo.deb")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plan.Supported || plan.Tool != "dpkg-sig" {
+		t.Fatalf("%+v", plan)
+	}
+	joined := strings.Join(plan.Args, " ")
+	if !strings.Contains(joined, "-k ${GPG_KEY_ID}") || !strings.Contains(joined, "/tmp/demo.deb") {
+		t.Fatalf("args=%v", plan.Args)
+	}
+	if strings.Contains(plan.String(), "ABCDEF01") {
+		t.Fatalf("leaked key id: %s", plan.String())
+	}
+}
+
+func TestPlanSign_LinuxRPM(t *testing.T) {
+	spec := packaging.Spec{
+		AppID: "com.example.app", Version: "1.0.0", Name: "Demo",
+		Targets:            []packaging.Target{packaging.TargetLinuxRPM},
+		Sign:               true,
+		SigningIdentityRef: "keychain:rpm-packager",
+	}
+	plan, err := packaging.PlanSign(spec, "/tmp/demo.rpm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plan.Supported || plan.Tool != "rpmsign" {
+		t.Fatalf("%+v", plan)
+	}
+	if !strings.Contains(plan.Note, "rpm-packager") || !strings.Contains(strings.Join(plan.Args, " "), "--addsign") {
+		t.Fatalf("%+v", plan)
+	}
+}
+
+func TestPlanSign_LinuxSnapAndGPG(t *testing.T) {
+	spec := packaging.Spec{
+		AppID: "com.example.app", Version: "1.0.0", Name: "Demo",
+		Targets:            []packaging.Target{packaging.TargetLinuxSnap},
+		Sign:               true,
+		SigningIdentityRef: "secret:snap-store",
+	}
+	plan, err := packaging.PlanSign(spec, "/tmp/demo.snap")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plan.Supported || plan.Tool != "snapcraft" {
+		t.Fatalf("%+v", plan)
+	}
+	spec.Targets = []packaging.Target{packaging.TargetLinuxFlatpak}
+	plan, err = packaging.PlanSign(spec, "/tmp/demo.flatpak")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plan.Supported || plan.Tool != "gpg" {
+		t.Fatalf("%+v", plan)
 	}
 }
 

@@ -12,6 +12,9 @@ var (
 	lookPathCodesign   = exec.LookPath
 	lookPathSigntool   = exec.LookPath
 	lookPathNotarytool = exec.LookPath
+	lookPathGPG        = exec.LookPath
+	lookPathDpkgSig    = exec.LookPath
+	lookPathRpmsign    = exec.LookPath
 	lookupEnv          = os.LookupEnv
 	statPath           = os.Stat
 )
@@ -93,9 +96,29 @@ func PlanSign(spec Spec, artifactPath string) (SignPlan, error) {
 		plan.Tool = "signtool"
 		plan.Args = windowsSignArgs(spec.SigningIdentityRef, display, artifactPath)
 		plan.Note = "dry-run only; signtool is not invoked and Artifact.Signed stays false"
+	case TargetLinuxDeb:
+		plan.Supported = true
+		plan.Tool = "dpkg-sig"
+		plan.Args = []string{"--sign", "builder", "-k", display, artifactPath}
+		plan.Note = "dry-run only; dpkg-sig is not invoked and Artifact.Signed stays false"
+	case TargetLinuxRPM:
+		plan.Supported = true
+		plan.Tool = "rpmsign"
+		plan.Args = []string{"--addsign", artifactPath}
+		plan.Note = "dry-run only; configure %_gpg_name to " + display + "; rpmsign is not invoked and Artifact.Signed stays false"
+	case TargetLinuxSnap:
+		plan.Supported = true
+		plan.Tool = "snapcraft"
+		plan.Args = []string{"upload", artifactPath, "--release", "stable"}
+		plan.Note = "dry-run only; Snap Store login required; snapcraft is not invoked and Artifact.Signed stays false"
+	case TargetLinuxAppImage, TargetLinuxFlatpak:
+		plan.Supported = true
+		plan.Tool = "gpg"
+		plan.Args = []string{"--local-user", display, "--detach-sign", "--armor", artifactPath}
+		plan.Note = "dry-run only; gpg is not invoked and Artifact.Signed stays false"
 	default:
 		plan.Supported = false
-		plan.Note = "package signing for this target is not orchestrated yet (dpkg-sig / rpmsign / AppImage); ref validated only"
+		plan.Note = "package signing for this target is not orchestrated yet; ref validated only"
 	}
 	return plan, nil
 }
@@ -208,6 +231,21 @@ func ResolveSigntool() (string, error) {
 // ResolveNotarytool returns the notarytool binary (VITRA_NOTARYTOOL or PATH).
 func ResolveNotarytool() (string, error) {
 	return resolveSignTool("notarytool", "VITRA_NOTARYTOOL", lookPathNotarytool)
+}
+
+// ResolveGPG returns the gpg binary (VITRA_GPG or PATH).
+func ResolveGPG() (string, error) {
+	return resolveSignTool("gpg", "VITRA_GPG", lookPathGPG)
+}
+
+// ResolveDpkgSig returns the dpkg-sig binary (VITRA_DPKGSIG or PATH).
+func ResolveDpkgSig() (string, error) {
+	return resolveSignTool("dpkg-sig", "VITRA_DPKGSIG", lookPathDpkgSig)
+}
+
+// ResolveRpmsign returns the rpmsign binary (VITRA_RPMSIGN or PATH).
+func ResolveRpmsign() (string, error) {
+	return resolveSignTool("rpmsign", "VITRA_RPMSIGN", lookPathRpmsign)
 }
 
 func resolveSignTool(name, envKey string, look func(string) (string, error)) (string, error) {

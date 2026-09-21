@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Linux package sign dry-run: `PlanSign` supports `.deb` (`dpkg-sig`), `.rpm` (`rpmsign`), `.snap` (`snapcraft upload`), and AppImage/Flatpak (`gpg --detach-sign`); `vitra doctor` reports `gpg` / `dpkg-sig` / `rpmsign`.
 - Darwin notarize dry-run: `PlanSign` for `.app`/`.dmg` prints `notarytool submit` + `stapler staple` follow-up argv (still never executed); profile from `NOTARYTOOL_PROFILE` or `keychain:` signing ref.
 - `vitra new --template svelte`: Vite + Svelte 5 + TypeScript starter (`App.svelte`, `@sveltejs/vite-plugin-svelte`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - `vitra new --template react`: Vite + React + TypeScript starter (`App.tsx`, `@vitejs/plugin-react`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.

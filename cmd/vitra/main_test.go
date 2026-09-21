@@ -54,7 +54,7 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "packaging sign tools") {
 		t.Fatalf("doctor missing sign tools: %q", out)
 	}
-	for _, tool := range []string{"codesign:", "signtool:", "notarytool:"} {
+	for _, tool := range []string{"codesign:", "signtool:", "notarytool:", "gpg:", "dpkg-sig:", "rpmsign:"} {
 		if !strings.Contains(out, tool) {
 			t.Fatalf("doctor missing %q: %q", tool, out)
 		}
