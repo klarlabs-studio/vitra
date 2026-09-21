@@ -79,15 +79,16 @@ Wayland keeps in-window accelerators only (no portable global hotkey API).
 
 Wails still leads on **template ecosystem** and **release polish** (richer
 scaffolds beyond Vitra’s `vanilla`/`vite` starters; turnkey codesign/notarization
-execution; Flatpak store targets). Vitra leads on capability-oriented authority
-and inspectable grants. Core DesktopHost, installer stage+fold (`deb` / `.rpm` /
-`.snap` / AppImage / WiX·MSI / NSIS / `.app`·DMG), SIEM/MDM ports, and X11
-global-shortcut parity are on main — Wayland global hotkeys remain intentionally
-unsupported. `vitra new --template vite` scaffolds a Vite+TS frontend;
-`vitra dev` / `vitra build` enable `-tags vitra_native` on Linux, Darwin, and
-Windows. Fold still needs host tools (`appimagetool`, `rpmbuild`, `snapcraft`,
-candle/light, makensis, `hdiutil`) or env overrides; `Spec.Sign` /
-`SigningIdentityRef` validate refs and `vitra package --sign` prints a dry-run
-plan (`PlanSign`) — no codesign/signtool/notary orchestration. Audit SIEM
-exporters (`JSONLSink` / `CEFSink`) and MDM JSON policy documents
-(`policy.LoadDocument`) plug into Phase 5 ports.
+execution; Flathub/Snap Store publishing). Vitra leads on capability-oriented
+authority and inspectable grants. Core DesktopHost, installer stage+fold
+(`deb` / `.rpm` / `.snap` / `.flatpak` / AppImage / WiX·MSI / NSIS /
+`.app`·DMG), SIEM/MDM ports, and X11 global-shortcut parity are on main —
+Wayland global hotkeys remain intentionally unsupported. `vitra new --template
+vite` scaffolds a Vite+TS frontend; `vitra dev` / `vitra build` enable
+`-tags vitra_native` on Linux, Darwin, and Windows. Fold still needs host tools
+(`appimagetool`, `rpmbuild`, `snapcraft`, `flatpak-builder`, candle/light,
+makensis, `hdiutil`) or env overrides; `Spec.Sign` / `SigningIdentityRef`
+validate refs and `vitra package --sign` prints a dry-run plan (`PlanSign`) —
+no codesign/signtool/notary orchestration. Audit SIEM exporters (`JSONLSink` /
+`CEFSink`) and MDM JSON policy documents (`policy.LoadDocument`) plug into
+Phase 5 ports.

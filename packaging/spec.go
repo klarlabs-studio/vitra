@@ -20,6 +20,7 @@ const (
 	TargetLinuxDeb      Target = "linux-deb"
 	TargetLinuxRPM      Target = "linux-rpm"
 	TargetLinuxSnap     Target = "linux-snap"
+	TargetLinuxFlatpak  Target = "linux-flatpak"
 )
 
 // Spec describes a package to build.
