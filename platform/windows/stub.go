@@ -150,6 +150,6 @@ func (h *Host) err(f platform.Feature) error {
 	return &platform.ErrUnsupported{
 		Feature: f,
 		OS:      platform.OSWindows,
-		Detail:  "WebView2 host not yet linked; use platform/linux with -tags vitra_native on Linux",
+		Detail:  "requires CGO_ENABLED=1 -tags vitra_native (Win32 + WebView2 DesktopHost)",
 	}
 }

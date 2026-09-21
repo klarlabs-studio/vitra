@@ -427,10 +427,12 @@ func runGenerate(args []string) error {
 		return err
 	}
 	var cmds []*domain.CommandDefinition
+	var events []domain.EventName
 	for _, reg := range rt.Plugins().List() {
 		cmds = append(cmds, reg.Contribution.Commands...)
+		events = append(events, reg.Contribution.Events...)
 	}
-	body := bindings.GenerateTypeScript(module, vitra.Version, cmds)
+	body := bindings.GenerateTypeScript(module, vitra.Version, cmds, events)
 	if outPath == "" {
 		fmt.Print(body)
 		return nil

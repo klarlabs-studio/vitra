@@ -160,7 +160,7 @@ func TestRun_GenerateTypeScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(body)
-	for _, want := range []string{"kernel:", "fsRead", "dialogOpen", `invoke("fs.read"`} {
+	for _, want := range []string{"kernel:", "fsRead", "dialogOpen", `invoke("fs.read"`, "onFsChanged", `on("fs.changed"`, "createEvents"} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("missing %q in:\n%s", want, text)
 		}
