@@ -657,6 +657,16 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	if _, _, _, err := desktop.ParseWindowSetSize(map[string]any{"id": "main", "width": 640}); err == nil {
 		t.Fatal("expected height required")
 	}
+	if err := titleSize.SetIcon(ctx, caller, "main", "/tmp/app.png"); err != nil || titled.IconPath != "/tmp/app.png" {
+		t.Fatalf("setIcon: %+v err=%v", titled, err)
+	}
+	setIconID, iconPath, parseIconErr := desktop.ParseWindowSetIcon(map[string]any{"id": "main", "iconPath": "/icons/app.png"})
+	if parseIconErr != nil || setIconID != "main" || iconPath != "/icons/app.png" {
+		t.Fatalf("ParseWindowSetIcon: id=%s path=%q err=%v", setIconID, iconPath, parseIconErr)
+	}
+	if _, _, err := desktop.ParseWindowSetIcon(map[string]any{"id": "main"}); err == nil {
+		t.Fatal("expected iconPath required")
+	}
 
 	createHost := withFeatures(platform.OSLinux, platform.FeatureWindowCreate)
 	var created desktop.WindowCreateOptions

@@ -5146,6 +5146,15 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.setIcon", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, iconPath, err := desktop.ParseWindowSetIcon(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.SetIcon(ctx, caller, id, iconPath)
+	})); err != nil {
+		return err
+	}
 	menus := &desktop.MenuService{
 		Gateway: rt,
 		Host:    host,
@@ -5391,6 +5400,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="restore">window.restore</button>
 <button id="setTitle">window.setTitle</button>
 <button id="setSize">window.setSize</button>
+<button id="setIcon">window.setIcon</button>
 <button id="menu">menu.set</button>
 <button id="menuClear">menu.clear</button>
 <button id="tray">tray.set</button>
@@ -5508,6 +5518,12 @@ document.getElementById("setSize").onclick = async () => {
   try {
     await invoke("window.setSize", { id: "main", width: 1024, height: 768 });
     out.textContent = JSON.stringify({ setSize: { width: 1024, height: 768 }, id: "main" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("setIcon").onclick = async () => {
+  try {
+    await invoke("window.setIcon", { id: "main", iconPath: "" });
+    out.textContent = JSON.stringify({ setIcon: "", id: "main" }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
 document.getElementById("menu").onclick = async () => {

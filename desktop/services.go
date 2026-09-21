@@ -680,6 +680,24 @@ func ParseWindowSetSize(input any) (domain.WindowID, int, int, error) {
 	return domain.WindowID(id), width, height, nil
 }
 
+// ParseWindowSetIcon extracts window id + iconPath from an invoke payload.
+// Requires { id, iconPath: string } (iconPath may be empty to leave unchanged on hosts that treat empty as no-op).
+func ParseWindowSetIcon(input any) (domain.WindowID, string, error) {
+	m, ok := input.(map[string]any)
+	if !ok || m == nil {
+		return "", "", &domain.ErrValidation{Message: "window.setIcon input must be an object"}
+	}
+	id, _ := m["id"].(string)
+	if id == "" {
+		return "", "", &domain.ErrValidation{Message: "window id is required"}
+	}
+	iconPath, ok := m["iconPath"].(string)
+	if !ok {
+		return "", "", &domain.ErrValidation{Message: "iconPath string is required"}
+	}
+	return domain.WindowID(id), iconPath, nil
+}
+
 // ParseWindowChromeApply extracts window id + chrome from an invoke payload.
 func ParseWindowChromeApply(input any) (domain.WindowID, platform.WindowChrome, error) {
 	m, ok := input.(map[string]any)
@@ -898,6 +916,16 @@ func (s *WindowService) SetSize(ctx context.Context, caller domain.Caller, windo
 	}
 	chrome.Width = width
 	chrome.Height = height
+	return s.Apply(ctx, caller, window, chrome)
+}
+
+// SetIcon authorizes window.chrome then updates chrome.IconPath.
+func (s *WindowService) SetIcon(ctx context.Context, caller domain.Caller, window domain.WindowID, iconPath string) error {
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.IconPath = iconPath
 	return s.Apply(ctx, caller, window, chrome)
 }
 
