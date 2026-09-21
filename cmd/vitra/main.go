@@ -5446,6 +5446,15 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.unmaximize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Unmaximize(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
 	if err := rt.BindExecutor("window.fullscreen", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
@@ -5740,6 +5749,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="show">window.show</button>
 <button id="minimize">window.minimize</button>
 <button id="maximize">window.maximize</button>
+<button id="unmaximize">window.unmaximize</button>
 <button id="fullscreen">window.fullscreen</button>
 <button id="alwaysOnTop">window.setAlwaysOnTop</button>
 <button id="restore">window.restore</button>
@@ -5833,6 +5843,12 @@ document.getElementById("maximize").onclick = async () => {
   try {
     await invoke("window.maximize", { id: "main" });
     out.textContent = JSON.stringify({ maximize: "main" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("unmaximize").onclick = async () => {
+  try {
+    await invoke("window.unmaximize", { id: "main" });
+    out.textContent = JSON.stringify({ unmaximize: "main" }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
 document.getElementById("fullscreen").onclick = async () => {

@@ -2,7 +2,7 @@
 // It declares window.create / window.close / window.chrome / window.getChrome /
 // window.focus / window.blur / window.hide / window.show / window.minimize /
 // window.maximize / window.fullscreen / window.setAlwaysOnTop / window.restore /
-// window.setTitle / window.setSize / window.setIcon;
+// window.setTitle / window.setSize / window.setIcon / window.unmaximize;
 // native execution is bound by the host via desktop.WindowService wrapping
 // app.App / DesktopHost.
 package window
@@ -27,7 +27,7 @@ func (windowPlugin) Manifest() plugin.Manifest {
 		ID:          PluginID,
 		Name:        "Windows",
 		Version:     plugin.SemVer{Major: 1},
-		Description: "Create, close, apply, read, focus, blur, hide, show, minimize, maximize, fullscreen, always-on-top, restore, set title, set size, and set icon for application windows",
+		Description: "Create, close, apply, read, focus, blur, hide, show, minimize, maximize, unmaximize, fullscreen, always-on-top, restore, set title, set size, and set icon for application windows",
 		Permissions: []domain.PermissionName{"window.create", "window.close", "window.chrome"},
 		MinKernel:   plugin.SemVer{Major: 0, Minor: 3},
 	}
@@ -84,6 +84,11 @@ func (windowPlugin) Contribute() (plugin.Contribution, error) {
 		return plugin.Contribution{}, err
 	}
 	maximize.WithPlugin(PluginID)
+	unmaximize, err := domain.NewCommandDefinition("window.unmaximize", "Restore an application window from maximized", "window.chrome")
+	if err != nil {
+		return plugin.Contribution{}, err
+	}
+	unmaximize.WithPlugin(PluginID)
 	fullscreen, err := domain.NewCommandDefinition("window.fullscreen", "Enter fullscreen for an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
@@ -114,5 +119,5 @@ func (windowPlugin) Contribute() (plugin.Contribution, error) {
 		return plugin.Contribution{}, err
 	}
 	setIcon.WithPlugin(PluginID)
-	return plugin.Contribution{Commands: []*domain.CommandDefinition{create, closeCmd, chrome, getChrome, focus, blur, hide, show, minimize, maximize, fullscreen, alwaysOnTop, restore, setTitle, setSize, setIcon}}, nil
+	return plugin.Contribution{Commands: []*domain.CommandDefinition{create, closeCmd, chrome, getChrome, focus, blur, hide, show, minimize, maximize, unmaximize, fullscreen, alwaysOnTop, restore, setTitle, setSize, setIcon}}, nil
 }

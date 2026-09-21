@@ -19,13 +19,13 @@ func TestWindowPlugin_Contribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.Commands) != 16 {
+	if len(c.Commands) != 17 {
 		t.Fatalf("commands: %d", len(c.Commands))
 	}
 	want := []string{
 		"window.create", "window.close", "window.chrome", "window.getChrome",
 		"window.focus", "window.blur", "window.hide", "window.show",
-		"window.minimize", "window.maximize", "window.fullscreen",
+		"window.minimize", "window.maximize", "window.unmaximize", "window.fullscreen",
 		"window.setAlwaysOnTop", "window.restore", "window.setTitle", "window.setSize",
 		"window.setIcon",
 	}
@@ -34,7 +34,7 @@ func TestWindowPlugin_Contribute(t *testing.T) {
 			t.Fatalf("command[%d]=%s want %s", i, c.Commands[i].Name(), name)
 		}
 	}
-	for i, name := range []string{"getChrome", "focus", "blur", "hide", "show", "minimize", "maximize", "fullscreen", "setAlwaysOnTop", "restore", "setTitle", "setSize", "setIcon"} {
+	for i, name := range []string{"getChrome", "focus", "blur", "hide", "show", "minimize", "maximize", "unmaximize", "fullscreen", "setAlwaysOnTop", "restore", "setTitle", "setSize", "setIcon"} {
 		idx := i + 3
 		if string(c.Commands[idx].Permission()) != "window.chrome" {
 			t.Fatalf("%s permission: %s", name, c.Commands[idx].Permission())
