@@ -143,7 +143,7 @@ func doctor() error {
 	case "darwin":
 		fmt.Println("  frameworks: Cocoa + WebKit (system)")
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native")
-		fmt.Println("  note:     WKWebView + dialogs + window chrome under -tags vitra_native; OpenURL/clipboard/single-instance/deep-link without WebView; tray TBD")
+		fmt.Println("  note:     WKWebView + dialogs + chrome + menu under -tags vitra_native; OpenURL/clipboard/single-instance/deep-link without WebView; tray TBD")
 	}
 	return nil
 }

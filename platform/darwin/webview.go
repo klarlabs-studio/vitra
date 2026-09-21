@@ -90,8 +90,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "NSSavePanel",
 		},
 		platform.FeatureMenuBar: {
-			Feature: platform.FeatureMenuBar, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureMenuBar, Available: true,
+			Detail: "NSApp main menu; MenuItem.Shortcut maps Ctrl→Command",
 		},
 		platform.FeatureTray: {
 			Feature: platform.FeatureTray, Available: false,
@@ -395,9 +395,55 @@ func (h *Host) SaveFileDialog() (string, error) {
 	return <-ch, nil
 }
 
-// SetMenuBar is not yet implemented on Darwin.
-func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error {
-	return h.err(platform.FeatureMenuBar)
+// SetMenuBar replaces the application main menu with the given flat items.
+func (h *Host) SetMenuBar(id domain.WindowID, items []platform.MenuItem) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		C.vitra_win_clear_menu(w.ptr)
+		for _, it := range items {
+			cmenu := C.CString(it.Menu)
+			cid := C.CString(it.ID)
+			clabel := C.CString(it.Label)
+			cshort := C.CString(it.Shortcut)
+			C.vitra_win_add_menu_item(w.ptr, cmenu, cid, clabel, cshort)
+			C.free(unsafe.Pointer(cmenu))
+			C.free(unsafe.Pointer(cid))
+			C.free(unsafe.Pointer(clabel))
+			C.free(unsafe.Pointer(cshort))
+		}
+		errCh <- nil
+	})
+	return <-errCh
+}
+
+// ActivateMenuAccel fires an in-window menu accelerator (tests / demos).
+func (h *Host) ActivateMenuAccel(id domain.WindowID, shortcut string) (bool, error) {
+	type result struct {
+		ok  bool
+		err error
+	}
+	ch := make(chan result, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			ch <- result{err: &domain.ErrNotFound{Entity: "window", ID: string(id)}}
+			return
+		}
+		cshort := C.CString(shortcut)
+		defer C.free(unsafe.Pointer(cshort))
+		ch <- result{ok: C.vitra_win_activate_accel(w.ptr, cshort) != 0}
+	})
+	got := <-ch
+	return got.ok, got.err
 }
 
 // SetTray is not yet implemented on Darwin.
@@ -548,4 +594,15 @@ func goVitraNav(windowID, uri *C.char) C.int {
 		return 1
 	}
 	return 0
+}
+
+//export goVitraAction
+func goVitraAction(actionID *C.char) {
+	activeMu.Lock()
+	h := active
+	activeMu.Unlock()
+	if h == nil || h.onAction == nil {
+		return
+	}
+	h.onAction(C.GoString(actionID))
 }
