@@ -98,16 +98,16 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "not yet implemented on Darwin WKWebView host",
 		},
 		platform.FeatureSingleInstance: {
-			Feature: platform.FeatureSingleInstance, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureSingleInstance, Available: true,
+			Detail: "flock-based; available without native WebView",
 		},
 		platform.FeatureGlobalShortcut: {
 			Feature: platform.FeatureGlobalShortcut, Available: false,
 			Detail: "not yet implemented on Darwin WKWebView host",
 		},
 		platform.FeatureDeepLink: {
-			Feature: platform.FeatureDeepLink, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureDeepLink, Available: true,
+			Detail: "argv + socket handoff",
 		},
 		platform.FeatureDragDrop: {
 			Feature: platform.FeatureDragDrop, Available: false,
@@ -321,21 +321,6 @@ func (h *Host) SetTray(string, []platform.MenuItem) error {
 
 // ClearTray is a no-op until tray lands on Darwin.
 func (h *Host) ClearTray() {}
-
-// TrySingleInstance is not yet implemented on Darwin.
-func (h *Host) TrySingleInstance(string) (bool, func(), error) {
-	return false, nil, h.err(platform.FeatureSingleInstance)
-}
-
-// StartDeepLinkBridge is not yet implemented on Darwin.
-func (h *Host) StartDeepLinkBridge(string, func(string)) (func(), error) {
-	return nil, h.err(platform.FeatureDeepLink)
-}
-
-// ForwardToPrimary is not yet implemented on Darwin.
-func (h *Host) ForwardToPrimary(string, []string) (bool, error) {
-	return false, h.err(platform.FeatureDeepLink)
-}
 
 // RegisterURLScheme is not yet implemented on Darwin.
 func (h *Host) RegisterURLScheme(string, string, string) error {
