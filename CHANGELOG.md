@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `secret:` signing refs resolve at `ExecuteSign` via `VITRA_SECRET_<NAME>` (path separators → `_`; plan argv stays opaque `<secret:…>`).
 - Store publish dry-run: `packaging.PlanPublish` + `vitra package --publish` prints Snap Store (`snapcraft login|register|upload`) and Flathub (`flatpak-builder` / PR) step plans without invoking store tools.
 - `vitra update-apply --base-url`: fetch signed channel manifest + artifact via `updater.Fetcher`, then verify and atomically install (same invariant 9 path as local `--manifest`/`--artifact`).
 - `vitra new --template solid`: Vite + SolidJS + TypeScript starter (`App.tsx`, `vite-plugin-solid`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
