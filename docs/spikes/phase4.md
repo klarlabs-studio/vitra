@@ -114,7 +114,7 @@ Still out of scope on main (do not claim otherwise):
   `--publish` prints Snap Store / Flathub argv guidance; `.rpm` / `.snap` /
   `.flatpak` generators ship via `BuildRPM*` / `BuildSnap*` / `BuildFlatpak*`
 - Wails-class template breadth beyond Vitra’s `vanilla` / `vite` / `react` /
-  `svelte` / `vue` / `solid` starters (additional frameworks, richer presets)
+  `svelte` / `vue` / `solid` / `preact` starters (additional frameworks, richer presets)
 
 Installer **generators** (stage scripts + fold to `.deb` / `.rpm` / `.snap` /
 `.flatpak` / `.AppImage` / `.msi` / NSIS setup / `.dmg`) are delivered; fold

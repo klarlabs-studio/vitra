@@ -1084,6 +1084,59 @@ func TestRun_NewScaffoldSolid(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldPreact(t *testing.T) {
+	dir := t.TempDir() + "/preact-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "preact"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=preact") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.tsx", "frontend/src/App.tsx", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"preact"`, `"@preact/preset-vite"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/App.tsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "preact/hooks"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("App.tsx missing %q: %s", want, app)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "@preact/preset-vite") && !strings.Contains(string(cfg), "plugins: [preact()]") {
+		t.Fatalf("vite config missing preact plugin: %s", cfg)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Preact") {
+		t.Fatalf("preact README should mention Vite + Preact: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
