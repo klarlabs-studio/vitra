@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template reef`: Vite + Reef (`reefjs`) + TypeScript starter (`signal` / `component` + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Official window setIcon: `window.setIcon` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.SetIcon` + `ParseWindowSetIcon` (`{ id, iconPath }`); scaffold/competitive bind.
 - Windows ARP EstimatedSize: NSIS writes `EstimatedSize` (KB) and WiX sets `ARPSIZE` from staged binary (+ optional icon) size, matching Debian Installed-Size rounding.
 - `vitra new --template vanjs`: Vite + VanJS (`vanjs-core`) + TypeScript starter (`van.tags` / `van.state` / `van.add` + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
