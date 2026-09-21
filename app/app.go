@@ -50,6 +50,7 @@ type DesktopHost interface {
 	ApplyWindowChrome(id domain.WindowID, chrome platform.WindowChrome) error
 	ReadWindowChrome(id domain.WindowID) (platform.WindowChrome, error)
 	FocusWindow(id domain.WindowID) error
+	BlurWindow(id domain.WindowID) error
 	OpenURL(ctx context.Context, rawURL string) error
 	OpenPath(ctx context.Context, path string) error
 	RegisterGlobalShortcut(accelerator, actionID string) error

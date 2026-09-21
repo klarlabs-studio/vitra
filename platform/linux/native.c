@@ -281,6 +281,19 @@ void vitra_win_focus(VitraWin *w) {
 	vitra_win_flush();
 }
 
+void vitra_win_blur(VitraWin *w) {
+	if (!w || !w->window) {
+		return;
+	}
+	GtkWindow *win = GTK_WINDOW(w->window);
+	gtk_window_set_focus(win, NULL);
+	GdkWindow *gdk = gtk_widget_get_window(w->window);
+	if (gdk) {
+		gdk_window_lower(gdk);
+	}
+	vitra_win_flush();
+}
+
 void vitra_win_clear_menu(VitraWin *w) {
 	if (!w || !w->menubar) {
 		return;

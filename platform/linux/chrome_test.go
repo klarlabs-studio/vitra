@@ -159,9 +159,17 @@ func TestNativeWindowChrome(t *testing.T) {
 	if err := h.FocusWindow("main"); err != nil {
 		t.Fatal(err)
 	}
+	if err := h.BlurWindow("main"); err != nil {
+		t.Fatal(err)
+	}
 	if err := h.FocusWindow("missing"); err == nil {
 		t.Fatal("expected missing window focus")
 	} else if _, ok := err.(*domain.ErrNotFound); !ok {
 		t.Fatalf("expected not found, got %v", err)
+	}
+	if err := h.BlurWindow("missing"); err == nil {
+		t.Fatal("expected missing window blur")
+	} else if _, ok := err.(*domain.ErrNotFound); !ok {
+		t.Fatalf("expected not found for blur, got %v", err)
 	}
 }

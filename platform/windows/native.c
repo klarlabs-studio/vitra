@@ -784,6 +784,13 @@ void vitra_win_focus(VitraWin *w) {
 	SetForegroundWindow(hwnd);
 }
 
+void vitra_win_blur(VitraWin *w) {
+	if (!w || !w->hwnd) {
+		return;
+	}
+	SetWindowPos(w->hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+}
+
 /* Build Win32 OFN filter from "Name:ext1,ext2;Other:txt". Caller frees with free(). */
 static char *vitra_win_filter_buffer(const char *filters) {
 	if (!filters || !filters[0]) {

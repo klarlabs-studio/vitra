@@ -491,6 +491,9 @@ func run() error {
 		OnFocus: func(_ context.Context, window domain.WindowID) error {
 			return host.FocusWindow(window)
 		},
+		OnBlur: func(_ context.Context, window domain.WindowID) error {
+			return host.BlurWindow(window)
+		},
 		OnCreate: func(ctx context.Context, opts desktop.WindowCreateOptions) error {
 			if application == nil {
 				return fmt.Errorf("app is not ready")
@@ -552,6 +555,15 @@ func run() error {
 			return nil, err
 		}
 		return nil, winSvc.Focus(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.blur", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Blur(ctx, caller, id)
 	})); err != nil {
 		return err
 	}
