@@ -492,7 +492,7 @@ func TestRun_NewScaffold(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	if !strings.Contains(out, "created") {
+	if !strings.Contains(out, "created") || !strings.Contains(out, "template=vanilla") {
 		t.Fatalf("new output: %q", out)
 	}
 	for _, name := range []string{"main.go", "frontend/index.html", "frontend/vitra-client.ts", "README.md", "go.mod"} {
@@ -531,6 +531,9 @@ func TestRun_NewScaffold(t *testing.T) {
 			t.Fatalf("scaffold missing import %q", want)
 		}
 	}
+	if !strings.Contains(string(src), "//go:embed frontend/*") {
+		t.Fatalf("vanilla embed missing: %s", src)
+	}
 	client, err := os.ReadFile(dir + "/frontend/vitra-client.ts")
 	if err != nil {
 		t.Fatal(err)
@@ -552,6 +555,59 @@ func TestRun_NewScaffold(t *testing.T) {
 	}
 	if !strings.Contains(out, "vitra dev") {
 		t.Fatalf("new next-step should suggest vitra dev: %q", out)
+	}
+}
+
+func TestRun_NewScaffoldVite(t *testing.T) {
+	dir := t.TempDir() + "/vite-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "vite"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=vite") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/index.html", "frontend/dist/index.html",
+		"frontend/vitra-client.ts", ".gitignore",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "//go:embed all:frontend/dist") {
+		t.Fatalf("vite embed missing: %s", src)
+	}
+	if !strings.Contains(string(src), `fs.Sub(frontendRoot, "frontend/dist")`) {
+		t.Fatalf("vite Sub path missing: %s", src)
+	}
+	mainTS, err := os.ReadFile(dir + "/frontend/src/main.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead"} {
+		if !strings.Contains(string(mainTS), want) {
+			t.Fatalf("main.ts missing %q: %s", want, mainTS)
+		}
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "npm run build") {
+		t.Fatalf("vite README should mention npm build: %s", readme)
+	}
+	if err := run([]string{"new", dir, "--template", "nope"}); err == nil {
+		t.Fatal("expected unknown template error")
+	}
+	if err := run([]string{"new", "--template", "vite"}); err == nil {
+		t.Fatal("expected missing dir error")
 	}
 }
 
