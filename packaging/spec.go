@@ -53,7 +53,8 @@ type Spec struct {
 	Homepage string
 	// Categories are FreeDesktop/AppStream categories (e.g. Utility, Development).
 	// Empty defaults to []string{"Utility"}. The first mapped category also
-	// selects the Debian control Section: (see DebianSection).
+	// selects the Debian control Section: (see DebianSection) and RPM Group:
+	// (see RPMGroup).
 	Categories []string
 	// Keywords are optional FreeDesktop/AppStream search terms (desktop Keywords=,
 	// AppStream <keyword>, snap keywords). Empty omits them.
@@ -160,6 +161,34 @@ func (s Spec) DebianSection() string {
 		}
 	}
 	return "utils"
+}
+
+// RPMGroup returns the RPM .spec Group: derived from EffectiveCategories.
+// Unknown categories fall back to "Applications/System".
+func (s Spec) RPMGroup() string {
+	for _, cat := range s.EffectiveCategories() {
+		switch strings.ToLower(strings.TrimSpace(cat)) {
+		case "audiovideo", "audio", "video", "graphics":
+			return "Applications/Multimedia"
+		case "development":
+			return "Development/Tools"
+		case "education":
+			return "Applications/Education"
+		case "game":
+			return "Amusements/Games"
+		case "network":
+			return "Applications/Internet"
+		case "office":
+			return "Applications/Productivity"
+		case "science":
+			return "Applications/Engineering"
+		case "settings", "system":
+			return "System Environment/Base"
+		case "utility":
+			return "Applications/System"
+		}
+	}
+	return "Applications/System"
 }
 
 // EffectiveKeywords returns trimmed Spec.Keywords (no default; empty means omit).

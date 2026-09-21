@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- RPM Group: `Spec.Categories` / `vitra package --categories` (via `RPMGroup`) set `.spec` `Group:` (e.g. Development→Development/Tools; default Utility→Applications/System).
 - Debian Section: `Spec.Categories` / `vitra package --categories` (via `DebianSection`) set control `Section:` (e.g. Development→devel; default Utility→utils).
 - Official `vitra.deeplink` plugin: owns `deeplink.handle` and contributes `deeplink.open`; scaffold/competitive emit after `DeepLinkService.Handle` (host patterns; bridge + argv); `VITRA_INJECT_DEEPLINK=1` demo inject.
 - Snap contact: `Spec.Maintainer` / `vitra package --maintainer` (via `EffectiveMaintainer`) flow into `meta/snap.yaml` `contact:` (defaults to `DefaultMaintainer`).
@@ -32,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Official `vitra.path` plugin: declares `path.open`; `desktop.PathService` opens absolute local paths via OS default handler (Linux `xdg-open`, Darwin `open`, Windows `explorer`); PathScope-gated; scaffold/generate/provenance/competitive bind.
 - `vitra new --template angular`: Vite + Angular 19 + TypeScript starter (`@analogjs/vite-plugin-angular`, standalone `vitra-app` component) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - Official `vitra.notification` plugin: declares `notifications.show`; `desktop.NotificationService` + Linux/Darwin/Windows hosts (D-Bus Notifications / NSUserNotification / tray balloon); scaffold, generate, provenance, and competitive demo bind title+body only.
-- RPM/snap package metadata: `Spec.License` / `Homepage` / `Maintainer` flow into RPM `License:` / `URL:` / `Packager` and snap `license:` / `website:` / `contact:` (defaults match AppStream via `EffectiveLicense()` / `EffectiveMaintainer()`).
+- RPM/snap package metadata: `Spec.License` / `Homepage` / `Maintainer` / `Categories` flow into RPM `License:` / `URL:` / `Packager` / `Group:` and snap `license:` / `website:` / `contact:` (defaults match AppStream via `EffectiveLicense()` / `EffectiveMaintainer()` / `RPMGroup()`).
 - Official `vitra.os` plugin: declares `os.info`; `desktop.OsService` returns GOOS/GOARCH/family/locale (stdlib default); scaffold, `vitra generate typescript`, packaging provenance inventory, and competitive demo register + bind alongside `fs`/`dialog`/`clipboard`/`browser`.
 - Package metadata: `Spec.Homepage` / `Categories` / `Keywords` / `License` (+ `vitra package --homepage` / `--categories` / `--keywords` / `--license`) flow into FreeDesktop `.desktop` Categories/Keywords, AppStream metainfo (`<url>`, `<category>`, `<keyword>`, `<project_license>`), Debian `Homepage` + `Section:` + DEP-5 `copyright`, snap website/keywords, and Windows ARP `URLInfoAbout` / `ARPURLINFOABOUT`.
 - `vitra new --template htmx`: Vite + HTMX + TypeScript starter (`htmx.org`, `hx-on:click` helpers) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.

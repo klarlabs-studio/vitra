@@ -31,7 +31,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 |------------|--------|
 | `dir` (default) | Staged Linux app directory (`StageLinux`) |
 | `deb` | Pure-Go `.deb` (`BuildDeb`; DEP-5 copyright + Section from Categories) |
-| `rpm-dir` | rpmbuild `_topdir` + `SPECS/*.spec` (`BuildRPMDir`) |
+| `rpm-dir` | rpmbuild `_topdir` + `SPECS/*.spec` (`BuildRPMDir`; Group from Categories) |
 | `rpm` | Final `.rpm` (`BuildRPM` → `rpmbuild` or `VITRA_RPMBUILD`) |
 | `snap-dir` | Snap prime dir + `meta/snap.yaml` (`BuildSnapDir`; license/website/contact/keywords) |
 | `snap` | Final `.snap` (`BuildSnap` → `snapcraft pack` or `VITRA_SNAPCRAFT`) |
@@ -60,8 +60,9 @@ extended Description, FreeDesktop `Comment=`, and Windows ARP Comments /
 `ARPCOMMENTS` (default: secure Go + web desktop blurb). Optional `--license`
 sets AppStream/RPM/snap license fields and Debian DEP-5
 `usr/share/doc/<pkg>/copyright` (default: `LicenseRef-proprietary`). Optional
-`--categories` sets FreeDesktop/AppStream categories and Debian control
-`Section:` via `DebianSection` (default Utility→utils).
+`--categories` sets FreeDesktop/AppStream categories, Debian control
+`Section:` via `DebianSection`, and RPM `Group:` via `RPMGroup`
+(default Utility→utils / Applications/System).
 
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold

@@ -153,6 +153,7 @@ Version: %s
 Release: %s
 Summary: %s
 License: %s
+Group: %s
 %sPackager: %s
 BuildArch: %s
 AutoReqProv: no
@@ -171,7 +172,7 @@ cp -a %%{_topdir}/payload/. %%{buildroot}/
 %%changelog
 * %s %s - %s-%s
 - Packaged by Vitra
-`, pkgName, ver, rel, spec.Name, spec.EffectiveLicense(), urlLine, spec.EffectiveMaintainer(), arch,
+`, pkgName, ver, rel, spec.Name, spec.EffectiveLicense(), spec.RPMGroup(), urlLine, spec.EffectiveMaintainer(), arch,
 		spec.EffectiveDescription(), filesSection, changelogDate,
 		spec.EffectiveMaintainer(), ver, rel)
 

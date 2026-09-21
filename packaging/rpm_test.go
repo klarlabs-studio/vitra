@@ -55,6 +55,7 @@ func TestBuildRPMDir_Layout(t *testing.T) {
 		"Version: 0.3.0",
 		"Release: 1",
 		"License: Apache-2.0",
+		"Group: Applications/System",
 		"URL: https://example.com/demo",
 		"Packager: Packager <p@example.com>",
 		"BuildArch: ",
@@ -100,6 +101,52 @@ func TestBuildRPMDir_DefaultLicenseOmitsURL(t *testing.T) {
 	}
 	if strings.Contains(text, "URL:") {
 		t.Fatalf("unexpected URL:\n%s", text)
+	}
+	if !strings.Contains(text, "Group: Applications/System") {
+		t.Fatalf("default Group missing:\n%s", text)
+	}
+}
+
+func TestBuildRPMDir_GroupFromCategories(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "payload")
+	if err := os.WriteFile(bin, []byte("bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "rpm-top")
+	spec := packaging.Spec{
+		AppID: "com.vitra.demo", Version: "1.0.0", Name: "Demo",
+		Targets:    []packaging.Target{packaging.TargetLinuxRPM},
+		Categories: []string{"Development", "Utility"},
+	}
+	if _, err := packaging.BuildRPMDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "SPECS", "com-vitra-demo.spec"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "Group: Development/Tools") {
+		t.Fatalf("Group missing:\n%s", raw)
+	}
+}
+
+func TestSpec_RPMGroup(t *testing.T) {
+	cases := []struct {
+		cats []string
+		want string
+	}{
+		{nil, "Applications/System"},
+		{[]string{"Utility"}, "Applications/System"},
+		{[]string{"Development"}, "Development/Tools"},
+		{[]string{"Network"}, "Applications/Internet"},
+		{[]string{"UnknownCat"}, "Applications/System"},
+	}
+	for _, tc := range cases {
+		got := packaging.Spec{Categories: tc.cats}.RPMGroup()
+		if got != tc.want {
+			t.Fatalf("cats=%v: got %q want %q", tc.cats, got, tc.want)
+		}
 	}
 }
 
