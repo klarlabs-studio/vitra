@@ -42,6 +42,14 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	if !strings.Contains(out, "adapter:") {
 		t.Fatalf("doctor missing adapter: %q", out)
 	}
+	if !strings.Contains(out, "packaging fold tools:") {
+		t.Fatalf("doctor missing packaging tools: %q", out)
+	}
+	for _, tool := range []string{"appimagetool:", "candle:", "light:", "makensis:", "hdiutil:"} {
+		if !strings.Contains(out, tool) {
+			t.Fatalf("doctor missing %q: %q", tool, out)
+		}
+	}
 
 	out = capture(t, func() {
 		if err := run([]string{"inspect", "capabilities"}); err != nil {

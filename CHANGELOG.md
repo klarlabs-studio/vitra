@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra doctor` reports packaging fold-tool availability (`appimagetool`, `candle`/`light`, `makensis`, `hdiutil`) with `VITRA_*` override hints.
 - WiX Start Menu shortcut: `BuildWiXDir` emits `ProgramMenuFolder` shortcut + uninstall `RemoveFolder`, and a deterministic `UpgradeCode` GUID from `AppID` (optional shortcut `Icon` when `--icon` is set).
 - Docs: competitive/phase2/phase4/README status aligned with shipped DesktopHost + installer folds; honest gap reframed to templates/release polish (Wayland global hotkeys still unsupported).
 - NSIS installer UX: `BuildNSISDir` emits `WriteUninstaller`, HKCU Add/Remove Programs registry keys (`DisplayName`/`UninstallString`/…), and cleans them on uninstall; optional `DisplayIcon` when `--icon` is set.

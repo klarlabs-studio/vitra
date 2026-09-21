@@ -151,7 +151,23 @@ func doctor() error {
 		fmt.Println("  native:   build/run with CGO_ENABLED=1 -tags vitra_native (Win32 + WebView2Loader.dll)")
 		fmt.Println("  note:     WebView2 Navigate/Eval/message need Evergreen Runtime; global shortcuts via RegisterHotKey")
 	}
+
+	fmt.Println("  packaging fold tools:")
+	reportPackagingTool("appimagetool", packaging.ResolveAppImageTool, "VITRA_APPIMAGETOOL")
+	reportPackagingTool("candle", packaging.ResolveCandle, "VITRA_CANDLE")
+	reportPackagingTool("light", packaging.ResolveLight, "VITRA_LIGHT")
+	reportPackagingTool("makensis", packaging.ResolveMakensis, "VITRA_MAKENSIS")
+	reportPackagingTool("hdiutil", packaging.ResolveHdiutil, "VITRA_HDIUTIL")
 	return nil
+}
+
+func reportPackagingTool(name string, resolve func() (string, error), envHint string) {
+	path, err := resolve()
+	if err != nil {
+		fmt.Printf("    %-12s missing (set %s or install on PATH)\n", name+":", envHint)
+		return
+	}
+	fmt.Printf("    %-12s ok (%s)\n", name+":", path)
 }
 
 func currentHost() platform.Host {
