@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Windows WebView2 host scaffold (`platform/windows`, `-tags vitra_native`): Win32 HWND shell for Open/Close/Run/Quit; Navigate/Eval stay explicit unsupported until WebView2 SDK wiring. OpenURL via `cmd /c start` works without the native host.
 - Darwin URL-scheme and file-association registration: helper `.app` bundles under Application Support (`CFBundleURLTypes` / `CFBundleDocumentTypes`) with best-effort `lsregister`; `vitra register-scheme` / `register-files` work on Darwin.
 - Darwin file drag-drop: `EnableDragDrop` accepts `NSFilenamesPboardType` drops on the window content view; `InjectFileDrop` for demos/tests.
 - Darwin status-item tray: `SetTray` / `ClearTray` via `NSStatusItem` with context menu actions through `SetActionHandler`.
