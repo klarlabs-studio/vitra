@@ -86,8 +86,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "requires WebView2 Evergreen Runtime + SDK (next slice)",
 		},
 		platform.FeatureClipboard: {
-			Feature: platform.FeatureClipboard, Available: false,
-			Detail: "not yet implemented on Windows host",
+			Feature: platform.FeatureClipboard, Available: true,
+			Detail: "PowerShell Get/Set-Clipboard; available without native WebView",
 		},
 		platform.FeatureDialogOpen: {
 			Feature: platform.FeatureDialogOpen, Available: false,
@@ -106,16 +106,16 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "not yet implemented on Windows host",
 		},
 		platform.FeatureSingleInstance: {
-			Feature: platform.FeatureSingleInstance, Available: false,
-			Detail: "not yet implemented on Windows host",
+			Feature: platform.FeatureSingleInstance, Available: true,
+			Detail: "exclusive lock file; available without native WebView",
 		},
 		platform.FeatureGlobalShortcut: {
 			Feature: platform.FeatureGlobalShortcut, Available: false,
 			Detail: "not yet implemented on Windows host",
 		},
 		platform.FeatureDeepLink: {
-			Feature: platform.FeatureDeepLink, Available: false,
-			Detail: "not yet implemented on Windows host",
+			Feature: platform.FeatureDeepLink, Available: true,
+			Detail: "argv + socket handoff",
 		},
 		platform.FeatureDragDrop: {
 			Feature: platform.FeatureDragDrop, Available: false,
@@ -251,10 +251,6 @@ func (h *Host) CloseWindow(_ context.Context, id domain.WindowID) error {
 	return <-errCh
 }
 
-func (h *Host) ClipboardGet() (string, error) {
-	return "", h.err(platform.FeatureClipboard)
-}
-func (h *Host) ClipboardSet(string) error { return h.err(platform.FeatureClipboard) }
 func (h *Host) OpenFileDialog() (string, error) {
 	return "", h.err(platform.FeatureDialogOpen)
 }
@@ -268,15 +264,6 @@ func (h *Host) SetTray(string, []platform.MenuItem) error {
 	return h.err(platform.FeatureTray)
 }
 func (h *Host) ClearTray() {}
-func (h *Host) TrySingleInstance(string) (bool, func(), error) {
-	return false, nil, h.err(platform.FeatureSingleInstance)
-}
-func (h *Host) StartDeepLinkBridge(string, func(string)) (func(), error) {
-	return nil, h.err(platform.FeatureDeepLink)
-}
-func (h *Host) ForwardToPrimary(string, []string) (bool, error) {
-	return false, h.err(platform.FeatureDeepLink)
-}
 func (h *Host) RegisterURLScheme(string, string, string) error {
 	return h.err(platform.FeatureDeepLink)
 }
