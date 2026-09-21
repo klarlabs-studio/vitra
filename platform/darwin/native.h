@@ -40,6 +40,8 @@ void vitra_tray_clear_menu(void);
 void vitra_tray_add_menu_item(const char *item_id, const char *item_label);
 void vitra_tray_clear(void);
 
+void vitra_win_set_drag_drop(VitraWin *w, int enabled);
+
 char *vitra_open_dialog(void);
 char *vitra_save_dialog(void);
 

@@ -21,12 +21,13 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done |
 | `vitra doctor/new/dev/build` | Done |
-| `platform/darwin` WKWebView host (`-tags vitra_native`) | Scaffold + OpenURL/clipboard/single-instance/deep-link; dialogs, chrome, menu, tray (native) |
+| `platform/darwin` WKWebView host (`-tags vitra_native`) | Near-complete DesktopHost (drag-drop landed; file associations TBD) |
+| Linux file drag-drop (`dragdrop.receive`) | Done (GTK URI drops + inject helper) |
+| Darwin file drag-drop (`dragdrop.receive`) | Done (NSFilenamesPboardType + inject helper) |
 | In-window menu accelerators (`MenuItem.Shortcut`) | Done (Linux GTK; Darwin NSMenu Ctrl→Command) |
 | `platform/windows` DesktopHost stub | Explicit unsupported |
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |
 | Host→frontend events (`vitra.on` / `App.Emit`) | Done |
-| Linux file drag-drop (`dragdrop.receive`) | Done (GTK URI drops + inject helper) |
 | Linux window chrome (`window.chrome`) | Done (GTK title, size, maximize, fullscreen, keep-above, minimize, hide, icon) |
 | Darwin window chrome (`window.chrome`) | Done (NSWindow title, size, zoom, fullscreen, floating, miniaturize, hide, miniwindow icon) |
 | OpenURL (`browser.open`) | Done (Linux `xdg-open`, Darwin `open` for http(s)/mailto) |
