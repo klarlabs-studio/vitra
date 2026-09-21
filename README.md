@@ -148,6 +148,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Multi-window App API | **Done** (`OpenWindow` / `CloseWindow`; quit on last native destroy) |
 | Linux file drag-drop | **Done** (grant-gated GTK URI drops) |
 | Darwin file drag-drop | **Done** (NSFilenamesPboardType drops) |
+| Windows file drag-drop | **Done** (WM_DROPFILES on HWND) |
 | Linux window chrome | **Done** (title, size, maximize, fullscreen, keep-above, minimize, hide, icon) |
 | Linux menu accelerators | **Done** (in-window `MenuItem.Shortcut`; not global) |
 | Linux OpenURL | **Done** (grant-gated `xdg-open` for http(s)/mailto) |
@@ -156,7 +157,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Linux xdg URL-scheme registration | Linux + Darwin + Windows (`vitra register-scheme`) |
 | Linux xdg MIME file associations | Linux + Darwin + Windows (`vitra register-files`) |
 | Darwin WKWebView | Competitive DesktopHost parity (`-tags vitra_native`; global shortcuts TBD) |
-| Windows WebView2 | Win32 shell + chrome + dialogs + menu/tray + OpenURL/clipboard/SI/deep-link/scheme/files; WebView2 Eval TBD |
+| Windows WebView2 | Win32 shell + chrome + dialogs + menu/tray + drag-drop + OpenURL/clipboard/SI/deep-link/scheme/files; WebView2 Eval TBD |
 
 ## Development
 

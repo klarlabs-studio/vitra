@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"runtime"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -118,8 +119,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "argv + socket handoff + HKCU Classes .reg URL-scheme registration",
 		},
 		platform.FeatureDragDrop: {
-			Feature: platform.FeatureDragDrop, Available: false,
-			Detail: "not yet implemented on Windows host",
+			Feature: platform.FeatureDragDrop, Available: true,
+			Detail: "WM_DROPFILES on the HWND (DragAcceptFiles)",
 		},
 		platform.FeatureFileAssociation: {
 			Feature: platform.FeatureFileAssociation, Available: true,
@@ -147,10 +148,35 @@ func (h *Host) SetDragDropHandler(fn func(windowID domain.WindowID, paths []stri
 func (h *Host) SetDestroyHandler(fn func(windowID domain.WindowID)) {
 	h.onDestroy = fn
 }
-func (h *Host) EnableDragDrop(domain.WindowID, bool) error {
-	return h.err(platform.FeatureDragDrop)
+
+// EnableDragDrop toggles file-drop acceptance on a window.
+func (h *Host) EnableDragDrop(id domain.WindowID, enabled bool) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		en := C.int(0)
+		if enabled {
+			en = 1
+		}
+		C.vitra_win_set_drag_drop(w.ptr, en)
+		errCh <- nil
+	})
+	return <-errCh
 }
-func (h *Host) InjectFileDrop(domain.WindowID, []string) {}
+
+// InjectFileDrop synthesizes a file drop for tests/headless demos.
+func (h *Host) InjectFileDrop(id domain.WindowID, paths []string) {
+	if h.onDrop == nil {
+		return
+	}
+	h.onDrop(id, append([]string(nil), paths...))
+}
 
 // ApplyWindowChrome sets title, size, and presentation hints on a native window.
 func (h *Host) ApplyWindowChrome(id domain.WindowID, chrome platform.WindowChrome) error {
@@ -534,4 +560,26 @@ func goVitraAction(actionID *C.char) {
 		return
 	}
 	h.onAction(C.GoString(actionID))
+}
+
+//export goVitraDrop
+func goVitraDrop(windowID, pathsJoined *C.char) {
+	activeMu.Lock()
+	h := active
+	activeMu.Unlock()
+	if h == nil || h.onDrop == nil {
+		return
+	}
+	raw := C.GoString(pathsJoined)
+	var paths []string
+	for _, line := range strings.Split(raw, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			paths = append(paths, line)
+		}
+	}
+	if len(paths) == 0 {
+		return
+	}
+	h.onDrop(domain.WindowID(C.GoString(windowID)), paths)
 }

@@ -12,6 +12,7 @@ extern void goVitraIdle(void *);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
 extern void goVitraAction(char *);
+extern void goVitraDrop(char *, char *);
 
 #define VITRA_MAX_ACTIONS 256
 #define VITRA_CMD_BASE 1000
@@ -45,6 +46,7 @@ struct VitraWin {
 	int n_accels;
 	HACCEL accel;
 	UINT next_cmd;
+	int drop_enabled;
 };
 
 static const char *kClassName = "VitraWinClass";
@@ -192,11 +194,85 @@ static void show_tray_menu(HWND hwnd) {
 	PostMessage(hwnd, WM_NULL, 0, 0);
 }
 
+static void handle_dropfiles(VitraWin *w, HDROP hdrop) {
+	if (!w || !w->drop_enabled || !w->id) {
+		DragFinish(hdrop);
+		return;
+	}
+	UINT n = DragQueryFileW(hdrop, 0xFFFFFFFF, NULL, 0);
+	if (n == 0) {
+		DragFinish(hdrop);
+		return;
+	}
+	size_t cap = 0;
+	char **paths = (char **)calloc(n, sizeof(char *));
+	if (!paths) {
+		DragFinish(hdrop);
+		return;
+	}
+	UINT kept = 0;
+	for (UINT i = 0; i < n; i++) {
+		UINT wlen = DragQueryFileW(hdrop, i, NULL, 0);
+		if (wlen == 0) {
+			continue;
+		}
+		wchar_t *wpath = (wchar_t *)malloc((size_t)(wlen + 1) * sizeof(wchar_t));
+		if (!wpath) {
+			continue;
+		}
+		if (DragQueryFileW(hdrop, i, wpath, wlen + 1) == 0) {
+			free(wpath);
+			continue;
+		}
+		int utf8len = WideCharToMultiByte(CP_UTF8, 0, wpath, -1, NULL, 0, NULL, NULL);
+		if (utf8len <= 1) {
+			free(wpath);
+			continue;
+		}
+		char *utf8 = (char *)malloc((size_t)utf8len);
+		if (!utf8) {
+			free(wpath);
+			continue;
+		}
+		WideCharToMultiByte(CP_UTF8, 0, wpath, -1, utf8, utf8len, NULL, NULL);
+		free(wpath);
+		paths[kept++] = utf8;
+		cap += (size_t)utf8len; /* includes NUL; extra for separators is fine */
+	}
+	DragFinish(hdrop);
+	if (kept == 0) {
+		free(paths);
+		return;
+	}
+	char *joined = (char *)malloc(cap + kept + 1);
+	if (!joined) {
+		for (UINT i = 0; i < kept; i++) {
+			free(paths[i]);
+		}
+		free(paths);
+		return;
+	}
+	joined[0] = '\0';
+	for (UINT i = 0; i < kept; i++) {
+		if (i > 0) {
+			strcat(joined, "\n");
+		}
+		strcat(joined, paths[i]);
+		free(paths[i]);
+	}
+	free(paths);
+	goVitraDrop(w->id, joined);
+	free(joined);
+}
+
 static LRESULT CALLBACK vitra_wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	VitraWin *w = (VitraWin *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 	switch (msg) {
 	case WM_COMMAND:
 		dispatch_command(w, LOWORD(wParam));
+		return 0;
+	case WM_DROPFILES:
+		handle_dropfiles(w, (HDROP)wParam);
 		return 0;
 	case WM_DESTROY:
 		if (w && w->id) {
@@ -638,4 +714,12 @@ void vitra_tray_clear(void) {
 		Shell_NotifyIconA(NIM_DELETE, &g_nid);
 		g_tray_added = 0;
 	}
+}
+
+void vitra_win_set_drag_drop(VitraWin *w, int enabled) {
+	if (!w || !w->hwnd) {
+		return;
+	}
+	w->drop_enabled = enabled ? 1 : 0;
+	DragAcceptFiles(w->hwnd, enabled ? TRUE : FALSE);
 }
