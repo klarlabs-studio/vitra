@@ -7,7 +7,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
-| Sign dry-run plan (no host execution) | `packaging.PlanSign` + `vitra package --sign` (Darwin includes notarytool/stapler follow-ups) |
+| Sign dry-run plan (no host execution) | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
 | Linux staged app directory | `packaging.StageLinux` + `vitra package` |
 | Windows staged dir + WiX/NSIS scripts | `StageWindows` / `BuildWiXDir` / `BuildNSISDir` |
 | Darwin staged `.app` bundle | `StageDarwinApp` + `vitra package --format app-dir` |
@@ -92,10 +92,10 @@ vitra update-apply --manifest update.json --artifact app.bin --pubkey <hex> --de
 Still out of scope on main (do not claim otherwise):
 
 - Hosted update CDN / auto-update channel hosting
-- Notarization / codesign / Authenticode *execution* (`Spec.Sign` +
-  `SigningIdentityRef` validate refs; `PlanSign` / `--sign` print argv plans
-  including Darwin `notarytool`/`stapler` follow-ups — stage/fold never invoke
-  `codesign` / `signtool` / notary / stapler)
+- Notarization / codesign / Authenticode / Linux package-sign *execution*
+  (`Spec.Sign` + `SigningIdentityRef` validate refs; `PlanSign` / `--sign`
+  print argv plans for Darwin/Windows/Linux — stage/fold never invoke
+  `codesign` / `signtool` / notary / stapler / `dpkg-sig` / `rpmsign` / `gpg`)
 - Extra Linux store polish beyond stage+fold (Flathub/Snap Store publishing,
   portal policy tuning) — `.rpm` / `.snap` / `.flatpak` generators ship via
   `BuildRPM*` / `BuildSnap*` / `BuildFlatpak*`

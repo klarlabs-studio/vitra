@@ -170,6 +170,9 @@ func doctor() error {
 	reportPackagingTool("codesign", packaging.ResolveCodesign, "VITRA_CODESIGN")
 	reportPackagingTool("signtool", packaging.ResolveSigntool, "VITRA_SIGNTOOL")
 	reportPackagingTool("notarytool", packaging.ResolveNotarytool, "VITRA_NOTARYTOOL")
+	reportPackagingTool("gpg", packaging.ResolveGPG, "VITRA_GPG")
+	reportPackagingTool("dpkg-sig", packaging.ResolveDpkgSig, "VITRA_DPKGSIG")
+	reportPackagingTool("rpmsign", packaging.ResolveRpmsign, "VITRA_RPMSIGN")
 	return nil
 }
 
