@@ -58,6 +58,7 @@
       <button id="win" class="secondary">Open aux window</button>
       <button id="chrome" class="secondary">Apply window.chrome</button>
       <button id="menu" class="secondary">Set menu bar</button>
+      <button id="tray" class="secondary">Set tray</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -71,6 +72,7 @@
       window.vitra.on("demo.tick", (payload) => show({ event: "demo.tick", payload }));
       window.vitra.on("dragdrop.drop", (payload) => show({ event: "dragdrop.drop", payload }));
       window.vitra.on("menu.action", (payload) => show({ event: "menu.action", payload }));
+      window.vitra.on("tray.action", (payload) => show({ event: "tray.action", payload }));
     }
     document.getElementById("greet").onclick = async () => {
       try {
@@ -190,6 +192,20 @@
           { menu: "Help", id: "help.about", label: "About Vitra" },
         ]);
         show({ menu: "set" });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("tray").onclick = async () => {
+      try {
+        await window.vitra.invoke("tray.set", {
+          tooltip: "Vitra competitive demo",
+          items: [
+            { id: "help.about", label: "About Vitra" },
+            { id: "tray.quit", label: "Quit" },
+          ],
+        });
+        show({ tray: "set" });
       } catch (e) {
         show(String(e.message || e), true);
       }
