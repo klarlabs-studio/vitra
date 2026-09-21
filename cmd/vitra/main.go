@@ -84,8 +84,8 @@ func printUsage() {
 Usage:
   vitra version              Print kernel version
   vitra doctor               Diagnose WebView / CGO prerequisites
-  vitra new <dir> [--template vanilla|vite]
-                             Scaffold a starter desktop app (default: vanilla HTML; vite adds a Vite+TS frontend)
+  vitra new <dir> [--template vanilla|vite|react]
+                             Scaffold a starter desktop app (default: vanilla HTML; vite/react add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--sign --signing-identity ref]
@@ -217,7 +217,7 @@ func scaffoldNew(args []string) error {
 		case "--template":
 			i++
 			if i >= len(args) {
-				return fmt.Errorf("--template requires vanilla or vite")
+				return fmt.Errorf("--template requires vanilla, vite, or react")
 			}
 			tmpl = args[i]
 		default:
@@ -225,18 +225,18 @@ func scaffoldNew(args []string) error {
 				return fmt.Errorf("unknown new flag %q", args[i])
 			}
 			if dir != "" {
-				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite]")
+				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react]")
 			}
 			dir = args[i]
 		}
 	}
 	if dir == "" {
-		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite]")
+		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react]")
 	}
 	switch tmpl {
-	case "vanilla", "vite":
+	case "vanilla", "vite", "react":
 	default:
-		return fmt.Errorf("unknown template %q (want vanilla or vite)", tmpl)
+		return fmt.Errorf("unknown template %q (want vanilla, vite, or react)", tmpl)
 	}
 
 	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
@@ -255,6 +255,8 @@ func scaffoldNew(args []string) error {
 	switch tmpl {
 	case "vite":
 		files = scaffoldViteFiles(modPath, tsClient)
+	case "react":
+		files = scaffoldReactFiles(modPath, tsClient)
 	default:
 		files = scaffoldVanillaFiles(modPath, tsClient)
 	}
@@ -268,7 +270,7 @@ func scaffoldNew(args []string) error {
 		}
 	}
 	fmt.Printf("created %s (template=%s)\n", dir, tmpl)
-	if tmpl == "vite" {
+	if tmpl == "vite" || tmpl == "react" {
 		fmt.Println("next: cd", dir, "&& (optional: cd frontend && npm install && npm run build) && vitra dev")
 	} else {
 		fmt.Println("next: cd", dir, "&& vitra dev")
@@ -291,14 +293,33 @@ func scaffoldViteFiles(modPath, tsClient string) map[string]string {
 		"go.mod":                   scaffoldGoMod(modPath),
 		"main.go":                  scaffoldMainGo("all:frontend/dist", "frontend/dist"),
 		"frontend/package.json":    scaffoldVitePackageJSON(),
-		"frontend/vite.config.js":  scaffoldViteConfig(),
-		"frontend/tsconfig.json":   scaffoldViteTSConfig(),
-		"frontend/index.html":      scaffoldViteIndexHTML(),
+		"frontend/vite.config.js":  scaffoldViteConfig(false),
+		"frontend/tsconfig.json":   scaffoldViteTSConfig(false),
+		"frontend/index.html":      scaffoldViteIndexHTML("main.ts"),
 		"frontend/src/main.ts":     scaffoldViteMainTS(),
 		"frontend/vitra-client.ts": tsClient,
 		"frontend/dist/index.html": scaffoldIndexHTML(), // works before first npm run build
 		".gitignore":               "frontend/node_modules/\nvitra-app\n",
 		"README.md":                scaffoldREADME("vite"),
+	}
+}
+
+func scaffoldReactFiles(modPath, tsClient string) map[string]string {
+	return map[string]string{
+		"go.mod":                      scaffoldGoMod(modPath),
+		"main.go":                     scaffoldMainGo("all:frontend/dist", "frontend/dist"),
+		"frontend/package.json":       scaffoldReactPackageJSON(),
+		"frontend/vite.config.js":     scaffoldViteConfig(true),
+		"frontend/tsconfig.json":      scaffoldViteTSConfig(true),
+		"frontend/tsconfig.node.json": scaffoldReactTSConfigNode(),
+		"frontend/index.html":         scaffoldViteIndexHTML("main.tsx"),
+		"frontend/src/main.tsx":       scaffoldReactMainTSX(),
+		"frontend/src/App.tsx":        scaffoldReactAppTSX(),
+		"frontend/src/vite-env.d.ts":  "/// <reference types=\"vite/client\" />\n",
+		"frontend/vitra-client.ts":    tsClient,
+		"frontend/dist/index.html":    scaffoldIndexHTML(),
+		".gitignore":                  "frontend/node_modules/\nvitra-app\n",
+		"README.md":                   scaffoldREADME("react"),
 	}
 }
 
@@ -318,12 +339,16 @@ vitra generate typescript --out frontend/vitra-client.ts
 vitra package --out dist/ --format dir
 ` + "```" + `
 `
-	if tmpl == "vite" {
+	if tmpl == "vite" || tmpl == "react" {
+		label := "Vite"
+		if tmpl == "react" {
+			label = "Vite + React"
+		}
 		body += `
-## Vite frontend
+## ` + label + ` frontend
 
 Go embeds ` + "`frontend/dist`" + `. A starter ` + "`dist/index.html`" + ` is included so
-` + "`vitra dev`" + ` works immediately. To rebuild from the Vite sources:
+` + "`vitra dev`" + ` works immediately. To rebuild from the sources:
 
 ` + "```bash" + `
 cd frontend
@@ -356,7 +381,46 @@ func scaffoldVitePackageJSON() string {
 `
 }
 
-func scaffoldViteConfig() string {
+func scaffoldReactPackageJSON() string {
+	return `{
+  "name": "vitra-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0"
+  }
+}
+`
+}
+
+func scaffoldViteConfig(react bool) string {
+	if react {
+		return `import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  root: ".",
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+  },
+});
+`
+	}
 	return `import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -369,22 +433,43 @@ export default defineConfig({
 `
 }
 
-func scaffoldViteTSConfig() string {
+func scaffoldViteTSConfig(react bool) string {
+	jsx := ""
+	include := `"src", "vitra-client.ts"`
+	if react {
+		jsx = `
+    "jsx": "react-jsx",`
+		include = `"src"`
+	}
 	return `{
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
-    "skipLibCheck": true,
+    "skipLibCheck": true,` + jsx + `
     "lib": ["ES2022", "DOM"]
   },
-  "include": ["src", "vitra-client.ts"]
+  "include": [` + include + `]
 }
 `
 }
 
-func scaffoldViteIndexHTML() string {
+func scaffoldReactTSConfigNode() string {
+	return `{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["vite.config.js"]
+}
+`
+}
+
+func scaffoldViteIndexHTML(entry string) string {
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -393,7 +478,7 @@ func scaffoldViteIndexHTML() string {
 </head>
 <body>
   <div id="app"></div>
-  <script type="module" src="/src/main.ts"></script>
+  <script type="module" src="/src/` + entry + `"></script>
 </body>
 </html>
 `
@@ -432,6 +517,54 @@ document.getElementById("clip")!.onclick = async () => {
   try { out.textContent = JSON.stringify(await client.clipboardRead(), null, 2); }
   catch (e) { out.textContent = String(e); }
 };
+`
+}
+
+func scaffoldReactMainTSX() string {
+	return `import React from "react";
+import { createRoot } from "react-dom/client";
+import { App } from "./App";
+
+createRoot(document.getElementById("app")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
+`
+}
+
+func scaffoldReactAppTSX() string {
+	return `import { useState } from "react";
+import { createClient } from "../vitra-client";
+
+declare global {
+  interface Window {
+    vitra: { invoke: (cmd: string, input?: unknown) => Promise<unknown> };
+  }
+}
+
+const client = createClient(window.vitra.invoke);
+
+export function App() {
+  const [out, setOut] = useState("");
+  const run = async (label: string, fn: () => Promise<unknown>) => {
+    try {
+      setOut(JSON.stringify(await fn(), null, 2));
+    } catch (e) {
+      setOut(String(e));
+    }
+  };
+  return (
+    <div style={{ fontFamily: "Georgia, serif", margin: "2rem", background: "#111", color: "#eee", minHeight: "100vh" }}>
+      <h1>Vitra</h1>
+      <p>Vite + React starter (official fs + dialog + clipboard plugins).</p>
+      <button onClick={() => run("greet", () => client.demoGreet("Vitra"))}>demo.greet</button>{" "}
+      <button onClick={() => run("open", () => client.dialogOpen())}>dialog.open</button>{" "}
+      <button onClick={() => run("clip", () => client.clipboardRead())}>clipboard.read</button>
+      <pre>{out}</pre>
+    </div>
+  );
+}
 `
 }
 
