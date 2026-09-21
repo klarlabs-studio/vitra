@@ -185,6 +185,9 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
     <Property Id="ARPCOMMENTS" Value="%s"/>`, desc)
 	copyrightXML := fmt.Sprintf(`
     <Property Id="ARPCOPYRIGHT" Value="%s"/>`, xmlEscape(spec.EffectiveLicense()))
+	noModifyXML := `
+    <Property Id="ARPNOMODIFY" Value="1"/>
+    <Property Id="ARPNOREPAIR" Value="1"/>`
 	aumidProp := fmt.Sprintf(`
                   <ShortcutProperty Key="System.AppUserModel.ID" Value="%s"/>`, xmlEscape(spec.AppID))
 	upgrade := deterministicGUID("vitra-wix-upgrade:" + spec.AppID)
@@ -197,7 +200,7 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
     <Package InstallerVersion="200" Compressed="yes" InstallScope="perUser"
              Description="%s" Comments="%s"/>
     <MajorUpgrade DowngradeErrorMessage="A newer version is already installed."/>
-    <MediaTemplate EmbedCab="yes"/>%s%s%s%s
+    <MediaTemplate EmbedCab="yes"/>%s%s%s%s%s
     <Feature Id="ProductFeature" Title="%s" Level="1">
       <ComponentGroupRef Id="ProductComponents"/>
     </Feature>
@@ -239,7 +242,7 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
   </Fragment>
 </Wix>
 `, xmlEscape(spec.Name), xmlEscape(spec.Version), xmlEscape(spec.EffectivePublisher()), upgrade,
-		desc, desc, commentsXML, copyrightXML, homepageXML, iconXML, xmlEscape(spec.Name), xmlEscape(safeName), xmlEscape(safeName),
+		desc, desc, commentsXML, copyrightXML, noModifyXML, homepageXML, iconXML, xmlEscape(spec.Name), xmlEscape(safeName), xmlEscape(safeName),
 		exeName, iconComp,
 		xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIconAttr, aumidProp, regManufacturer, regProduct,
 		xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIconAttr, aumidProp, regManufacturer, regProduct)
