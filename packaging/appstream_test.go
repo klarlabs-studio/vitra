@@ -33,6 +33,7 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		`<keyword>secure</keyword>`,
 		`<launchable type="desktop-id">com.example.Demo.desktop</launchable>`,
 		`<developer_name>Klarlabs &lt;dev@klarlabs.de&gt;</developer_name>`,
+		`<update_contact>Klarlabs &lt;dev@klarlabs.de&gt;</update_contact>`,
 		`type="desktop-application"`,
 	} {
 		if !strings.Contains(xml, want) {
@@ -58,6 +59,10 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 	if empty.DesktopKeywordsLine() != "" {
 		t.Fatalf("expected empty keywords line, got %q", empty.DesktopKeywordsLine())
 	}
+	emptyXML := packaging.AppStreamMetainfoXML(empty)
+	if !strings.Contains(emptyXML, `<update_contact>Vitra Packaging &lt;vitra@klarlabs.de&gt;</update_contact>`) {
+		t.Fatalf("default update_contact missing:\n%s", emptyXML)
+	}
 }
 
 func TestStageLinux_WritesAppStreamMetainfo(t *testing.T) {
@@ -81,5 +86,8 @@ func TestStageLinux_WritesAppStreamMetainfo(t *testing.T) {
 	}
 	if !strings.Contains(string(body), "<id>com.vitra.demo</id>") {
 		t.Fatalf("%s", body)
+	}
+	if !strings.Contains(string(body), `<update_contact>Vitra Packaging &lt;vitra@klarlabs.de&gt;</update_contact>`) {
+		t.Fatalf("default update_contact missing:\n%s", body)
 	}
 }

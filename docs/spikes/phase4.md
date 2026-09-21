@@ -7,7 +7,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
-| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`); Homepage / Categories / License / Description via Spec (also RPM/snap, Debian `copyright`, Windows ARP URL/Comments/LegalCopyright, Darwin `NSHumanReadableCopyright`) |
+| AppStream metainfo | `AppStreamMetainfoXML` staged under `usr/share/metainfo/` (Flatpak `files/share/metainfo/`); Homepage / Categories / License / Description / Maintainer (`developer_name` + `update_contact`) via Spec (also RPM/snap, Debian `copyright`, Windows ARP URL/Comments/LegalCopyright, Darwin `NSHumanReadableCopyright`) |
 | Sign dry-run plan | `packaging.PlanSign` + `vitra package --sign` (Darwin codesign + notarytool/stapler; Windows signtool; Linux dpkg-sig/rpmsign/snapcraft/gpg) |
 | Notary credential bootstrap plan | `PlanNotaryCredentials` + `vitra notary-setup` (store-credentials argv; not executed) |
 | Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}` and `<secret:…>`→`VITRA_SECRET_*`; sets `Artifact.Signed`) |
@@ -54,7 +54,7 @@ Linux stages (root + `usr/share/icons/hicolor/…/apps/`, `Icon=<name>`), AppDir
 (WiX `ARPPRODUCTICON` + NSIS shortcut icon). Optional `--homepage` sets Debian
 `Homepage`, AppStream/RPM/snap URLs, and Windows ARP support/help URLs
 (`URLInfoAbout` / `ARPURLINFOABOUT`, `HelpLink` / `ARPHELPLINK`, `URLUpdateInfo` / `ARPURLUPDATEINFO`) when provided. Optional `--maintainer` sets Debian
-`Maintainer`, snap `contact:`, DEP-5 Upstream-Contact, and, when provided, WiX
+`Maintainer`, snap `contact:`, AppStream `<update_contact>`, DEP-5 Upstream-Contact, and, when provided, WiX
 `Manufacturer` / NSIS `PRODUCT_PUBLISHER` (otherwise WiX/NSIS use `Name`). Optional `--description` sets the Debian
 extended Description, FreeDesktop `Comment=`, Windows ARP Comments /
 `ARPCOMMENTS`, and Darwin Info.plist `CFBundleGetInfoString`
