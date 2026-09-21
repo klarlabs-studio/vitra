@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Darwin CFBundleDisplayName: `Spec.Name` flows into Info.plist `CFBundleDisplayName` (alongside `CFBundleName`) for Finder/Dock display.
 - Official window setTitle/setSize: `window.setTitle` / `window.setSize` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.SetTitle` / `SetSize` + `ParseWindowSetTitle` / `ParseWindowSetSize` (`{ id, title }` / `{ id, width, height }`); scaffold/competitive bind.
 - Windows ARP NoModify/NoRepair: NSIS writes `NoModify`/`NoRepair` DWORD 1 under the Uninstall key; WiX sets `ARPNOMODIFY`/`ARPNOREPAIR` (hides Modify/Repair in Apps & Features for per-user installs).
 - AppStream donation URL: `Spec.Homepage` / `vitra package --homepage` also flow into metainfo `<url type="donation">` alongside homepage/help/bugtracker/vcs-browser (omitted when empty).
