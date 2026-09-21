@@ -130,6 +130,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDialogSave, Available: true,
 			Detail: "NSSavePanel",
 		},
+		platform.FeatureDialogMessage: {
+			Feature: platform.FeatureDialogMessage, Available: true,
+			Detail: "NSAlert info/confirm",
+		},
 		platform.FeatureMenuBar: {
 			Feature: platform.FeatureMenuBar, Available: true,
 			Detail: "NSApp main menu; MenuItem.Shortcut maps Ctrl→Command",
@@ -453,6 +457,25 @@ func (h *Host) SaveFileDialog() (string, error) {
 		}
 		ch <- C.GoString(p)
 		C.free(unsafe.Pointer(p))
+	})
+	return <-ch, nil
+}
+
+// MessageDialog shows a native NSAlert info or confirm dialog.
+func (h *Host) MessageDialog(title, message, kind string) (bool, error) {
+	confirm := 0
+	if strings.EqualFold(kind, "confirm") {
+		confirm = 1
+	}
+	ch := make(chan bool, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ctitle := C.CString(title)
+		cmsg := C.CString(message)
+		ok := C.vitra_message_dialog(ctitle, cmsg, C.int(confirm)) != 0
+		C.free(unsafe.Pointer(ctitle))
+		C.free(unsafe.Pointer(cmsg))
+		ch <- ok
 	})
 	return <-ch, nil
 }

@@ -119,6 +119,7 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureWebViewMessage: {Feature: platform.FeatureWebViewMessage, Available: true},
 		platform.FeatureDialogOpen:     {Feature: platform.FeatureDialogOpen, Available: true},
 		platform.FeatureDialogSave:     {Feature: platform.FeatureDialogSave, Available: true},
+		platform.FeatureDialogMessage:  {Feature: platform.FeatureDialogMessage, Available: true},
 		platform.FeatureClipboard:      {Feature: platform.FeatureClipboard, Available: true},
 		platform.FeatureMenuBar:        {Feature: platform.FeatureMenuBar, Available: true},
 		platform.FeatureTray:           {Feature: platform.FeatureTray, Available: true},
@@ -460,6 +461,25 @@ func (h *Host) SaveFileDialog() (string, error) {
 		}
 		ch <- C.GoString(p)
 		C.g_free(C.gpointer(p))
+	})
+	return <-ch, nil
+}
+
+// MessageDialog shows a native info or confirm dialog. kind is "info" or "confirm".
+func (h *Host) MessageDialog(title, message, kind string) (bool, error) {
+	confirm := 0
+	if strings.EqualFold(kind, "confirm") {
+		confirm = 1
+	}
+	ch := make(chan bool, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ctitle := C.CString(title)
+		cmsg := C.CString(message)
+		ok := C.vitra_message_dialog(ctitle, cmsg, C.int(confirm)) != 0
+		C.free(unsafe.Pointer(ctitle))
+		C.free(unsafe.Pointer(cmsg))
+		ch <- ok
 	})
 	return <-ch, nil
 }

@@ -425,6 +425,22 @@ char *vitra_save_dialog(void) {
 	return path;
 }
 
+int vitra_message_dialog(const char *title, const char *message, int confirm) {
+	GtkMessageType type = confirm ? GTK_MESSAGE_QUESTION : GTK_MESSAGE_INFO;
+	GtkButtonsType buttons = confirm ? GTK_BUTTONS_YES_NO : GTK_BUTTONS_OK;
+	GtkWidget *dialog = gtk_message_dialog_new(
+		NULL, GTK_DIALOG_MODAL, type, buttons, "%s", message ? message : "");
+	if (title && title[0]) {
+		gtk_window_set_title(GTK_WINDOW(dialog), title);
+	}
+	gint response = gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
+	if (confirm) {
+		return response == GTK_RESPONSE_YES ? 1 : 0;
+	}
+	return 1;
+}
+
 static void on_tray_activate(GtkStatusIcon *icon, gpointer user_data) {
 	(void)icon;
 	(void)user_data;

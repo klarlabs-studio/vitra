@@ -52,6 +52,7 @@ char *vitra_clip_get(void);
 void vitra_clip_set(const char *text);
 char *vitra_open_dialog(void);
 char *vitra_save_dialog(void);
+int vitra_message_dialog(const char *title, const char *message, int confirm);
 
 void vitra_tray_set(const char *tooltip);
 void vitra_tray_clear_menu(void);

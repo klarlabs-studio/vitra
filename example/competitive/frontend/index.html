@@ -51,6 +51,7 @@
       <button id="browser" class="secondary">Open vitra docs</button>
       <button id="open" class="secondary">Open file</button>
       <button id="save" class="secondary">Save file</button>
+      <button id="msg" class="secondary">Message dialog</button>
     </div>
     <pre id="out">Ready.</pre>
   </main>
@@ -97,6 +98,19 @@
     document.getElementById("save").onclick = async () => {
       try { show({ save: await window.vitra.invoke("dialog.save") }); }
       catch (e) { show(String(e.message || e), true); }
+    };
+    document.getElementById("msg").onclick = async () => {
+      try {
+        show({
+          message: await window.vitra.invoke("dialog.message", {
+            title: "Vitra",
+            message: "Confirm competitive dialog.message?",
+            kind: "confirm",
+          }),
+        });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
     };
   </script>
 </body>

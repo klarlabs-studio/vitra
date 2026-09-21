@@ -39,6 +39,7 @@ int vitra_win_activate_accel(VitraWin *w, const char *shortcut);
 
 char *vitra_open_dialog(void);
 char *vitra_save_dialog(void);
+int vitra_message_dialog(const char *title, const char *message, int confirm);
 
 void vitra_tray_set(const char *tooltip);
 void vitra_tray_clear_menu(void);

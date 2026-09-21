@@ -62,6 +62,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDialogSave, Available: false,
 			Detail: "requires native darwin host",
 		},
+		platform.FeatureDialogMessage: {
+			Feature: platform.FeatureDialogMessage, Available: false,
+			Detail: "requires native darwin host",
+		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,
 			Detail: "flock-based; available without native WebView",
@@ -122,6 +126,9 @@ func (h *Host) OpenFileDialog() (string, error) {
 }
 func (h *Host) SaveFileDialog() (string, error) {
 	return "", h.err(platform.FeatureDialogSave)
+}
+func (h *Host) MessageDialog(string, string, string) (bool, error) {
+	return false, h.err(platform.FeatureDialogMessage)
 }
 func (h *Host) SetActionHandler(func(string))                      {}
 func (h *Host) SetDragDropHandler(func(domain.WindowID, []string)) {}

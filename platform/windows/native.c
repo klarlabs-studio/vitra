@@ -800,6 +800,15 @@ char *vitra_save_dialog(void) {
 	return _strdup(path);
 }
 
+int vitra_message_dialog(const char *title, const char *message, int confirm) {
+	UINT type = confirm ? (MB_YESNO | MB_ICONQUESTION) : (MB_OK | MB_ICONINFORMATION);
+	int response = MessageBoxA(NULL, message ? message : "", title ? title : "", type);
+	if (confirm) {
+		return response == IDYES ? 1 : 0;
+	}
+	return 1;
+}
+
 void vitra_tray_set(const char *tooltip) {
 	ensure_tray_window();
 	if (!g_tray_hwnd) {

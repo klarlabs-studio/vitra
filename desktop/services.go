@@ -20,6 +20,7 @@ const (
 	PermTraySet          domain.PermissionName = "tray.set"
 	PermDialogOpen       domain.PermissionName = "dialog.open"
 	PermDialogSave       domain.PermissionName = "dialog.save"
+	PermDialogMessage    domain.PermissionName = "dialog.message"
 	PermClipboardRead    domain.PermissionName = "clipboard.read"
 	PermClipboardWrite   domain.PermissionName = "clipboard.write"
 	PermShortcutRegister domain.PermissionName = "shortcut.register"
@@ -86,12 +87,13 @@ func (s *TrayService) SetTray(ctx context.Context, caller domain.Caller, tooltip
 	return nil
 }
 
-// DialogService opens native file dialogs.
+// DialogService opens native file and message dialogs.
 type DialogService struct {
-	Gateway Gateway
-	Host    platform.Host
-	OnOpen  func(ctx context.Context) ([]string, error)
-	OnSave  func(ctx context.Context) (string, error)
+	Gateway   Gateway
+	Host      platform.Host
+	OnOpen    func(ctx context.Context) ([]string, error)
+	OnSave    func(ctx context.Context) (string, error)
+	OnMessage func(ctx context.Context, title, message, kind string) (bool, error)
 }
 
 // OpenFile authorizes dialog.open.
@@ -120,6 +122,31 @@ func (s *DialogService) SaveFile(ctx context.Context, caller domain.Caller) (str
 		return "", &platform.ErrUnsupported{Feature: platform.FeatureDialogSave, OS: s.Host.OS(), Detail: "no dialog adapter bound"}
 	}
 	return s.OnSave(ctx)
+}
+
+// Message authorizes dialog.message. kind is "info" (OK) or "confirm" (Yes/No).
+// Returns true when the user accepts (OK/Yes).
+func (s *DialogService) Message(ctx context.Context, caller domain.Caller, title, message, kind string) (bool, error) {
+	kind = strings.TrimSpace(strings.ToLower(kind))
+	if kind == "" {
+		kind = "info"
+	}
+	if kind != "info" && kind != "confirm" {
+		return false, &domain.ErrValidation{Message: `kind must be "info" or "confirm"`}
+	}
+	if strings.TrimSpace(message) == "" {
+		return false, &domain.ErrValidation{Message: "message is required"}
+	}
+	if err := authorize(s.Gateway, caller, PermDialogMessage); err != nil {
+		return false, err
+	}
+	if err := platform.Require(s.Host, platform.FeatureDialogMessage); err != nil {
+		return false, err
+	}
+	if s.OnMessage == nil {
+		return false, &platform.ErrUnsupported{Feature: platform.FeatureDialogMessage, OS: s.Host.OS(), Detail: "no message dialog adapter bound"}
+	}
+	return s.OnMessage(ctx, title, message, kind)
 }
 
 // ClipboardService reads/writes the system clipboard.

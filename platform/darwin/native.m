@@ -646,6 +646,27 @@ char *vitra_save_dialog(void) {
 	return strdup(url.fileSystemRepresentation);
 }
 
+int vitra_message_dialog(const char *title, const char *message, int confirm) {
+	@autoreleasepool {
+		NSAlert *alert = [[NSAlert alloc] init];
+		alert.messageText = title ? [NSString stringWithUTF8String:title] : @"";
+		alert.informativeText = message ? [NSString stringWithUTF8String:message] : @"";
+		if (confirm) {
+			alert.alertStyle = NSAlertStyleInformational;
+			[alert addButtonWithTitle:@"Yes"];
+			[alert addButtonWithTitle:@"No"];
+		} else {
+			alert.alertStyle = NSAlertStyleInformational;
+			[alert addButtonWithTitle:@"OK"];
+		}
+		NSModalResponse response = [alert runModal];
+		if (confirm) {
+			return response == NSAlertFirstButtonReturn ? 1 : 0;
+		}
+		return 1;
+	}
+}
+
 #define VITRA_MAX_HOTKEYS 64
 #define VITRA_HOTKEY_SIG 'VTRA'
 
