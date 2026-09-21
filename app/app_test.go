@@ -107,6 +107,7 @@ func (h *fakeHost) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, err
 	return platform.WindowChrome{}, nil
 }
 func (h *fakeHost) FocusWindow(domain.WindowID) error      { return nil }
+func (h *fakeHost) BlurWindow(domain.WindowID) error       { return nil }
 func (h *fakeHost) OpenURL(context.Context, string) error  { return nil }
 func (h *fakeHost) OpenPath(context.Context, string) error { return nil }
 func (h *fakeHost) RegisterGlobalShortcut(string, string) error {

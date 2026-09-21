@@ -511,6 +511,24 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	if err := focuser.Focus(ctx, caller, ""); err == nil {
 		t.Fatal("expected empty window validation")
 	}
+	if err := missing.Blur(ctx, caller, "main"); err == nil {
+		t.Fatal("expected missing blur adapter")
+	}
+	var blurred domain.WindowID
+	blurrer := &desktop.WindowService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnBlur: func(_ context.Context, window domain.WindowID) error {
+			blurred = window
+			return nil
+		},
+	}
+	if err := blurrer.Blur(ctx, caller, "main"); err != nil || blurred != "main" {
+		t.Fatalf("blur: %s err=%v", blurred, err)
+	}
+	if err := blurrer.Blur(ctx, caller, ""); err == nil {
+		t.Fatal("expected empty window validation for blur")
+	}
 
 	var applied platform.WindowChrome
 	visibility := &desktop.WindowService{

@@ -80,6 +80,7 @@ func TestStubHost_ReportsNativeRequirement(t *testing.T) {
 		t.Fatal("expected read chrome error")
 	}
 	mustErr(h.FocusWindow("main"))
+	mustErr(h.BlurWindow("main"))
 	if !fs.Available(platform.FeatureOpenURL) {
 		t.Fatal("stub should expose browser.open via xdg-open")
 	}

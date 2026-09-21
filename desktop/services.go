@@ -675,6 +675,7 @@ type WindowService struct {
 	OnApply  func(ctx context.Context, window domain.WindowID, chrome platform.WindowChrome) error
 	OnRead   func(ctx context.Context, window domain.WindowID) (platform.WindowChrome, error)
 	OnFocus  func(ctx context.Context, window domain.WindowID) error
+	OnBlur   func(ctx context.Context, window domain.WindowID) error
 	OnCreate func(ctx context.Context, opts WindowCreateOptions) error
 	OnClose  func(ctx context.Context, window domain.WindowID) error
 }
@@ -731,6 +732,23 @@ func (s *WindowService) Focus(ctx context.Context, caller domain.Caller, window 
 		return &platform.ErrUnsupported{Feature: platform.FeatureWindowChrome, OS: s.Host.OS(), Detail: "no window focus adapter bound"}
 	}
 	return s.OnFocus(ctx, window)
+}
+
+// Blur authorizes window.chrome then resigns key focus on the window.
+func (s *WindowService) Blur(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	if window == "" {
+		return &domain.ErrValidation{Message: "window id is required"}
+	}
+	if err := authorize(s.Gateway, caller, PermWindowChrome); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeatureWindowChrome); err != nil {
+		return err
+	}
+	if s.OnBlur == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureWindowChrome, OS: s.Host.OS(), Detail: "no window blur adapter bound"}
+	}
+	return s.OnBlur(ctx, window)
 }
 
 // Hide authorizes window.chrome then hides the window via chrome.Hidden.

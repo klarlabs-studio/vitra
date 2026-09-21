@@ -439,6 +439,15 @@ void vitra_win_focus(VitraWin *w) {
 	[NSApp activateIgnoringOtherApps:YES];
 }
 
+void vitra_win_blur(VitraWin *w) {
+	if (!w || !w->window) {
+		return;
+	}
+	NSWindow *win = w->window;
+	[win resignKeyWindow];
+	[win orderBack:nil];
+}
+
 static void parse_shortcut(const char *shortcut, NSString **keyOut, NSEventModifierFlags *modsOut) {
 	*keyOut = @"";
 	*modsOut = 0;

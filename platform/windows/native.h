@@ -33,6 +33,7 @@ void vitra_win_free(VitraWin *w);
 void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden, const char *icon_path);
 VitraChrome vitra_win_chrome(VitraWin *w);
 void vitra_win_focus(VitraWin *w);
+void vitra_win_blur(VitraWin *w);
 
 void vitra_win_clear_menu(VitraWin *w);
 void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut);

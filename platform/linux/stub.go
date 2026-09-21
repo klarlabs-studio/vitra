@@ -127,6 +127,7 @@ func (h *Host) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, error) 
 	return platform.WindowChrome{}, h.err()
 }
 func (h *Host) FocusWindow(domain.WindowID) error { return h.err() }
+func (h *Host) BlurWindow(domain.WindowID) error  { return h.err() }
 func (h *Host) CreateWindow(context.Context, platform.WindowSpec) error {
 	return h.err()
 }

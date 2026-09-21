@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official window blur: `window.blur` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Blur` → `DesktopHost.BlurWindow` (GTK clear-focus + lower, NSWindow `resignKeyWindow`/`orderBack`, Win32 `HWND_BOTTOM`); scaffold/competitive bind.
 - `vitra new --template backbone`: Vite + Backbone 1.6 + Underscore + TypeScript starter (`Backbone.View` with `data-action` events) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - `vitra new --template knockout`: Vite + Knockout 3 + TypeScript starter (`applyBindings` view-model, `data-bind`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - `vitra new --template hyperapp`: Vite + Hyperapp 2 + TypeScript starter (`h`/`text`/`app` with effectful actions) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
