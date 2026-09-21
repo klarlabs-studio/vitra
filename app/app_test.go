@@ -18,11 +18,13 @@ type fakeHost struct {
 	invoke  func(domain.WindowID, domain.Origin, []byte) []byte
 	nav     func(domain.WindowID, string) bool
 	opened  bool
+	opens   []platform.WindowSpec
 	uri     string
 	preload string
 	posted  []postedMsg
 	quit    chan struct{}
 	ran     chan struct{}
+	closed  []domain.WindowID
 }
 
 type postedMsg struct {
@@ -44,6 +46,7 @@ func (h *fakeHost) SetNavPolicy(fn func(domain.WindowID, string) bool)      { h.
 func (h *fakeHost) CreateWindow(context.Context, platform.WindowSpec) error { return nil }
 func (h *fakeHost) Open(spec platform.WindowSpec, uri, preload string) error {
 	h.opened = true
+	h.opens = append(h.opens, spec)
 	h.uri = uri
 	h.preload = preload
 	return nil
@@ -56,8 +59,11 @@ func (h *fakeHost) PostMessage(_ context.Context, id domain.WindowID, message []
 	h.posted = append(h.posted, postedMsg{Window: id, Message: cp})
 	return nil
 }
-func (h *fakeHost) Eval(domain.WindowID, string) error                 { return nil }
-func (h *fakeHost) CloseWindow(context.Context, domain.WindowID) error { return nil }
+func (h *fakeHost) Eval(domain.WindowID, string) error { return nil }
+func (h *fakeHost) CloseWindow(_ context.Context, id domain.WindowID) error {
+	h.closed = append(h.closed, id)
+	return nil
+}
 func (h *fakeHost) ClipboardGet() (string, error)                      { return "clip", nil }
 func (h *fakeHost) ClipboardSet(string) error                          { return nil }
 func (h *fakeHost) OpenFileDialog() (string, error)                    { return "/tmp/x", nil }
@@ -250,4 +256,61 @@ func TestApp_HelpersAndBadInvoke(t *testing.T) {
 	}
 	application.Quit()
 	<-errCh
+}
+
+func TestApp_OpenAndCloseWindow(t *testing.T) {
+	host := &fakeHost{quit: make(chan struct{}), ran: make(chan struct{})}
+	assets := fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("<html>ok</html>")}}
+	application, err := app.New(app.Options{
+		AppID:  "com.vitra.multi",
+		Assets: assets,
+		Host:   host,
+		Window: app.WindowOptions{ID: "main", Width: 800, Height: 600},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	errCh := make(chan error, 1)
+	go func() { errCh <- application.Run(context.Background()) }()
+	select {
+	case <-host.ran:
+	case <-time.After(2 * time.Second):
+		t.Fatal("run timeout")
+	}
+
+	if err := application.OpenWindow(context.Background(), app.WindowOptions{ID: "aux", Title: "Aux", Width: 400, Height: 300}); err != nil {
+		t.Fatal(err)
+	}
+	if err := application.OpenWindow(context.Background(), app.WindowOptions{ID: "aux"}); err == nil {
+		t.Fatal("expected duplicate window error")
+	}
+	ids := application.Windows()
+	if len(ids) != 2 {
+		t.Fatalf("windows=%v", ids)
+	}
+	if len(host.opens) != 2 || host.opens[1].ID != "aux" {
+		t.Fatalf("opens=%+v", host.opens)
+	}
+
+	if err := application.CloseWindow(context.Background(), "aux"); err != nil {
+		t.Fatal(err)
+	}
+	if len(application.Windows()) != 1 {
+		t.Fatalf("after close: %v", application.Windows())
+	}
+	// Closing last window should quit.
+	if err := application.CloseWindow(context.Background(), "main"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected quit after last window")
+	}
+	if len(host.closed) != 2 {
+		t.Fatalf("closed=%v", host.closed)
+	}
 }

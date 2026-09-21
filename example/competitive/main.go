@@ -376,6 +376,15 @@ func run() error {
 				host.InjectFileDrop("main", []string{"/tmp/vitra-demo-drop.txt"})
 			}
 		}
+		if os.Getenv("VITRA_SECOND_WINDOW") == "1" {
+			if err := application.OpenWindow(context.Background(), app.WindowOptions{
+				ID: "aux", Title: "Vitra Aux", Width: 480, Height: 360,
+			}); err != nil {
+				fmt.Fprintf(os.Stderr, "second window: %v\n", err)
+			} else {
+				fmt.Println("opened second window: aux")
+			}
+		}
 		if title := os.Getenv("VITRA_WINDOW_TITLE"); title != "" {
 			winChrome := &desktop.WindowService{
 				Gateway: rt,
