@@ -649,3 +649,70 @@ func TestBuildWiXDir_ARPNoModifyNoRepair(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildNSISDir_ARPEstimatedSize(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	// 2048 bytes → 2 KB after (size+1023)/1024 rounding.
+	payload := make([]byte, 2048)
+	copy(payload, []byte("MZ"))
+	if err := os.WriteFile(bin, payload, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "nsis")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsNSIS},
+	}
+	if _, err := BuildNSISDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "installer.nsi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `WriteRegDWORD HKCU "${UNINST_KEY}" "EstimatedSize" 2`
+	if !strings.Contains(string(raw), want) {
+		t.Fatalf("missing EstimatedSize\n%s", raw)
+	}
+}
+
+func TestBuildWiXDir_ARPEstimatedSize(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	payload := make([]byte, 2048)
+	copy(payload, []byte("MZ"))
+	if err := os.WriteFile(bin, payload, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "wix")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsMSI},
+	}
+	if _, err := BuildWiXDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "product.wxs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `<Property Id="ARPSIZE" Value="2"/>`
+	if !strings.Contains(string(raw), want) {
+		t.Fatalf("missing ARPSIZE\n%s", raw)
+	}
+}
+
+func TestWindowsARPEstimatedSizeKB(t *testing.T) {
+	if got := windowsARPEstimatedSizeKB("/no/such/file", ""); got != 1 {
+		t.Fatalf("missing binary floor: %d", got)
+	}
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, make([]byte, 1025), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := windowsARPEstimatedSizeKB(bin, ""); got != 2 {
+		t.Fatalf("1025 bytes → want 2 KB, got %d", got)
+	}
+}
