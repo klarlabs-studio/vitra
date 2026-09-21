@@ -7,6 +7,89 @@ import (
 	"testing"
 )
 
+func TestStageWindows_StagesIcon(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	icon := filepath.Join(tmp, "app.ico")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(icon, []byte("ICO"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "stage")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "1.0.0", Name: "Demo",
+		Targets: []Target{TargetWindowsDir}, IconPath: icon,
+	}
+	if _, err := StageWindows(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "bin", "Demo.ico")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBuildWiXDir_IncludesIcon(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	icon := filepath.Join(tmp, "app.ico")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(icon, []byte("ICO"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "wix")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsMSI}, IconPath: icon,
+	}
+	if _, err := BuildWiXDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "product.wxs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	for _, want := range []string{`SourceFile="bin\Demo.ico"`, "ARPPRODUCTICON", `Source="bin\Demo.ico"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q\n%s", want, body)
+		}
+	}
+}
+
+func TestBuildNSISDir_IncludesIcon(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	icon := filepath.Join(tmp, "app.ico")
+	if err := os.WriteFile(bin, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(icon, []byte("ICO"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "nsis")
+	spec := Spec{
+		AppID: "com.vitra.demo", Version: "0.4.0", Name: "Demo",
+		Targets: []Target{TargetWindowsNSIS}, IconPath: icon,
+	}
+	if _, err := BuildNSISDir(spec, bin, out); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "installer.nsi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	for _, want := range []string{`PRODUCT_ICON`, `File "bin\${PRODUCT_ICON}"`, `${PRODUCT_ICON}" 0`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("missing %q\n%s", want, body)
+		}
+	}
+}
+
 func TestStageWindows_LayoutAndDigest(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "app.bin")

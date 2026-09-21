@@ -146,6 +146,27 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	if arch == "" {
 		arch = DefaultArch()
 	}
+	iconFile := ""
+	if spec.IconPath != "" {
+		base := strings.TrimSuffix(exeName, filepath.Ext(exeName))
+		ext := strings.ToLower(filepath.Ext(spec.IconPath))
+		if ext == "" {
+			ext = ".ico"
+		}
+		iconFile = base + ext
+	}
+	iconXML := ""
+	iconComp := ""
+	if iconFile != "" {
+		iconID := "AppIconFile"
+		iconXML = fmt.Sprintf(`
+    <Icon Id="AppIcon" SourceFile="bin\%s"/>
+    <Property Id="ARPPRODUCTICON" Value="AppIcon"/>`, iconFile)
+		iconComp = fmt.Sprintf(`
+      <Component Id="AppIconComponent" Guid="*">
+        <File Id="%s" Source="bin\%s" KeyPath="yes"/>
+      </Component>`, iconID, iconFile)
+	}
 	wxs := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="*" Name="%s" Language="1033" Version="%s"
@@ -153,7 +174,7 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
     <Package InstallerVersion="200" Compressed="yes" InstallScope="perUser"
              Description="%s" Comments="Vitra-packaged Windows installer"/>
     <MajorUpgrade DowngradeErrorMessage="A newer version is already installed."/>
-    <MediaTemplate EmbedCab="yes"/>
+    <MediaTemplate EmbedCab="yes"/>%s
     <Feature Id="ProductFeature" Title="%s" Level="1">
       <ComponentGroupRef Id="ProductComponents"/>
     </Feature>
@@ -169,12 +190,12 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
     <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
       <Component Id="MainExecutable" Guid="*">
         <File Id="AppExe" Source="bin\%s" KeyPath="yes" Checksum="yes"/>
-      </Component>
+      </Component>%s
     </ComponentGroup>
   </Fragment>
 </Wix>
 `, xmlEscape(spec.Name), xmlEscape(spec.Version), xmlEscape(spec.Name), xmlEscape(spec.AppID),
-		xmlEscape(spec.Name), xmlEscape(spec.Name), xmlEscape(safeName), exeName)
+		xmlEscape(spec.Name), iconXML, xmlEscape(spec.Name), xmlEscape(safeName), exeName, iconComp)
 	_ = arch // recorded in Spec / provenance; WiX Platform can be set at candle time
 	if err := os.WriteFile(filepath.Join(outDir, "product.wxs"), []byte(wxs), 0o644); err != nil {
 		return Artifact{}, err
