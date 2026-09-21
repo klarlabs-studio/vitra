@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Darwin clipboard: `ClipboardGet`/`ClipboardSet` via `pbpaste`/`pbcopy` (available without WKWebView); grant path unchanged (`clipboard.read`/`clipboard.write`).
 - Darwin OpenURL: grant-gated `browser.open` launches http(s)/mailto via macOS `open` (available without WKWebView); scheme validation mirrors Linux.
 - Darwin WKWebView host scaffold (`platform/darwin`, `-tags vitra_native`): NSWindow + WKWebView Open/Navigate/Eval/PostMessage/Run/Quit with script-message bridge and nav policy; non-core DesktopHost surfaces stay explicit `ErrUnsupported`. Without the tag, the stub adapter remains.
 - Linux window icon: `WindowChrome.IconPath` sets the GTK window icon from a filesystem image; empty path leaves the icon unchanged.

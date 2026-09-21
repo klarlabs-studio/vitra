@@ -78,8 +78,8 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureWindowNavigate: {Feature: platform.FeatureWindowNavigate, Available: true},
 		platform.FeatureWebViewMessage: {Feature: platform.FeatureWebViewMessage, Available: true},
 		platform.FeatureClipboard: {
-			Feature: platform.FeatureClipboard, Available: false,
-			Detail: "not yet implemented on Darwin WKWebView host",
+			Feature: platform.FeatureClipboard, Available: true,
+			Detail: "pbcopy/pbpaste; available without native WebView",
 		},
 		platform.FeatureDialogOpen: {
 			Feature: platform.FeatureDialogOpen, Available: false,
@@ -298,14 +298,6 @@ func (h *Host) CloseWindow(_ context.Context, id domain.WindowID) error {
 	})
 	return <-errCh
 }
-
-// ClipboardGet is not yet implemented on Darwin.
-func (h *Host) ClipboardGet() (string, error) {
-	return "", h.err(platform.FeatureClipboard)
-}
-
-// ClipboardSet is not yet implemented on Darwin.
-func (h *Host) ClipboardSet(string) error { return h.err(platform.FeatureClipboard) }
 
 // OpenFileDialog is not yet implemented on Darwin.
 func (h *Host) OpenFileDialog() (string, error) {
