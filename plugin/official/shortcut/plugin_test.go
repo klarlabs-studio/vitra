@@ -19,8 +19,11 @@ func TestShortcutPlugin_Contribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.Commands) != 1 || string(c.Commands[0].Name()) != "shortcut.register" {
+	if len(c.Commands) != 2 || string(c.Commands[0].Name()) != "shortcut.register" || string(c.Commands[1].Name()) != "shortcut.unregister" {
 		t.Fatalf("commands: %v", c.Commands)
+	}
+	if string(c.Commands[1].Permission()) != "shortcut.register" {
+		t.Fatalf("unregister permission: %s", c.Commands[1].Permission())
 	}
 	if len(c.Events) != 1 || string(c.Events[0]) != "shortcut.action" {
 		t.Fatalf("events: %v", c.Events)

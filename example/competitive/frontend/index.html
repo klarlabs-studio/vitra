@@ -63,6 +63,7 @@
       <button id="trayClear" class="secondary">Clear tray</button>
       <button id="drop" class="secondary">Enable file drops</button>
       <button id="shortcut" class="secondary">Register shortcut</button>
+      <button id="shortcutUnreg" class="secondary">Unregister shortcut</button>
       <button id="quit" class="secondary">Quit app</button>
     </div>
     <pre id="out">Ready.</pre>
@@ -246,6 +247,16 @@
           action: "app.quit",
         });
         show({ shortcut: "registered" });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("shortcutUnreg").onclick = async () => {
+      try {
+        await window.vitra.invoke("shortcut.unregister", {
+          accelerator: "Ctrl+Shift+Q",
+        });
+        show({ shortcut: "unregistered" });
       } catch (e) {
         show(String(e.message || e), true);
       }

@@ -2227,6 +2227,9 @@ func run() error {
 		OnRegister: func(_ context.Context, accelerator, actionID string) error {
 			return host.RegisterGlobalShortcut(accelerator, actionID)
 		},
+		OnUnregister: func(_ context.Context, accelerator string) error {
+			return host.UnregisterGlobalShortcut(accelerator)
+		},
 	}
 	if err := rt.BindExecutor("shortcut.register", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		acc, action, err := desktop.ParseShortcutRegister(input)
@@ -2234,6 +2237,15 @@ func run() error {
 			return nil, err
 		}
 		return nil, shortcuts.Register(ctx, caller, acc, action)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("shortcut.unregister", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		acc, err := desktop.ParseShortcutUnregister(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, shortcuts.Unregister(ctx, caller, acc)
 	})); err != nil {
 		return err
 	}
@@ -2341,6 +2353,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="trayClear">tray.clear</button>
 <button id="drop">dragdrop.receive</button>
 <button id="shortcut">shortcut.register</button>
+<button id="shortcutUnreg">shortcut.unregister</button>
 <button id="quit">app.quit</button>
 <pre id="out"></pre>
 <script>
@@ -2423,6 +2436,12 @@ document.getElementById("shortcut").onclick = async () => {
   try {
     await invoke("shortcut.register", { accelerator: "Ctrl+Shift+Q", action: "app.quit" });
     out.textContent = JSON.stringify({ shortcut: "registered" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("shortcutUnreg").onclick = async () => {
+  try {
+    await invoke("shortcut.unregister", { accelerator: "Ctrl+Shift+Q" });
+    out.textContent = JSON.stringify({ shortcut: "unregistered" }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
 document.getElementById("quit").onclick = async () => {

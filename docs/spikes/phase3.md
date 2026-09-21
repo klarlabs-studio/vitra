@@ -27,7 +27,7 @@ competitive demo binds `dialog.open`/`dialog.save`/`dialog.openDirectory`/`dialo
 `menu.set` to `desktop.MenuService` (via `DesktopHost.SetMenuBar`; actions emit `menu.action`),
 `tray.set`/`tray.clear` to `desktop.TrayService` (via `DesktopHost.SetTray`/`ClearTray`; actions emit `tray.action`),
 `dragdrop.receive` to `desktop.DragDropService` (via `EnableDragDrop`; drops emit `dragdrop.drop`),
-`shortcut.register` to `desktop.ShortcutService` (via `RegisterGlobalShortcut`; actions emit `shortcut.action`; Wayland unsupported),
+`shortcut.register`/`shortcut.unregister` to `desktop.ShortcutService` (via `RegisterGlobalShortcut`/`UnregisterGlobalShortcut`; actions emit `shortcut.action`; Wayland unsupported),
 `app.quit` to `desktop.AppService` (via `App.Quit`),
 and `fs.read`/`fs.write` to
 `desktop.FileService` with a PathScope grant.

@@ -336,9 +336,10 @@ func (s *ClipboardService) Write(ctx context.Context, caller domain.Caller, text
 
 // ShortcutService registers global shortcuts.
 type ShortcutService struct {
-	Gateway    Gateway
-	Host       platform.Host
-	OnRegister func(ctx context.Context, accelerator, actionID string) error
+	Gateway      Gateway
+	Host         platform.Host
+	OnRegister   func(ctx context.Context, accelerator, actionID string) error
+	OnUnregister func(ctx context.Context, accelerator string) error
 }
 
 // ParseShortcutRegister extracts accelerator + action id from an invoke payload.
@@ -365,6 +366,23 @@ func ParseShortcutRegister(input any) (accelerator, actionID string, err error) 
 	return accelerator, actionID, nil
 }
 
+// ParseShortcutUnregister extracts an accelerator from an invoke payload.
+// Accepts a bare string or { accelerator }.
+func ParseShortcutUnregister(input any) (accelerator string, err error) {
+	switch v := input.(type) {
+	case string:
+		accelerator = v
+	case map[string]any:
+		accelerator, _ = v["accelerator"].(string)
+	default:
+		return "", &domain.ErrValidation{Message: "shortcut.unregister input must be a string or {accelerator}"}
+	}
+	if accelerator == "" {
+		return "", &domain.ErrValidation{Message: "accelerator is required"}
+	}
+	return accelerator, nil
+}
+
 // Register authorizes shortcut.register then binds accelerator → actionID.
 func (s *ShortcutService) Register(ctx context.Context, caller domain.Caller, accelerator, actionID string) error {
 	if accelerator == "" {
@@ -383,6 +401,23 @@ func (s *ShortcutService) Register(ctx context.Context, caller domain.Caller, ac
 		return &platform.ErrUnsupported{Feature: platform.FeatureGlobalShortcut, OS: s.Host.OS(), Detail: "no shortcut adapter bound"}
 	}
 	return s.OnRegister(ctx, accelerator, actionID)
+}
+
+// Unregister authorizes shortcut.register then removes accelerator.
+func (s *ShortcutService) Unregister(ctx context.Context, caller domain.Caller, accelerator string) error {
+	if accelerator == "" {
+		return &domain.ErrValidation{Message: "accelerator is required"}
+	}
+	if err := authorize(s.Gateway, caller, PermShortcutRegister); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeatureGlobalShortcut); err != nil {
+		return err
+	}
+	if s.OnUnregister == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureGlobalShortcut, OS: s.Host.OS(), Detail: "no shortcut unregister adapter bound"}
+	}
+	return s.OnUnregister(ctx, accelerator)
 }
 
 // AppService provides grant-gated application lifecycle commands.
