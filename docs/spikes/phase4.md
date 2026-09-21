@@ -33,11 +33,12 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `dmg` | Final `.dmg` (`BuildDMG` → hdiutil or `VITRA_HDIUTIL`; includes Applications symlink) |
 
 Optional `--icon <path>` copies a `.png` / `.svg` / `.icns` / `.ico` / `.xpm` into
-Linux stages (next to the `.desktop`, `Icon=<name>`), `.deb` packages
-(`usr/share/pixmaps/` + `Icon=`), Darwin `Contents/Resources`
-(`CFBundleIconFile`), and Windows `bin/` (WiX `ARPPRODUCTICON` + NSIS shortcut
-icon). Optional `--maintainer` sets Debian `Maintainer` and, when provided,
-WiX `Manufacturer` / NSIS `PRODUCT_PUBLISHER` (otherwise WiX/NSIS use `Name`).
+Linux stages (root + `usr/share/icons/hicolor/…/apps/`, `Icon=<name>`), AppDir
+(`.DirIcon` symlink + hicolor), `.deb` packages (`usr/share/pixmaps/` + hicolor +
+`Icon=`), Darwin `Contents/Resources` (`CFBundleIconFile`), and Windows `bin/`
+(WiX `ARPPRODUCTICON` + NSIS shortcut icon). Optional `--maintainer` sets Debian
+`Maintainer` and, when provided, WiX `Manufacturer` / NSIS `PRODUCT_PUBLISHER`
+(otherwise WiX/NSIS use `Name`).
 
 `BuildAppImage` stages an AppDir then invokes `appimagetool` (or
 `VITRA_APPIMAGETOOL`). Without the tool, use `--format appdir` and fold

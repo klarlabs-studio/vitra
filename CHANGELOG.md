@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Linux package icons: AppDir stages `.DirIcon` + `usr/share/icons/hicolor/{256x256|scalable}/apps/`; dir stage and `.deb` also emit the hicolor theme path (deb keeps `usr/share/pixmaps/` too).
 - Packaging `Spec.Maintainer` / `vitra package --maintainer`: sets Debian control Maintainer (default `Vitra Packaging <vitra@klarlabs.de>`) and WiX Manufacturer / NSIS Publisher when provided.
 - Packaging `SigningIdentityRef` validation: refs must use `env:` / `keychain:` / `file:` / `secret:` prefixes; PEM / `PRIVATE KEY` material is rejected (invariant 10).
 - WiX Desktop shortcut: `BuildWiXDir` emits a `DesktopFolder` shortcut (with optional `Icon` when `--icon` is set), matching NSIS Desktop UX.

@@ -49,7 +49,7 @@ func BuildAppDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 		return Artifact{}, err
 	}
 	iconKey := binName
-	if _, _, err := stageIconFile(spec.IconPath, outDir, binName); err != nil {
+	if _, _, err := stageFreedesktopIcons(spec.IconPath, outDir, binName, true); err != nil {
 		return Artifact{}, err
 	}
 	desktop := filepath.Join(outDir, binName+".desktop")
@@ -74,8 +74,8 @@ Terminal=false
 }
 
 // BuildDeb writes a Debian binary package (.deb) using only the Go standard library.
-// When Spec.IconPath is set, the icon is staged under usr/share/pixmaps/ and the
-// .desktop entry sets Icon=<name> for FreeDesktop lookup.
+// When Spec.IconPath is set, the icon is staged under usr/share/pixmaps/ and
+// usr/share/icons/hicolor/…/apps/, and the .desktop entry sets Icon=<name>.
 func BuildDeb(spec Spec, binaryPath, outPath string) (Artifact, error) {
 	if err := spec.Validate(); err != nil {
 		return Artifact{}, err
@@ -122,7 +122,8 @@ func BuildDeb(spec Spec, binaryPath, outPath string) (Artifact, error) {
 				return Artifact{}, err
 			}
 			dataFiles["usr/share/pixmaps/"+fileName] = fileEntry{data: iconData, mode: 0o644}
-			payloadSize += len(iconData)
+			dataFiles[hicolorIconRel(fileName)] = fileEntry{data: iconData, mode: 0o644}
+			payloadSize += len(iconData) * 2
 		}
 	}
 
