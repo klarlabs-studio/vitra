@@ -595,6 +595,12 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	if err := minmax.SetAlwaysOnTop(ctx, caller, "main", false); err != nil || sized.AlwaysOnTop {
 		t.Fatalf("setAlwaysOnTop false: %+v err=%v", sized, err)
 	}
+	sized.Minimized = true
+	sized.Maximized = true
+	sized.Fullscreen = true
+	if err := minmax.Restore(ctx, caller, "main"); err != nil || sized.Minimized || sized.Maximized || sized.Fullscreen {
+		t.Fatalf("restore: %+v err=%v", sized, err)
+	}
 	winID, onTop, parseErr := desktop.ParseWindowAlwaysOnTop(map[string]any{"id": "main", "alwaysOnTop": true})
 	if parseErr != nil || winID != "main" || !onTop {
 		t.Fatalf("ParseWindowAlwaysOnTop: id=%s onTop=%v err=%v", winID, onTop, parseErr)
