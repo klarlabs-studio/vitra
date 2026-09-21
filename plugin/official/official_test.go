@@ -13,13 +13,14 @@ import (
 	"go.klarlabs.de/vitra/plugin/official/notification"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	officialpath "go.klarlabs.de/vitra/plugin/official/path"
+	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
 )
 
 func TestOfficialPlugins_RegisterCleanly(t *testing.T) {
 	reg := plugin.NewRegistry(plugin.SemVer{Major: 0, Minor: 3, Patch: 0})
 	for _, p := range []plugin.Plugin{
 		fs.New(), dialog.New(), clipboard.New(), browser.New(),
-		officialos.New(), notification.New(), officialpath.New(),
+		officialos.New(), notification.New(), officialpath.New(), officialwindow.New(),
 	} {
 		if err := reg.Register(context.Background(), p); err != nil {
 			t.Fatal(err)
@@ -27,14 +28,14 @@ func TestOfficialPlugins_RegisterCleanly(t *testing.T) {
 	}
 	for _, id := range []domain.PluginID{
 		fs.PluginID, clipboard.PluginID, browser.PluginID,
-		officialos.PluginID, notification.PluginID, officialpath.PluginID,
+		officialos.PluginID, notification.PluginID, officialpath.PluginID, officialwindow.PluginID,
 	} {
 		if _, err := reg.Get(id); err != nil {
 			t.Fatal(err)
 		}
 	}
 	surface := reg.InspectSurface()
-	if len(surface) < 10 {
+	if len(surface) < 12 {
 		t.Fatalf("expected official plugin permissions, got %v", surface)
 	}
 }

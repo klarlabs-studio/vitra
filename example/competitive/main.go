@@ -29,6 +29,7 @@ import (
 	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
 	officialos "go.klarlabs.de/vitra/plugin/official/os"
 	officialpath "go.klarlabs.de/vitra/plugin/official/path"
+	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
 	"go.klarlabs.de/vitra/policy"
 )
 
@@ -117,8 +118,8 @@ func run() error {
 
 	chromeGrant, err := domain.NewCapabilityGrant(
 		"desktop-chrome",
-		"clipboard, dialogs, menu, tray, shortcuts, single-instance, deeplink, drag-drop, window chrome, open url, os info, notifications",
-		[]domain.WindowID{"main"},
+		"clipboard, dialogs, menu, tray, shortcuts, single-instance, deeplink, drag-drop, window chrome/create/close, open url, os info, notifications",
+		[]domain.WindowID{"main", "aux"},
 		[]domain.Origin{domain.OriginPackagedLocal},
 		[]domain.PermissionSpec{
 			{Name: desktop.PermClipboardRead},
@@ -134,6 +135,8 @@ func run() error {
 			{Name: desktop.PermDeepLinkHandle},
 			{Name: desktop.PermDragDrop},
 			{Name: desktop.PermWindowChrome},
+			{Name: desktop.PermWindowCreate},
+			{Name: desktop.PermWindowClose},
 			{Name: desktop.PermOpenURL},
 			{Name: desktop.PermOsInfo},
 			{Name: desktop.PermNotificationShow},
@@ -287,7 +290,7 @@ func run() error {
 	}
 	_ = register // kept for local demo commands if needed
 
-	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* / os.* / notifications.* / path.* permissions (invariant 6).
+	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* / os.* / notifications.* / path.* / window.* permissions (invariant 6).
 	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
 		return err
 	}
@@ -307,6 +310,9 @@ func run() error {
 		return err
 	}
 	if err := rt.RegisterPlugin(context.Background(), officialpath.New()); err != nil {
+		return err
+	}
+	if err := rt.RegisterPlugin(context.Background(), officialwindow.New()); err != nil {
 		return err
 	}
 	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
@@ -444,7 +450,49 @@ func run() error {
 		return err
 	}
 
-	application, err := app.New(app.Options{
+	var application *app.App
+	winSvc := &desktop.WindowService{
+		Gateway: rt,
+		Host:    host,
+		OnCreate: func(ctx context.Context, opts desktop.WindowCreateOptions) error {
+			if application == nil {
+				return fmt.Errorf("app is not ready")
+			}
+			return application.OpenWindow(ctx, app.WindowOptions{
+				ID: opts.ID, Title: opts.Title, Path: opts.Path, Width: opts.Width, Height: opts.Height,
+			})
+		},
+		OnClose: func(ctx context.Context, id domain.WindowID) error {
+			if application == nil {
+				return fmt.Errorf("app is not ready")
+			}
+			return application.CloseWindow(ctx, id)
+		},
+	}
+	if err := rt.BindExecutor("window.create", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		opts, err := desktop.ParseWindowCreateOptions(input)
+		if err != nil {
+			return nil, err
+		}
+		id, err := winSvc.Create(ctx, caller, opts)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"id": string(id)}, nil
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.close", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Close(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
+
+	application, err = app.New(app.Options{
 		AppID:   "com.vitra.competitive",
 		Title:   "Vitra Competitive Demo",
 		Assets:  assets,
