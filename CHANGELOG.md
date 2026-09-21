@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Official window minimize/maximize: `window.minimize` / `window.maximize` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Minimize` / `Maximize` (read chrome → set `Minimized`/`Maximized` → `Apply`); scaffold/competitive bind.
 - `vitra new --template dojo`: Vite + Dojo Framework 8 + TypeScript starter (`WidgetBase` with `v`/`w` virtual DOM) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - `vitra new --template polymer`: Vite + Polymer 3 + TypeScript starter (`vitra-app` PolymerElement, `[[out]]` / `on-click`) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream update_contact: `Spec.Maintainer` / `vitra package --maintainer` (via `EffectiveMaintainer`) flow into metainfo `<update_contact>` (defaults to `DefaultMaintainer`, matching snap `contact:`).

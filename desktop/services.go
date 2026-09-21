@@ -770,6 +770,34 @@ func (s *WindowService) setHidden(ctx context.Context, caller domain.Caller, win
 	return s.Apply(ctx, caller, window, chrome)
 }
 
+// Minimize authorizes window.chrome then minimizes the window via chrome.Minimized.
+func (s *WindowService) Minimize(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	return s.setMinimized(ctx, caller, window, true)
+}
+
+// Maximize authorizes window.chrome then maximizes the window via chrome.Maximized.
+func (s *WindowService) Maximize(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.Maximized = true
+	chrome.Minimized = false
+	return s.Apply(ctx, caller, window, chrome)
+}
+
+func (s *WindowService) setMinimized(ctx context.Context, caller domain.Caller, window domain.WindowID, minimized bool) error {
+	chrome, err := s.Read(ctx, caller, window)
+	if err != nil {
+		return err
+	}
+	chrome.Minimized = minimized
+	if minimized {
+		chrome.Maximized = false
+	}
+	return s.Apply(ctx, caller, window, chrome)
+}
+
 // Create authorizes window.create then opens a window via the bound adapter.
 func (s *WindowService) Create(ctx context.Context, caller domain.Caller, opts WindowCreateOptions) (domain.WindowID, error) {
 	if opts.ID == "" {

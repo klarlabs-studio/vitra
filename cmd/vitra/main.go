@@ -4306,6 +4306,24 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.minimize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Minimize(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.maximize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Maximize(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
 	menus := &desktop.MenuService{
 		Gateway: rt,
 		Host:    host,
@@ -4544,6 +4562,8 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="blur">window.blur</button>
 <button id="hide">window.hide</button>
 <button id="show">window.show</button>
+<button id="minimize">window.minimize</button>
+<button id="maximize">window.maximize</button>
 <button id="menu">menu.set</button>
 <button id="menuClear">menu.clear</button>
 <button id="tray">tray.set</button>
@@ -4619,6 +4639,18 @@ document.getElementById("show").onclick = async () => {
   try {
     await invoke("window.show", { id: "main" });
     out.textContent = JSON.stringify({ show: "main" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("minimize").onclick = async () => {
+  try {
+    await invoke("window.minimize", { id: "main" });
+    out.textContent = JSON.stringify({ minimize: "main" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
+};
+document.getElementById("maximize").onclick = async () => {
+  try {
+    await invoke("window.maximize", { id: "main" });
+    out.textContent = JSON.stringify({ maximize: "main" }, null, 2);
   } catch (e) { out.textContent = String(e); }
 };
 document.getElementById("menu").onclick = async () => {
