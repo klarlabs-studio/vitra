@@ -1854,7 +1854,11 @@ func runPackage(args []string) error {
 			if err := packaging.ExecuteSign(plan, packaging.ExecuteSignOptions{FollowUps: signFollowUps}); err != nil {
 				return err
 			}
-			fmt.Printf("signed %s with %s\n", art.Path, plan.Tool)
+			art.Signed = true
+			if err := packaging.RefreshArtifactDigest(&art); err != nil {
+				return fmt.Errorf("refresh artifact digest after sign: %w", err)
+			}
+			fmt.Printf("signed %s with %s\n  status: %s\n  sha256: %s\n", art.Path, plan.Tool, art.String(), art.SHA256)
 		}
 	}
 	if publish {

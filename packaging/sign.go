@@ -91,7 +91,7 @@ func PlanSign(spec Spec, artifactPath string) (SignPlan, error) {
 			"--force", "--options", "runtime", "--timestamp",
 			"--sign", display, artifactPath,
 		}
-		plan.Note = "plan only until ExecuteSign; Artifact.Signed stays false until then"
+		plan.Note = "plan only until ExecuteSign; Artifact.Signed set after successful ExecuteSign"
 		profile := notarizeProfileDisplay(spec.SigningIdentityRef)
 		plan.FollowUps = []CommandPlan{
 			{
@@ -109,27 +109,27 @@ func PlanSign(spec Spec, artifactPath string) (SignPlan, error) {
 		plan.Supported = true
 		plan.Tool = "signtool"
 		plan.Args = windowsSignArgs(spec.SigningIdentityRef, display, artifactPath)
-		plan.Note = "plan only until ExecuteSign; Artifact.Signed stays false until then"
+		plan.Note = "plan only until ExecuteSign; Artifact.Signed set after successful ExecuteSign"
 	case TargetLinuxDeb:
 		plan.Supported = true
 		plan.Tool = "dpkg-sig"
 		plan.Args = []string{"--sign", "builder", "-k", display, artifactPath}
-		plan.Note = "plan only until ExecuteSign; Artifact.Signed stays false until then"
+		plan.Note = "plan only until ExecuteSign; Artifact.Signed set after successful ExecuteSign"
 	case TargetLinuxRPM:
 		plan.Supported = true
 		plan.Tool = "rpmsign"
 		plan.Args = []string{"--addsign", artifactPath}
-		plan.Note = "plan only until ExecuteSign; configure %_gpg_name to " + display
+		plan.Note = "plan only until ExecuteSign; configure %_gpg_name to " + display + "; Artifact.Signed set after success"
 	case TargetLinuxSnap:
 		plan.Supported = true
 		plan.Tool = "snapcraft"
 		plan.Args = []string{"upload", artifactPath, "--release", "stable"}
-		plan.Note = "plan only until ExecuteSign; Snap Store login required"
+		plan.Note = "plan only until ExecuteSign; Snap Store login required; Artifact.Signed set after success"
 	case TargetLinuxAppImage, TargetLinuxFlatpak:
 		plan.Supported = true
 		plan.Tool = "gpg"
 		plan.Args = []string{"--local-user", display, "--detach-sign", "--armor", artifactPath}
-		plan.Note = "plan only until ExecuteSign; Artifact.Signed stays false until then"
+		plan.Note = "plan only until ExecuteSign; Artifact.Signed set after successful ExecuteSign"
 	default:
 		plan.Supported = false
 		plan.Note = "package signing for this target is not orchestrated yet; ref validated only"

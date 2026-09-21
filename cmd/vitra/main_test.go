@@ -431,6 +431,9 @@ func TestRun_PackageSignExecute(t *testing.T) {
 	if !strings.Contains(printed, "signed") || !strings.Contains(printed, "gpg") {
 		t.Fatalf("expected execute confirmation: %q", printed)
 	}
+	if !strings.Contains(printed, "(signed)") {
+		t.Fatalf("expected Artifact.Signed status: %q", printed)
+	}
 	if err := run([]string{
 		"package", "--format", "dir", "--out", filepath.Join(tmp, "nofu"), "--bin", bin,
 		"--sign-follow-ups", "--signing-identity", "env:GPG_KEY_ID",

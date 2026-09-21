@@ -1,6 +1,8 @@
 package packaging_test
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -66,5 +68,40 @@ func TestSpec_AcceptsSigningRefPrefixes(t *testing.T) {
 		if err := s.Validate(); err != nil {
 			t.Fatalf("%q: %v", ref, err)
 		}
+	}
+}
+
+func TestRefreshArtifactDigest_FileAndDir(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "app.bin")
+	if err := os.WriteFile(file, []byte("v1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	art := packaging.Artifact{Target: packaging.TargetLinuxDeb, Path: file, Signed: true}
+	if err := packaging.RefreshArtifactDigest(&art); err != nil {
+		t.Fatal(err)
+	}
+	if art.SHA256 == "" {
+		t.Fatal("expected sha256")
+	}
+	first := art.SHA256
+	if err := os.WriteFile(file, []byte("v2-signed"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := packaging.RefreshArtifactDigest(&art); err != nil {
+		t.Fatal(err)
+	}
+	if art.SHA256 == first {
+		t.Fatal("digest should change after rewrite")
+	}
+	bundle := packaging.Artifact{Target: packaging.TargetDarwinApp, Path: dir, SHA256: "keep"}
+	if err := packaging.RefreshArtifactDigest(&bundle); err != nil {
+		t.Fatal(err)
+	}
+	if bundle.SHA256 != "keep" {
+		t.Fatalf("dir digest should be unchanged: %q", bundle.SHA256)
+	}
+	if !strings.Contains(art.String(), "(signed)") {
+		t.Fatalf("string=%s", art.String())
 	}
 }

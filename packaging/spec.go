@@ -2,8 +2,11 @@
 package packaging
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 )
@@ -144,4 +147,26 @@ func (a Artifact) String() string {
 		sig = "signed"
 	}
 	return fmt.Sprintf("%s %s (%s)", a.Target, a.Path, sig)
+}
+
+// RefreshArtifactDigest recomputes SHA-256 for a file artifact (e.g. after
+// codesign/signtool mutates bytes). Directory bundles keep the prior digest.
+func RefreshArtifactDigest(art *Artifact) error {
+	if art == nil || art.Path == "" {
+		return fmt.Errorf("artifact path is required")
+	}
+	info, err := os.Stat(art.Path)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return nil
+	}
+	raw, err := os.ReadFile(art.Path)
+	if err != nil {
+		return err
+	}
+	sum := sha256.Sum256(raw)
+	art.SHA256 = hex.EncodeToString(sum[:])
+	return nil
 }
