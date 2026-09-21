@@ -105,7 +105,7 @@ func printUsage() {
 Usage:
   vitra version              Print kernel version
   vitra doctor               Diagnose WebView / CGO prerequisites
-  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko]
+  vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember]
                              Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue/solid/preact/lit/alpine/htmx/angular/qwik/mithril/riot/inferno/stencil/marko add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
@@ -262,18 +262,18 @@ func scaffoldNew(args []string) error {
 				return fmt.Errorf("unknown new flag %q", args[i])
 			}
 			if dir != "" {
-				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko]")
+				return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember]")
 			}
 			dir = args[i]
 		}
 	}
 	if dir == "" {
-		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko]")
+		return fmt.Errorf("usage: vitra new <dir> [--template vanilla|vite|react|svelte|vue|solid|preact|lit|alpine|htmx|angular|qwik|mithril|riot|inferno|stencil|marko|ember]")
 	}
 	switch tmpl {
-	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko":
+	case "vanilla", "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember":
 	default:
-		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, or marko)", tmpl)
+		return fmt.Errorf("unknown template %q (want vanilla, vite, react, svelte, vue, solid, preact, lit, alpine, htmx, angular, qwik, mithril, riot, inferno, stencil, marko, or ember)", tmpl)
 	}
 
 	if err := os.MkdirAll(filepath.Join(dir, "frontend"), 0o755); err != nil {
@@ -322,6 +322,8 @@ func scaffoldNew(args []string) error {
 		files = scaffoldStencilFiles(modPath, tsClient)
 	case "marko":
 		files = scaffoldMarkoFiles(modPath, tsClient)
+	case "ember":
+		files = scaffoldEmberFiles(modPath, tsClient)
 	default:
 		files = scaffoldVanillaFiles(modPath, tsClient)
 	}
@@ -336,7 +338,7 @@ func scaffoldNew(args []string) error {
 	}
 	fmt.Printf("created %s (template=%s)\n", dir, tmpl)
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember":
 		fmt.Println("next: cd", dir, "&& (optional: cd frontend && npm install && npm run build) && vitra dev")
 	default:
 		fmt.Println("next: cd", dir, "&& vitra dev")
@@ -1076,6 +1078,332 @@ declare module "*.marko" {
 `
 }
 
+func scaffoldEmberFiles(modPath, tsClient string) map[string]string {
+	return map[string]string{
+		"go.mod":                                 scaffoldGoMod(modPath),
+		"main.go":                                scaffoldMainGo("all:frontend/dist", "frontend/dist"),
+		"frontend/package.json":                  scaffoldEmberPackageJSON(),
+		"frontend/vite.config.mjs":               scaffoldViteConfig("ember"),
+		"frontend/babel.config.mjs":              scaffoldEmberBabelConfig(),
+		"frontend/ember-cli-build.mjs":           scaffoldEmberCLIBuild(),
+		"frontend/index.html":                    scaffoldEmberIndexHTML(),
+		"frontend/.ember-cli":                    scaffoldEmberCLIJSON(),
+		"frontend/app/app.js":                    scaffoldEmberAppJS(),
+		"frontend/app/router.js":                 scaffoldEmberRouterJS(),
+		"frontend/app/config/environment.js":     scaffoldEmberAppEnvironment(),
+		"frontend/app/styles/app.css":            "html, body { margin: 0; }\n",
+		"frontend/app/templates/application.gjs": scaffoldEmberApplicationGJS(),
+		"frontend/app/components/vitra-app.gjs":  scaffoldEmberVitraAppGJS(),
+		"frontend/config/environment.js":         scaffoldEmberConfigEnvironment(),
+		"frontend/config/optional-features.json": scaffoldEmberOptionalFeatures(),
+		"frontend/config/targets.js":             scaffoldEmberTargets(),
+		"frontend/vitra-client.ts":               tsClient,
+		"frontend/dist/index.html":               scaffoldIndexHTML(),
+		".gitignore":                             "frontend/node_modules/\nfrontend/tmp/\nvitra-app\n",
+		"README.md":                              scaffoldREADME("ember"),
+	}
+}
+
+func scaffoldEmberPackageJSON() string {
+	return `{
+  "name": "vitra-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Vitra Ember frontend",
+  "exports": {
+    "./*": "./app/*"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ember/string": "^4.0.1",
+    "@glimmer/component": "^2.1.1",
+    "ember-load-initializers": "^3.0.1",
+    "ember-resolver": "^13.2.0",
+    "ember-source": "~7.3.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/plugin-transform-runtime": "^7.29.7",
+    "@babel/plugin-transform-typescript": "^7.29.9",
+    "@babel/runtime": "^7.29.7",
+    "@ember/optional-features": "^3.0.0",
+    "@embroider/compat": "^4.1.25",
+    "@embroider/config-meta-loader": "^1.0.0",
+    "@embroider/core": "^4.6.7",
+    "@embroider/legacy-inspector-support": "^0.1.3",
+    "@embroider/macros": "^1.21.1",
+    "@embroider/router": "^3.0.6",
+    "@embroider/vite": "^1.7.13",
+    "@rollup/plugin-babel": "^7.1.0",
+    "babel-plugin-ember-template-compilation": "^4.0.0",
+    "decorator-transforms": "^2.4.0",
+    "ember-cli": "~7.3.0",
+    "ember-cli-babel": "^8.3.2",
+    "vite": "^8.3.0"
+  },
+  "engines": {
+    "node": ">= 20"
+  },
+  "ember": {
+    "edition": "octane"
+  }
+}
+`
+}
+
+func scaffoldEmberBabelConfig() string {
+	return `import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  babelCompatSupport,
+  templateCompatSupport,
+} from "@embroider/compat/babel";
+
+export default {
+  plugins: [
+    [
+      "@babel/plugin-transform-typescript",
+      {
+        allExtensions: true,
+        onlyRemoveTypeImports: true,
+        allowDeclareFields: true,
+      },
+    ],
+    [
+      "babel-plugin-ember-template-compilation",
+      {
+        enableLegacyModules: [
+          "ember-cli-htmlbars",
+          "ember-cli-htmlbars-inline-precompile",
+          "htmlbars-inline-precompile",
+        ],
+        transforms: [...templateCompatSupport()],
+      },
+    ],
+    [
+      "module:decorator-transforms",
+      {
+        runtime: {
+          import: fileURLToPath(
+            import.meta.resolve("decorator-transforms/runtime-esm"),
+          ),
+        },
+      },
+    ],
+    [
+      "@babel/plugin-transform-runtime",
+      {
+        absoluteRuntime: dirname(fileURLToPath(import.meta.url)),
+        useESModules: true,
+        regenerator: false,
+      },
+    ],
+    ...babelCompatSupport(),
+  ],
+  generatorOpts: {
+    compact: false,
+  },
+};
+`
+}
+
+func scaffoldEmberCLIBuild() string {
+	return `import EmberApp from "ember-cli/lib/broccoli/ember-app.js";
+import { compatBuild } from "@embroider/compat";
+
+export default async function (defaults) {
+  const { buildOnce } = await import("@embroider/vite");
+  const app = new EmberApp(defaults, {});
+  return compatBuild(app, buildOnce);
+}
+`
+}
+
+func scaffoldEmberIndexHTML() string {
+	return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Vitra App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{content-for "head"}}
+    <link integrity="" rel="stylesheet" href="/@embroider/virtual/vendor.css">
+    <link integrity="" rel="stylesheet" href="/@embroider/virtual/app.css">
+    {{content-for "head-footer"}}
+  </head>
+  <body>
+    {{content-for "body"}}
+    <script src="/@embroider/virtual/vendor.js"></script>
+    <script type="module">
+      import Application from './app/app';
+      import environment from './app/config/environment';
+      Application.create(environment.APP);
+    </script>
+    {{content-for "body-footer"}}
+  </body>
+</html>
+`
+}
+
+func scaffoldEmberCLIJSON() string {
+	return `{
+  "isTypeScriptProject": false,
+  "componentAuthoringFormat": "strict",
+  "routeAuthoringFormat": "strict"
+}
+`
+}
+
+func scaffoldEmberAppJS() string {
+	return `import Application from "@ember/application";
+import compatModules from "@embroider/virtual/compat-modules";
+import Resolver from "ember-resolver";
+import loadInitializers from "ember-load-initializers";
+import config from "vitra-frontend/config/environment";
+import setupInspector from "@embroider/legacy-inspector-support/ember-source-4.12";
+
+export default class App extends Application {
+  modulePrefix = config.modulePrefix;
+  podModulePrefix = config.podModulePrefix;
+  Resolver = Resolver.withModules(compatModules);
+  inspector = setupInspector(this);
+}
+
+loadInitializers(App, config.modulePrefix, compatModules);
+`
+}
+
+func scaffoldEmberRouterJS() string {
+	return `import EmberRouter from "@embroider/router";
+import config from "vitra-frontend/config/environment";
+
+export default class Router extends EmberRouter {
+  location = config.locationType;
+  rootURL = config.rootURL;
+}
+
+Router.map(function () {});
+`
+}
+
+func scaffoldEmberAppEnvironment() string {
+	return `import loadConfigFromMeta from "@embroider/config-meta-loader";
+
+const config = loadConfigFromMeta("vitra-frontend");
+export default config;
+`
+}
+
+func scaffoldEmberApplicationGJS() string {
+	return `import VitraApp from "vitra-frontend/components/vitra-app";
+
+<template>
+  <VitraApp />
+</template>
+`
+}
+
+func scaffoldEmberVitraAppGJS() string {
+	return `import Component from "@glimmer/component";
+import { tracked } from "@glimmer/tracking";
+import { on } from "@ember/modifier";
+import { createClient } from "../../vitra-client";
+
+const client = createClient((cmd, input) => window.vitra.invoke(cmd, input));
+
+export default class VitraApp extends Component {
+  @tracked out = "";
+
+  run = async (fn) => {
+    try {
+      this.out = JSON.stringify(await fn(), null, 2);
+    } catch (e) {
+      this.out = String(e);
+    }
+  };
+
+  demoGreet = () => this.run(() => client.demoGreet("Vitra"));
+  dialogOpen = () => this.run(() => client.dialogOpen());
+  clipboardRead = () => this.run(() => client.clipboardRead());
+  browserOpen = () => this.run(() => client.browserOpen("https://go.klarlabs.de/vitra"));
+  osInfo = () => this.run(() => client.osInfo());
+  notificationsShow = () =>
+    this.run(() =>
+      client.notificationsShow({ title: "Vitra", body: "Hello from scaffold" }),
+    );
+
+  <template>
+    <div style="font-family: Georgia, serif; margin: 2rem; background: #111; color: #eee; min-height: 100vh">
+      <h1>Vitra</h1>
+      <p>Vite + Ember starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
+      <button type="button" {{on "click" this.demoGreet}}>demo.greet</button>
+      <button type="button" {{on "click" this.dialogOpen}}>dialog.open</button>
+      <button type="button" {{on "click" this.clipboardRead}}>clipboard.read</button>
+      <button type="button" {{on "click" this.browserOpen}}>browser.open</button>
+      <button type="button" {{on "click" this.osInfo}}>os.info</button>
+      <button type="button" {{on "click" this.notificationsShow}}>notifications.show</button>
+      <pre>{{this.out}}</pre>
+    </div>
+  </template>
+}
+`
+}
+
+func scaffoldEmberConfigEnvironment() string {
+	return `"use strict";
+
+module.exports = function (environment) {
+  const ENV = {
+    modulePrefix: "vitra-frontend",
+    environment,
+    rootURL: "/",
+    locationType: "history",
+    EmberENV: {
+      EXTEND_PROTOTYPES: false,
+      FEATURES: {},
+    },
+    APP: {},
+  };
+
+  if (environment === "test") {
+    ENV.locationType = "none";
+    ENV.APP.rootElement = "#ember-testing";
+    ENV.APP.autoboot = false;
+  }
+
+  return ENV;
+};
+`
+}
+
+func scaffoldEmberOptionalFeatures() string {
+	return `{
+  "application-template-wrapper": false,
+  "default-async-observers": true,
+  "jquery-integration": false,
+  "template-only-glimmer-components": true,
+  "no-implicit-route-model": true
+}
+`
+}
+
+func scaffoldEmberTargets() string {
+	return `"use strict";
+
+module.exports = {
+  browsers: [
+    "last 1 Chrome versions",
+    "last 1 Firefox versions",
+    "last 1 Safari versions",
+  ],
+};
+`
+}
+
 func scaffoldAngularFiles(modPath, tsClient string) map[string]string {
 	return map[string]string{
 		"go.mod":                        scaffoldGoMod(modPath),
@@ -1301,7 +1629,7 @@ vitra package --out dist/ --format dir
 ` + "```" + `
 `
 	switch tmpl {
-	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko":
+	case "vite", "react", "svelte", "vue", "solid", "preact", "lit", "alpine", "htmx", "angular", "qwik", "mithril", "riot", "inferno", "stencil", "marko", "ember":
 		label := "Vite"
 		switch tmpl {
 		case "react":
@@ -1334,6 +1662,8 @@ vitra package --out dist/ --format dir
 			label = "Vite + Stencil"
 		case "marko":
 			label = "Vite + Marko"
+		case "ember":
+			label = "Vite + Ember"
 		}
 		body += `
 ## ` + label + ` frontend
@@ -1552,6 +1882,27 @@ export default defineConfig({
   },
 });
 `
+	case "ember":
+		return `import { defineConfig } from "vite";
+import { extensions, classicEmberSupport, ember } from "@embroider/vite";
+import { babel } from "@rollup/plugin-babel";
+
+export default defineConfig({
+  plugins: [
+    classicEmberSupport(),
+    ember(),
+    babel({
+      babelHelpers: "runtime",
+      extensions,
+    }),
+  ],
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+  },
+});
+`
+
 	default:
 		return `import { defineConfig } from "vite";
 
