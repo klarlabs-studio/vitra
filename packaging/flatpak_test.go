@@ -45,16 +45,27 @@ func TestBuildFlatpakDir_Layout(t *testing.T) {
 		}
 	}
 	meta, _ := os.ReadFile(filepath.Join(out, "metadata"))
-	for _, want := range []string{"name=com.vitra.demo", "command=Vitra-Demo", "org.freedesktop.Platform/"} {
+	for _, want := range []string{
+		"name=com.vitra.demo", "command=Vitra-Demo", "org.freedesktop.Platform/",
+		"[Context]", "shared=network;ipc;", "[Session Bus Policy]",
+		"org.freedesktop.portal.Desktop=talk", "org.freedesktop.portal.FileChooser=talk",
+	} {
 		if !strings.Contains(string(meta), want) {
 			t.Fatalf("metadata missing %q:\n%s", want, meta)
 		}
 	}
 	manifest, _ := os.ReadFile(filepath.Join(out, "manifest.yml"))
-	for _, want := range []string{"app-id: com.vitra.demo", "runtime-version: \"23.08\"", "command: Vitra-Demo", "cp -a files/. /app/"} {
+	for _, want := range []string{
+		"app-id: com.vitra.demo", "runtime-version: \"23.08\"", "command: Vitra-Demo",
+		"cp -a files/. /app/", "--talk-name=org.freedesktop.portal.Desktop",
+		"--talk-name=org.freedesktop.portal.FileChooser", "--share=network",
+	} {
 		if !strings.Contains(string(manifest), want) {
 			t.Fatalf("manifest missing %q:\n%s", want, manifest)
 		}
+	}
+	if strings.Contains(string(manifest), "--filesystem=home") {
+		t.Fatalf("manifest should prefer portals over --filesystem=home:\n%s", manifest)
 	}
 }
 

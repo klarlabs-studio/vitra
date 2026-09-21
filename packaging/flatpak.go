@@ -133,7 +133,9 @@ name=%s
 runtime=org.freedesktop.Platform/%s/23.08
 sdk=org.freedesktop.Sdk/%s/23.08
 command=%s
-`, appID, arch, arch, binName)
+
+%s
+`, appID, arch, arch, binName, flatpakMetadataContext())
 	if err := os.WriteFile(filepath.Join(outDir, "metadata"), []byte(meta), 0o644); err != nil {
 		return Artifact{}, err
 	}
@@ -144,11 +146,7 @@ runtime-version: "23.08"
 sdk: org.freedesktop.Sdk
 command: %s
 finish-args:
-  - --share=ipc
-  - --socket=fallback-x11
-  - --socket=wayland
-  - --device=dri
-  - --filesystem=home
+%s
 modules:
   - name: app
     buildsystem: simple
@@ -157,7 +155,7 @@ modules:
     sources:
       - type: dir
         path: .
-`, appID, binName)
+`, appID, binName, flatpakPortalFinishArgsYAML())
 	if err := os.WriteFile(filepath.Join(outDir, "manifest.yml"), []byte(manifest), 0o644); err != nil {
 		return Artifact{}, err
 	}
@@ -168,6 +166,47 @@ modules:
 		SHA256: digest,
 		Signed: false,
 	}, nil
+}
+
+// flatpakPortalFinishArgsYAML is the default portal-oriented finish-args block
+// for desktop Vitra apps: display + GPU, network for updates, and talk to
+// xdg-desktop-portal instead of a broad --filesystem=home grant.
+func flatpakPortalFinishArgsYAML() string {
+	args := []string{
+		"--share=ipc",
+		"--share=network",
+		"--socket=fallback-x11",
+		"--socket=wayland",
+		"--device=dri",
+		"--talk-name=org.freedesktop.portal.Desktop",
+		"--talk-name=org.freedesktop.portal.Documents",
+		"--talk-name=org.freedesktop.portal.FileChooser",
+		"--talk-name=org.freedesktop.portal.OpenURI",
+		"--talk-name=org.freedesktop.Notifications",
+	}
+	var b strings.Builder
+	for _, a := range args {
+		b.WriteString("  - ")
+		b.WriteString(a)
+		b.WriteByte('\n')
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
+// flatpakMetadataContext mirrors finish-args into Flatpak metadata Context /
+// Session Bus Policy sections (stage tree used by fold wrappers).
+func flatpakMetadataContext() string {
+	return `[Context]
+shared=network;ipc;
+sockets=x11;wayland;fallback-x11;
+devices=dri;
+
+[Session Bus Policy]
+org.freedesktop.portal.Desktop=talk
+org.freedesktop.portal.Documents=talk
+org.freedesktop.portal.FileChooser=talk
+org.freedesktop.portal.OpenURI=talk
+org.freedesktop.Notifications=talk`
 }
 
 // FoldFlatpak runs the Flatpak fold tool against a staged directory and writes

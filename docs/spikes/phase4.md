@@ -11,7 +11,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Notary credential bootstrap plan | `PlanNotaryCredentials` + `vitra notary-setup` (store-credentials argv; not executed) |
 | Sign execution | `packaging.ExecuteSign` + `vitra package --sign-execute` [--sign-follow-ups] (expands `${ENV}` and `<secret:…>`→`VITRA_SECRET_*`; sets `Artifact.Signed`) |
 | Store publish dry-run | `packaging.PlanPublish` + `vitra package --publish` (Snap Store / Flathub step plans) |
-| Linux staged app directory | `packaging.StageLinux` + `vitra package` |
+| Linux Flatpak stage + fold | `BuildFlatpakDir` / `BuildFlatpak` (portal-oriented finish-args + metadata Context) |
 | Windows staged dir + WiX/NSIS scripts | `StageWindows` / `BuildWiXDir` / `BuildNSISDir` |
 | Darwin staged `.app` bundle | `StageDarwinApp` + `vitra package --format app-dir` |
 | Darwin DMG fold | `BuildDMG` / `FoldDMG` (`hdiutil` or `VITRA_HDIUTIL`) |
@@ -111,10 +111,11 @@ Still out of scope on main (do not claim otherwise):
   `PlanNotaryCredentials` / `vitra notary-setup` dry-run (`store-credentials`
   argv with `${APPLE_ID}` / `${APPLE_TEAM_ID}` / `${APP_SPECIFIC_PASSWORD}`;
   operator still runs notarytool)
-- Extra Linux store polish beyond publish *plans* (Flathub PR automation,
-  portal policy tuning, interactive store login) — `PlanPublish` /
-  `--publish` prints Snap Store / Flathub argv guidance; `.rpm` / `.snap` /
-  `.flatpak` generators ship via `BuildRPM*` / `BuildSnap*` / `BuildFlatpak*`
+- Extra Linux store polish beyond publish *plans* and portal-oriented Flatpak
+  finish-args (Flathub PR automation, interactive store login) — `PlanPublish`
+  / `--publish` prints Snap Store / Flathub argv guidance; Flatpak stage uses
+  xdg-desktop-portal talk-names; `.rpm` / `.snap` / `.flatpak` generators ship
+  via `BuildRPM*` / `BuildSnap*` / `BuildFlatpak*`
 - Wails-class template breadth beyond Vitra’s `vanilla` / `vite` / `react` /
   `svelte` / `vue` / `solid` / `preact` starters (additional frameworks, richer presets)
 

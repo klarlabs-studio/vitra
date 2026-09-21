@@ -95,8 +95,9 @@ prints a plan (`PlanSign`); `--sign-execute` runs host tools via
 Windows signtool, Linux dpkg-sig/rpmsign/snapcraft/gpg; `secret:` refs expand
 from `VITRA_SECRET_*` without leaking into plans). `vitra notary-setup` /
 Darwin `PlanSign` prep print `notarytool store-credentials` guidance (not
-executed). `--publish` prints a
-Snap Store / Flathub `PlanPublish` (plan only). Update channel *client* fetch
+executed). `--publish` prints a Snap Store / Flathub `PlanPublish` (plan only).
+Flatpak stage prefers xdg-desktop-portal talk-names over `--filesystem=home`.
+Update channel *client* fetch
 (`updater.Fetcher` / `vitra update-check` / `update-apply --base-url`) verifies
 signed HTTP(S) manifests and can fetch + install artifacts; hosted CDN remains
 out of scope. Audit SIEM exporters (`JSONLSink` / `CEFSink`) and MDM JSON
