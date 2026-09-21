@@ -29,6 +29,15 @@ type SignPlan struct {
 	IdentityNote string
 	Supported    bool
 	Note         string
+	// FollowUps are optional post-sign steps (Darwin notarize + staple).
+	FollowUps []CommandPlan
+}
+
+// CommandPlan is a dry-run argv for a packaging host tool.
+type CommandPlan struct {
+	Tool string
+	Args []string
+	Note string
 }
 
 // PlanSign validates Spec signing fields and returns an argv plan for the
@@ -66,6 +75,19 @@ func PlanSign(spec Spec, artifactPath string) (SignPlan, error) {
 			"--sign", display, artifactPath,
 		}
 		plan.Note = "dry-run only; codesign is not invoked and Artifact.Signed stays false"
+		profile := notarizeProfileDisplay(spec.SigningIdentityRef)
+		plan.FollowUps = []CommandPlan{
+			{
+				Tool: "notarytool",
+				Args: []string{"submit", artifactPath, "--keychain-profile", profile, "--wait"},
+				Note: "dry-run only; notarytool is not invoked (store-credentials first)",
+			},
+			{
+				Tool: "stapler",
+				Args: []string{"staple", artifactPath},
+				Note: "dry-run only; stapler is not invoked",
+			},
+		}
 	case TargetWindowsMSI, TargetWindowsNSIS:
 		plan.Supported = true
 		plan.Tool = "signtool"
@@ -90,10 +112,33 @@ func (p SignPlan) String() string {
 		fmt.Fprintf(&b, "  tool:      (none)\n")
 	}
 	fmt.Fprintf(&b, "  status:    %s\n", p.Note)
+	for i, step := range p.FollowUps {
+		fmt.Fprintf(&b, "  follow-up %d:\n", i+1)
+		fmt.Fprintf(&b, "    tool:    %s\n", step.Tool)
+		fmt.Fprintf(&b, "    argv:    %s %s\n", step.Tool, strings.Join(step.Args, " "))
+		fmt.Fprintf(&b, "    status:  %s\n", step.Note)
+	}
 	if !p.IdentityOK {
 		fmt.Fprintf(&b, "  warning:   identity ref is not resolvable\n")
 	}
 	return b.String()
+}
+
+// notarizeProfileDisplay picks a non-secret notarytool --keychain-profile
+// placeholder. Prefer env:NOTARYTOOL_PROFILE; else keychain: name from the
+// signing identity; else ${NOTARYTOOL_PROFILE}.
+func notarizeProfileDisplay(signingRef string) string {
+	if _, set := lookupEnv("NOTARYTOOL_PROFILE"); set {
+		return "${NOTARYTOOL_PROFILE}"
+	}
+	ref := strings.TrimSpace(signingRef)
+	if strings.HasPrefix(ref, "keychain:") {
+		name := strings.TrimPrefix(ref, "keychain:")
+		if name != "" {
+			return name
+		}
+	}
+	return "${NOTARYTOOL_PROFILE}"
 }
 
 func resolveIdentityStatus(ref string) (ok bool, note string) {

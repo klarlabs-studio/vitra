@@ -7,7 +7,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | Area | Package |
 |------|---------|
 | Package targets + signing identity refs | `packaging` |
-| Sign dry-run plan (no host execution) | `packaging.PlanSign` + `vitra package --sign` |
+| Sign dry-run plan (no host execution) | `packaging.PlanSign` + `vitra package --sign` (Darwin includes notarytool/stapler follow-ups) |
 | Linux staged app directory | `packaging.StageLinux` + `vitra package` |
 | Windows staged dir + WiX/NSIS scripts | `StageWindows` / `BuildWiXDir` / `BuildNSISDir` |
 | Darwin staged `.app` bundle | `StageDarwinApp` + `vitra package --format app-dir` |
@@ -94,7 +94,8 @@ Still out of scope on main (do not claim otherwise):
 - Hosted update CDN / auto-update channel hosting
 - Notarization / codesign / Authenticode *execution* (`Spec.Sign` +
   `SigningIdentityRef` validate refs; `PlanSign` / `--sign` print argv plans
-  only — stage/fold never invoke `codesign` / `signtool` / notary)
+  including Darwin `notarytool`/`stapler` follow-ups — stage/fold never invoke
+  `codesign` / `signtool` / notary / stapler)
 - Extra Linux store polish beyond stage+fold (Flathub/Snap Store publishing,
   portal policy tuning) — `.rpm` / `.snap` / `.flatpak` generators ship via
   `BuildRPM*` / `BuildSnap*` / `BuildFlatpak*`
