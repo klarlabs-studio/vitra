@@ -49,6 +49,9 @@ func TestBuildAppDir_Layout(t *testing.T) {
 	if !strings.Contains(string(desktop), "StartupWMClass=Vitra-Demo") {
 		t.Fatalf("desktop=%s", desktop)
 	}
+	if !strings.Contains(string(desktop), "X-GNOME-UsesNotifications=true") {
+		t.Fatalf("desktop missing X-GNOME-UsesNotifications=%s", desktop)
+	}
 }
 
 func TestBuildDeb_ArArchive(t *testing.T) {
@@ -127,6 +130,9 @@ func TestBuildDeb_StagesIcon(t *testing.T) {
 	}
 	if !strings.Contains(desktop, "StartupWMClass=Vitra-Demo") {
 		t.Fatalf("desktop missing StartupWMClass:\n%s", desktop)
+	}
+	if !strings.Contains(desktop, "X-GNOME-UsesNotifications=true") {
+		t.Fatalf("desktop missing X-GNOME-UsesNotifications:\n%s", desktop)
 	}
 }
 

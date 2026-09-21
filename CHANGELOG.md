@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- FreeDesktop GNOME notifications: staged `.desktop` files (linux-dir / deb / rpm / snap / flatpak / AppDir) emit `X-GNOME-UsesNotifications=true` for GNOME Shell notification awareness.
 - `vitra new --template fast`: Vite + FAST Element (`@microsoft/fast-element`) + TypeScript starter (`FASTElement` / `html` / `css` web component + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream supports: metainfo always emits `<supports><control>touch</control></supports>` (touch input capability for software centers).
 - `vitra new --template solid-element`: Vite + solid-element + Solid + TypeScript starter (`customElement` / `createSignal` web component + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
