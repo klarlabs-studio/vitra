@@ -2168,6 +2168,66 @@ func TestRun_NewScaffoldAurelia(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldStimulus(t *testing.T) {
+	dir := t.TempDir() + "/stimulus-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "stimulus"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=stimulus") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/src/controllers/vitra_controller.ts",
+		"frontend/index.html", "frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"@hotwired/stimulus"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	ctrl, err := os.ReadFile(dir + "/frontend/src/controllers/vitra_controller.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "Controller"} {
+		if !strings.Contains(string(ctrl), want) {
+			t.Fatalf("vitra_controller.ts missing %q: %s", want, ctrl)
+		}
+	}
+	html, err := os.ReadFile(dir + "/frontend/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), `data-controller="vitra"`) || !strings.Contains(string(html), "click->vitra#greet") {
+		t.Fatalf("index.html missing stimulus bindings: %s", html)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("stimulus embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Stimulus") {
+		t.Fatalf("stimulus README should mention Vite + Stimulus: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
