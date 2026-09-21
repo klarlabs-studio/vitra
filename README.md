@@ -145,6 +145,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Linux menu bar + tray menus | **Done** |
 | Invoke E2E (`make e2e`) | **Done** (also in CI: Native Linux E2E) |
 | Host→frontend events | **Done** (`vitra.on` / `App.Emit`) |
+| Multi-window App API | **Done** (`OpenWindow` / `CloseWindow`) |
 | Linux file drag-drop | **Done** (grant-gated GTK URI drops) |
 | Linux window chrome | **Done** (title, size, maximize, fullscreen, keep-above, minimize, hide) |
 | Linux menu accelerators | **Done** (in-window `MenuItem.Shortcut`; not global) |

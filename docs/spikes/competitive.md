@@ -9,7 +9,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 
 | Surface | Status |
 |---------|--------|
-| `app.App` — assets + WebView + invoke→gateway | Done |
+| `app.App` — assets + WebView + invoke→gateway | Done (multi-window `OpenWindow` / `CloseWindow`) |
 | `bridge.PreloadJS` — `window.vitra.invoke` | Done |
 | `platform/linux` WebKitGTK host (`-tags vitra_native`) | Done |
 | Clipboard + open/save file dialogs (GTK) | Done |
