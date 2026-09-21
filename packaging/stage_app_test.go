@@ -51,6 +51,7 @@ func TestStageDarwinApp_LayoutAndPlist(t *testing.T) {
 	for _, want := range []string{
 		"com.vitra.demo", "Demo App", "1.2.3", "Demo-App", "CFBundleExecutable", "APPL",
 		"CFBundleDisplayName",
+		"CFBundleSpokenName",
 		"NSHumanReadableCopyright", DefaultLicense,
 		"LSApplicationCategoryType", "public.app-category.utilities",
 		"CFBundleGetInfoString", DefaultDescription,
@@ -64,6 +65,10 @@ func TestStageDarwinApp_LayoutAndPlist(t *testing.T) {
 	wantDisplay := "<key>CFBundleDisplayName</key>\n\t<string>Demo App</string>"
 	if !strings.Contains(body, wantDisplay) {
 		t.Fatalf("missing DisplayName\n%s", body)
+	}
+	wantSpoken := "<key>CFBundleSpokenName</key>\n\t<string>Demo App</string>"
+	if !strings.Contains(body, wantSpoken) {
+		t.Fatalf("missing SpokenName\n%s", body)
 	}
 	wantGPU := "<key>NSSupportsAutomaticGraphicsSwitching</key>\n\t<true/>"
 	if !strings.Contains(body, wantGPU) {
@@ -178,6 +183,10 @@ func TestStageDarwinApp_CFBundleDisplayName(t *testing.T) {
 	wantDisplay := "<key>CFBundleDisplayName</key>\n\t<string>My Cool App</string>"
 	if !strings.Contains(body, wantDisplay) {
 		t.Fatalf("missing DisplayName\n%s", body)
+	}
+	wantSpoken := "<key>CFBundleSpokenName</key>\n\t<string>My Cool App</string>"
+	if !strings.Contains(body, wantSpoken) {
+		t.Fatalf("missing SpokenName\n%s", body)
 	}
 	wantName := "<key>CFBundleName</key>\n\t<string>My Cool App</string>"
 	if !strings.Contains(body, wantName) {
