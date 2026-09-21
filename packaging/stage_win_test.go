@@ -366,6 +366,10 @@ func TestBuildNSISDir_HomepageURLInfoAbout(t *testing.T) {
 	if !strings.Contains(body, wantHelp) {
 		t.Fatalf("missing HelpLink\n%s", body)
 	}
+	wantUpdate := `WriteRegStr HKCU "${UNINST_KEY}" "URLUpdateInfo" "https://example.com/demo"`
+	if !strings.Contains(body, wantUpdate) {
+		t.Fatalf("missing URLUpdateInfo\n%s", body)
+	}
 
 	outEmpty := filepath.Join(tmp, "nsis-empty")
 	spec.Homepage = ""
@@ -376,8 +380,8 @@ func TestBuildNSISDir_HomepageURLInfoAbout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(raw), "URLInfoAbout") || strings.Contains(string(raw), "HelpLink") {
-		t.Fatalf("unexpected URLInfoAbout/HelpLink when Homepage empty\n%s", raw)
+	if strings.Contains(string(raw), "URLInfoAbout") || strings.Contains(string(raw), "HelpLink") || strings.Contains(string(raw), "URLUpdateInfo") {
+		t.Fatalf("unexpected URLInfoAbout/HelpLink/URLUpdateInfo when Homepage empty\n%s", raw)
 	}
 }
 
@@ -408,6 +412,10 @@ func TestBuildWiXDir_HomepageARPURL(t *testing.T) {
 	if !strings.Contains(body, wantHelp) {
 		t.Fatalf("missing ARPHELPLINK\n%s", body)
 	}
+	wantUpdate := `<Property Id="ARPURLUPDATEINFO" Value="https://example.com/demo"/>`
+	if !strings.Contains(body, wantUpdate) {
+		t.Fatalf("missing ARPURLUPDATEINFO\n%s", body)
+	}
 
 	outEmpty := filepath.Join(tmp, "wix-empty")
 	spec.Homepage = ""
@@ -418,8 +426,8 @@ func TestBuildWiXDir_HomepageARPURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(raw), "ARPURLINFOABOUT") || strings.Contains(string(raw), "ARPHELPLINK") {
-		t.Fatalf("unexpected ARPURLINFOABOUT/ARPHELPLINK when Homepage empty\n%s", raw)
+	if strings.Contains(string(raw), "ARPURLINFOABOUT") || strings.Contains(string(raw), "ARPHELPLINK") || strings.Contains(string(raw), "ARPURLUPDATEINFO") {
+		t.Fatalf("unexpected ARPURLINFOABOUT/ARPHELPLINK/ARPURLUPDATEINFO when Homepage empty\n%s", raw)
 	}
 }
 
