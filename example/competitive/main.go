@@ -648,6 +648,15 @@ func run() error {
 	})); err != nil {
 		return err
 	}
+	if err := rt.BindExecutor("window.setIcon", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, iconPath, err := desktop.ParseWindowSetIcon(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.SetIcon(ctx, caller, id, iconPath)
+	})); err != nil {
+		return err
+	}
 	if err := rt.BindExecutor("menu.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
 		items, err := desktop.ParseMenuItems(input)
 		if err != nil {
