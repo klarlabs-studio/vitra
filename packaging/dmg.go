@@ -43,6 +43,7 @@ func ResolveHdiutil() (string, error) {
 }
 
 // FoldDMG runs hdiutil to produce a UDZO .dmg from a staged .app bundle.
+// The image root contains the .app plus an Applications symlink (drag-to-install UX).
 // appPath may be the .app itself or a directory containing exactly one .app.
 func FoldDMG(appPath, volName, outPath string) (Artifact, error) {
 	if appPath == "" || outPath == "" {
@@ -62,7 +63,24 @@ func FoldDMG(appPath, volName, outPath string) (Artifact, error) {
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return Artifact{}, err
 	}
-	if err := runDMGFold(tool, bundle, volName, outPath); err != nil {
+
+	stage, err := os.MkdirTemp("", "vitra-dmg-root-*")
+	if err != nil {
+		return Artifact{}, err
+	}
+	defer func() { _ = os.RemoveAll(stage) }()
+	absBundle, err := filepath.Abs(bundle)
+	if err != nil {
+		return Artifact{}, err
+	}
+	if err := os.Symlink(absBundle, filepath.Join(stage, filepath.Base(bundle))); err != nil {
+		return Artifact{}, fmt.Errorf("link app into dmg root: %w", err)
+	}
+	if err := os.Symlink("/Applications", filepath.Join(stage, "Applications")); err != nil {
+		return Artifact{}, fmt.Errorf("link Applications into dmg root: %w", err)
+	}
+
+	if err := runDMGFold(tool, stage, volName, outPath); err != nil {
 		return Artifact{}, fmt.Errorf("hdiutil: %w", err)
 	}
 	raw, err := os.ReadFile(outPath)

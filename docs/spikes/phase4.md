@@ -30,7 +30,7 @@ Phase 4 makes packaging, updates, and release inspection first-class.
 | `msi` | Final `.msi` (`BuildMSI` → candle/light or `VITRA_CANDLE`/`VITRA_LIGHT`) |
 | `nsis` | Final setup `.exe` (`BuildNSIS` → makensis or `VITRA_MAKENSIS`) |
 | `app-dir` | Staged Darwin `.app` bundle (`StageDarwinApp`) |
-| `dmg` | Final `.dmg` (`BuildDMG` → hdiutil or `VITRA_HDIUTIL`) |
+| `dmg` | Final `.dmg` (`BuildDMG` → hdiutil or `VITRA_HDIUTIL`; includes Applications symlink) |
 
 Optional `--icon <path>` copies a `.png` / `.svg` / `.icns` / `.ico` / `.xpm` into
 Linux stages (next to the `.desktop`, `Icon=<name>`), Darwin

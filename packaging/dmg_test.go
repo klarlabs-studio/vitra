@@ -13,16 +13,26 @@ func TestFoldDMG_UsesInjectedTool(t *testing.T) {
 	dir := t.TempDir()
 	tool := filepath.Join(dir, "fake-hdiutil")
 	script := `#!/bin/sh
-out=""
+src=""
 prev=""
 for a in "$@"; do
-  if [ "$prev" = "-format" ]; then :; fi
+  if [ "$prev" = "-srcfolder" ]; then src="$a"; fi
   prev="$a"
 done
-# last arg is output path for hdiutil create
-out="$last"
 last=""
 for a in "$@"; do last="$a"; done
+if [ -z "$src" ] || [ ! -L "$src/Applications" ]; then
+  echo "missing Applications symlink in $src" >&2
+  exit 1
+fi
+found=""
+for d in "$src"/*.app; do
+  if [ -e "$d" ]; then found=1; fi
+done
+if [ -z "$found" ]; then
+  echo "missing .app in $src" >&2
+  exit 1
+fi
 printf 'DMG' > "$last"
 `
 	if err := os.WriteFile(tool, []byte(script), 0o755); err != nil {
