@@ -124,10 +124,10 @@ func BuildMSI(spec Spec, binaryPath, outPath string) (Artifact, error) {
 }
 
 // BuildWiXDir stages a Windows payload and writes product.wxs for WiX Toolset.
-// The script installs under LocalAppDataFolder, emits a Start Menu shortcut, and
-// uses a deterministic UpgradeCode GUID derived from AppID. Producing a final
-// .msi still requires candle/light (or VITRA_CANDLE / VITRA_LIGHT); this layout
-// is the portable intermediate those tools consume.
+// The script installs under LocalAppDataFolder, emits Start Menu + Desktop
+// shortcuts, and uses a deterministic UpgradeCode GUID derived from AppID.
+// Producing a final .msi still requires candle/light (or VITRA_CANDLE /
+// VITRA_LIGHT); this layout is the portable intermediate those tools consume.
 func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
 	if err := spec.Validate(); err != nil {
 		return Artifact{}, err
@@ -195,6 +195,7 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
       <Directory Id="ProgramMenuFolder">
         <Directory Id="ApplicationProgramsFolder" Name="%s"/>
       </Directory>
+      <Directory Id="DesktopFolder" Name="Desktop"/>
     </Directory>
   </Fragment>
   <Fragment>
@@ -210,13 +211,21 @@ func BuildWiXDir(spec Spec, binaryPath, outDir string) (Artifact, error) {
         <RemoveFolder Id="RemoveAppProgramsFolder" Directory="ApplicationProgramsFolder" On="uninstall"/>
         <RegistryValue Root="HKCU" Key="Software\%s\%s" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes"/>
       </Component>
+      <Component Id="DesktopShortcut" Guid="*" Directory="DesktopFolder">
+        <Shortcut Id="AppDesktopShortcut" Name="%s"
+                  Description="%s"
+                  Target="[INSTALLFOLDER]%s"
+                  WorkingDirectory="INSTALLFOLDER"%s/>
+        <RegistryValue Root="HKCU" Key="Software\%s\%s" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes"/>
+      </Component>
     </ComponentGroup>
   </Fragment>
 </Wix>
 `, xmlEscape(spec.Name), xmlEscape(spec.Version), xmlEscape(spec.Name), upgrade,
 		xmlEscape(spec.Name), iconXML, xmlEscape(spec.Name), xmlEscape(safeName), xmlEscape(safeName),
-		exeName, iconComp, xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIcon,
-		regManufacturer, regProduct)
+		exeName, iconComp,
+		xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIcon, regManufacturer, regProduct,
+		xmlEscape(spec.Name), xmlEscape(spec.Name), exeName, shortcutIcon, regManufacturer, regProduct)
 	_ = arch // recorded in Spec / provenance; WiX Platform can be set at candle time
 	if err := os.WriteFile(filepath.Join(outDir, "product.wxs"), []byte(wxs), 0o644); err != nil {
 		return Artifact{}, err
