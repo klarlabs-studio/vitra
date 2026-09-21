@@ -1555,6 +1555,75 @@ func TestRun_NewScaffoldHtmx(t *testing.T) {
 	}
 }
 
+func TestRun_NewScaffoldAngular(t *testing.T) {
+	dir := t.TempDir() + "/angular-app"
+	out := capture(t, func() {
+		if err := run([]string{"new", dir, "--template", "angular"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "template=angular") {
+		t.Fatalf("new output: %q", out)
+	}
+	for _, name := range []string{
+		"main.go", "frontend/package.json", "frontend/vite.config.js",
+		"frontend/src/main.ts", "frontend/src/app.component.ts", "frontend/index.html",
+		"frontend/dist/index.html", "frontend/vitra-client.ts",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg, err := os.ReadFile(dir + "/frontend/package.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"@angular/core"`, `"@analogjs/vite-plugin-angular"`, `"vite"`} {
+		if !strings.Contains(string(pkg), want) {
+			t.Fatalf("package.json missing %s: %s", want, pkg)
+		}
+	}
+	app, err := os.ReadFile(dir + "/frontend/src/app.component.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"@angular/core", "createClient", "demoGreet", "dialogOpen", "clipboardRead", "browserOpen", "osInfo", "notificationsShow", "standalone: true", "vitra-app"} {
+		if !strings.Contains(string(app), want) {
+			t.Fatalf("app.component.ts missing %q: %s", want, app)
+		}
+	}
+	mainTS, err := os.ReadFile(dir + "/frontend/src/main.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"bootstrapApplication", "AppComponent"} {
+		if !strings.Contains(string(mainTS), want) {
+			t.Fatalf("main.ts missing %q: %s", want, mainTS)
+		}
+	}
+	cfg, err := os.ReadFile(dir + "/frontend/vite.config.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cfg), "@analogjs/vite-plugin-angular") {
+		t.Fatalf("vite.config missing analog plugin: %s", cfg)
+	}
+	src, err := os.ReadFile(dir + "/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "frontend/dist") {
+		t.Fatalf("angular embed missing: %s", src)
+	}
+	readme, err := os.ReadFile(dir + "/README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "Vite + Angular") {
+		t.Fatalf("angular README should mention Vite + Angular: %s", readme)
+	}
+}
+
 func TestSupportsNativeHostTag(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
 		if !supportsNativeHostTag(goos) {
