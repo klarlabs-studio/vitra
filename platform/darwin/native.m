@@ -73,6 +73,14 @@ struct VitraWin {
 	WKWebView *view;
 	VitraWinDelegate *delegate;
 	char *id;
+	int maximized;
+	int fullscreen;
+	int above;
+	int minimized;
+	int hidden;
+	int req_width;
+	int req_height;
+	char *icon_path;
 };
 
 void vitra_app_init(void) {
@@ -112,6 +120,8 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 		return NULL;
 	}
 	w->id = strdup(id ? id : "");
+	w->req_width = width > 0 ? width : 1024;
+	w->req_height = height > 0 ? height : 768;
 	w->delegate = [[VitraWinDelegate alloc] initWithWindowID:w->id];
 
 	WKUserContentController *ucc = [[WKUserContentController alloc] init];
@@ -204,8 +214,104 @@ void vitra_win_free(VitraWin *w) {
 		[w->delegate release];
 		w->delegate = nil;
 	}
+	free(w->icon_path);
 	free(w->id);
 	free(w);
+}
+
+void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden, const char *icon_path) {
+	if (!w || !w->window) {
+		return;
+	}
+	NSWindow *win = w->window;
+	if (title) {
+		win.title = [NSString stringWithUTF8String:title];
+	}
+	if (width > 0 && height > 0) {
+		w->req_width = width;
+		w->req_height = height;
+		NSRect frame = win.frame;
+		NSRect content = [win contentRectForFrameRect:frame];
+		content.size.width = width;
+		content.size.height = height;
+		NSRect newFrame = [win frameRectForContentRect:content];
+		newFrame.origin = frame.origin;
+		[win setFrame:newFrame display:YES animate:NO];
+	}
+	w->maximized = maximized ? 1 : 0;
+	w->fullscreen = fullscreen ? 1 : 0;
+	w->above = above ? 1 : 0;
+	w->minimized = minimized ? 1 : 0;
+	w->hidden = hidden ? 1 : 0;
+
+	BOOL isZoomed = win.zoomed;
+	if (maximized && !isZoomed) {
+		[win zoom:nil];
+	} else if (!maximized && isZoomed) {
+		[win zoom:nil];
+	}
+
+	BOOL isFull = (win.styleMask & NSWindowStyleMaskFullScreen) != 0;
+	if (fullscreen && !isFull) {
+		[win toggleFullScreen:nil];
+	} else if (!fullscreen && isFull) {
+		[win toggleFullScreen:nil];
+	}
+
+	[win setLevel:(above ? NSFloatingWindowLevel : NSNormalWindowLevel)];
+
+	if (minimized) {
+		[win miniaturize:nil];
+	} else if (win.miniaturized) {
+		[win deminiaturize:nil];
+	}
+
+	if (hidden) {
+		[win orderOut:nil];
+	} else {
+		[win makeKeyAndOrderFront:nil];
+	}
+
+	if (icon_path && icon_path[0] != '\0') {
+		NSImage *img = [[NSImage alloc] initWithContentsOfFile:[NSString stringWithUTF8String:icon_path]];
+		if (img) {
+			win.miniwindowImage = img;
+			[img release];
+			free(w->icon_path);
+			w->icon_path = strdup(icon_path);
+		}
+	}
+}
+
+VitraChrome vitra_win_chrome(VitraWin *w) {
+	VitraChrome c;
+	memset(&c, 0, sizeof(c));
+	c.title = strdup("");
+	c.icon_path = strdup("");
+	if (!w || !w->window) {
+		return c;
+	}
+	NSWindow *win = w->window;
+	free(c.title);
+	const char *t = win.title ? [win.title UTF8String] : "";
+	c.title = strdup(t ? t : "");
+	free(c.icon_path);
+	c.icon_path = strdup(w->icon_path ? w->icon_path : "");
+	NSRect content = [win contentRectForFrameRect:win.frame];
+	c.width = (int)content.size.width;
+	c.height = (int)content.size.height;
+	if (c.width <= 0) {
+		c.width = w->req_width;
+	}
+	if (c.height <= 0) {
+		c.height = w->req_height;
+	}
+	c.maximized = win.zoomed ? 1 : 0;
+	c.fullscreen = (win.styleMask & NSWindowStyleMaskFullScreen) ? 1 : 0;
+	c.above = (win.level >= NSFloatingWindowLevel) ? 1 : 0;
+	c.minimized = win.miniaturized ? 1 : 0;
+	c.hidden = (!win.visible) ? 1 : 0;
+	return c;
 }
 
 char *vitra_open_dialog(void) {
