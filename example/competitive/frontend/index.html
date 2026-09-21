@@ -121,7 +121,7 @@
       } catch (e) { show(String(e.message || e), true); }
     };
     document.getElementById("opendir").onclick = async () => {
-      try { show({ openDirectory: await window.vitra.invoke("dialog.openDirectory") }); }
+      try { show({ openDirectory: await window.vitra.invoke("dialog.openDirectory", { title: "Pick a folder", defaultPath: "/tmp" }) }); }
       catch (e) { show(String(e.message || e), true); }
     };
     document.getElementById("save").onclick = async () => {

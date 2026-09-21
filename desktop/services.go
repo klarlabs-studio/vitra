@@ -196,7 +196,7 @@ type DialogService struct {
 	Host            platform.Host
 	OnOpen          func(ctx context.Context, opts platform.DialogFileOptions) ([]string, error)
 	OnSave          func(ctx context.Context, opts platform.DialogFileOptions) (string, error)
-	OnOpenDirectory func(ctx context.Context) (string, error)
+	OnOpenDirectory func(ctx context.Context, opts platform.DialogFileOptions) (string, error)
 	OnMessage       func(ctx context.Context, title, message, kind string) (bool, error)
 }
 
@@ -275,7 +275,8 @@ func (s *DialogService) SaveFile(ctx context.Context, caller domain.Caller, opts
 }
 
 // OpenDirectory authorizes dialog.openDirectory.
-func (s *DialogService) OpenDirectory(ctx context.Context, caller domain.Caller) (string, error) {
+// opts.Title and opts.DefaultPath are applied; Filters are ignored.
+func (s *DialogService) OpenDirectory(ctx context.Context, caller domain.Caller, opts platform.DialogFileOptions) (string, error) {
 	if err := authorize(s.Gateway, caller, PermDialogOpenDirectory); err != nil {
 		return "", err
 	}
@@ -285,7 +286,7 @@ func (s *DialogService) OpenDirectory(ctx context.Context, caller domain.Caller)
 	if s.OnOpenDirectory == nil {
 		return "", &platform.ErrUnsupported{Feature: platform.FeatureDialogOpenDirectory, OS: s.Host.OS(), Detail: "no directory dialog adapter bound"}
 	}
-	return s.OnOpenDirectory(ctx)
+	return s.OnOpenDirectory(ctx, opts)
 }
 
 // Message authorizes dialog.message. kind is "info" (OK) or "confirm" (Yes/No).

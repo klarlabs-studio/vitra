@@ -40,7 +40,7 @@ int vitra_win_activate_accel(VitraWin *w, const char *shortcut);
 
 char *vitra_open_dialog(const char *title, const char *default_path, const char *filters);
 char *vitra_save_dialog(const char *title, const char *default_path, const char *filters);
-char *vitra_open_directory_dialog(void);
+char *vitra_open_directory_dialog(const char *title, const char *default_path);
 int vitra_message_dialog(const char *title, const char *message, int confirm);
 int vitra_show_notification(const char *title, const char *body);
 

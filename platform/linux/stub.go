@@ -141,16 +141,18 @@ func (h *Host) ClipboardGet() (string, error)                              { ret
 func (h *Host) ClipboardSet(string) error                                  { return h.err() }
 func (h *Host) OpenFileDialog(platform.DialogFileOptions) (string, error)  { return "", h.err() }
 func (h *Host) SaveFileDialog(platform.DialogFileOptions) (string, error)  { return "", h.err() }
-func (h *Host) OpenDirectoryDialog() (string, error)                       { return "", h.err() }
-func (h *Host) MessageDialog(string, string, string) (bool, error)         { return false, h.err() }
-func (h *Host) ShowNotification(string, string) error                      { return h.err() }
-func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error      { return h.err() }
-func (h *Host) SetTray(string, []platform.MenuItem) error                  { return h.err() }
-func (h *Host) ClearTray()                                                 {}
-func (h *Host) RegisterGlobalShortcut(string, string) error                { return h.err() }
-func (h *Host) UnregisterGlobalShortcut(string) error                      { return h.err() }
-func (h *Host) Run() error                                                 { return h.err() }
-func (h *Host) Quit()                                                      {}
+func (h *Host) OpenDirectoryDialog(platform.DialogFileOptions) (string, error) {
+	return "", h.err()
+}
+func (h *Host) MessageDialog(string, string, string) (bool, error)    { return false, h.err() }
+func (h *Host) ShowNotification(string, string) error                 { return h.err() }
+func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error { return h.err() }
+func (h *Host) SetTray(string, []platform.MenuItem) error             { return h.err() }
+func (h *Host) ClearTray()                                            {}
+func (h *Host) RegisterGlobalShortcut(string, string) error           { return h.err() }
+func (h *Host) UnregisterGlobalShortcut(string) error                 { return h.err() }
+func (h *Host) Run() error                                            { return h.err() }
+func (h *Host) Quit()                                                 {}
 func (h *Host) err() error {
 	return errors.New("linux webview host requires CGO_ENABLED=1 -tags vitra_native and webkit2gtk-4.1")
 }

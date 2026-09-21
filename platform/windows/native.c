@@ -9,6 +9,7 @@
 #include <commdlg.h>
 #include <shellapi.h>
 #include <shobjidl.h>
+#include <shlobj.h>
 #include <stdio.h>
 
 extern void goVitraIdle(void *);
@@ -909,7 +910,7 @@ char *vitra_open_dialog(const char *title, const char *default_path, const char 
 	return _strdup(path);
 }
 
-char *vitra_open_directory_dialog(void) {
+char *vitra_open_directory_dialog(const char *title, const char *default_path) {
 	HRESULT hrInit = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	IFileOpenDialog *pfd = NULL;
 	HRESULT hr = CoCreateInstance(
@@ -924,6 +925,32 @@ char *vitra_open_directory_dialog(void) {
 	DWORD opts = 0;
 	pfd->lpVtbl->GetOptions(pfd, &opts);
 	pfd->lpVtbl->SetOptions(pfd, opts | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
+	wchar_t *wtitle = NULL;
+	if (title && title[0]) {
+		int n = MultiByteToWideChar(CP_UTF8, 0, title, -1, NULL, 0);
+		if (n > 0) {
+			wtitle = (wchar_t *)malloc((size_t)n * sizeof(wchar_t));
+			if (wtitle) {
+				MultiByteToWideChar(CP_UTF8, 0, title, -1, wtitle, n);
+				pfd->lpVtbl->SetTitle(pfd, wtitle);
+			}
+		}
+	}
+	wchar_t *wfolder = NULL;
+	if (default_path && default_path[0]) {
+		int n = MultiByteToWideChar(CP_UTF8, 0, default_path, -1, NULL, 0);
+		if (n > 0) {
+			wfolder = (wchar_t *)malloc((size_t)n * sizeof(wchar_t));
+			if (wfolder) {
+				MultiByteToWideChar(CP_UTF8, 0, default_path, -1, wfolder, n);
+				IShellItem *folder = NULL;
+				if (SUCCEEDED(SHCreateItemFromParsingName(wfolder, NULL, &IID_IShellItem, (void **)&folder))) {
+					pfd->lpVtbl->SetFolder(pfd, folder);
+					folder->lpVtbl->Release(folder);
+				}
+			}
+		}
+	}
 	hr = pfd->lpVtbl->Show(pfd, NULL);
 	char *result = NULL;
 	if (SUCCEEDED(hr)) {
@@ -943,6 +970,8 @@ char *vitra_open_directory_dialog(void) {
 			psi->lpVtbl->Release(psi);
 		}
 	}
+	free(wtitle);
+	free(wfolder);
 	pfd->lpVtbl->Release(pfd);
 	if (hrInit == S_OK) {
 		CoUninitialize();

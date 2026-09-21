@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Directory dialog options: optional `title` and `defaultPath` on `dialog.openDirectory` (same payload shape as open/save; filters ignored); native hosts apply them (GTK folder chooser, NSOpenPanel, IFileOpenDialog SetTitle/SetFolder); empty payload keeps prior defaults.
 - Official window focus: `window.focus` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Focus` → `DesktopHost.FocusWindow` (GTK `present`, NSWindow `makeKeyAndOrderFront`, Win32 `SetForegroundWindow`); scaffold/competitive bind.
 - Windows ARP LegalCopyright: `Spec.License` / `vitra package --license` (via `EffectiveLicense`) flow into NSIS `LegalCopyright` and WiX `ARPCOPYRIGHT` (default: `LicenseRef-proprietary`).
 - Official menu clear: `menu.clear` on `vitra.menu` (same `menu.set` grant) via `desktop.MenuService.ClearMenu` → `DesktopHost.SetMenuBar(nil)`; scaffold/competitive bind.

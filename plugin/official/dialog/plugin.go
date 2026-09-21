@@ -21,7 +21,7 @@ func (dialogPlugin) Manifest() plugin.Manifest {
 		ID:          PluginID,
 		Name:        "Dialogs",
 		Version:     plugin.SemVer{Major: 1},
-		Description: "Native open/save/directory/message dialogs (open/save accept title, defaultPath, filters)",
+		Description: "Native open/save/directory/message dialogs (open/save/directory accept title, defaultPath; open/save also filters)",
 		Permissions: []domain.PermissionName{"dialog.open", "dialog.save", "dialog.openDirectory", "dialog.message"},
 		MinKernel:   plugin.SemVer{Major: 0, Minor: 3},
 	}
@@ -38,7 +38,7 @@ func (dialogPlugin) Contribute() (plugin.Contribution, error) {
 		return plugin.Contribution{}, err
 	}
 	save.WithPlugin(PluginID)
-	opendir, err := domain.NewCommandDefinition("dialog.openDirectory", "Open directory dialog", "dialog.openDirectory")
+	opendir, err := domain.NewCommandDefinition("dialog.openDirectory", "Open directory dialog (optional title, defaultPath)", "dialog.openDirectory")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}

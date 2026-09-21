@@ -70,8 +70,9 @@ type FileFilter struct {
 	Extensions []string
 }
 
-// DialogFileOptions configures native open/save file dialogs.
+// DialogFileOptions configures native open/save/directory dialogs.
 // Zero values preserve previous unfiltered, untitled behavior.
+// Filters apply to open/save only; directory dialogs use Title and DefaultPath.
 type DialogFileOptions struct {
 	Title       string
 	DefaultPath string
