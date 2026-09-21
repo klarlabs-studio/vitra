@@ -6,8 +6,9 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/go.klarlabs.de/vitra.svg)](https://pkg.go.dev/go.klarlabs.de/vitra)
 
-Secure kernel **plus** a runnable Linux WebView host. Capabilities are explicit;
-the frontend is untrusted; identity is stamped by the native bridge.
+Secure kernel **plus** runnable DesktopHost adapters on Linux, Darwin, and
+Windows. Capabilities are explicit; the frontend is untrusted; identity is
+stamped by the native bridge.
 
 ---
 

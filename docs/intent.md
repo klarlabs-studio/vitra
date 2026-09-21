@@ -1,6 +1,6 @@
 # Vitra — Project Intent
 
-> **Status:** Competitive Linux desktop runtime + secure kernel  
+> **Status:** Competitive cross-platform desktop runtime + secure kernel  
 > **Working name:** Vitra  
 > **Language:** Go  
 > **Scope:** Secure, extensible, cross-platform application runtime for
@@ -9,10 +9,11 @@
 
 This document is the product charter. Implementation follows DDD/TDD under
 Klarlabs conventions. The repository delivers the **secure runtime kernel**
-and a **runnable Linux WebView host** (`app` + `platform/linux` with
-`-tags vitra_native`). Darwin ships a full WKWebView DesktopHost under the same
-tag; Windows ships a Win32 + WebView2 host (Navigate/Eval/message via WebView2Loader.dll + Evergreen Runtime) with global shortcuts. Darwin global shortcuts use RegisterEventHotKey.
-Remaining gaps are called out as explicit unsupported features.
+and **runnable DesktopHost adapters** on Linux (`platform/linux`), Darwin
+(`platform/darwin`), and Windows (`platform/windows`) under `-tags vitra_native`.
+Linux global OS hotkeys stay explicit unsupported on Wayland; other remaining
+gaps (MSI/NSIS polish, SIEM/MDM) are called out as explicit unsupported or
+follow-on distribution work.
 
 ## Why Vitra Exists
 

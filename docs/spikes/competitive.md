@@ -13,8 +13,8 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | `bridge.PreloadJS` — `window.vitra.invoke` | Done |
 | `platform/linux` WebKitGTK host (`-tags vitra_native`) | Done |
 | Clipboard + open/save file dialogs | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste, Windows PowerShell); dialogs Linux GTK + Darwin NSOpen/SavePanel + Windows GetOpen/SaveFileName |
-| Single-instance lock (flock) | Done (Linux + Darwin) |
-| Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin) |
+| Single-instance lock (flock) | Done (Linux + Darwin + Windows) |
+| Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin + Windows) |
 | Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem; Windows Shell_NotifyIcon) |
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done |
@@ -40,7 +40,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Host→frontend events (`vitra.on` / `App.Emit`) | Done |
 | Linux window chrome (`window.chrome`) | Done (GTK title, size, maximize, fullscreen, keep-above, minimize, hide, icon) |
 | Darwin window chrome (`window.chrome`) | Done (NSWindow title, size, zoom, fullscreen, floating, miniaturize, hide, miniwindow icon) |
-| OpenURL (`browser.open`) | Done (Linux `xdg-open`, Darwin `open` for http(s)/mailto) |
+| OpenURL (`browser.open`) | Done (Linux `xdg-open`, Darwin `open`, Windows `cmd start` for http(s)/mailto) |
 
 ## Security invariants preserved
 
@@ -66,8 +66,13 @@ make e2e
 
 ## Honest gap vs Wails 3
 
-Vitra is now a **secure runtime you can run** on Linux, including menu bar,
-tray with context menu, save dialogs, single-instance locking, deep-link argv handoff, and grant-gated desktop services (chrome shares the kernel gateway). Wails still leads on cross-OS host maturity (macOS/Windows adapters) and
-template ecosystem. Vitra leads on capability-oriented authority and
-inspectable grants. Closing the remaining host gap is mechanical adapter work
-on the same `app.DesktopHost` contract.
+Vitra is a **secure runtime you can run** on Linux, Darwin, and Windows with
+API-compatible `app.DesktopHost` adapters (WebKitGTK / WKWebView / Win32+WebView2),
+including menus, tray, dialogs, chrome, drag-drop, deep links, and grant-gated
+desktop services. Global OS hotkeys ship on Windows and Darwin; Linux keeps
+in-window accelerators only (Wayland has no portable global hotkey API).
+
+Wails still leads on template ecosystem and packaging polish. Vitra leads on
+capability-oriented authority and inspectable grants. Remaining work is
+distribution polish (MSI/NSIS), enterprise SIEM/MDM hooks, and optional X11-only
+global shortcuts — not core DesktopHost parity.

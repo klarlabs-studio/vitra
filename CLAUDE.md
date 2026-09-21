@@ -6,9 +6,9 @@ Guidance for Claude Code (and other agents) working in this repository.
 
 A secure, capability-oriented desktop application runtime for Go + web
 frontends. The repo ships a **secure runtime kernel** (capability gateway,
-explicit commands, host-stamped identity) and a **runnable Linux WebView host**
-(`app` + `platform/linux` with `-tags vitra_native`). Darwin/Windows adapters
-expose the same `DesktopHost` contract with explicit unsupported matrices.
+explicit commands, host-stamped identity) and **runnable DesktopHost adapters**
+on Linux, Darwin, and Windows (`-tags vitra_native`). Linux global OS hotkeys
+stay explicit unsupported on Wayland.
 
 Read `docs/intent.md` and `docs/architecture-ddd.md` before substantive changes.
 
