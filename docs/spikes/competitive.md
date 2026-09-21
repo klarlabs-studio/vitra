@@ -15,13 +15,15 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Clipboard + open/save file dialogs (GTK) | Clipboard Done (Linux GTK, Darwin pbcopy/pbpaste); dialogs Linux GTK + Darwin NSOpen/SavePanel |
 | Single-instance lock (flock) | Done (Linux + Darwin) |
 | Deep-link argv + secondary-instance socket handoff | Done (Linux + Darwin) |
-| Linux xdg URL-scheme registration (`RegisterURLScheme`) | Done |
-| Linux xdg MIME file associations (`RegisterFileAssociations`) | Done |
 | Tray context menu (status-icon popup) | Done (Linux GTK; Darwin NSStatusItem) |
 | Navigation allowlist (local asset server only) | Done |
 | GTK menu bar + status-icon tray | Done |
 | `vitra doctor/new/dev/build` | Done |
-| `platform/darwin` WKWebView host (`-tags vitra_native`) | Near-complete DesktopHost (drag-drop landed; file associations TBD) |
+| `platform/darwin` WKWebView host (`-tags vitra_native`) | DesktopHost complete for competitive parity (global shortcuts still TBD) |
+| Linux xdg URL-scheme registration (`RegisterURLScheme`) | Done |
+| Darwin URL-scheme registration (`RegisterURLScheme`) | Done (helper `.app` + lsregister) |
+| Linux xdg MIME file associations (`RegisterFileAssociations`) | Done |
+| Darwin MIME file associations (`RegisterFileAssociations`) | Done (helper `.app` CFBundleDocumentTypes) |
 | Linux file drag-drop (`dragdrop.receive`) | Done (GTK URI drops + inject helper) |
 | Darwin file drag-drop (`dragdrop.receive`) | Done (NSFilenamesPboardType + inject helper) |
 | In-window menu accelerators (`MenuItem.Shortcut`) | Done (Linux GTK; Darwin NSMenu Ctrl→Command) |
