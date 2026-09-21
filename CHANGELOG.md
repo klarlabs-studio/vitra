@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Darwin NSSupportsAutomaticGraphicsSwitching: Info.plist always sets `NSSupportsAutomaticGraphicsSwitching` true (alongside `NSHighResolutionCapable`) for automatic GPU switching on dual-GPU Macs.
 - `vitra new --template uhtml`: Vite + µhtml (`uhtml`) + TypeScript starter (`html` / `render` + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream releases: metainfo emits `<releases><release version="…"/></releases>` from `Spec.Version` (omitted when empty).
 - `vitra new --template hybrids`: Vite + Hybrids + TypeScript starter (`define` / `html` web component + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.

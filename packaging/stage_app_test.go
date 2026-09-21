@@ -54,6 +54,8 @@ func TestStageDarwinApp_LayoutAndPlist(t *testing.T) {
 		"NSHumanReadableCopyright", DefaultLicense,
 		"LSApplicationCategoryType", "public.app-category.utilities",
 		"CFBundleGetInfoString", DefaultDescription,
+		"NSHighResolutionCapable",
+		"NSSupportsAutomaticGraphicsSwitching",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("plist missing %q\n%s", want, body)
@@ -62,6 +64,10 @@ func TestStageDarwinApp_LayoutAndPlist(t *testing.T) {
 	wantDisplay := "<key>CFBundleDisplayName</key>\n\t<string>Demo App</string>"
 	if !strings.Contains(body, wantDisplay) {
 		t.Fatalf("missing DisplayName\n%s", body)
+	}
+	wantGPU := "<key>NSSupportsAutomaticGraphicsSwitching</key>\n\t<true/>"
+	if !strings.Contains(body, wantGPU) {
+		t.Fatalf("missing NSSupportsAutomaticGraphicsSwitching\n%s", body)
 	}
 	if _, err := os.Stat(filepath.Join(bundle, "Contents", "Resources")); err != nil {
 		t.Fatal(err)
