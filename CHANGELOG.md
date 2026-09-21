@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template hybrids`: Vite + Hybrids + TypeScript starter (`define` / `html` web component + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream OARS content rating: metainfo always emits `<content_rating type="oars-1.1"/>` (empty = all attributes none; Flathub-friendly default for desktop apps).
 - Official window unfullscreen: `window.unfullscreen` on `vitra.window` (same `window.chrome` grant) via `desktop.WindowService.Unfullscreen` (clears `Fullscreen`); scaffold/competitive bind.
 - `vitra new --template arrow`: Vite + ArrowJS (`@arrow-js/core`) + TypeScript starter (`reactive` / `html` + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
