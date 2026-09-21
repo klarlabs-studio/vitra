@@ -288,3 +288,47 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 		t.Fatal("expected missing adapter")
 	}
 }
+
+func TestBrowserService_GrantFeatureAndHook(t *testing.T) {
+	caller, _ := domain.NewCaller("main", domain.OriginPackagedLocal)
+	host := null.New(platform.OSLinux)
+	ctx := context.Background()
+
+	denied := &desktop.BrowserService{Gateway: denyAll{}, Host: host}
+	err := denied.OpenURL(ctx, caller, "https://example.com")
+	var d *domain.ErrDenied
+	if !errors.As(err, &d) || d.Code != domain.DenialNoGrant {
+		t.Fatalf("expected denial, got %v", err)
+	}
+
+	bare := &desktop.BrowserService{Gateway: allowAll{}, Host: host}
+	err = bare.OpenURL(ctx, caller, "https://example.com")
+	var un *platform.ErrUnsupported
+	if !errors.As(err, &un) || un.Feature != platform.FeatureOpenURL {
+		t.Fatalf("expected unsupported browser.open, got %v", err)
+	}
+
+	okHost := withFeatures(platform.OSLinux, platform.FeatureOpenURL)
+	var got string
+	ok := &desktop.BrowserService{
+		Gateway: allowAll{},
+		Host:    okHost,
+		OnOpen: func(_ context.Context, rawURL string) error {
+			got = rawURL
+			return nil
+		},
+	}
+	if err := ok.OpenURL(ctx, caller, "https://example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if got != "https://example.com" {
+		t.Fatalf("got %q", got)
+	}
+	if err := ok.OpenURL(ctx, caller, "  "); err == nil {
+		t.Fatal("expected empty url validation")
+	}
+	missing := &desktop.BrowserService{Gateway: allowAll{}, Host: okHost}
+	if err := missing.OpenURL(ctx, caller, "https://example.com"); err == nil {
+		t.Fatal("expected missing adapter")
+	}
+}

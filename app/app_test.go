@@ -84,6 +84,7 @@ func (h *fakeHost) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) err
 func (h *fakeHost) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, error) {
 	return platform.WindowChrome{}, nil
 }
+func (h *fakeHost) OpenURL(context.Context, string) error { return nil }
 func (h *fakeHost) Run() error {
 	close(h.ran)
 	<-h.quit

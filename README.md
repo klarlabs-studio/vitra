@@ -148,6 +148,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Linux file drag-drop | **Done** (grant-gated GTK URI drops) |
 | Linux window chrome | **Done** (title, size, maximize, fullscreen, keep-above) |
 | Linux menu accelerators | **Done** (in-window `MenuItem.Shortcut`; not global) |
+| Linux OpenURL | **Done** (grant-gated `xdg-open` for http(s)/mailto) |
 | Save dialog + single-instance lock | Linux native |
 | Deep-link argv / secondary handoff | Linux native |
 | Linux xdg URL-scheme registration | Linux native (`vitra register-scheme`) |

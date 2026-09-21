@@ -106,7 +106,7 @@ func run() error {
 
 	chromeGrant, err := domain.NewCapabilityGrant(
 		"desktop-chrome",
-		"clipboard, dialogs, menu, tray, single-instance, deeplink, drag-drop, window chrome",
+		"clipboard, dialogs, menu, tray, single-instance, deeplink, drag-drop, window chrome, open url",
 		[]domain.WindowID{"main"},
 		[]domain.Origin{domain.OriginPackagedLocal},
 		[]domain.PermissionSpec{
@@ -120,6 +120,7 @@ func run() error {
 			{Name: desktop.PermDeepLinkHandle},
 			{Name: desktop.PermDragDrop},
 			{Name: desktop.PermWindowChrome},
+			{Name: desktop.PermOpenURL},
 		},
 	)
 	if err != nil {
@@ -391,6 +392,20 @@ func run() error {
 				if err := winChrome.Apply(context.Background(), caller, "main", cur); err != nil {
 					fmt.Fprintf(os.Stderr, "window chrome apply: %v\n", err)
 				}
+			}
+		}
+		if openTarget := os.Getenv("VITRA_OPEN_URL"); openTarget != "" {
+			browser := &desktop.BrowserService{
+				Gateway: rt,
+				Host:    host,
+				OnOpen: func(ctx context.Context, rawURL string) error {
+					return host.OpenURL(ctx, rawURL)
+				},
+			}
+			if err := browser.OpenURL(context.Background(), caller, openTarget); err != nil {
+				fmt.Fprintf(os.Stderr, "open url: %v\n", err)
+			} else {
+				fmt.Println("opened url:", openTarget)
 			}
 		}
 		if _, err := rt.SubscribeEvent("demo-tick", "demo.tick", "main"); err == nil {
