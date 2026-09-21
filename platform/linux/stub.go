@@ -65,6 +65,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureDragDrop, Available: false,
 			Detail: "requires native linux host",
 		},
+		platform.FeatureFileAssociation: {
+			Feature: platform.FeatureFileAssociation, Available: true,
+			Detail: "xdg MIME desktop file; available without native WebView",
+		},
 	}
 }
 func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) []byte) {

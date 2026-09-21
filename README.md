@@ -149,6 +149,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Save dialog + single-instance lock | Linux native |
 | Deep-link argv / secondary handoff | Linux native |
 | Linux xdg URL-scheme registration | Linux native (`vitra register-scheme`) |
+| Linux xdg MIME file associations | Linux (`vitra register-files`) |
 | Darwin WKWebView / Windows WebView2 | Stubs (explicit unsupported) |
 
 ## Development

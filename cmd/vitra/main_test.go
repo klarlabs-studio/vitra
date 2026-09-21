@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -77,6 +78,9 @@ func TestRun_VersionDoctorInspectHelp(t *testing.T) {
 	}
 	if !strings.Contains(out, "register-scheme") {
 		t.Fatalf("help missing register-scheme: %q", out)
+	}
+	if !strings.Contains(out, "register-files") {
+		t.Fatalf("help missing register-files: %q", out)
 	}
 	if !strings.Contains(out, "vitra package") {
 		t.Fatalf("help missing package: %q", out)
@@ -237,6 +241,36 @@ func TestRun_PackageAppImage(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(out, "provenance.json")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRun_RegisterFiles(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("xdg file associations are Linux-only")
+	}
+	tmp := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", tmp)
+	bin := filepath.Join(tmp, "appbin")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := capture(t, func() {
+		if err := run([]string{"register-files", "--mime", "text/plain", "--mime", "application/json", "--app-id", "com.vitra.t", "--exec", bin, "--name", "T"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if !strings.Contains(out, "text/plain") {
+		t.Fatalf("stdout: %q", out)
+	}
+	body, err := os.ReadFile(filepath.Join(tmp, "applications", "com.vitra.t-files.desktop"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "MimeType=text/plain;application/json;") {
+		t.Fatalf("desktop:\n%s", body)
+	}
+	if err := run([]string{"register-files"}); err == nil {
+		t.Fatal("expected usage error")
 	}
 }
 
