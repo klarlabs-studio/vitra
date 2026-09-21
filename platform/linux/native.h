@@ -65,6 +65,7 @@ void vitra_win_set_drag_drop(VitraWin *w, int enabled);
 void vitra_win_flush(void);
 void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden, const char *icon_path);
 VitraChrome vitra_win_chrome(VitraWin *w);
+void vitra_win_focus(VitraWin *w);
 
 int vitra_hotkey_supported(void);
 int vitra_register_hotkey(const char *accelerator, const char *action_id);

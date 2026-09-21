@@ -488,6 +488,9 @@ func run() error {
 		OnRead: func(_ context.Context, window domain.WindowID) (platform.WindowChrome, error) {
 			return host.ReadWindowChrome(window)
 		},
+		OnFocus: func(_ context.Context, window domain.WindowID) error {
+			return host.FocusWindow(window)
+		},
 		OnCreate: func(ctx context.Context, opts desktop.WindowCreateOptions) error {
 			if application == nil {
 				return fmt.Errorf("app is not ready")
@@ -540,6 +543,15 @@ func run() error {
 			return nil, err
 		}
 		return winSvc.Read(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.focus", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Focus(ctx, caller, id)
 	})); err != nil {
 		return err
 	}

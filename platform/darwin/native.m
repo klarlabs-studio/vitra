@@ -425,6 +425,20 @@ VitraChrome vitra_win_chrome(VitraWin *w) {
 	return c;
 }
 
+void vitra_win_focus(VitraWin *w) {
+	if (!w || !w->window) {
+		return;
+	}
+	NSWindow *win = w->window;
+	w->hidden = 0;
+	w->minimized = 0;
+	if (win.miniaturized) {
+		[win deminiaturize:nil];
+	}
+	[win makeKeyAndOrderFront:nil];
+	[NSApp activateIgnoringOtherApps:YES];
+}
+
 static void parse_shortcut(const char *shortcut, NSString **keyOut, NSEventModifierFlags *modsOut) {
 	*keyOut = @"";
 	*modsOut = 0;

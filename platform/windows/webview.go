@@ -309,6 +309,23 @@ func (h *Host) ReadWindowChrome(id domain.WindowID) (platform.WindowChrome, erro
 	return got.chrome, got.err
 }
 
+// FocusWindow raises and activates a native window.
+func (h *Host) FocusWindow(id domain.WindowID) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		C.vitra_win_focus(w.ptr)
+		errCh <- nil
+	})
+	return <-errCh
+}
+
 func (h *Host) CreateWindow(_ context.Context, spec platform.WindowSpec) error {
 	return h.Open(spec, "about:blank", "")
 }

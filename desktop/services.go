@@ -673,6 +673,7 @@ type WindowService struct {
 	Host     platform.Host
 	OnApply  func(ctx context.Context, window domain.WindowID, chrome platform.WindowChrome) error
 	OnRead   func(ctx context.Context, window domain.WindowID) (platform.WindowChrome, error)
+	OnFocus  func(ctx context.Context, window domain.WindowID) error
 	OnCreate func(ctx context.Context, opts WindowCreateOptions) error
 	OnClose  func(ctx context.Context, window domain.WindowID) error
 }
@@ -712,6 +713,23 @@ func (s *WindowService) Read(ctx context.Context, caller domain.Caller, window d
 		return platform.WindowChrome{}, &platform.ErrUnsupported{Feature: platform.FeatureWindowChrome, OS: s.Host.OS(), Detail: "no window chrome reader bound"}
 	}
 	return s.OnRead(ctx, window)
+}
+
+// Focus authorizes window.chrome then raises the window to the foreground.
+func (s *WindowService) Focus(ctx context.Context, caller domain.Caller, window domain.WindowID) error {
+	if window == "" {
+		return &domain.ErrValidation{Message: "window id is required"}
+	}
+	if err := authorize(s.Gateway, caller, PermWindowChrome); err != nil {
+		return err
+	}
+	if err := platform.Require(s.Host, platform.FeatureWindowChrome); err != nil {
+		return err
+	}
+	if s.OnFocus == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureWindowChrome, OS: s.Host.OS(), Detail: "no window focus adapter bound"}
+	}
+	return s.OnFocus(ctx, window)
 }
 
 // Create authorizes window.create then opens a window via the bound adapter.

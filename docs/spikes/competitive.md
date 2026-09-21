@@ -32,15 +32,15 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | In-window menu accelerators (`MenuItem.Shortcut`) | Done (Linux GTK; Darwin NSMenu Ctrl→Command; Windows HACCEL) |
 | `platform/windows` DesktopHost | Win32 + WebView2 Navigate/Eval/message; chrome/dialogs/menu/tray/drag-drop/global shortcuts/OpenURL/clipboard/SI/deep-link/scheme/files |
 | Windows global shortcuts (`shortcut.global`) | Done (`RegisterHotKey` → action handler); official `vitra.shortcut` (`register`/`unregister`) + scaffold/`generate` stubs |
-| Windows window chrome (`window.chrome`) | Done (Win32 title, size, maximize, fullscreen, topmost, minimize, hide, icon); official `vitra.window` plugin + scaffold/`generate` stubs |
+| Windows window chrome (`window.chrome`) | Done (Win32 title, size, maximize, fullscreen, topmost, minimize, hide, icon, focus); official `vitra.window` plugin + scaffold/`generate` stubs |
 | Windows open/save/directory file dialogs | Done (GetOpenFileName / GetSaveFileName / IFileOpenDialog FOS_PICKFOLDERS) |
 | Windows menu bar + tray | Done (CreateMenu/HACCEL; Shell_NotifyIcon + TrackPopupMenu); official `vitra.menu` / `vitra.tray` plugins + scaffold/`generate` stubs |
 | Windows URL-scheme registration (`RegisterURLScheme`) | Done (HKCU Classes `.reg`) |
 | Windows MIME file associations (`RegisterFileAssociations`) | Done (HKCU ProgID + MIME `.reg`) |
 | Eval-driven invoke E2E (`make e2e`) | Done (CI: Native Linux E2E) |
 | Host→frontend events (`vitra.on` / `App.Emit`) | Done |
-| Linux window chrome (`window.chrome`) | Done (GTK title, size, maximize, fullscreen, keep-above, minimize, hide, icon); official `vitra.window` plugin + scaffold/`generate` stubs |
-| Darwin window chrome (`window.chrome`) | Done (NSWindow title, size, zoom, fullscreen, floating, miniaturize, hide, miniwindow icon); official `vitra.window` plugin + scaffold/`generate` stubs |
+| Linux window chrome (`window.chrome`) | Done (GTK title, size, maximize, fullscreen, keep-above, minimize, hide, icon, present/focus); official `vitra.window` plugin + scaffold/`generate` stubs |
+| Darwin window chrome (`window.chrome`) | Done (NSWindow title, size, zoom, fullscreen, floating, miniaturize, hide, miniwindow icon, makeKeyAndOrderFront); official `vitra.window` plugin + scaffold/`generate` stubs |
 | OpenURL (`browser.open`) | Done (Linux `xdg-open`, Darwin `open`, Windows `cmd start` for http(s)/mailto); official `vitra.browser` plugin + scaffold/`generate` stubs |
 | Host info (`os.info`) | Done (stdlib GOOS/GOARCH/family + locale env); official `vitra.os` plugin + scaffold/`generate` stubs |
 | Notifications (`notifications.show`) | Done (title+body; Linux D-Bus Notifications, Darwin NSUserNotification, Windows tray balloon); official `vitra.notification` plugin + scaffold/`generate` stubs |

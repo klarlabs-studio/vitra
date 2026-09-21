@@ -156,4 +156,12 @@ func TestNativeWindowChrome(t *testing.T) {
 	if err := h.ApplyWindowChrome("main", platform.WindowChrome{Title: "x"}); err == nil {
 		t.Fatal("expected size validation")
 	}
+	if err := h.FocusWindow("main"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.FocusWindow("missing"); err == nil {
+		t.Fatal("expected missing window focus")
+	} else if _, ok := err.(*domain.ErrNotFound); !ok {
+		t.Fatalf("expected not found, got %v", err)
+	}
 }

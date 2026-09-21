@@ -58,6 +58,7 @@
       <button id="win" class="secondary">Open aux window</button>
       <button id="chrome" class="secondary">Apply window.chrome</button>
       <button id="getChrome" class="secondary">Read window.getChrome</button>
+      <button id="focus" class="secondary">Focus window.focus</button>
       <button id="menu" class="secondary">Set menu bar</button>
       <button id="menuClear" class="secondary">Clear menu bar</button>
       <button id="tray" class="secondary">Set tray</button>
@@ -197,6 +198,14 @@
     document.getElementById("getChrome").onclick = async () => {
       try {
         show({ chrome: await window.vitra.invoke("window.getChrome", { id: "main" }) });
+      } catch (e) {
+        show(String(e.message || e), true);
+      }
+    };
+    document.getElementById("focus").onclick = async () => {
+      try {
+        await window.vitra.invoke("window.focus", { id: "main" });
+        show({ focus: "main" });
       } catch (e) {
         show(String(e.message || e), true);
       }

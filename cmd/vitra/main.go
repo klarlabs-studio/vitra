@@ -2253,6 +2253,9 @@ func run() error {
 		OnRead: func(_ context.Context, window domain.WindowID) (platform.WindowChrome, error) {
 			return host.ReadWindowChrome(window)
 		},
+		OnFocus: func(_ context.Context, window domain.WindowID) error {
+			return host.FocusWindow(window)
+		},
 		OnCreate: func(ctx context.Context, opts desktop.WindowCreateOptions) error {
 			if application == nil {
 				return fmt.Errorf("app is not ready")
@@ -2305,6 +2308,15 @@ func run() error {
 			return nil, err
 		}
 		return winSvc.Read(ctx, caller, id)
+	})); err != nil {
+		return err
+	}
+	if err := rt.BindExecutor("window.focus", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+		id, err := desktop.ParseWindowID(input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, winSvc.Focus(ctx, caller, id)
 	})); err != nil {
 		return err
 	}
@@ -2542,6 +2554,7 @@ button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
 <button id="win">window.create</button>
 <button id="chrome">window.chrome</button>
 <button id="getChrome">window.getChrome</button>
+<button id="focus">window.focus</button>
 <button id="menu">menu.set</button>
 <button id="menuClear">menu.clear</button>
 <button id="tray">tray.set</button>
@@ -2593,6 +2606,12 @@ document.getElementById("chrome").onclick = async () => {
 document.getElementById("getChrome").onclick = async () => {
   try { out.textContent = JSON.stringify(await invoke("window.getChrome", { id: "main" }), null, 2); }
   catch (e) { out.textContent = String(e); }
+};
+document.getElementById("focus").onclick = async () => {
+  try {
+    await invoke("window.focus", { id: "main" });
+    out.textContent = JSON.stringify({ focus: "main" }, null, 2);
+  } catch (e) { out.textContent = String(e); }
 };
 document.getElementById("menu").onclick = async () => {
   try {
