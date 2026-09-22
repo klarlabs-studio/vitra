@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- FreeDesktop StartupNotify: staged `.desktop` files (linux-dir / deb / rpm / snap / flatpak / AppDir) emit `StartupNotify=true` (and `Terminal=false` on linux-dir for parity).
 - `vitra new --template dio`: Vite + Dio (`dio.js`) + TypeScript starter (`createElement` / `Component` / `render` hyperscript + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream pkgname: metainfo emits `<pkgname>` from `debianName(Spec.AppID, …)` (matches Debian `Package:` / RPM `Name:`).
 - `vitra new --template crank`: Vite + Crank (`@b9g/crank`) + TypeScript starter (`html` tagged templates / generator components + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
