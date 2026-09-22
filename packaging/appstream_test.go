@@ -46,6 +46,7 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		`<name>Klarlabs &lt;dev@klarlabs.de&gt;</name>`,
 		`<developer_name>Klarlabs &lt;dev@klarlabs.de&gt;</developer_name>`,
 		`<update_contact>Klarlabs &lt;dev@klarlabs.de&gt;</update_contact>`,
+		`<project_group>Vitra</project_group>`,
 		`<content_rating type="oars-1.1"/>`,
 		`<control>keyboard</control>`,
 		`<control>pointing</control>`,
@@ -83,6 +84,9 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 	emptyXML := packaging.AppStreamMetainfoXML(empty)
 	if !strings.Contains(emptyXML, `<update_contact>Vitra Packaging &lt;vitra@klarlabs.de&gt;</update_contact>`) {
 		t.Fatalf("default update_contact missing:\n%s", emptyXML)
+	}
+	if !strings.Contains(emptyXML, `<project_group>Vitra</project_group>`) {
+		t.Fatalf("project_group missing:\n%s", emptyXML)
 	}
 	if !strings.Contains(emptyXML, `<content_rating type="oars-1.1"/>`) {
 		t.Fatalf("default OARS content_rating missing:\n%s", emptyXML)
@@ -146,6 +150,9 @@ func TestStageLinux_WritesAppStreamMetainfo(t *testing.T) {
 	}
 	if !strings.Contains(string(body), `<update_contact>Vitra Packaging &lt;vitra@klarlabs.de&gt;</update_contact>`) {
 		t.Fatalf("default update_contact missing:\n%s", body)
+	}
+	if !strings.Contains(string(body), `<project_group>Vitra</project_group>`) {
+		t.Fatalf("project_group missing:\n%s", body)
 	}
 	if !strings.Contains(string(body), `<content_rating type="oars-1.1"/>`) {
 		t.Fatalf("OARS content_rating missing:\n%s", body)

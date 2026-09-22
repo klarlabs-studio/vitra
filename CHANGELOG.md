@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- AppStream project_group: metainfo always emits `<project_group>Vitra</project_group>` so software centers can group Vitra-packaged apps.
 - `vitra new --template uland`: Vite + µland (`uland`) + TypeScript starter (`Component` / `html` / `useState` hooks + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - FreeDesktop SingleMainWindow: staged `.desktop` files (linux-dir / deb / rpm / snap / flatpak / AppDir) emit `SingleMainWindow=true` for GNOME Shell single-window awareness.
 - `vitra new --template uce`: Vite + µce (`uce`) + TypeScript starter (`define` / `html` micro custom elements + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
