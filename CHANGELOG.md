@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template uland`: Vite + µland (`uland`) + TypeScript starter (`Component` / `html` / `useState` hooks + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - FreeDesktop SingleMainWindow: staged `.desktop` files (linux-dir / deb / rpm / snap / flatpak / AppDir) emit `SingleMainWindow=true` for GNOME Shell single-window awareness.
 - `vitra new --template uce`: Vite + µce (`uce`) + TypeScript starter (`define` / `html` micro custom elements + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream branding: metainfo always emits `<branding>` primary colors (`#eeeeee` light / `#111111` dark) matching the Vitra scaffold chrome for software centers.
