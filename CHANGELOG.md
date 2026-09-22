@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template uce`: Vite + µce (`uce`) + TypeScript starter (`define` / `html` micro custom elements + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream branding: metainfo always emits `<branding>` primary colors (`#eeeeee` light / `#111111` dark) matching the Vitra scaffold chrome for software centers.
 - `vitra new --template heresy`: Vite + Heresy + TypeScript starter (`define` / `html` / `render` custom elements + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream stock icon: metainfo emits `<icon type="stock">…</icon>` from `sanitizeFileName(Spec.Name)` (matches FreeDesktop `.desktop` `Icon=` / staged hicolor key).
