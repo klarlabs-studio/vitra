@@ -40,9 +40,10 @@ func AppStreamMetainfoXML(spec Spec) string {
     <p>%s</p>
   </description>
   <launchable type="desktop-id">%s</launchable>
+  <pkgname>%s</pkgname>
   <developer_name>%s</developer_name>
   <update_contact>%s</update_contact>
-`, id, license, name, summary, summary, desktopID, developer, contact)
+`, id, license, name, summary, summary, desktopID, debianName(spec.AppID, sanitizeFileName(spec.Name)), developer, contact)
 	if home := strings.TrimSpace(spec.Homepage); home != "" {
 		escaped := xmlEscape(home)
 		fmt.Fprintf(&b, "  <url type=\"homepage\">%s</url>\n", escaped)
