@@ -72,6 +72,11 @@ func AppStreamMetainfoXML(spec Spec) string {
 	b.WriteString("  <supports>\n")
 	b.WriteString("    <control>touch</control>\n")
 	b.WriteString("  </supports>\n")
+	// Default primary branding matches the Vitra scaffold chrome (dark/light).
+	b.WriteString("  <branding>\n")
+	b.WriteString("    <color type=\"primary\" scheme_preference=\"light\">#eeeeee</color>\n")
+	b.WriteString("    <color type=\"primary\" scheme_preference=\"dark\">#111111</color>\n")
+	b.WriteString("  </branding>\n")
 	b.WriteString("  <categories>\n")
 	for _, cat := range spec.EffectiveCategories() {
 		fmt.Fprintf(&b, "    <category>%s</category>\n", xmlEscape(cat))
