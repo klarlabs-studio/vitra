@@ -40,6 +40,7 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		`<keyword>desktop</keyword>`,
 		`<keyword>secure</keyword>`,
 		`<launchable type="desktop-id">com.example.Demo.desktop</launchable>`,
+		`<icon type="stock">Demo---Co</icon>`,
 		`<pkgname>com-example-demo</pkgname>`,
 		`<developer id="com.example">`,
 		`<name>Klarlabs &lt;dev@klarlabs.de&gt;</name>`,
@@ -102,6 +103,9 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 	if !strings.Contains(emptyXML, `<pkgname>a</pkgname>`) {
 		t.Fatalf("pkgname from AppID missing:\n%s", emptyXML)
 	}
+	if !strings.Contains(emptyXML, `<icon type="stock">A</icon>`) {
+		t.Fatalf("stock icon from Name missing:\n%s", emptyXML)
+	}
 	if !strings.Contains(emptyXML, `<developer id="a">`) {
 		t.Fatalf("developer id from single-segment AppID missing:\n%s", emptyXML)
 	}
@@ -158,6 +162,9 @@ func TestStageLinux_WritesAppStreamMetainfo(t *testing.T) {
 	}
 	if !strings.Contains(string(body), `<pkgname>com-vitra-demo</pkgname>`) {
 		t.Fatalf("pkgname missing:\n%s", body)
+	}
+	if !strings.Contains(string(body), `<icon type="stock">Vitra-Demo</icon>`) {
+		t.Fatalf("stock icon missing:\n%s", body)
 	}
 	if !strings.Contains(string(body), `<developer id="com.vitra">`) {
 		t.Fatalf("developer id missing:\n%s", body)
