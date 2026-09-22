@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `vitra new --template heresy`: Vite + Heresy + TypeScript starter (`define` / `html` / `render` custom elements + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream stock icon: metainfo emits `<icon type="stock">…</icon>` from `sanitizeFileName(Spec.Name)` (matches FreeDesktop `.desktop` `Icon=` / staged hicolor key).
 - `vitra new --template neverland`: Vite + Neverland + TypeScript starter (`neverland` / `html` / `useState` hooks + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.
 - AppStream developer: metainfo emits `<developer id="…"><name>…</name></developer>` (id from AppID parent DNS; name from `EffectivePublisher`) alongside legacy `<developer_name>`.
