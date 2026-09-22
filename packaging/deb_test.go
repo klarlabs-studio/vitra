@@ -55,6 +55,9 @@ func TestBuildAppDir_Layout(t *testing.T) {
 	if !strings.Contains(string(desktop), "StartupNotify=true") {
 		t.Fatalf("desktop missing StartupNotify=%s", desktop)
 	}
+	if !strings.Contains(string(desktop), "SingleMainWindow=true") {
+		t.Fatalf("desktop missing SingleMainWindow=%s", desktop)
+	}
 }
 
 func TestBuildDeb_ArArchive(t *testing.T) {
@@ -139,6 +142,9 @@ func TestBuildDeb_StagesIcon(t *testing.T) {
 	}
 	if !strings.Contains(desktop, "StartupNotify=true") {
 		t.Fatalf("desktop missing StartupNotify:\n%s", desktop)
+	}
+	if !strings.Contains(desktop, "SingleMainWindow=true") {
+		t.Fatalf("desktop missing SingleMainWindow:\n%s", desktop)
 	}
 }
 

@@ -58,6 +58,9 @@ func TestStageLinux_LayoutAndDigest(t *testing.T) {
 	if !strings.Contains(string(body), "StartupNotify=true") {
 		t.Fatalf("desktop missing StartupNotify: %s", body)
 	}
+	if !strings.Contains(string(body), "SingleMainWindow=true") {
+		t.Fatalf("desktop missing SingleMainWindow: %s", body)
+	}
 	if !strings.Contains(string(body), "Terminal=false") {
 		t.Fatalf("desktop missing Terminal=false: %s", body)
 	}
