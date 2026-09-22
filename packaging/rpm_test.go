@@ -81,6 +81,9 @@ func TestBuildRPMDir_Layout(t *testing.T) {
 	if !strings.Contains(string(desktop), "StartupNotify=true") {
 		t.Fatalf("desktop missing StartupNotify=%s", desktop)
 	}
+	if !strings.Contains(string(desktop), "SingleMainWindow=true") {
+		t.Fatalf("desktop missing SingleMainWindow=%s", desktop)
+	}
 }
 
 func TestBuildRPMDir_DefaultLicenseOmitsURL(t *testing.T) {

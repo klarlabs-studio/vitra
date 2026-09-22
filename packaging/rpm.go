@@ -127,6 +127,7 @@ StartupWMClass=%s
 Categories=%s
 %sTerminal=false
 StartupNotify=true
+SingleMainWindow=true
 X-GNOME-UsesNotifications=true
 `, spec.Name, spec.EffectiveDescription(), binName, iconKey, binName, spec.DesktopCategories(), spec.DesktopKeywordsLine())
 	desktopAbs := filepath.Join(payload, filepath.FromSlash(desktopRel))
