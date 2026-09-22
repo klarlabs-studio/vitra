@@ -47,6 +47,7 @@ func AppStreamMetainfoXML(spec Spec) string {
   </developer>
   <developer_name>%s</developer_name>
   <update_contact>%s</update_contact>
+  <project_group>Vitra</project_group>
 `, id, license, name, summary, summary, desktopID, sanitizeFileName(spec.Name), debianName(spec.AppID, sanitizeFileName(spec.Name)), appStreamDeveloperID(spec.AppID), developer, developer, contact)
 	if home := strings.TrimSpace(spec.Homepage); home != "" {
 		escaped := xmlEscape(home)
