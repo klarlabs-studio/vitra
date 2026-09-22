@@ -52,6 +52,9 @@ func TestBuildAppDir_Layout(t *testing.T) {
 	if !strings.Contains(string(desktop), "X-GNOME-UsesNotifications=true") {
 		t.Fatalf("desktop missing X-GNOME-UsesNotifications=%s", desktop)
 	}
+	if !strings.Contains(string(desktop), "StartupNotify=true") {
+		t.Fatalf("desktop missing StartupNotify=%s", desktop)
+	}
 }
 
 func TestBuildDeb_ArArchive(t *testing.T) {
@@ -133,6 +136,9 @@ func TestBuildDeb_StagesIcon(t *testing.T) {
 	}
 	if !strings.Contains(desktop, "X-GNOME-UsesNotifications=true") {
 		t.Fatalf("desktop missing X-GNOME-UsesNotifications:\n%s", desktop)
+	}
+	if !strings.Contains(desktop, "StartupNotify=true") {
+		t.Fatalf("desktop missing StartupNotify:\n%s", desktop)
 	}
 }
 

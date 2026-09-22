@@ -55,6 +55,12 @@ func TestStageLinux_LayoutAndDigest(t *testing.T) {
 	if !strings.Contains(string(body), "X-GNOME-UsesNotifications=true") {
 		t.Fatalf("desktop missing X-GNOME-UsesNotifications: %s", body)
 	}
+	if !strings.Contains(string(body), "StartupNotify=true") {
+		t.Fatalf("desktop missing StartupNotify: %s", body)
+	}
+	if !strings.Contains(string(body), "Terminal=false") {
+		t.Fatalf("desktop missing Terminal=false: %s", body)
+	}
 	if !strings.Contains(string(body), "Comment="+packaging.DefaultDescription) {
 		t.Fatalf("desktop missing Comment: %s", body)
 	}
