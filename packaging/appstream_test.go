@@ -41,6 +41,8 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 		`<keyword>secure</keyword>`,
 		`<launchable type="desktop-id">com.example.Demo.desktop</launchable>`,
 		`<pkgname>com-example-demo</pkgname>`,
+		`<developer id="com.example">`,
+		`<name>Klarlabs &lt;dev@klarlabs.de&gt;</name>`,
 		`<developer_name>Klarlabs &lt;dev@klarlabs.de&gt;</developer_name>`,
 		`<update_contact>Klarlabs &lt;dev@klarlabs.de&gt;</update_contact>`,
 		`<content_rating type="oars-1.1"/>`,
@@ -100,6 +102,12 @@ func TestAppStreamMetainfoXML(t *testing.T) {
 	if !strings.Contains(emptyXML, `<pkgname>a</pkgname>`) {
 		t.Fatalf("pkgname from AppID missing:\n%s", emptyXML)
 	}
+	if !strings.Contains(emptyXML, `<developer id="a">`) {
+		t.Fatalf("developer id from single-segment AppID missing:\n%s", emptyXML)
+	}
+	if !strings.Contains(emptyXML, `<developer_name>A</developer_name>`) {
+		t.Fatalf("developer_name from EffectivePublisher missing:\n%s", emptyXML)
+	}
 	if strings.Contains(emptyXML, `<url type="homepage">`) || strings.Contains(emptyXML, `<url type="help">`) || strings.Contains(emptyXML, `<url type="bugtracker">`) || strings.Contains(emptyXML, `<url type="vcs-browser">`) || strings.Contains(emptyXML, `<url type="donation">`) || strings.Contains(emptyXML, `<url type="contact">`) || strings.Contains(emptyXML, `<url type="faq">`) || strings.Contains(emptyXML, `<url type="contribute">`) || strings.Contains(emptyXML, `<url type="translate">`) {
 		t.Fatalf("unexpected homepage/help/bugtracker/vcs-browser/donation/contact/faq/contribute/translate urls when Homepage empty:\n%s", emptyXML)
 	}
@@ -150,5 +158,8 @@ func TestStageLinux_WritesAppStreamMetainfo(t *testing.T) {
 	}
 	if !strings.Contains(string(body), `<pkgname>com-vitra-demo</pkgname>`) {
 		t.Fatalf("pkgname missing:\n%s", body)
+	}
+	if !strings.Contains(string(body), `<developer id="com.vitra">`) {
+		t.Fatalf("developer id missing:\n%s", body)
 	}
 }

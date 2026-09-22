@@ -41,9 +41,12 @@ func AppStreamMetainfoXML(spec Spec) string {
   </description>
   <launchable type="desktop-id">%s</launchable>
   <pkgname>%s</pkgname>
+  <developer id="%s">
+    <name>%s</name>
+  </developer>
   <developer_name>%s</developer_name>
   <update_contact>%s</update_contact>
-`, id, license, name, summary, summary, desktopID, debianName(spec.AppID, sanitizeFileName(spec.Name)), developer, contact)
+`, id, license, name, summary, summary, desktopID, debianName(spec.AppID, sanitizeFileName(spec.Name)), appStreamDeveloperID(spec.AppID), developer, developer, contact)
 	if home := strings.TrimSpace(spec.Homepage); home != "" {
 		escaped := xmlEscape(home)
 		fmt.Fprintf(&b, "  <url type=\"homepage\">%s</url>\n", escaped)
@@ -92,6 +95,16 @@ func AppStreamMetainfoXML(spec Spec) string {
 	}
 	b.WriteString("</component>\n")
 	return b.String()
+}
+
+// appStreamDeveloperID returns a reverse-DNS developer id derived from AppID
+// (drops the final component: com.example.Demo → com.example).
+func appStreamDeveloperID(appID string) string {
+	id := sanitizeFileName(appID)
+	if i := strings.LastIndex(id, "."); i > 0 {
+		return id[:i]
+	}
+	return id
 }
 
 // writeAppStreamMetainfo writes metainfo XML under root/relPath.
