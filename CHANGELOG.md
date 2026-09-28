@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-28
+
+First tagged release. The secure runtime kernel is complete and runnable
+DesktopHost adapters ship for Linux (WebKitGTK), Darwin (WKWebView), and
+Windows (WebView2) behind `-tags vitra_native`.
+
+### Highlights
+- **Secure kernel:** capability grants, gateway with deterministic denials,
+  explicit commands, host-stamped caller identity, path scopes with deny-wins.
+- **Native hosts:** menus, tray, multi-window, host→frontend events, file
+  drag-drop, dialogs, deep links, single-instance, and global shortcuts on all
+  three platforms (Linux global shortcuts are X11-only; Wayland is explicitly
+  unsupported).
+- **Distribution:** Linux `.deb`/`.rpm`/`.snap`/`.flatpak`/AppDir/AppImage,
+  Windows `msi`/`nsis`/WiX, Darwin `.app`/`.dmg`, and signed update apply.
+- **CLI:** `vitra new` scaffolds, `vitra dev`, packaging, and scheme/file
+  association registration.
+
+### Known limitations
+- Plugin SDK (Phase 3) and isolation/enterprise (Phase 5) ship as contracts
+  plus runtime wiring; APIs may change before 1.0.
+- Pre-1.0: public Go APIs are not yet stable.
+
 ### Fixed
 - `cmd/vitra` and `packaging` build again on Darwin and Windows hosts: the portable Linux staging code no longer lives in a `_linux.go`-suffixed file, and `platform/linux` / `platform/darwin` single-instance flock calls are split behind `unix` build constraints (non-unix builds return an explicit unsupported error). CI now cross-builds the CLI for darwin and windows.
 
@@ -269,3 +292,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Product intent charter and DDD architecture docs.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
+
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/klarlabs-studio/vitra/releases/tag/v0.3.0
