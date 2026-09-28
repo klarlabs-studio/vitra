@@ -25,6 +25,32 @@ jobs:
     with:
       coverage: true
 
+  # The shared go-ci bar only builds on Linux; `go install .../cmd/vitra` must
+  # also work on Darwin and Windows hosts (OS-suffixed files broke this once).
+  cross-build:
+    name: Cross-build CLI (darwin, windows)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        goos: [darwin, windows]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build and vet
+        env:
+          GOOS: ${{ matrix.goos }}
+        run: |
+          go build ./cmd/vitra ./packaging ./app .
+          go vet ./cmd/vitra ./packaging ./app .
+
   # Competitive Linux WebView host — not covered by the shared go-ci bar (CGO + GTK).
   native:
     name: Native Linux E2E

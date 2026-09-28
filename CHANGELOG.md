@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `cmd/vitra` and `packaging` build again on Darwin and Windows hosts: the portable Linux staging code no longer lives in a `_linux.go`-suffixed file, and `platform/linux` / `platform/darwin` single-instance flock calls are split behind `unix` build constraints (non-unix builds return an explicit unsupported error). CI now cross-builds the CLI for darwin and windows.
+
 ### Added
 - AppStream project_group: metainfo always emits `<project_group>Vitra</project_group>` so software centers can group Vitra-packaged apps.
 - `vitra new --template uland`: Vite + µland (`uland`) + TypeScript starter (`Component` / `html` / `useState` hooks + vitra-client interop) embedding `frontend/dist` with a starter dist for immediate `vitra dev`.

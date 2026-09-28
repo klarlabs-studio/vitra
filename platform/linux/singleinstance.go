@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -56,15 +55,16 @@ func (h *Host) TrySingleInstance(appID string) (held bool, release func(), err e
 	if err != nil {
 		return false, nil, err
 	}
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+	held, err = tryLock(f)
+	if err != nil || !held {
 		_ = f.Close()
-		if err == syscall.EWOULDBLOCK || err == syscall.EAGAIN {
-			return false, func() {}, nil
+		if err != nil {
+			return false, nil, err
 		}
-		return false, nil, err
+		return false, func() {}, nil
 	}
 	release = func() {
-		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+		unlock(f)
 		_ = f.Close()
 	}
 	return true, release, nil
