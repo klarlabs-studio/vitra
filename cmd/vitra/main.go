@@ -124,7 +124,7 @@ Usage:
                              Fetch + verify a signed channel manifest (HTTP(S) client; does not install)
   vitra update-stage --out <dir> --manifest <json> --artifact <path>
                              Stage {out}/{app}/{channel}/manifest.json + artifact for static CDN upload
-  vitra update-apply (--manifest <json> --artifact <path> | --base-url <url> --app-id <id> [--channel name]) --pubkey <hex> --dest <path> [--policy production|development]
+  vitra update-apply (--manifest <json> --artifact <path> | --base-url <url>) --app-id <id> [--channel name] --current-version <semver> --pubkey <hex> --dest <path> [--policy production|development]
                              Verify a signed update and atomically install it (local files or HTTP channel fetch)
   vitra notary-setup [--profile name]
                              Print a dry-run notarytool store-credentials plan (Darwin notarize bootstrap; not executed)
@@ -8081,7 +8081,7 @@ func runGenerate(args []string) error {
 
 func runUpdateApply(args []string) error {
 	manifestPath, artifactPath, pubkeyHex, dest, policyEnv := "", "", "", "", ""
-	baseURL, appID, channel := "", "", "stable"
+	baseURL, appID, channel, currentVersion := "", "", "stable", ""
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--manifest":
@@ -8132,23 +8132,26 @@ func runUpdateApply(args []string) error {
 				return fmt.Errorf("--policy requires production or development")
 			}
 			policyEnv = args[i]
+		case "--current-version":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--current-version requires the installed version")
+			}
+			currentVersion = args[i]
 		default:
 			return fmt.Errorf("unknown update-apply flag %q", args[i])
 		}
 	}
-	usage := "usage: vitra update-apply (--manifest <json> --artifact <path> | --base-url <url> --app-id <id> [--channel name]) --pubkey <hex> --dest <path> [--policy production|development]"
-	if pubkeyHex == "" || dest == "" {
+	usage := "usage: vitra update-apply (--manifest <json> --artifact <path> | --base-url <url>) --app-id <id> [--channel name] --current-version <semver> --pubkey <hex> --dest <path> [--policy production|development]"
+	if pubkeyHex == "" || dest == "" || appID == "" || currentVersion == "" {
 		return fmt.Errorf("%s", usage)
 	}
 	localMode := manifestPath != "" || artifactPath != ""
-	channelMode := baseURL != "" || appID != ""
+	channelMode := baseURL != ""
 	if localMode && channelMode {
-		return fmt.Errorf("update-apply: use either local --manifest/--artifact or channel --base-url/--app-id, not both")
+		return fmt.Errorf("update-apply: use either local --manifest/--artifact or channel --base-url, not both")
 	}
 	if localMode && (manifestPath == "" || artifactPath == "") {
-		return fmt.Errorf("%s", usage)
-	}
-	if channelMode && (baseURL == "" || appID == "") {
 		return fmt.Errorf("%s", usage)
 	}
 	if !localMode && !channelMode {
@@ -8191,13 +8194,9 @@ func runUpdateApply(args []string) error {
 		}
 	}
 
-	rt, err := vitra.New(vitra.Config{AppID: domain.AppID(m.AppID)})
+	rt, err := vitra.New(vitra.Config{AppID: domain.AppID(appID)})
 	if err != nil {
-		// Fall back if manifest app id empty / invalid for Config.
-		rt, err = vitra.New(vitra.Config{AppID: "com.vitra.update"})
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("--app-id: %w", err)
 	}
 	if policyEnv != "" {
 		var env policy.Environment
@@ -8215,7 +8214,8 @@ func runUpdateApply(args []string) error {
 		}
 		rt.SetPolicy(eng)
 	}
-	plan, err := rt.ApplyUpdate(m, ed25519.PublicKey(pubBytes), artifact, dest)
+	installed := updater.Installed{AppID: appID, Channel: updater.Channel(channel), Version: currentVersion}
+	plan, err := rt.ApplyUpdate(m, ed25519.PublicKey(pubBytes), artifact, dest, installed)
 	if err != nil {
 		return err
 	}

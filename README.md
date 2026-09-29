@@ -135,8 +135,8 @@ vitra update-keygen [--out keys/]
 vitra update-sign --artifact a.bin --app-id com.example.app --version 1.0.0 --privkey file:keys/priv.key --out m.json
 vitra update-stage --out dist/updates --manifest m.json --artifact a.bin
 vitra update-check --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex>
-vitra update-apply --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex> --dest ./vitra-app
-vitra update-apply --manifest m.json --artifact a.bin --pubkey <hex> --dest ./vitra-app
+vitra update-apply --base-url https://updates.example/ --app-id com.example.app --channel stable --current-version 1.0.0 --pubkey <hex> --dest ./vitra-app
+vitra update-apply --manifest m.json --artifact a.bin --app-id com.example.app --current-version 1.0.0 --pubkey <hex> --dest ./vitra-app
 vitra inspect capabilities
 ```
 
