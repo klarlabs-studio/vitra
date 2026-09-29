@@ -8941,8 +8941,8 @@ func inspectDemo(args []string) error {
 			{
 				Name: "fs.read",
 				PathScope: &domain.PathScope{
-					Allow: []string{"${PROJECT_DIR}/**"},
-					Deny:  []string{"${PROJECT_DIR}/.secrets/**"},
+					Allow: []string{"/project/**"},
+					Deny:  []string{"/project/.secrets/**"},
 				},
 			},
 			{Name: "dialog.open"},
@@ -8950,7 +8950,7 @@ func inspectDemo(args []string) error {
 			{Name: "browser.open"},
 			{Name: "os.info"},
 			{Name: "notifications.show"},
-			{Name: "path.open", PathScope: &domain.PathScope{Allow: []string{"${PROJECT_DIR}/**"}}},
+			{Name: "path.open", PathScope: &domain.PathScope{Allow: []string{"/project/**"}}},
 			{Name: "window.create"},
 			{Name: "window.close"},
 			{Name: "window.chrome"},

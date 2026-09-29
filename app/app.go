@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -316,10 +317,17 @@ func (a *App) handleInvoke(windowID domain.WindowID, origin domain.Origin, raw [
 func (a *App) allowNav(windowID domain.WindowID, uri string) bool {
 	// Allow only the local asset server and about:blank. Everything else is
 	// external and must not keep privileged bridge access.
-	if uri == "about:blank" || strings.HasPrefix(uri, a.addr) {
+	if uri == "about:blank" {
 		return true
 	}
-	return false
+	// Compare the parsed origin exactly. A string prefix check on a.addr
+	// admits "http://127.0.0.1:PORT@evil.example/" (userinfo) and
+	// "http://127.0.0.1:PORT1/" (another local port).
+	u, err := url.Parse(uri)
+	if a.addr == "" || err != nil || u.User != nil || u.Opaque != "" {
+		return false
+	}
+	return u.Scheme == "http" && u.Host == strings.TrimPrefix(a.addr, "http://")
 }
 
 func mustJSON(v any) []byte {

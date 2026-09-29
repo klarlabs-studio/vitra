@@ -14,6 +14,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - The `vitra new` scaffold and `example/competitive` executors act as the window that invoked them. Before, they re-authorized every desktop service call as a hard-coded `main` caller, so a secondary window used `main`'s grants. Host-initiated work (startup menus, deep links, single-instance) uses an explicit `hostCaller`.
 
+### Security
+- Path scopes close several bypasses of `PathScope.Matches`:
+  - deny patterns now match case-insensitively, so `/project/.SECRETS/key` no longer slips past a `/project/.secrets/**` deny on APFS/NTFS;
+  - backslashes are treated as separators, so `..\..\` traversal is rejected;
+  - relative, drive-relative, UNC (`\\host\share`), and device (`\\?\`) paths are rejected;
+  - segments are now `path.Match` globs, so partial patterns such as `**/*.pem` actually match instead of silently never denying.
+- `NewCapabilityGrant` rejects malformed or relative path patterns, and a deny pattern that cannot be compiled denies.
+
+- `FileService` (`fs.read`/`fs.write`) and `PathService` (`path.open`) resolve symlinks before acting. The real target must stay under the real root of the allow pattern that matched, and its location is authorized again, so deny rules apply to what a link points at. Before, a link inside the scope (`proj/escape -> /etc`) read or wrote anywhere on disk, and `proj/public -> .secrets` bypassed a `.secrets/**` deny. Dangling links are refused for writes.
+
+### Added
+- `domain.Decision.ScopeRoot`: for an allowed path-scoped permission, the literal root of the allow pattern that matched (`/project` for `/project/**`).
+
+### Changed
+- `PathScope` patterns must be absolute. `vitra inspect capabilities` shows `/project/**` instead of the unexpanded `${PROJECT_DIR}` placeholder.
+
+### Security
+- Path scopes close several bypasses of `PathScope.Matches`:
+  - deny patterns now match case-insensitively, so `/project/.SECRETS/key` no longer slips past a `/project/.secrets/**` deny on APFS/NTFS;
+  - backslashes are treated as separators, so `..\..\` traversal is rejected;
+  - relative, drive-relative, UNC (`\\host\share`), and device (`\\?\`) paths are rejected;
+  - segments are now `path.Match` globs, so partial patterns such as `**/*.pem` actually match instead of silently never denying.
+- `NewCapabilityGrant` rejects malformed or relative path patterns, and a deny pattern that cannot be compiled denies.
+
+### Changed
+- `PathScope` patterns must be absolute. `vitra inspect capabilities` shows `/project/**` instead of the unexpanded `${PROJECT_DIR}` placeholder.
+
+### Security
+- The navigation allow-list compares the parsed scheme and host:port against the asset server exactly. The previous string-prefix check let `http://127.0.0.1:PORT@evil.example/` (userinfo) and `http://127.0.0.1:PORT1/` (another local port) keep privileged bridge access.
+
+### Security
+- Windows `OpenURL` no longer shells out through `cmd /c start`. cmd.exe interprets `&`, `|`, `^`, `<`, `>` even inside a quoted argv element, so a `browser.open` URL like `https://a.example/?x&calc` could run arbitrary commands. It now uses `rundll32 url.dll,FileProtocolHandler`, which never parses shell metacharacters.
+
 ## [0.3.0] - 2026-09-28
 
 First tagged release. The secure runtime kernel is complete and runnable
