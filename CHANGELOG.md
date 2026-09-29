@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Native hosts (Linux, Darwin, Windows) run frontend invokes, menu/tray/shortcut actions, and file-drop handlers off the UI thread. Before, a command that called back into the host (clipboard, dialogs, `Eval`, `App.Emit`), or an action handler that emitted an event, queued work to the UI thread from the UI thread and waited: the app froze. Slow commands no longer block the UI either. Replies are posted back to the UI thread and dropped if the loop has stopped.
+- `make e2e` round-trips `clipboard.write` → `clipboard.read` → `demo.greet` and is bounded by `timeout`, so a hang fails instead of stalling CI.
+
 ## [0.3.0] - 2026-09-28
 
 First tagged release. The secure runtime kernel is complete and runnable
