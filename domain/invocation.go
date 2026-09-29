@@ -86,16 +86,16 @@ func (s *InvocationService) Invoke(ctx context.Context, req InvocationRequest) (
 	}
 	if !decision.Allowed {
 		return &InvocationResult{
-			Command:    req.Command,
-			Decision:   decision,
-			Authorized: false,
-		}, &ErrDenied{
-			Permission: cmd.Permission(),
-			Window:     req.Caller.Window,
-			Origin:     req.Caller.Origin,
-			Code:       decision.Code,
-			Reason:     decision.Reason,
-		}
+				Command:    req.Command,
+				Decision:   decision,
+				Authorized: false,
+			}, &ErrDenied{
+				Permission: cmd.Permission(),
+				Window:     req.Caller.Window,
+				Origin:     req.Caller.Origin,
+				Code:       decision.Code,
+				Reason:     decision.Reason,
+			}
 	}
 
 	exec, ok := s.Executors.Get(req.Command)
