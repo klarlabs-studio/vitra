@@ -856,7 +856,17 @@ func run() error {
 		}
 		if os.Getenv("VITRA_E2E") == "1" {
 			// Retry Eval until the preload bridge is live or the demo timer quits.
-			js := `(function(){function go(){if(!window.vitra||!window.vitra.invoke){setTimeout(go,200);return;}window.vitra.invoke("demo.greet","E2E").then(function(r){var el=document.getElementById("out");if(el){el.textContent=JSON.stringify(r,null,2);}}).catch(function(e){var el=document.getElementById("out");if(el){el.textContent=String(e);}}); } go();})();`
+			// clipboard.write/read make the executor call back into the host,
+			// which must hop to the UI thread; demo.greet("E2E") only runs if
+			// that round-trip completed with the right value.
+			js := `(function(){function show(v){var el=document.getElementById("out");if(el){el.textContent=typeof v==="string"?v:JSON.stringify(v,null,2);}}
+function go(){if(!window.vitra||!window.vitra.invoke){setTimeout(go,200);return;}
+var token="vitra-e2e-"+Date.now();
+window.vitra.invoke("clipboard.write",token)
+.then(function(){return window.vitra.invoke("clipboard.read");})
+.then(function(got){return window.vitra.invoke("demo.greet",got===token?"E2E":"E2E_CLIPBOARD_MISMATCH:"+got);})
+.then(show).catch(function(e){show(String(e));});}
+go();})();`
 			for i := 0; i < 20 && !e2eOK.Load(); i++ {
 				_ = host.Eval("main", js)
 				time.Sleep(500 * time.Millisecond)
@@ -873,7 +883,7 @@ func run() error {
 			go func() {
 				time.Sleep(time.Duration(n) * time.Second)
 				if os.Getenv("VITRA_E2E") == "1" && !e2eOK.Load() {
-					fmt.Fprintln(os.Stderr, "VITRA_E2E_FAIL: demo.greet did not complete")
+					fmt.Fprintln(os.Stderr, "VITRA_E2E_FAIL: clipboard round-trip + demo.greet did not complete")
 				}
 				if sink := rt.Audit(); sink != nil {
 					fmt.Printf("audit events: %d\n", len(sink.List()))
