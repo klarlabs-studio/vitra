@@ -15,7 +15,8 @@ const (
 
 // FileService provides grant-scoped filesystem access for host-bound
 // vitra.fs plugin commands. PathScope is enforced via the capability gateway
-// using the same path that will be read or written.
+// on both the requested path and its symlink-resolved target, and the file
+// operation acts on the resolved target.
 type FileService struct {
 	Gateway Gateway
 	OnRead  func(ctx context.Context, path string) ([]byte, error)
@@ -24,22 +25,24 @@ type FileService struct {
 
 // Read authorizes fs.read for path then reads the file.
 func (s *FileService) Read(ctx context.Context, caller domain.Caller, path string) ([]byte, error) {
-	if err := authorizePath(s.Gateway, caller, PermFSRead, path); err != nil {
+	real, err := authorizeRealPath(s.Gateway, caller, PermFSRead, path)
+	if err != nil {
 		return nil, err
 	}
 	if s.OnRead != nil {
-		return s.OnRead(ctx, path)
+		return s.OnRead(ctx, real)
 	}
-	return os.ReadFile(path)
+	return os.ReadFile(real)
 }
 
 // Write authorizes fs.write for path then writes data.
 func (s *FileService) Write(ctx context.Context, caller domain.Caller, path string, data []byte) error {
-	if err := authorizePath(s.Gateway, caller, PermFSWrite, path); err != nil {
+	real, err := authorizeRealPath(s.Gateway, caller, PermFSWrite, path)
+	if err != nil {
 		return err
 	}
 	if s.OnWrite != nil {
-		return s.OnWrite(ctx, path, data)
+		return s.OnWrite(ctx, real, data)
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(real, data, 0o644)
 }

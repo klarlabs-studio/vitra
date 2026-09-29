@@ -56,9 +56,16 @@ func (s PathScope) Validate() error {
 
 // Matches reports whether candidate is within this scope.
 func (s PathScope) Matches(candidate string) (bool, DenialCode, string) {
+	ok, code, reason, _ := s.match(candidate)
+	return ok, code, reason
+}
+
+// match is Matches plus the root of the allow pattern that admitted
+// candidate (see Decision.ScopeRoot).
+func (s PathScope) match(candidate string) (ok bool, code DenialCode, reason, root string) {
 	cleaned, err := normalizePath(candidate)
 	if err != nil {
-		return false, DenialPathDenied, err.Error()
+		return false, DenialPathDenied, err.Error(), ""
 	}
 	segments := splitPath(cleaned)
 	folded := splitPath(strings.ToLower(cleaned))
@@ -66,19 +73,41 @@ func (s PathScope) Matches(candidate string) (bool, DenialCode, string) {
 		pattern, err := compilePathPattern(strings.ToLower(deny))
 		// A deny pattern that cannot be compiled fails closed.
 		if err != nil || matchSegments(pattern, folded) {
-			return false, DenialPathDenied, "path matches deny pattern"
+			return false, DenialPathDenied, "path matches deny pattern", ""
 		}
 	}
 	if len(s.Allow) == 0 {
-		return false, DenialPathOutOfScope, "no allow patterns configured"
+		return false, DenialPathOutOfScope, "no allow patterns configured", ""
 	}
 	for _, allow := range s.Allow {
 		pattern, err := compilePathPattern(allow)
 		if err == nil && matchSegments(pattern, segments) {
-			return true, "", ""
+			return true, "", "", patternRoot(allow, pattern)
 		}
 	}
-	return false, DenialPathOutOfScope, "path not in allow list"
+	return false, DenialPathOutOfScope, "path not in allow list", ""
+}
+
+// patternRoot returns the literal directory prefix of a compiled pattern: the
+// segments before the first one containing glob syntax. "/project/**" and
+// "/project/*.txt" have root "/project"; "/**" has root "/".
+func patternRoot(raw string, segments []string) string {
+	var literal []string
+	for _, seg := range segments {
+		if strings.ContainsAny(seg, "*?[") {
+			break
+		}
+		literal = append(literal, seg)
+	}
+	if strings.HasPrefix(strings.ReplaceAll(strings.TrimSpace(raw), "\\", "/"), "/") {
+		return "/" + strings.Join(literal, "/")
+	}
+	// Drive path: segments start with "C:".
+	root := strings.Join(literal, "/")
+	if len(literal) == 1 {
+		root += "/"
+	}
+	return root
 }
 
 // normalizePath converts p to a clean, absolute, slash-separated path or
@@ -283,6 +312,11 @@ type Decision struct {
 	Permission PermissionName
 	Code       DenialCode
 	Reason     string
+	// ScopeRoot is set when an allowed permission is path-scoped: the literal
+	// directory prefix of the allow pattern that admitted the path, in
+	// slash form ("/project" for "/project/**"). Adapters that touch the
+	// filesystem use it to check that symlinks do not lead out of the scope.
+	ScopeRoot string
 }
 
 // Authorize evaluates whether caller may exercise permission, optionally
@@ -311,8 +345,12 @@ func (g *CapabilityGrant) Authorize(caller Caller, permission PermissionName, re
 			Reason:     "permission not present in grant",
 		}
 	}
+	var root string
 	if spec.PathScope != nil {
-		ok, code, reason := spec.PathScope.Matches(resourcePath)
+		var ok bool
+		var code DenialCode
+		var reason string
+		ok, code, reason, root = spec.PathScope.match(resourcePath)
 		if !ok {
 			return Decision{
 				Permission: permission,
@@ -326,6 +364,7 @@ func (g *CapabilityGrant) Authorize(caller Caller, permission PermissionName, re
 		Grant:      g.name,
 		Permission: permission,
 		Reason:     "granted",
+		ScopeRoot:  root,
 	}
 }
 

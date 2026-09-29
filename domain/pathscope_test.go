@@ -141,3 +141,36 @@ func FuzzPathScope_Matches(f *testing.F) {
 		}
 	})
 }
+
+func TestCapabilityGrant_AuthorizeReportsScopeRoot(t *testing.T) {
+	grant, err := domain.NewCapabilityGrant("g", "d",
+		[]domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{
+			{Name: "fs.read", PathScope: &domain.PathScope{Allow: []string{
+				"/data/*.txt", "/project/**", "/srv/app/**/logs/*", `C:\Users\dev\**`, "/**",
+			}}},
+			{Name: "clipboard.read"},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caller, _ := domain.NewCaller("main", domain.OriginPackagedLocal)
+	for candidate, root := range map[string]string{
+		"/project/src/main.go":  "/project",
+		"/project":              "/project",
+		"/data/a.txt":           "/data",
+		"/srv/app/x/logs/today": "/srv/app",
+		`C:\Users\dev\notes.md`: "C:/Users/dev",
+		"/elsewhere/entirely":   "/",
+	} {
+		d := grant.Authorize(caller, "fs.read", candidate)
+		if !d.Allowed || d.ScopeRoot != root {
+			t.Errorf("%q: allowed=%v root=%q, want root %q", candidate, d.Allowed, d.ScopeRoot, root)
+		}
+	}
+	if d := grant.Authorize(caller, "clipboard.read", ""); !d.Allowed || d.ScopeRoot != "" {
+		t.Fatalf("unscoped permission: %+v", d)
+	}
+}

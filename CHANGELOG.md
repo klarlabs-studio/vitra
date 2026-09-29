@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - segments are now `path.Match` globs, so partial patterns such as `**/*.pem` actually match instead of silently never denying.
 - `NewCapabilityGrant` rejects malformed or relative path patterns, and a deny pattern that cannot be compiled denies.
 
+- `FileService` (`fs.read`/`fs.write`) and `PathService` (`path.open`) resolve symlinks before acting. The real target must stay under the real root of the allow pattern that matched, and its location is authorized again, so deny rules apply to what a link points at. Before, a link inside the scope (`proj/escape -> /etc`) read or wrote anywhere on disk, and `proj/public -> .secrets` bypassed a `.secrets/**` deny. Dangling links are refused for writes.
+
+### Added
+- `domain.Decision.ScopeRoot`: for an allowed path-scoped permission, the literal root of the allow pattern that matched (`/project` for `/project/**`).
+
 ### Changed
 - `PathScope` patterns must be absolute. `vitra inspect capabilities` shows `/project/**` instead of the unexpanded `${PROJECT_DIR}` placeholder.
 
