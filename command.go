@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"sort"
 
-	"go.klarlabs.de/vitra/bindings"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/bindings"
 )
 
 // Command is a typed frontend-callable command.

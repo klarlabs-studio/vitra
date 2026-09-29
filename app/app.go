@@ -16,9 +16,9 @@ import (
 	"sync"
 
 	"go.klarlabs.de/vitra"
-	"go.klarlabs.de/vitra/bridge"
 	"go.klarlabs.de/vitra/domain"
-	"go.klarlabs.de/vitra/ipc"
+	"go.klarlabs.de/vitra/internal/bridge"
+	"go.klarlabs.de/vitra/internal/ipc"
 	"go.klarlabs.de/vitra/platform"
 )
 

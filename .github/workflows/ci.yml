@@ -48,8 +48,8 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
         run: |
-          go build ./cmd/vitra ./packaging ./app .
-          go vet ./cmd/vitra ./packaging ./app .
+          go build ./cmd/vitra ./internal/packaging ./app .
+          go vet ./cmd/vitra ./internal/packaging ./app .
 
   # Competitive Linux WebView host — not covered by the shared go-ci bar (CGO + GTK).
   native:

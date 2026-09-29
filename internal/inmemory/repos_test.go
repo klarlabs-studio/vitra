@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"go.klarlabs.de/vitra/domain"
-	"go.klarlabs.de/vitra/inmemory"
+	"go.klarlabs.de/vitra/internal/inmemory"
 )
 
 func TestRepos_RoundTrip(t *testing.T) {

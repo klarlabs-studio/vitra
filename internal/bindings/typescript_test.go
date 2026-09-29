@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"go.klarlabs.de/vitra/bindings"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/bindings"
 )
 
 func mustGenerate(t *testing.T, cmds []bindings.Command, events []domain.EventName) string {

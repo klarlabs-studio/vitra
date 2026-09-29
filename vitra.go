@@ -27,11 +27,11 @@ import (
 	"strings"
 	"sync"
 
-	"go.klarlabs.de/vitra/application"
 	"go.klarlabs.de/vitra/audit"
-	"go.klarlabs.de/vitra/bindings"
 	"go.klarlabs.de/vitra/domain"
-	"go.klarlabs.de/vitra/inmemory"
+	"go.klarlabs.de/vitra/internal/application"
+	"go.klarlabs.de/vitra/internal/bindings"
+	"go.klarlabs.de/vitra/internal/inmemory"
 	"go.klarlabs.de/vitra/plugin"
 	"go.klarlabs.de/vitra/policy"
 	"go.klarlabs.de/vitra/updater"
@@ -330,7 +330,7 @@ func (rt *Runtime) SubscribeEvent(id domain.SubscriptionID, event domain.EventNa
 
 // EmitEvent resolves open window subscribers for a named event.
 // Hosts (e.g. app.App.Emit) deliver payloads to those windows via PostMessage.
-func (rt *Runtime) EmitEvent(event domain.EventName, payload any) ([]application.EventDelivery, error) {
+func (rt *Runtime) EmitEvent(event domain.EventName, payload any) ([]domain.EventDelivery, error) {
 	return rt.emit.Execute(event, payload)
 }
 

@@ -7,16 +7,16 @@ to exactly one layer and obeys the dependency direction below.
 **Allowed import direction**: adapters → application → domain.
 
 ```
-vitra (root)     Fluent runtime facade — what consumers import.
-domain/          Aggregates, value objects, domain services, ports. Zero deps.
-application/     Use cases that orchestrate the domain.
-inmemory/        In-memory port adapters (tests + single-process kernel).
-cmd/vitra/       Developer CLI (delivery adapter).
-example/         Runnable documentation — not a supported API.
+vitra (root)            Runtime facade — what consumers import.
+domain/                 Aggregates, value objects, domain services, ports. Zero deps.
+internal/application/   Use cases that orchestrate the domain.
+internal/inmemory/      In-memory port adapters (tests + single-process kernel).
+cmd/vitra/              Developer CLI (delivery adapter).
+example/                Runnable documentation — not a supported API.
 ```
 
-Infrastructure packages (`platform/*` WebView adapters, `packaging`,
-`updater`, `provenance`, …) may import application/domain only. Nothing in
+Infrastructure packages (`platform/*` WebView adapters, `internal/packaging`,
+`updater`, `internal/provenance`, …) may import application/domain only. Nothing in
 `domain/` may import an infrastructure package.
 
 ## Bounded Contexts (Phase 1)
@@ -28,7 +28,7 @@ Infrastructure packages (`platform/*` WebView adapters, `packaging`,
 | Capability | `domain` | `CapabilityGrant`, `PathScope`, `CapabilityGateway`, `Decision` |
 | Commands | `domain` | `CommandDefinition`, `InvocationService` |
 | Resources | `domain` | `ResourceHandle` ownership |
-| Runtime orchestration | `application` | open/navigate/close window, register grant/command, invoke, inspect |
+| Runtime orchestration | `internal/application` | open/navigate/close window, register grant/command, invoke, inspect |
 | Delivery | `vitra`, `cmd/vitra` | facade + CLI |
 
 ## Ubiquitous Language
@@ -70,7 +70,7 @@ paths.
 ## Testing
 
 - Domain tests use in-package fakes or pure constructors (no `inmemory` import required; some tests use local fakes).
-- Application tests drive use cases with `inmemory/` adapters.
+- Application tests drive use cases with `internal/inmemory/` adapters.
 - Root `vitra_test` covers security invariants end-to-end through the facade.
 - Prefer table-driven tests; race-detector clean for concurrent repositories.
 

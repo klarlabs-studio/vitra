@@ -10,9 +10,9 @@ import (
 	"os"
 
 	"go.klarlabs.de/vitra/domain"
-	"go.klarlabs.de/vitra/ipc"
+	"go.klarlabs.de/vitra/internal/ipc"
+	"go.klarlabs.de/vitra/internal/platform/null"
 	"go.klarlabs.de/vitra/platform"
-	"go.klarlabs.de/vitra/platform/null"
 )
 
 func main() {

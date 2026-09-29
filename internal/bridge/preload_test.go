@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.klarlabs.de/vitra/bridge"
+	"go.klarlabs.de/vitra/internal/bridge"
 )
 
 func TestPreloadJS_DefinesSecureInvokeSurface(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.klarlabs.de/vitra/provenance"
+	"go.klarlabs.de/vitra/internal/provenance"
 )
 
 func TestDocument_JSONIncludesPrivilegedSurface(t *testing.T) {

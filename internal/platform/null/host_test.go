@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/platform/null"
 	"go.klarlabs.de/vitra/platform"
-	"go.klarlabs.de/vitra/platform/null"
 )
 
 func TestNullHost_ExplicitUnsupportedDialog(t *testing.T) {

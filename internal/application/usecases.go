@@ -211,14 +211,8 @@ type EmitEventUseCase struct {
 	Subscriptions domain.SubscriptionRepository
 }
 
-// EventDelivery is one window that should receive an emitted event.
-type EventDelivery struct {
-	Window domain.WindowID
-	Event  domain.Event
-}
-
 // Execute builds deliveries for every open window subscribed to the event.
-func (uc *EmitEventUseCase) Execute(name domain.EventName, payload any) ([]EventDelivery, error) {
+func (uc *EmitEventUseCase) Execute(name domain.EventName, payload any) ([]domain.EventDelivery, error) {
 	if name == "" {
 		return nil, &domain.ErrValidation{Message: "event name is required"}
 	}
@@ -230,7 +224,7 @@ func (uc *EmitEventUseCase) Execute(name domain.EventName, payload any) ([]Event
 		return nil, err
 	}
 	ev := domain.Event{Name: name, Payload: payload, EmittedAt: time.Now().UTC()}
-	out := make([]EventDelivery, 0, len(subs))
+	out := make([]domain.EventDelivery, 0, len(subs))
 	seen := map[domain.WindowID]struct{}{}
 	for _, sub := range subs {
 		if sub.IsClosed() {
@@ -247,7 +241,7 @@ func (uc *EmitEventUseCase) Execute(name domain.EventName, payload any) ([]Event
 			}
 		}
 		seen[owner] = struct{}{}
-		out = append(out, EventDelivery{Window: owner, Event: ev})
+		out = append(out, domain.EventDelivery{Window: owner, Event: ev})
 	}
 	return out, nil
 }

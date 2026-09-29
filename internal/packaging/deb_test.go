@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.klarlabs.de/vitra/packaging"
+	"go.klarlabs.de/vitra/internal/packaging"
 )
 
 func TestBuildAppDir_Layout(t *testing.T) {

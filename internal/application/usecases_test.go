@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"go.klarlabs.de/vitra/application"
 	"go.klarlabs.de/vitra/domain"
-	"go.klarlabs.de/vitra/inmemory"
+	"go.klarlabs.de/vitra/internal/application"
+	"go.klarlabs.de/vitra/internal/inmemory"
 )
 
 func TestOpenWindow_LeastPrivilege(t *testing.T) {
