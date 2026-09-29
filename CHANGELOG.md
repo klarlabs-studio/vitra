@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- The navigation allow-list compares the parsed scheme and host:port against the asset server exactly. The previous string-prefix check let `http://127.0.0.1:PORT@evil.example/` (userinfo) and `http://127.0.0.1:PORT1/` (another local port) keep privileged bridge access.
+
 ## [0.3.0] - 2026-09-28
 
 First tagged release. The secure runtime kernel is complete and runnable
