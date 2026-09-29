@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"go.klarlabs.de/vitra"
+	"go.klarlabs.de/vitra/app"
 	"go.klarlabs.de/vitra/bindings"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/packaging"
@@ -111,7 +112,8 @@ Usage:
   vitra build [dir]          Build the app binary with the native host (-tags vitra_native on Linux/Darwin/Windows)
   vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--keywords list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]
                              Stage Linux dir, build .deb / .rpm / .snap / .flatpak / AppDir / .AppImage, Windows win-dir/WiX/NSIS, Darwin .app/.dmg + provenance.json; --sign prints PlanSign; --sign-execute runs host tools; --publish prints store PlanPublish; --publish-execute runs non-interactive Executable steps
-  vitra generate typescript [--out path] [--module name]
+  vitra generate typescript [--app dir] [--out path] [--module name]
+                             --app: build and run the app in dir to emit its own typed client
                              Emit TypeScript client stubs for official plugin commands
   vitra update-keygen [--out <dir>]
                              Generate an ed25519 update-signing key pair (writes priv.key + pub.key hex)
@@ -5630,8 +5632,8 @@ vitra dev
 # or
 CGO_ENABLED=1 go run -tags vitra_native .
 
-# Refresh typed frontend stubs after changing commands/plugins
-vitra generate typescript --out frontend/vitra-client.ts
+# Refresh the typed frontend client after changing commands/plugins
+vitra generate typescript --app . --out frontend/vitra-client.ts
 
 # Stage a package (optional)
 vitra package --out dist/ --format dir
@@ -5754,7 +5756,7 @@ npm install
 npm run build
 ` + "```" + `
 
-Then re-run ` + "`vitra generate typescript --out frontend/vitra-client.ts`" + ` and
+Then re-run ` + "`vitra generate typescript --app . --out frontend/vitra-client.ts`" + ` and
 ` + "`npm run build`" + ` after changing plugin commands.
 `
 	}
@@ -6917,7 +6919,7 @@ func scaffoldTypeScriptClient() (string, error) {
 		cmds = append(cmds, reg.Contribution.Commands...)
 		events = append(events, reg.Contribution.Events...)
 	}
-	return bindings.GenerateTypeScript("vitra", vitra.Version, cmds, events), nil
+	return bindings.GenerateTypeScript("vitra", vitra.Version, bindings.Untyped(cmds...), events)
 }
 
 func scaffoldMainGo(embedPattern, subPath string) string {
@@ -6976,17 +6978,31 @@ func run() error {
 		return err
 	}
 	host := desktopHost()
-	caller := domain.Caller{Window: "main", Origin: domain.OriginPackagedLocal}
+	// hostCaller acts for host-initiated work (startup menus, deep links,
+	// single-instance). Command executors never use it: they act as the
+	// invoking window via domain.CallerExecutorFunc.
+	hostCaller := domain.Caller{Window: "main", Origin: domain.OriginPackagedLocal}
 	var application *app.App
 
-	greet, _ := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
-	_ = rt.RegisterCommand(greet, domain.CommandExecutorFunc(func(ctx context.Context, name domain.CommandName, input any) (any, error) {
-		who, _ := input.(string)
-		if who == "" {
-			who = "world"
-		}
-		return map[string]any{"message": "Hello, " + who}, nil
-	}))
+	// A typed command: input is decoded strictly into string, the result is
+	// sent as JSON, and ` + "`vitra generate typescript --app .`" + ` types both
+	// in frontend/vitra-client.ts. The caller must hold "demo.greet".
+	type greeting struct {
+		Message string ` + "`json:\"message\"`" + `
+	}
+	if err := vitra.Register(rt, vitra.Command[string, greeting]{
+		Name:        "demo.greet",
+		Description: "Greet someone by name",
+		Permission:  "demo.greet",
+		Handler: func(_ context.Context, _ domain.Invocation, who string) (greeting, error) {
+			if who == "" {
+				who = "world"
+			}
+			return greeting{Message: "Hello, " + who}, nil
+		},
+	}); err != nil {
+		return err
+	}
 
 	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
 		return err
@@ -7050,22 +7066,22 @@ func run() error {
 			return host.MessageDialog(title, message, kind)
 		},
 	}
-	if err := rt.BindExecutor("dialog.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("dialog.open", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		return dialogs.OpenFile(ctx, caller, desktop.ParseDialogFileOptions(input))
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("dialog.save", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		return dialogs.SaveFile(ctx, caller, desktop.ParseDialogFileOptions(input))
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("dialog.openDirectory", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("dialog.openDirectory", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		return dialogs.OpenDirectory(ctx, caller, desktop.ParseDialogFileOptions(input))
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("dialog.message", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("dialog.message", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		title, message, kind := "", "", "info"
 		switch v := input.(type) {
 		case string:
@@ -7087,12 +7103,12 @@ func run() error {
 		OnRead:  func(ctx context.Context) (string, error) { return host.ClipboardGet() },
 		OnWrite: func(ctx context.Context, text string) error { return host.ClipboardSet(text) },
 	}
-	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("clipboard.read", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return clips.Read(ctx, caller)
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("clipboard.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("clipboard.write", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		text, _ := input.(string)
 		return nil, clips.Write(ctx, caller, text)
 	})); err != nil {
@@ -7105,14 +7121,14 @@ func run() error {
 			return host.OpenURL(ctx, rawURL)
 		},
 	}
-	if err := rt.BindExecutor("browser.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("browser.open", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		rawURL, _ := input.(string)
 		return nil, browser.OpenURL(ctx, caller, rawURL)
 	})); err != nil {
 		return err
 	}
 	osInfo := &desktop.OsService{Gateway: rt}
-	if err := rt.BindExecutor("os.info", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("os.info", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return osInfo.Info(ctx, caller)
 	})); err != nil {
 		return err
@@ -7124,7 +7140,7 @@ func run() error {
 			return host.ShowNotification(title, body)
 		},
 	}
-	if err := rt.BindExecutor("notifications.show", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("notifications.show", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		title, body := "", ""
 		switch v := input.(type) {
 		case string:
@@ -7143,7 +7159,7 @@ func run() error {
 		return err
 	}
 	files := &desktop.FileService{Gateway: rt}
-	if err := rt.BindExecutor("fs.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("fs.read", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		path, _ := input.(string)
 		data, err := files.Read(ctx, caller, path)
 		if err != nil {
@@ -7153,7 +7169,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("fs.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("fs.write", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		m, _ := input.(map[string]any)
 		path, _ := m["path"].(string)
 		data, _ := m["data"].(string)
@@ -7168,7 +7184,7 @@ func run() error {
 			return host.OpenPath(ctx, path)
 		},
 	}
-	if err := rt.BindExecutor("path.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("path.open", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		path, _ := input.(string)
 		return nil, paths.Open(ctx, caller, path)
 	})); err != nil {
@@ -7204,7 +7220,7 @@ func run() error {
 			return application.CloseWindow(ctx, id)
 		},
 	}
-	if err := rt.BindExecutor("window.create", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.create", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		opts, err := desktop.ParseWindowCreateOptions(input)
 		if err != nil {
 			return nil, err
@@ -7217,7 +7233,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.close", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.close", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7226,7 +7242,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.chrome", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.chrome", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, chrome, err := desktop.ParseWindowChromeApply(input)
 		if err != nil {
 			return nil, err
@@ -7235,7 +7251,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.getChrome", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.getChrome", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7244,7 +7260,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.focus", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.focus", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7253,7 +7269,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.blur", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.blur", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7262,7 +7278,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.hide", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.hide", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7271,7 +7287,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.show", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.show", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7280,7 +7296,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.minimize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.minimize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7289,7 +7305,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.maximize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.maximize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7298,7 +7314,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.unmaximize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.unmaximize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7307,7 +7323,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.fullscreen", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.fullscreen", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7316,7 +7332,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.unfullscreen", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.unfullscreen", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7325,7 +7341,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.setAlwaysOnTop", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.setAlwaysOnTop", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, onTop, err := desktop.ParseWindowAlwaysOnTop(input)
 		if err != nil {
 			return nil, err
@@ -7334,7 +7350,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.restore", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.restore", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -7343,7 +7359,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.setTitle", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.setTitle", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, title, err := desktop.ParseWindowSetTitle(input)
 		if err != nil {
 			return nil, err
@@ -7352,7 +7368,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.setSize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.setSize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, width, height, err := desktop.ParseWindowSetSize(input)
 		if err != nil {
 			return nil, err
@@ -7361,7 +7377,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.setIcon", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.setIcon", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, iconPath, err := desktop.ParseWindowSetIcon(input)
 		if err != nil {
 			return nil, err
@@ -7388,7 +7404,7 @@ func run() error {
 			return host.SetMenuBar("main", nil)
 		},
 	}
-	if err := rt.BindExecutor("menu.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("menu.set", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		items, err := desktop.ParseMenuItems(input)
 		if err != nil {
 			return nil, err
@@ -7397,7 +7413,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("menu.clear", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("menu.clear", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return nil, menus.ClearMenu(ctx, caller)
 	})); err != nil {
 		return err
@@ -7417,7 +7433,7 @@ func run() error {
 			return nil
 		},
 	}
-	if err := rt.BindExecutor("tray.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("tray.set", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		tooltip, items, err := desktop.ParseTraySet(input)
 		if err != nil {
 			return nil, err
@@ -7426,7 +7442,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("tray.clear", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("tray.clear", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return nil, trays.ClearTray(ctx, caller)
 	})); err != nil {
 		return err
@@ -7438,7 +7454,7 @@ func run() error {
 			return host.EnableDragDrop(window, enabled)
 		},
 	}
-	if err := rt.BindExecutor("dragdrop.receive", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("dragdrop.receive", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		win, enabled, err := desktop.ParseDragDropEnable(input)
 		if err != nil {
 			return nil, err
@@ -7457,7 +7473,7 @@ func run() error {
 			return host.UnregisterGlobalShortcut(accelerator)
 		},
 	}
-	if err := rt.BindExecutor("shortcut.register", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("shortcut.register", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		acc, action, err := desktop.ParseShortcutRegister(input)
 		if err != nil {
 			return nil, err
@@ -7466,7 +7482,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("shortcut.unregister", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("shortcut.unregister", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		acc, err := desktop.ParseShortcutUnregister(input)
 		if err != nil {
 			return nil, err
@@ -7485,7 +7501,7 @@ func run() error {
 			return nil
 		},
 	}
-	if err := rt.BindExecutor("app.quit", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("app.quit", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return nil, appSvc.Quit(ctx, caller)
 	})); err != nil {
 		return err
@@ -7549,7 +7565,7 @@ func run() error {
 		Patterns: []domain.DeepLinkPattern{{Scheme: "vitra"}},
 	}
 	handleDeepLink := func(raw string) {
-		ok, err := deepLinks.Handle(caller, raw)
+		ok, err := deepLinks.Handle(hostCaller, raw)
 		if err != nil || !ok {
 			return
 		}
@@ -7916,14 +7932,62 @@ func supportsNativeHostTag(goos string) bool {
 	}
 }
 
+// generateFromApp runs the app in dir in code-generation mode (see
+// app.EnvGenerateTypeScript) so the client covers the app's own typed
+// commands, then writes it to outPath or stdout.
+func generateFromApp(dir, outPath string) error {
+	target := outPath
+	if target == "" {
+		f, err := os.CreateTemp("", "vitra-client-*.ts")
+		if err != nil {
+			return err
+		}
+		_ = f.Close()
+		defer func() { _ = os.Remove(f.Name()) }()
+		target = f.Name()
+	}
+	abs, err := filepath.Abs(target)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		return err
+	}
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), app.EnvGenerateTypeScript+"="+abs)
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("run app in %s: %w", dir, err)
+	}
+	body, err := os.ReadFile(abs)
+	if err != nil {
+		return fmt.Errorf("app did not write a client (does it reach app.Run?): %w", err)
+	}
+	if outPath == "" {
+		fmt.Print(string(body))
+		return nil
+	}
+	fmt.Printf("wrote %s\n", outPath)
+	return nil
+}
+
 func runGenerate(args []string) error {
 	if len(args) == 0 || args[0] != "typescript" {
-		return fmt.Errorf("usage: vitra generate typescript [--out path] [--module name]")
+		return fmt.Errorf("usage: vitra generate typescript [--app dir] [--out path] [--module name]")
 	}
 	outPath := ""
 	module := "vitra"
+	appDir := ""
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
+		case "--app":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--app requires a directory")
+			}
+			appDir = args[i]
 		case "--out":
 			i++
 			if i >= len(args) {
@@ -7939,6 +8003,9 @@ func runGenerate(args []string) error {
 		default:
 			return fmt.Errorf("unknown generate flag %q", args[i])
 		}
+	}
+	if appDir != "" {
+		return generateFromApp(appDir, outPath)
 	}
 
 	rt, err := vitra.New(vitra.Config{AppID: "com.vitra.generate"})
@@ -7994,7 +8061,10 @@ func runGenerate(args []string) error {
 		cmds = append(cmds, reg.Contribution.Commands...)
 		events = append(events, reg.Contribution.Events...)
 	}
-	body := bindings.GenerateTypeScript(module, vitra.Version, cmds, events)
+	body, err := bindings.GenerateTypeScript(module, vitra.Version, bindings.Untyped(cmds...), events)
+	if err != nil {
+		return err
+	}
 	if outPath == "" {
 		fmt.Print(body)
 		return nil
@@ -8858,8 +8928,12 @@ func registerFiles(args []string) error {
 	return nil
 }
 
+// scaffoldGoVersion is the go directive of go.klarlabs.de/vitra's go.mod; a
+// generated app may not declare an older one.
+const scaffoldGoVersion = "1.26.2"
+
 func scaffoldGoMod(modPath string) string {
-	body := "module " + modPath + "\n\ngo 1.26\n\nrequire go.klarlabs.de/vitra v0.0.0\n"
+	body := "module " + modPath + "\n\ngo " + scaffoldGoVersion + "\n\nrequire go.klarlabs.de/vitra v" + vitra.Version + "\n"
 	if root := os.Getenv("VITRA_MODULE_PATH"); root != "" {
 		body += "\nreplace go.klarlabs.de/vitra => " + root + "\n"
 	}
@@ -8938,8 +9012,8 @@ func inspectDemo(args []string) error {
 			{
 				Name: "fs.read",
 				PathScope: &domain.PathScope{
-					Allow: []string{"${PROJECT_DIR}/**"},
-					Deny:  []string{"${PROJECT_DIR}/.secrets/**"},
+					Allow: []string{"/project/**"},
+					Deny:  []string{"/project/.secrets/**"},
 				},
 			},
 			{Name: "dialog.open"},
@@ -8947,7 +9021,7 @@ func inspectDemo(args []string) error {
 			{Name: "browser.open"},
 			{Name: "os.info"},
 			{Name: "notifications.show"},
-			{Name: "path.open", PathScope: &domain.PathScope{Allow: []string{"${PROJECT_DIR}/**"}}},
+			{Name: "path.open", PathScope: &domain.PathScope{Allow: []string{"/project/**"}}},
 			{Name: "window.create"},
 			{Name: "window.close"},
 			{Name: "window.chrome"},
