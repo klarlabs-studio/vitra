@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Path scopes close several bypasses of `PathScope.Matches`:
+  - deny patterns now match case-insensitively, so `/project/.SECRETS/key` no longer slips past a `/project/.secrets/**` deny on APFS/NTFS;
+  - backslashes are treated as separators, so `..\..\` traversal is rejected;
+  - relative, drive-relative, UNC (`\\host\share`), and device (`\\?\`) paths are rejected;
+  - segments are now `path.Match` globs, so partial patterns such as `**/*.pem` actually match instead of silently never denying.
+- `NewCapabilityGrant` rejects malformed or relative path patterns, and a deny pattern that cannot be compiled denies.
+
+### Changed
+- `PathScope` patterns must be absolute. `vitra inspect capabilities` shows `/project/**` instead of the unexpanded `${PROJECT_DIR}` placeholder.
+
 ## [0.3.0] - 2026-09-28
 
 First tagged release. The secure runtime kernel is complete and runnable
