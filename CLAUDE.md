@@ -30,18 +30,27 @@ Zero external dependencies in the kernel — standard library only.
 ## Architecture
 
 ```
-vitra (root)     Fluent Runtime facade
-app/             Desktop application runtime (assets + host + gateway)
-bridge/          Injected frontend preload
-platform/        OS adapters (linux WebKitGTK, darwin WKWebView, windows Win32+WebView2)
-domain/          Aggregates, services, ports (zero deps)
-application/     Use cases
-inmemory/        Default adapters
-cmd/vitra/       CLI delivery adapter
+vitra (root)     Runtime facade: grants, typed commands, windows, events
+app/             Desktop app runner (assets + native host + gateway)
+domain/          Grants, commands, path scopes, denials (stdlib only)
+desktop/         Capability-gated desktop services (fs, dialogs, clipboard, …)
+platform/        OS hosts (linux WebKitGTK, darwin WKWebView, windows WebView2)
+plugin/          Plugin SDK + official plugins
+policy/ audit/ updater/ worker/   Enterprise policy, audit sinks, signed updates, workers
+cmd/vitra/       Developer CLI
+
+internal/        Not importable by apps:
+  application/   Use cases
+  inmemory/      Default repository adapters
+  ipc/ bridge/   Wire envelope + injected frontend preload
+  bindings/      TypeScript client generator
+  packaging/ provenance/   Installer staging, SBOM metadata (CLI only)
+  platform/null/ Headless host for tests
 example/         Runnable docs
 ```
 
-Dependency direction: `domain` ← `application` ← `inmemory` ← `vitra` ← `app`.
+Dependency direction: `domain` ← `internal/application` ← `internal/inmemory` ← `vitra` ← `app`.
+Keep packages apps don't need under `internal/`.
 
 ## Key Design Rules
 

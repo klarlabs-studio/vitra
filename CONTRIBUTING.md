@@ -6,11 +6,11 @@ and secure-by-construction — please keep that in mind when proposing changes.
 ## Core principles
 
 1. **Zero external dependencies in the kernel.** The `domain/` package must not
-   import anything outside the standard library. Phase 1 adapters (`inmemory/`)
+   import anything outside the standard library. The default adapters (`internal/inmemory/`)
    also use stdlib only. Platform WebView bindings (`platform/*`,
    `-tags vitra_native`) are adapters outside the kernel.
 2. **DDD boundaries.** Respect the dependency direction:
-   `domain` ← `application` ← `inmemory` ← `vitra` (root facade) ← consumer code.
+   `domain` ← `internal/application` ← `internal/inmemory` ← `vitra` (root facade) ← consumer code.
    The domain owns its port interfaces.
 3. **Least privilege by default.** New windows have no ambient authority.
    Commands are explicitly registered. Grants must name windows, origins, and

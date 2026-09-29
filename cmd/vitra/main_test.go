@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"go.klarlabs.de/vitra/packaging"
+	"go.klarlabs.de/vitra/internal/packaging"
 	"go.klarlabs.de/vitra/updater"
 )
 

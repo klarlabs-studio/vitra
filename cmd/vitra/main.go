@@ -19,9 +19,10 @@ import (
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/app"
-	"go.klarlabs.de/vitra/bindings"
 	"go.klarlabs.de/vitra/domain"
-	"go.klarlabs.de/vitra/packaging"
+	"go.klarlabs.de/vitra/internal/bindings"
+	"go.klarlabs.de/vitra/internal/packaging"
+	"go.klarlabs.de/vitra/internal/provenance"
 	"go.klarlabs.de/vitra/platform"
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
@@ -42,7 +43,6 @@ import (
 	officialtray "go.klarlabs.de/vitra/plugin/official/tray"
 	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
 	"go.klarlabs.de/vitra/policy"
-	"go.klarlabs.de/vitra/provenance"
 	"go.klarlabs.de/vitra/updater"
 )
 

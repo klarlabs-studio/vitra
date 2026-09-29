@@ -7,8 +7,8 @@ import (
 
 	"go.klarlabs.de/vitra/desktop"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/platform/null"
 	"go.klarlabs.de/vitra/platform"
-	"go.klarlabs.de/vitra/platform/null"
 )
 
 type allowAll struct{}

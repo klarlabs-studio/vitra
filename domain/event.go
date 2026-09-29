@@ -106,3 +106,9 @@ type SubscriptionRepository interface {
 	ListByOwner(window WindowID) ([]*Subscription, error)
 	ListByEvent(event EventName) ([]*Subscription, error)
 }
+
+// EventDelivery is one window that should receive an emitted event.
+type EventDelivery struct {
+	Window WindowID
+	Event  Event
+}

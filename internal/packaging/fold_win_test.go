@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.klarlabs.de/vitra/packaging"
+	"go.klarlabs.de/vitra/internal/packaging"
 )
 
 func TestFoldMSI_UsesInjectedTools(t *testing.T) {
