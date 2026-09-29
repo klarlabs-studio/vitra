@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `domain.InvocationFrom(ctx)`: executors can read the authorized `Invocation` (caller, command, checked `ResourcePath`, and matching grant) from their context.
+- `domain.CallerExecutorFunc`: an executor adapter that receives the caller the gateway authorized. It fails with `ErrNoInvocation` when called outside the gateway.
+
+### Security
+- The `vitra new` scaffold and `example/competitive` executors act as the window that invoked them. Before, they re-authorized every desktop service call as a hard-coded `main` caller, so a secondary window used `main`'s grants. Host-initiated work (startup menus, deep links, single-instance) uses an explicit `hostCaller`.
+
 ### Security
 - Path scopes close several bypasses of `PathScope.Matches`:
   - deny patterns now match case-insensitively, so `/project/.SECRETS/key` no longer slips past a `/project/.secrets/**` deny on APFS/NTFS;
