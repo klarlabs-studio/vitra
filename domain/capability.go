@@ -2,13 +2,29 @@ package domain
 
 import (
 	"errors"
+	"fmt"
 	"path"
 	"strings"
 )
 
 // PathScope constrains filesystem (or path-like) operations within a permission.
-// Deny patterns always win over allow patterns. Matching is intentional and
-// path-traversal-safe: requests containing ".." segments are rejected.
+//
+// Candidates and patterns are normalized before matching: backslashes become
+// forward slashes, and anything that is not an absolute POSIX path ("/a/b") or
+// drive path ("C:/a/b") is rejected, as are ".." segments, NUL bytes, and UNC or
+// device paths ("//host/share", `\\?\C:\`).
+//
+// Pattern syntax, applied per path segment:
+//   - "**" matches zero or more whole segments
+//   - any other segment is a path.Match pattern ("*", "?", "[a-z]"), so
+//     "*" matches exactly one segment and "*.pem" matches one file name
+//
+// Deny always wins over allow, and deny matching ignores letter case so a deny
+// cannot be sidestepped on case-insensitive filesystems (APFS, NTFS). Allow
+// matching is case-sensitive, so ambiguity fails closed in both directions.
+//
+// PathScope is lexical: it cannot see symlinks. Adapters that touch the
+// filesystem must resolve the real path and authorize that.
 type PathScope struct {
 	Allow []string
 	Deny  []string
@@ -26,14 +42,30 @@ func (s PathScope) Clone() PathScope {
 	return out
 }
 
+// Validate reports the first malformed allow or deny pattern.
+func (s PathScope) Validate() error {
+	for _, list := range [][]string{s.Allow, s.Deny} {
+		for _, pattern := range list {
+			if _, err := compilePathPattern(pattern); err != nil {
+				return fmt.Errorf("path pattern %q: %w", pattern, err)
+			}
+		}
+	}
+	return nil
+}
+
 // Matches reports whether candidate is within this scope.
 func (s PathScope) Matches(candidate string) (bool, DenialCode, string) {
 	cleaned, err := normalizePath(candidate)
 	if err != nil {
 		return false, DenialPathDenied, err.Error()
 	}
+	segments := splitPath(cleaned)
+	folded := splitPath(strings.ToLower(cleaned))
 	for _, deny := range s.Deny {
-		if matchPathPattern(deny, cleaned) {
+		pattern, err := compilePathPattern(strings.ToLower(deny))
+		// A deny pattern that cannot be compiled fails closed.
+		if err != nil || matchSegments(pattern, folded) {
 			return false, DenialPathDenied, "path matches deny pattern"
 		}
 	}
@@ -41,13 +73,16 @@ func (s PathScope) Matches(candidate string) (bool, DenialCode, string) {
 		return false, DenialPathOutOfScope, "no allow patterns configured"
 	}
 	for _, allow := range s.Allow {
-		if matchPathPattern(allow, cleaned) {
+		pattern, err := compilePathPattern(allow)
+		if err == nil && matchSegments(pattern, segments) {
 			return true, "", ""
 		}
 	}
 	return false, DenialPathOutOfScope, "path not in allow list"
 }
 
+// normalizePath converts p to a clean, absolute, slash-separated path or
+// rejects it.
 func normalizePath(p string) (string, error) {
 	p = strings.TrimSpace(p)
 	if p == "" {
@@ -56,31 +91,52 @@ func normalizePath(p string) (string, error) {
 	if strings.Contains(p, "\x00") {
 		return "", errors.New("path must not contain NUL")
 	}
+	// Windows accepts both separators, so treat them alike everywhere: a
+	// backslash must never hide a ".." segment or a directory boundary.
+	p = strings.ReplaceAll(p, "\\", "/")
+	if strings.HasPrefix(p, "//") {
+		return "", errors.New("UNC and device paths are not allowed")
+	}
 	// Reject explicit traversal before cleaning so "foo/../secret" cannot
 	// sneak past an allow of "foo/**".
-	parts := strings.Split(p, "/")
-	for _, part := range parts {
+	for _, part := range strings.Split(p, "/") {
 		if part == ".." {
 			return "", errors.New("path traversal is not allowed")
 		}
 	}
-	cleaned := path.Clean(p)
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
-		return "", errors.New("path traversal is not allowed")
+	if !isAbsolutePath(p) {
+		return "", errors.New("path must be absolute")
 	}
-	return cleaned, nil
+	return path.Clean(p), nil
 }
 
-// matchPathPattern supports a small intentional glob:
-//   - "**" matches any remaining path segments
-//   - "*" matches a single path segment
-//   - otherwise exact segment equality
-func matchPathPattern(pattern, candidate string) bool {
-	pattern = path.Clean(strings.TrimSpace(pattern))
-	if pattern == "" {
-		return false
+// isAbsolutePath reports whether slash-separated p is rooted ("/a") or a
+// Windows drive path ("C:/a"). Drive-relative paths ("C:a") are not absolute.
+func isAbsolutePath(p string) bool {
+	if strings.HasPrefix(p, "/") {
+		return true
 	}
-	return matchSegments(splitPath(pattern), splitPath(candidate))
+	return len(p) >= 3 && p[1] == ':' && p[2] == '/' &&
+		(('a' <= p[0] && p[0] <= 'z') || ('A' <= p[0] && p[0] <= 'Z'))
+}
+
+// compilePathPattern normalizes pattern and splits it into segments, checking
+// each glob segment's syntax.
+func compilePathPattern(pattern string) ([]string, error) {
+	cleaned, err := normalizePath(pattern)
+	if err != nil {
+		return nil, err
+	}
+	segments := splitPath(cleaned)
+	for _, seg := range segments {
+		if seg == "**" {
+			continue
+		}
+		if _, err := path.Match(seg, ""); err != nil {
+			return nil, err
+		}
+	}
+	return segments, nil
 }
 
 func splitPath(p string) []string {
@@ -108,7 +164,7 @@ func matchSegments(pattern, candidate []string) bool {
 		if len(candidate) == 0 {
 			return false
 		}
-		if pattern[0] != "*" && pattern[0] != candidate[0] {
+		if ok, _ := path.Match(pattern[0], candidate[0]); !ok {
 			return false
 		}
 		pattern = pattern[1:]
@@ -175,6 +231,11 @@ func NewCapabilityGrant(
 		}
 		if _, dup := seenPerm[p.Name]; dup {
 			return nil, &ErrValidation{Message: "duplicate permission in grant: " + string(p.Name)}
+		}
+		if p.PathScope != nil {
+			if err := p.PathScope.Validate(); err != nil {
+				return nil, &ErrValidation{Message: "permission " + string(p.Name) + ": " + err.Error()}
+			}
 		}
 		seenPerm[p.Name] = struct{}{}
 		perms = append(perms, p.Clone())
