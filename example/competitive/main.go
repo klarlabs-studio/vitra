@@ -125,6 +125,18 @@ func run() error {
 		return err
 	}
 
+	// fs.read / fs.write are scoped to demoRoot (see fsGrant below).
+	demoRoot := filepath.Join(os.TempDir(), "vitra-competitive-fs")
+	if err := os.MkdirAll(demoRoot, 0o755); err != nil {
+		return err
+	}
+	// Path scopes match path strings, so deny the directory under every name
+	// it has (macOS: /var/folders/... is also /private/var/folders/...).
+	realDemoRoot, err := filepath.EvalSymlinks(demoRoot)
+	if err != nil {
+		return err
+	}
+
 	chromeGrant, err := domain.NewCapabilityGrant(
 		"desktop-chrome",
 		"clipboard, dialogs, menu, tray, shortcuts, single-instance, deeplink, drag-drop, window chrome/create/close, open url, os info, notifications",
@@ -150,7 +162,12 @@ func run() error {
 			{Name: desktop.PermOpenURL},
 			{Name: desktop.PermOsInfo},
 			{Name: desktop.PermNotificationShow},
-			{Name: desktop.PermPathOpen, PathScope: &domain.PathScope{Allow: []string{"/**"}}},
+			// Never let path.open reach a directory the frontend can write:
+			// writing a script and then opening it would run it.
+			{Name: desktop.PermPathOpen, PathScope: &domain.PathScope{
+				Allow: []string{"/**"},
+				Deny:  []string{demoRoot + "/**", realDemoRoot + "/**"},
+			}},
 		},
 	)
 	if err != nil {
@@ -442,10 +459,6 @@ func run() error {
 		return err
 	}
 
-	demoRoot := filepath.Join(os.TempDir(), "vitra-competitive-fs")
-	if err := os.MkdirAll(demoRoot, 0o755); err != nil {
-		return err
-	}
 	fsGrant, err := domain.NewCapabilityGrant(
 		"demo-files",
 		"scoped demo filesystem",

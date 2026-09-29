@@ -7507,8 +7507,14 @@ func run() error {
 		return err
 	}
 
-	grant, _ := domain.NewCapabilityGrant(
-		"demo", "demo", []domain.WindowID{"main", "aux"},
+	// Least privilege: each window gets only what it needs. The buttons for
+	// permissions left out below are denied on purpose, showing the gateway
+	// at work. Grant a permission only when your app needs it, and never
+	// grant fs.write and path.open on the same directory: together they let
+	// the frontend write a program and then launch it.
+	mainGrant, err := domain.NewCapabilityGrant(
+		"main-window", "starter UI capabilities for the main window",
+		[]domain.WindowID{"main"},
 		[]domain.Origin{domain.OriginPackagedLocal},
 		[]domain.PermissionSpec{
 			{Name: "demo.greet"},
@@ -7516,9 +7522,7 @@ func run() error {
 			{Name: desktop.PermDialogSave},
 			{Name: desktop.PermDialogOpenDirectory},
 			{Name: desktop.PermDialogMessage},
-			{Name: desktop.PermClipboardRead},
 			{Name: desktop.PermClipboardWrite},
-			{Name: desktop.PermOpenURL},
 			{Name: desktop.PermOsInfo},
 			{Name: desktop.PermNotificationShow},
 			{Name: desktop.PermWindowCreate},
@@ -7530,12 +7534,38 @@ func run() error {
 			{Name: desktop.PermDeepLinkHandle},
 			{Name: desktop.PermShortcutRegister},
 			{Name: desktop.PermAppQuit},
-			{Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
-			{Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
-			{Name: desktop.PermPathOpen, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
+			// Reads whatever the user last copied, including passwords:
+			// {Name: desktop.PermClipboardRead},
+			// Launches the system browser with a frontend-chosen URL:
+			// {Name: desktop.PermOpenURL},
+			// Filesystem access, scoped to one directory:
+			// {Name: desktop.PermFSRead, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
+			// {Name: desktop.PermFSWrite, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
+			// Opens a path with its default handler; for executables that
+			// means running them. Scope it to a directory the app never writes:
+			// {Name: desktop.PermPathOpen, PathScope: &domain.PathScope{Allow: []string{demoRoot + "/**"}}},
 		},
 	)
-	_ = rt.RegisterGrant(grant)
+	if err != nil {
+		return err
+	}
+	if err := rt.RegisterGrant(mainGrant); err != nil {
+		return err
+	}
+	// Windows opened with window.create start with no authority; this grant
+	// lets the "aux" window call the demo command and nothing else.
+	auxGrant, err := domain.NewCapabilityGrant(
+		"aux-window", "demo command for the aux window",
+		[]domain.WindowID{"aux"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{{Name: "demo.greet"}},
+	)
+	if err != nil {
+		return err
+	}
+	if err := rt.RegisterGrant(auxGrant); err != nil {
+		return err
+	}
 
 	application, err = app.New(app.Options{
 		AppID: "com.example.app", Title: "Vitra App", Assets: assets, Host: host, Runtime: rt,
@@ -7609,7 +7639,7 @@ func scaffoldIndexHTML() string {
 <html lang="en"><head><meta charset="utf-8"/><title>Vitra App</title>
 <style>body{font-family:Georgia,serif;margin:2rem;background:#111;color:#eee}
 button{padding:.75rem 1rem;cursor:pointer;margin-right:.5rem}</style></head>
-<body><h1>Vitra</h1><p>Secure desktop runtime starter (official fs + dialog + clipboard + browser + os + notification + path + window + menu + tray + dragdrop + deeplink + shortcut + app plugins).</p>
+<body><h1>Vitra</h1><p>Secure desktop runtime starter. Buttons for capabilities the app has not granted (clipboard.read, browser.open, fs, path.open) are denied on purpose: see the grants in main.go.</p>
 <button id="greet">demo.greet</button>
 <button id="open">dialog.open</button>
 <button id="opendir">dialog.openDirectory</button>

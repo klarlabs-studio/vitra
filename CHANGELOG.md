@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- `vitra new` scaffolds least privilege. The main window no longer gets `fs.read`, `fs.write`, `path.open`, `browser.open`, or `clipboard.read` by default; they are listed commented out with guidance. The `aux` window only gets `demo.greet` instead of every permission. Before, the default grant let the frontend write a script with `fs.write` and launch it with `path.open`. Grant errors are no longer ignored.
+- `example/competitive` denies `path.open` inside its writable demo directory, under both its literal and symlink-resolved names.
+
+### Security
 - Updates refuse validly signed releases that are not an upgrade. `updater.PlanInstall` and `Runtime.ApplyUpdate` take an `updater.Installed{AppID, Channel, Version}` and return `ErrWrongApp`, `ErrWrongChannel`, or `ErrNotNewer` unless the manifest is for the same app and channel and has a strictly newer SemVer version. Before, any old signed manifest could be replayed (downgrade), a beta build installed on stable, and another app's release installed when keys were shared.
 - Update channels must use `https`; plain `http` is accepted only for loopback hosts.
 
