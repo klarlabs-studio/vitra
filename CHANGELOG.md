@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Breaking:** `vitra new` supports five starters: `vanilla`, `vite`, `react`, `svelte`, `vue`. The other 47 templates (solid, preact, lit, alpine, htmx, angular, qwik, … uland) are gone; start from `vite` and build to `frontend/dist` for any other framework. Each template pinned npm versions that went stale without anyone noticing, and several targeted abandoned projects. Starter files now live under `cmd/vitra/templates/` as real files embedded with `embed.FS`, instead of ~6,000 lines of Go string literals; `cmd/vitra/main.go` shrinks from 9,000 to 1,500 lines. Output of the five kept templates is unchanged apart from the vite README heading.
+
 ### Added
 - `updater.CompareVersions`: SemVer 2.0.0 precedence (prereleases, build metadata ignored).
 - Typed commands: `vitra.Register(rt, vitra.Command[In, Out]{Name, Description, Permission, Handler})`. Input is decoded strictly into `In` (unknown fields and type mismatches are rejected as validation errors), the handler receives the authorized `domain.Invocation`, and when `In` implements `ResourcePath() string` it must equal the path the gateway checked.
