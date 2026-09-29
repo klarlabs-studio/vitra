@@ -1107,7 +1107,8 @@ func (s *PathService) Open(ctx context.Context, caller domain.Caller, path strin
 	if err != nil {
 		return err
 	}
-	if err := authorizePath(s.Gateway, caller, PermPathOpen, cleaned); err != nil {
+	real, err := authorizeRealPath(s.Gateway, caller, PermPathOpen, cleaned)
+	if err != nil {
 		return err
 	}
 	if err := platform.Require(s.Host, platform.FeaturePathOpen); err != nil {
@@ -1116,7 +1117,7 @@ func (s *PathService) Open(ctx context.Context, caller domain.Caller, path strin
 	if s.OnOpen == nil {
 		return &platform.ErrUnsupported{Feature: platform.FeaturePathOpen, OS: s.Host.OS(), Detail: "no path opener bound"}
 	}
-	return s.OnOpen(ctx, cleaned)
+	return s.OnOpen(ctx, real)
 }
 
 func validateLocalPath(path string) (string, error) {
