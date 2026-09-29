@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `PathScope` patterns must be absolute. `vitra inspect capabilities` shows `/project/**` instead of the unexpanded `${PROJECT_DIR}` placeholder.
 
+### Security
+- The navigation allow-list compares the parsed scheme and host:port against the asset server exactly. The previous string-prefix check let `http://127.0.0.1:PORT@evil.example/` (userinfo) and `http://127.0.0.1:PORT1/` (another local port) keep privileged bridge access.
+
+### Security
+- Windows `OpenURL` no longer shells out through `cmd /c start`. cmd.exe interprets `&`, `|`, `^`, `<`, `>` even inside a quoted argv element, so a `browser.open` URL like `https://a.example/?x&calc` could run arbitrary commands. It now uses `rundll32 url.dll,FileProtocolHandler`, which never parses shell metacharacters.
+
 ## [0.3.0] - 2026-09-28
 
 First tagged release. The secure runtime kernel is complete and runnable

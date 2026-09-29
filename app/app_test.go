@@ -182,6 +182,27 @@ func TestApp_RunInvokeAndNavPolicy(t *testing.T) {
 	if host.nav("main", "https://evil.example") {
 		t.Fatal("external nav must be denied")
 	}
+	addr := application.Addr()
+	for _, ok := range []string{addr, addr + "/", addr + "/sub/page.html?q=1#top", "about:blank"} {
+		if !host.nav("main", ok) {
+			t.Fatalf("local nav %q must be allowed", ok)
+		}
+	}
+	// A prefix check on the asset server address lets all of these through.
+	for _, bad := range []string{
+		addr + "@evil.example/", // userinfo: host is evil.example
+		addr + "1/",             // a different local port
+		addr + "0/",             // a different local port
+		addr + ".evil.example/", // not a valid port, not our host
+		"https://" + strings.TrimPrefix(addr, "http://") + "/", // different scheme
+		"about:blank#x",
+		"about:blankx",
+		"",
+	} {
+		if host.nav("main", bad) {
+			t.Fatalf("nav %q must be denied", bad)
+		}
+	}
 
 	raw, _ := json.Marshal(map[string]any{
 		"protocol": "1",
