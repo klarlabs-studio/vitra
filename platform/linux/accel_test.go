@@ -7,8 +7,8 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	"sync/atomic"
 	"testing"
+	"time"
 
 	"go.klarlabs.de/vitra/platform"
 )
@@ -27,10 +27,20 @@ func TestNativeMenuAccelerator(t *testing.T) {
 	} else if os.Getenv("DISPLAY") != "" && !h.Features().Available(platform.FeatureGlobalShortcut) {
 		t.Fatal("X11 session should claim FeatureGlobalShortcut")
 	}
-	var got atomic.Value
-	h.SetActionHandler(func(id string) {
-		got.Store(id)
-	})
+	// Action handlers run off the UI thread, so wait for the delivery.
+	got := make(chan string, 4)
+	h.SetActionHandler(func(id string) { got <- id })
+	expect := func(want string) {
+		t.Helper()
+		select {
+		case id := <-got:
+			if id != want {
+				t.Fatalf("action id=%q, want %q", id, want)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("no action delivered, want %q", want)
+		}
+	}
 	if err := h.Open(platform.WindowSpec{ID: "main", Title: "accel", Width: 400, Height: 300}, "about:blank", ""); err != nil {
 		t.Fatal(err)
 	}
@@ -50,12 +60,9 @@ func TestNativeMenuAccelerator(t *testing.T) {
 	if !ok {
 		t.Fatal("expected accelerator to activate")
 	}
-	if id, _ := got.Load().(string); id != "app.quit" {
-		t.Fatalf("action id=%q", id)
-	}
+	expect("app.quit")
 
 	// Clearing the menu must drop the prior accelerator.
-	got.Store("")
 	if err := h.SetMenuBar("main", nil); err != nil {
 		t.Fatal(err)
 	}
@@ -66,8 +73,10 @@ func TestNativeMenuAccelerator(t *testing.T) {
 	if ok {
 		t.Fatal("expected cleared accelerator to miss")
 	}
-	if id, _ := got.Load().(string); id != "" {
+	select {
+	case id := <-got:
 		t.Fatalf("unexpected action after clear: %q", id)
+	case <-time.After(200 * time.Millisecond):
 	}
 
 	// GTK-style form should also work.
@@ -83,7 +92,5 @@ func TestNativeMenuAccelerator(t *testing.T) {
 	if !ok {
 		t.Fatal("expected GTK-form accelerator")
 	}
-	if id, _ := got.Load().(string); id != "help.about" {
-		t.Fatalf("action id=%q", id)
-	}
+	expect("help.about")
 }
