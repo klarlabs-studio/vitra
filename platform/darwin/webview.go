@@ -717,20 +717,28 @@ func (h *Host) err(f platform.Feature) error {
 	}
 }
 
+// dispatch runs fn on the UI thread: queued while the loop runs, inline
+// before it starts.
 func (h *Host) dispatch(fn func()) {
-	h.mu.Lock()
-	looping := h.looping
-	h.mu.Unlock()
-	if !looping {
+	if !h.enqueue(fn) {
 		fn()
-		return
 	}
+}
+
+// enqueue queues fn for the UI thread and reports whether the loop is running
+// to take it.
+func (h *Host) enqueue(fn func()) bool {
 	h.mu.Lock()
+	if !h.looping {
+		h.mu.Unlock()
+		return false
+	}
 	h.jobSeq++
 	id := h.jobSeq
 	h.mu.Unlock()
 	h.jobs.Store(id, fn)
 	C.vitra_idle_add(unsafe.Pointer(uintptr(id)))
+	return true
 }
 
 //export goVitraIdle
@@ -764,10 +772,22 @@ func goVitraMessage(windowID, msg *C.char) {
 	if origin == "" {
 		origin = domain.OriginPackagedLocal
 	}
-	resp := h.onInvoke(id, origin, []byte(C.GoString(msg)))
-	if len(resp) > 0 {
-		h.replyOnMainThread(id, resp)
+	// Copy the message out of C memory before returning, then run the invoke
+	// off the UI thread: executors call host methods (clipboard, dialogs,
+	// Eval, Emit) that queue work to this thread and wait for it, so running
+	// them here would deadlock the loop, and a slow command would freeze the
+	// UI. The reply hops back to the UI thread.
+	payload := []byte(C.GoString(msg))
+	go h.handleMessage(id, origin, payload)
+}
+
+func (h *Host) handleMessage(id domain.WindowID, origin domain.Origin, payload []byte) {
+	resp := h.onInvoke(id, origin, payload)
+	if len(resp) == 0 {
+		return
 	}
+	// If the loop has already stopped there is no page left to answer.
+	h.enqueue(func() { h.replyOnMainThread(id, resp) })
 }
 
 func (h *Host) replyOnMainThread(id domain.WindowID, message []byte) {
@@ -839,7 +859,9 @@ func goVitraAction(actionID *C.char) {
 	if h == nil || h.onAction == nil {
 		return
 	}
-	h.onAction(C.GoString(actionID))
+	// Handlers typically emit to the frontend, which waits on this thread;
+	// run them off it (see goVitraMessage).
+	go h.onAction(C.GoString(actionID))
 }
 
 //export goVitraDrop
@@ -861,5 +883,6 @@ func goVitraDrop(windowID, pathsJoined *C.char) {
 	if len(paths) == 0 {
 		return
 	}
-	h.onDrop(domain.WindowID(C.GoString(windowID)), paths)
+	// Off the UI thread, like goVitraAction.
+	go h.onDrop(domain.WindowID(C.GoString(windowID)), paths)
 }
