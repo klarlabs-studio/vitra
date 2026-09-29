@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Windows `OpenURL` no longer shells out through `cmd /c start`. cmd.exe interprets `&`, `|`, `^`, `<`, `>` even inside a quoted argv element, so a `browser.open` URL like `https://a.example/?x&calc` could run arbitrary commands. It now uses `rundll32 url.dll,FileProtocolHandler`, which never parses shell metacharacters.
+
 ## [0.3.0] - 2026-09-28
 
 First tagged release. The secure runtime kernel is complete and runnable
