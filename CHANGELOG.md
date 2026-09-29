@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Updates refuse validly signed releases that are not an upgrade. `updater.PlanInstall` and `Runtime.ApplyUpdate` take an `updater.Installed{AppID, Channel, Version}` and return `ErrWrongApp`, `ErrWrongChannel`, or `ErrNotNewer` unless the manifest is for the same app and channel and has a strictly newer SemVer version. Before, any old signed manifest could be replayed (downgrade), a beta build installed on stable, and another app's release installed when keys were shared.
+- Update channels must use `https`; plain `http` is accepted only for loopback hosts.
+
+### Added
+- `updater.CompareVersions`: SemVer 2.0.0 precedence (prereleases, build metadata ignored).
+
+### Changed
+- **Breaking:** `updater.PlanInstall(m, pub, artifact, installed)` and `Runtime.ApplyUpdate(m, pub, artifact, dest, installed)` require the installed app description. `vitra update-apply` requires `--app-id` and `--current-version` in both local and channel mode.
+
 ## [0.3.0] - 2026-09-28
 
 First tagged release. The secure runtime kernel is complete and runnable

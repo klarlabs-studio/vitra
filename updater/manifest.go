@@ -1,7 +1,9 @@
-// Package updater implements Phase 4 signed update verification.
+// Package updater implements signed update verification.
 //
 // Update artifacts are never installed without integrity and authenticity
-// checks (security invariant 9).
+// checks (security invariant 9), and a validly signed manifest is still
+// refused unless it is a newer release of the same app on the same channel,
+// so old or foreign signed releases cannot be replayed.
 package updater
 
 import (
@@ -131,14 +133,48 @@ type InstallPlan struct {
 	SHA256   string
 }
 
-// PlanInstall verifies signature + digest and returns an install plan.
-// No plan is returned unless both checks pass (invariant 9).
-func PlanInstall(m Manifest, pub ed25519.PublicKey, artifact []byte) (InstallPlan, error) {
+// Errors returned by PlanInstall when a manifest is authentic but not an
+// acceptable update for the installed app.
+var (
+	ErrWrongApp     = errors.New("update manifest is for a different app")
+	ErrWrongChannel = errors.New("update manifest is for a different channel")
+	ErrNotNewer     = errors.New("update version is not newer than the installed version")
+)
+
+// Installed describes the app an update would replace.
+type Installed struct {
+	AppID   string
+	Channel Channel
+	// Version is the installed SemVer version. It is required: without it,
+	// a replayed older release cannot be told apart from an upgrade.
+	Version string
+}
+
+// PlanInstall verifies signature and digest, then checks that m is an update
+// for installed: same app, same channel, and a strictly newer version. No
+// plan is returned unless every check passes (invariant 9).
+func PlanInstall(m Manifest, pub ed25519.PublicKey, artifact []byte, installed Installed) (InstallPlan, error) {
 	if err := VerifyManifest(m, pub); err != nil {
 		return InstallPlan{}, err
 	}
 	if err := VerifyArtifactDigest(m, artifact); err != nil {
 		return InstallPlan{}, err
+	}
+	if m.AppID != installed.AppID {
+		return InstallPlan{}, fmt.Errorf("%w: manifest %q, installed %q", ErrWrongApp, m.AppID, installed.AppID)
+	}
+	if m.Channel != installed.Channel {
+		return InstallPlan{}, fmt.Errorf("%w: manifest %q, installed %q", ErrWrongChannel, m.Channel, installed.Channel)
+	}
+	if installed.Version == "" {
+		return InstallPlan{}, errors.New("installed version is required")
+	}
+	cmp, err := CompareVersions(m.Version, installed.Version)
+	if err != nil {
+		return InstallPlan{}, err
+	}
+	if cmp <= 0 {
+		return InstallPlan{}, fmt.Errorf("%w: manifest %s, installed %s", ErrNotNewer, m.Version, installed.Version)
 	}
 	return InstallPlan{
 		AppID: m.AppID, Version: m.Version, Channel: m.Channel,

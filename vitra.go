@@ -398,9 +398,14 @@ func (rt *Runtime) Authorize(caller domain.Caller, permission domain.PermissionN
 	return d
 }
 
-// ApplyUpdate verifies a signed update (and optional enterprise policy), then
-// atomically installs the artifact at destPath (invariant 9).
-func (rt *Runtime) ApplyUpdate(m updater.Manifest, pub ed25519.PublicKey, artifact []byte, destPath string) (updater.InstallPlan, error) {
+// ApplyUpdate verifies a signed update (and optional enterprise policy),
+// checks that it is a newer release of the installed app on the same channel,
+// then atomically installs the artifact at destPath (invariant 9). An empty
+// installed.AppID defaults to the runtime's AppID.
+func (rt *Runtime) ApplyUpdate(m updater.Manifest, pub ed25519.PublicKey, artifact []byte, destPath string, installed updater.Installed) (updater.InstallPlan, error) {
+	if installed.AppID == "" {
+		installed.AppID = string(rt.AppID())
+	}
 	if rt.policyEng != nil {
 		if err := rt.policyEng.AuthorizeUpdate(m); err != nil {
 			rt.emitAudit(audit.Event{
@@ -411,7 +416,7 @@ func (rt *Runtime) ApplyUpdate(m updater.Manifest, pub ed25519.PublicKey, artifa
 			return updater.InstallPlan{}, err
 		}
 	}
-	plan, err := updater.PlanInstall(m, pub, artifact)
+	plan, err := updater.PlanInstall(m, pub, artifact, installed)
 	if err != nil {
 		rt.emitAudit(audit.Event{
 			Kind: audit.KindUpdatePlan, Actor: m.AppID, Action: string(m.Channel),
