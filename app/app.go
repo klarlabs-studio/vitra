@@ -10,6 +10,8 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"sync"
 
@@ -128,8 +130,17 @@ func New(opts Options) (*App, error) {
 // Runtime returns the secure kernel.
 func (a *App) Runtime() *vitra.Runtime { return a.rt }
 
+// EnvGenerateTypeScript names an environment variable that switches Run into
+// code generation: Run writes a TypeScript client for the runtime's
+// registered commands to the path it names, then returns without serving
+// assets or opening a window. `vitra generate typescript --app` sets it.
+const EnvGenerateTypeScript = "VITRA_GENERATE_TYPESCRIPT"
+
 // Run serves frontend assets, opens the primary window, and blocks on the UI loop.
 func (a *App) Run(ctx context.Context) error {
+	if out := os.Getenv(EnvGenerateTypeScript); out != "" {
+		return a.writeTypeScript(out)
+	}
 	if a.opts.Assets == nil {
 		return errors.New("frontend assets are required")
 	}
@@ -316,10 +327,17 @@ func (a *App) handleInvoke(windowID domain.WindowID, origin domain.Origin, raw [
 func (a *App) allowNav(windowID domain.WindowID, uri string) bool {
 	// Allow only the local asset server and about:blank. Everything else is
 	// external and must not keep privileged bridge access.
-	if uri == "about:blank" || strings.HasPrefix(uri, a.addr) {
+	if uri == "about:blank" {
 		return true
 	}
-	return false
+	// Compare the parsed origin exactly. A string prefix check on a.addr
+	// admits "http://127.0.0.1:PORT@evil.example/" (userinfo) and
+	// "http://127.0.0.1:PORT1/" (another local port).
+	u, err := url.Parse(uri)
+	if a.addr == "" || err != nil || u.User != nil || u.Opaque != "" {
+		return false
+	}
+	return u.Scheme == "http" && u.Host == strings.TrimPrefix(a.addr, "http://")
 }
 
 func mustJSON(v any) []byte {
@@ -328,6 +346,14 @@ func mustJSON(v any) []byte {
 		return []byte(`{"ok":false,"error":"encode"}`)
 	}
 	return b
+}
+
+func (a *App) writeTypeScript(path string) error {
+	ts, err := a.rt.TypeScript(string(a.opts.AppID))
+	if err != nil {
+		return fmt.Errorf("generate typescript: %w", err)
+	}
+	return os.WriteFile(path, []byte(ts), 0o644)
 }
 
 // Addr returns the local asset server address after Run starts listening.

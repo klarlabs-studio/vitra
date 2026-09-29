@@ -27,25 +27,26 @@ func TestPlanInstall_RequiresValidSignatureAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := updater.PlanInstall(m, pub, artifact)
+	installed := updater.Installed{AppID: "com.example.app", Channel: updater.ChannelStable, Version: "1.2.2"}
+	plan, err := updater.PlanInstall(m, pub, artifact, installed)
 	if err != nil || plan.Version != "1.2.3" {
 		t.Fatalf("plan=%v err=%v", plan, err)
 	}
 
 	// Tampered artifact rejected.
-	if _, err := updater.PlanInstall(m, pub, []byte("tampered")); err == nil {
+	if _, err := updater.PlanInstall(m, pub, []byte("tampered"), installed); err == nil {
 		t.Fatal("expected digest failure")
 	}
 	// Bad signature rejected.
 	bad := m
 	bad.Signature = hex.EncodeToString(make([]byte, ed25519.SignatureSize))
-	if _, err := updater.PlanInstall(bad, pub, artifact); err == nil {
+	if _, err := updater.PlanInstall(bad, pub, artifact, installed); err == nil {
 		t.Fatal("expected signature failure")
 	}
 	// Unsigned rejected.
 	unsigned := m
 	unsigned.Signature = ""
-	if _, err := updater.PlanInstall(unsigned, pub, artifact); err == nil {
+	if _, err := updater.PlanInstall(unsigned, pub, artifact, installed); err == nil {
 		t.Fatal("expected missing signature failure")
 	}
 }

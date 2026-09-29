@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -139,12 +140,24 @@ func (s ChannelSource) validatedIdentity() (appID, channel string, err error) {
 	return appID, channel, nil
 }
 
+// validateHTTPScheme requires https. Plain http is accepted only for loopback
+// hosts (local testing): the signature protects the artifact, but over http
+// an attacker still controls which signed release, if any, the client sees.
 func validateHTTPScheme(u *url.URL) error {
 	switch strings.ToLower(u.Scheme) {
-	case "https", "http":
+	case "https":
 		return nil
+	case "http":
+		host := u.Hostname()
+		if host == "localhost" {
+			return nil
+		}
+		if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+			return nil
+		}
+		return fmt.Errorf("channel URL must use https (http is allowed only for loopback hosts)")
 	default:
-		return fmt.Errorf("channel URL scheme %q rejected (want http or https)", u.Scheme)
+		return fmt.Errorf("channel URL scheme %q rejected (want https)", u.Scheme)
 	}
 }
 

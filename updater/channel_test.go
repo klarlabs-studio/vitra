@@ -114,7 +114,7 @@ func TestFetcher_FetchManifestAndArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := updater.PlanInstall(got, pub, body)
+	plan, err := updater.PlanInstall(got, pub, body, updater.Installed{AppID: "com.example.app", Channel: updater.ChannelBeta, Version: "2.0.0"})
 	if err != nil || plan.Version != "3.0.0" {
 		t.Fatalf("plan=%v err=%v", plan, err)
 	}

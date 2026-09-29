@@ -11,6 +11,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Native hosts (Linux, Darwin, Windows) run frontend invokes, menu/tray/shortcut actions, and file-drop handlers off the UI thread. Before, a command that called back into the host (clipboard, dialogs, `Eval`, `App.Emit`), or an action handler that emitted an event, queued work to the UI thread from the UI thread and waited: the app froze. Slow commands no longer block the UI either. Replies are posted back to the UI thread and dropped if the loop has stopped.
 - `make e2e` round-trips `clipboard.write` → `clipboard.read` → `demo.greet` and is bounded by `timeout`, so a hang fails instead of stalling CI.
 
+### Security
+- `vitra new` scaffolds least privilege. The main window no longer gets `fs.read`, `fs.write`, `path.open`, `browser.open`, or `clipboard.read` by default; they are listed commented out with guidance. The `aux` window only gets `demo.greet` instead of every permission. Before, the default grant let the frontend write a script with `fs.write` and launch it with `path.open`. Grant errors are no longer ignored.
+- `example/competitive` denies `path.open` inside its writable demo directory, under both its literal and symlink-resolved names.
+
+### Security
+- Updates refuse validly signed releases that are not an upgrade. `updater.PlanInstall` and `Runtime.ApplyUpdate` take an `updater.Installed{AppID, Channel, Version}` and return `ErrWrongApp`, `ErrWrongChannel`, or `ErrNotNewer` unless the manifest is for the same app and channel and has a strictly newer SemVer version. Before, any old signed manifest could be replayed (downgrade), a beta build installed on stable, and another app's release installed when keys were shared.
+- Update channels must use `https`; plain `http` is accepted only for loopback hosts.
+
+### Added
+- `updater.CompareVersions`: SemVer 2.0.0 precedence (prereleases, build metadata ignored).
+
+### Changed
+- **Breaking:** `updater.PlanInstall(m, pub, artifact, installed)` and `Runtime.ApplyUpdate(m, pub, artifact, dest, installed)` require the installed app description. `vitra update-apply` requires `--app-id` and `--current-version` in both local and channel mode.
+
+### Added
+- Typed commands: `vitra.Register(rt, vitra.Command[In, Out]{Name, Description, Permission, Handler})`. Input is decoded strictly into `In` (unknown fields and type mismatches are rejected as validation errors), the handler receives the authorized `domain.Invocation`, and when `In` implements `ResourcePath() string` it must equal the path the gateway checked.
+- `Runtime.TypeScript(module)`: a TypeScript client for every registered command, with interfaces generated from typed commands' Go types (JSON tags, `omitempty`, pointers, slices, maps, embedded and recursive structs, `time.Time`, `[]byte`).
+- `vitra generate typescript --app <dir>` runs the app in code-generation mode (`app.EnvGenerateTypeScript`) so the client covers the app's own commands. Works with the stub host; no cgo needed.
+- The `vitra new` starter's `demo.greet` is a typed command, and its README uses `--app .`.
+
+### Changed
+- **Breaking:** `bindings.GenerateTypeScript` takes `[]bindings.Command` (use `bindings.Untyped(defs...)` for definitions without types) and returns an error.
+
+### Fixed
+- Generated TypeScript: two commands mapping to the same method (`fs.read` / `fs_read`) is an error instead of a duplicate method; descriptions can no longer close the doc comment (`*/`); string literals are valid JavaScript (JSON-encoded instead of Go `%q`, which could emit `\U` escapes); non-identifier names are quoted.
+- `vitra new` writes a `go.mod` that builds as generated: `go 1.26.2` (was `go 1.26`, older than vitra's, forcing `go mod tidy`) and `require go.klarlabs.de/vitra v0.3.0` (was the unresolvable `v0.0.0`).
+
+### Added
+- `domain.InvocationFrom(ctx)`: executors can read the authorized `Invocation` (caller, command, checked `ResourcePath`, and matching grant) from their context.
+- `domain.CallerExecutorFunc`: an executor adapter that receives the caller the gateway authorized. It fails with `ErrNoInvocation` when called outside the gateway.
+
+### Security
+- The `vitra new` scaffold and `example/competitive` executors act as the window that invoked them. Before, they re-authorized every desktop service call as a hard-coded `main` caller, so a secondary window used `main`'s grants. Host-initiated work (startup menus, deep links, single-instance) uses an explicit `hostCaller`.
+
+### Added
+- `domain.InvocationFrom(ctx)`: executors can read the authorized `Invocation` (caller, command, checked `ResourcePath`, and matching grant) from their context.
+- `domain.CallerExecutorFunc`: an executor adapter that receives the caller the gateway authorized. It fails with `ErrNoInvocation` when called outside the gateway.
+
+### Security
+- The `vitra new` scaffold and `example/competitive` executors act as the window that invoked them. Before, they re-authorized every desktop service call as a hard-coded `main` caller, so a secondary window used `main`'s grants. Host-initiated work (startup menus, deep links, single-instance) uses an explicit `hostCaller`.
+
+### Security
+- Path scopes close several bypasses of `PathScope.Matches`:
+  - deny patterns now match case-insensitively, so `/project/.SECRETS/key` no longer slips past a `/project/.secrets/**` deny on APFS/NTFS;
+  - backslashes are treated as separators, so `..\..\` traversal is rejected;
+  - relative, drive-relative, UNC (`\\host\share`), and device (`\\?\`) paths are rejected;
+  - segments are now `path.Match` globs, so partial patterns such as `**/*.pem` actually match instead of silently never denying.
+- `NewCapabilityGrant` rejects malformed or relative path patterns, and a deny pattern that cannot be compiled denies.
+
+- `FileService` (`fs.read`/`fs.write`) and `PathService` (`path.open`) resolve symlinks before acting. The real target must stay under the real root of the allow pattern that matched, and its location is authorized again, so deny rules apply to what a link points at. Before, a link inside the scope (`proj/escape -> /etc`) read or wrote anywhere on disk, and `proj/public -> .secrets` bypassed a `.secrets/**` deny. Dangling links are refused for writes.
+
+### Added
+- `domain.Decision.ScopeRoot`: for an allowed path-scoped permission, the literal root of the allow pattern that matched (`/project` for `/project/**`).
+
+### Changed
+- `PathScope` patterns must be absolute. `vitra inspect capabilities` shows `/project/**` instead of the unexpanded `${PROJECT_DIR}` placeholder.
+
+### Security
+- Path scopes close several bypasses of `PathScope.Matches`:
+  - deny patterns now match case-insensitively, so `/project/.SECRETS/key` no longer slips past a `/project/.secrets/**` deny on APFS/NTFS;
+  - backslashes are treated as separators, so `..\..\` traversal is rejected;
+  - relative, drive-relative, UNC (`\\host\share`), and device (`\\?\`) paths are rejected;
+  - segments are now `path.Match` globs, so partial patterns such as `**/*.pem` actually match instead of silently never denying.
+- `NewCapabilityGrant` rejects malformed or relative path patterns, and a deny pattern that cannot be compiled denies.
+
+### Changed
+- `PathScope` patterns must be absolute. `vitra inspect capabilities` shows `/project/**` instead of the unexpanded `${PROJECT_DIR}` placeholder.
+
+### Security
+- The navigation allow-list compares the parsed scheme and host:port against the asset server exactly. The previous string-prefix check let `http://127.0.0.1:PORT@evil.example/` (userinfo) and `http://127.0.0.1:PORT1/` (another local port) keep privileged bridge access.
+
+### Security
+- Windows `OpenURL` no longer shells out through `cmd /c start`. cmd.exe interprets `&`, `|`, `^`, `<`, `>` even inside a quoted argv element, so a `browser.open` URL like `https://a.example/?x&calc` could run arbitrary commands. It now uses `rundll32 url.dll,FileProtocolHandler`, which never parses shell metacharacters.
+
 ## [0.3.0] - 2026-09-28
 
 First tagged release. The secure runtime kernel is complete and runnable

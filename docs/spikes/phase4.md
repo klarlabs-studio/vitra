@@ -116,8 +116,8 @@ vitra update-sign --artifact app.bin --app-id com.example.app --version 1.2.0 \
   --privkey file:keys/priv.key --out update.json
 vitra update-stage --out dist/updates --manifest update.json --artifact app.bin
 vitra update-check --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex>
-vitra update-apply --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex> --dest ./vitra-app
-vitra update-apply --manifest update.json --artifact app.bin --pubkey <hex> --dest ./vitra-app --policy production
+vitra update-apply --base-url https://updates.example/ --app-id com.example.app --channel stable --current-version 1.0.0 --pubkey <hex> --dest ./vitra-app
+vitra update-apply --manifest update.json --artifact app.bin --app-id com.example.app --current-version 1.0.0 --pubkey <hex> --dest ./vitra-app --policy production
 ```
 
 ## Security invariants
