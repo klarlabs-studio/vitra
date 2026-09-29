@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Typed commands: `vitra.Register(rt, vitra.Command[In, Out]{Name, Description, Permission, Handler})`. Input is decoded strictly into `In` (unknown fields and type mismatches are rejected as validation errors), the handler receives the authorized `domain.Invocation`, and when `In` implements `ResourcePath() string` it must equal the path the gateway checked.
+- `Runtime.TypeScript(module)`: a TypeScript client for every registered command, with interfaces generated from typed commands' Go types (JSON tags, `omitempty`, pointers, slices, maps, embedded and recursive structs, `time.Time`, `[]byte`).
+- `vitra generate typescript --app <dir>` runs the app in code-generation mode (`app.EnvGenerateTypeScript`) so the client covers the app's own commands. Works with the stub host; no cgo needed.
+- The `vitra new` starter's `demo.greet` is a typed command, and its README uses `--app .`.
+
+### Changed
+- **Breaking:** `bindings.GenerateTypeScript` takes `[]bindings.Command` (use `bindings.Untyped(defs...)` for definitions without types) and returns an error.
+
+### Fixed
+- Generated TypeScript: two commands mapping to the same method (`fs.read` / `fs_read`) is an error instead of a duplicate method; descriptions can no longer close the doc comment (`*/`); string literals are valid JavaScript (JSON-encoded instead of Go `%q`, which could emit `\U` escapes); non-identifier names are quoted.
+- `vitra new` writes a `go.mod` that builds as generated: `go 1.26.2` (was `go 1.26`, older than vitra's, forcing `go mod tidy`) and `require go.klarlabs.de/vitra v0.3.0` (was the unresolvable `v0.0.0`).
+
+### Added
+- `domain.InvocationFrom(ctx)`: executors can read the authorized `Invocation` (caller, command, checked `ResourcePath`, and matching grant) from their context.
+- `domain.CallerExecutorFunc`: an executor adapter that receives the caller the gateway authorized. It fails with `ErrNoInvocation` when called outside the gateway.
+
+### Security
+- The `vitra new` scaffold and `example/competitive` executors act as the window that invoked them. Before, they re-authorized every desktop service call as a hard-coded `main` caller, so a secondary window used `main`'s grants. Host-initiated work (startup menus, deep links, single-instance) uses an explicit `hostCaller`.
+
+### Added
 - `domain.InvocationFrom(ctx)`: executors can read the authorized `Invocation` (caller, command, checked `ResourcePath`, and matching grant) from their context.
 - `domain.CallerExecutorFunc`: an executor adapter that receives the caller the gateway authorized. It fails with `ErrNoInvocation` when called outside the gateway.
 
