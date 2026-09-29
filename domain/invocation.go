@@ -102,6 +102,12 @@ func (s *InvocationService) Invoke(ctx context.Context, req InvocationRequest) (
 	if !ok {
 		return nil, &ErrNotFound{Entity: "command executor", ID: string(req.Command)}
 	}
+	ctx = WithInvocation(ctx, Invocation{
+		Caller:       req.Caller,
+		Command:      req.Command,
+		ResourcePath: req.ResourcePath,
+		Grant:        decision.Grant,
+	})
 	out, err := exec.Execute(ctx, req.Command, req.Input)
 	if err != nil {
 		return nil, err
