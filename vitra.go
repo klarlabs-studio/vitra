@@ -25,9 +25,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"go.klarlabs.de/vitra/application"
 	"go.klarlabs.de/vitra/audit"
+	"go.klarlabs.de/vitra/bindings"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/inmemory"
 	"go.klarlabs.de/vitra/plugin"
@@ -65,6 +67,8 @@ type Runtime struct {
 	auditSink     audit.Sink
 	workers       *worker.Supervisor
 	invoker       *domain.InvocationService
+	typed         map[domain.CommandName]bindings.Command // guarded by typedMu
+	typedMu       sync.Mutex
 
 	registerGrant   *application.RegisterGrantUseCase
 	registerCommand *application.RegisterCommandUseCase

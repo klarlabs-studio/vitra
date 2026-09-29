@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -128,8 +129,17 @@ func New(opts Options) (*App, error) {
 // Runtime returns the secure kernel.
 func (a *App) Runtime() *vitra.Runtime { return a.rt }
 
+// EnvGenerateTypeScript names an environment variable that switches Run into
+// code generation: Run writes a TypeScript client for the runtime's
+// registered commands to the path it names, then returns without serving
+// assets or opening a window. `vitra generate typescript --app` sets it.
+const EnvGenerateTypeScript = "VITRA_GENERATE_TYPESCRIPT"
+
 // Run serves frontend assets, opens the primary window, and blocks on the UI loop.
 func (a *App) Run(ctx context.Context) error {
+	if out := os.Getenv(EnvGenerateTypeScript); out != "" {
+		return a.writeTypeScript(out)
+	}
 	if a.opts.Assets == nil {
 		return errors.New("frontend assets are required")
 	}
@@ -328,6 +338,14 @@ func mustJSON(v any) []byte {
 		return []byte(`{"ok":false,"error":"encode"}`)
 	}
 	return b
+}
+
+func (a *App) writeTypeScript(path string) error {
+	ts, err := a.rt.TypeScript(string(a.opts.AppID))
+	if err != nil {
+		return fmt.Errorf("generate typescript: %w", err)
+	}
+	return os.WriteFile(path, []byte(ts), 0o644)
 }
 
 // Addr returns the local asset server address after Run starts listening.
