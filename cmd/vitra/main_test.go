@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/parser"
 	"go/token"
@@ -159,6 +160,8 @@ func TestRun_UpdateApply(t *testing.T) {
 			"update-apply",
 			"--manifest", manifestPath,
 			"--artifact", artifactPath,
+			"--app-id", m.AppID,
+			"--current-version", "1.9.0",
 			"--pubkey", hex.EncodeToString(pub),
 			"--dest", dest,
 			"--policy", "production",
@@ -215,6 +218,7 @@ func TestRun_UpdateApplyChannel(t *testing.T) {
 			"--base-url", srv.URL + "/feed/",
 			"--app-id", "com.vitra.channel",
 			"--channel", "beta",
+			"--current-version", "4.1.0",
 			"--pubkey", hex.EncodeToString(pub),
 			"--dest", dest,
 			"--policy", "development",
@@ -228,6 +232,18 @@ func TestRun_UpdateApplyChannel(t *testing.T) {
 	got, err := os.ReadFile(dest)
 	if err != nil || string(got) != string(artifact) {
 		t.Fatalf("dest=%q err=%v", got, err)
+	}
+	// The same signed release must not install over itself (replay).
+	if err := run([]string{
+		"update-apply",
+		"--base-url", srv.URL + "/feed/",
+		"--app-id", "com.vitra.channel",
+		"--channel", "beta",
+		"--current-version", "4.2.0",
+		"--pubkey", hex.EncodeToString(pub),
+		"--dest", dest,
+	}); !errors.Is(err, updater.ErrNotNewer) {
+		t.Fatalf("replay: err=%v", err)
 	}
 	if err := run([]string{
 		"update-apply",

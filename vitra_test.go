@@ -385,7 +385,8 @@ func TestRuntime_ApplyUpdate_PolicyAndInstall(t *testing.T) {
 		t.Fatal(err)
 	}
 	rt.SetPolicy(eng)
-	if _, err := rt.ApplyUpdate(m, pub, artifact, dest); err == nil {
+	installed := updater.Installed{Channel: updater.ChannelStable, Version: "1.0.0"}
+	if _, err := rt.ApplyUpdate(m, pub, artifact, dest, installed); err == nil {
 		t.Fatal("expected beta channel deny under production policy")
 	}
 	if _, err := os.Stat(dest); !errors.Is(err, os.ErrNotExist) {
@@ -397,13 +398,26 @@ func TestRuntime_ApplyUpdate_PolicyAndInstall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := rt.ApplyUpdate(m, pub, artifact, dest)
+	plan, err := rt.ApplyUpdate(m, pub, artifact, dest, installed)
 	if err != nil || plan.Version != "2.0.0" {
 		t.Fatalf("apply: plan=%+v err=%v", plan, err)
 	}
 	got, err := os.ReadFile(dest)
 	if err != nil || string(got) != string(artifact) {
 		t.Fatalf("dest=%q err=%v", got, err)
+	}
+
+	// Once 2.0.0 is installed, replaying the same signed manifest is refused
+	// and leaves the installed artifact alone.
+	if err := os.WriteFile(dest, []byte("current"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	installed.Version = "2.0.0"
+	if _, err := rt.ApplyUpdate(m, pub, artifact, dest, installed); !errors.Is(err, updater.ErrNotNewer) {
+		t.Fatalf("replay: err=%v", err)
+	}
+	if got, _ := os.ReadFile(dest); string(got) != "current" {
+		t.Fatalf("replayed update overwrote dest: %q", got)
 	}
 }
 

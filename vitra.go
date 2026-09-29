@@ -1,21 +1,21 @@
 // Package vitra is the entry point for the Vitra runtime kernel — a secure,
 // capability-oriented desktop application runtime for Go + web frontends.
 //
-// Phase 2 adds desktop completeness on top of the secure kernel: multi-window
-// lifecycle, navigation policy, window-owned subscriptions, and capability-
-// gated desktop services (menu/tray/dialog/clipboard/shortcuts/deeplinks).
-// Phase 3 plugins register through RegisterPlugin; hosts BindExecutor for
-// contributed commands. Phase 5 enterprise policy installs via SetPolicy and
-// can only tighten Authorize/Invoke decisions. SetAudit records capability,
-// plugin, and update outcomes for fleet diagnostics.
+// The frontend is untrusted. A window has no privileged access until a
+// [domain.CapabilityGrant] names its window ID, its origin, and a permission;
+// commands are reachable only if they are registered explicitly and the caller
+// holds the command's permission; and navigating to another origin drops the
+// window's authority. Every denial carries a deterministic [domain.DenialCode].
 //
-// Example:
+// [Runtime] also hosts the desktop features built on that gateway: multi-window
+// lifecycle and navigation policy, plugins ([Runtime.RegisterPlugin]),
+// enterprise policy that can only tighten decisions ([Runtime.SetPolicy]), and
+// audit of capability, plugin, and update outcomes ([Runtime.SetAudit]).
 //
-//	rt := vitra.New(vitra.Config{AppID: "com.example.demo"})
-//	_ = rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal)
-//	_ = rt.RegisterGrant(grant)
-//	_ = rt.RegisterCommand(cmd, executor)
-//	result, err := rt.Invoke(ctx, domain.InvocationRequest{...})
+// See the package example for a complete grant → invoke → deny round-trip.
+//
+// To run a Runtime inside a native WebView window, see package
+// go.klarlabs.de/vitra/app.
 package vitra
 
 import (
@@ -25,9 +25,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"go.klarlabs.de/vitra/application"
 	"go.klarlabs.de/vitra/audit"
+	"go.klarlabs.de/vitra/bindings"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/inmemory"
 	"go.klarlabs.de/vitra/plugin"
@@ -65,6 +67,8 @@ type Runtime struct {
 	auditSink     audit.Sink
 	workers       *worker.Supervisor
 	invoker       *domain.InvocationService
+	typed         map[domain.CommandName]bindings.Command // guarded by typedMu
+	typedMu       sync.Mutex
 
 	registerGrant   *application.RegisterGrantUseCase
 	registerCommand *application.RegisterCommandUseCase
@@ -398,9 +402,14 @@ func (rt *Runtime) Authorize(caller domain.Caller, permission domain.PermissionN
 	return d
 }
 
-// ApplyUpdate verifies a signed update (and optional enterprise policy), then
-// atomically installs the artifact at destPath (invariant 9).
-func (rt *Runtime) ApplyUpdate(m updater.Manifest, pub ed25519.PublicKey, artifact []byte, destPath string) (updater.InstallPlan, error) {
+// ApplyUpdate verifies a signed update (and optional enterprise policy),
+// checks that it is a newer release of the installed app on the same channel,
+// then atomically installs the artifact at destPath (invariant 9). An empty
+// installed.AppID defaults to the runtime's AppID.
+func (rt *Runtime) ApplyUpdate(m updater.Manifest, pub ed25519.PublicKey, artifact []byte, destPath string, installed updater.Installed) (updater.InstallPlan, error) {
+	if installed.AppID == "" {
+		installed.AppID = string(rt.AppID())
+	}
 	if rt.policyEng != nil {
 		if err := rt.policyEng.AuthorizeUpdate(m); err != nil {
 			rt.emitAudit(audit.Event{
@@ -411,7 +420,7 @@ func (rt *Runtime) ApplyUpdate(m updater.Manifest, pub ed25519.PublicKey, artifa
 			return updater.InstallPlan{}, err
 		}
 	}
-	plan, err := updater.PlanInstall(m, pub, artifact)
+	plan, err := updater.PlanInstall(m, pub, artifact, installed)
 	if err != nil {
 		rt.emitAudit(audit.Event{
 			Kind: audit.KindUpdatePlan, Actor: m.AppID, Action: string(m.Channel),

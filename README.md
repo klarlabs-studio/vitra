@@ -56,11 +56,26 @@ sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev pkg-config
 
 ```go
 rt, _ := vitra.New(vitra.Config{AppID: "com.example.demo"})
-rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal)
+rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal) // no authority yet
 
+// An explicit, typed command. Input is decoded strictly into OpenReq; the
+// handler learns which window called it and which path was authorized.
+type OpenReq struct {
+    Path string `json:"path"`
+}
+func (r OpenReq) ResourcePath() string { return r.Path } // must match the checked path
+
+vitra.Register(rt, vitra.Command[OpenReq, string]{
+    Name:       "project.open",
+    Permission: "fs.read",
+    Handler: func(ctx context.Context, inv domain.Invocation, req OpenReq) (string, error) {
+        return "opened " + req.Path + " for " + string(inv.Caller.Window), nil
+    },
+})
+
+// Grant the main window fs.read under /project, except its secrets.
 grant, _ := domain.NewCapabilityGrant(
-    "project-files",
-    "read project files",
+    "project-files", "read project files",
     []domain.WindowID{"main"},
     []domain.Origin{domain.OriginPackagedLocal},
     []domain.PermissionSpec{{
@@ -72,17 +87,18 @@ grant, _ := domain.NewCapabilityGrant(
     }},
 )
 rt.RegisterGrant(grant)
+```
 
-cmd, _ := domain.NewCommandDefinition("project.open", "Open project", "fs.read")
-rt.RegisterCommand(cmd, myExecutor)
+The frontend calls it through a generated, typed client:
 
-caller, _ := rt.CallerFor("main")
-result, err := rt.Invoke(ctx, domain.InvocationRequest{
-    Caller:       caller,
-    Command:      "project.open",
-    Input:        "/project/app",
-    ResourcePath: "/project/app",
-})
+```bash
+vitra generate typescript --app . --out frontend/vitra-client.ts
+```
+
+```ts
+// projectOpen(input: OpenReq, resourcePath?: string): Promise<string>
+await client.projectOpen({ path: "/project/app" }, "/project/app"); // "opened /project/app for main"
+await client.projectOpen({ path: "/project/.secrets/key" }, "/project/.secrets/key"); // denied: path_denied
 ```
 
 Runnable walkthrough: `go run ./example/quickstart`
@@ -119,8 +135,8 @@ vitra update-keygen [--out keys/]
 vitra update-sign --artifact a.bin --app-id com.example.app --version 1.0.0 --privkey file:keys/priv.key --out m.json
 vitra update-stage --out dist/updates --manifest m.json --artifact a.bin
 vitra update-check --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex>
-vitra update-apply --base-url https://updates.example/ --app-id com.example.app --channel stable --pubkey <hex> --dest ./vitra-app
-vitra update-apply --manifest m.json --artifact a.bin --pubkey <hex> --dest ./vitra-app
+vitra update-apply --base-url https://updates.example/ --app-id com.example.app --channel stable --current-version 1.0.0 --pubkey <hex> --dest ./vitra-app
+vitra update-apply --manifest m.json --artifact a.bin --app-id com.example.app --current-version 1.0.0 --pubkey <hex> --dest ./vitra-app
 vitra inspect capabilities
 ```
 

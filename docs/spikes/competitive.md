@@ -41,7 +41,7 @@ and a developer CLI that matches Wails-class DX: `new` / `dev` / `build` /
 | Host→frontend events (`vitra.on` / `App.Emit`) | Done |
 | Linux window chrome (`window.chrome`) | Done (GTK title, size, maximize, fullscreen, keep-above, minimize, hide, icon, present/focus/blur); official `vitra.window` plugin + scaffold/`generate` stubs |
 | Darwin window chrome (`window.chrome`) | Done (NSWindow title, size, zoom, fullscreen, floating, miniaturize, hide, miniwindow icon, makeKeyAndOrderFront/orderBack); official `vitra.window` plugin + scaffold/`generate` stubs |
-| OpenURL (`browser.open`) | Done (Linux `xdg-open`, Darwin `open`, Windows `cmd start` for http(s)/mailto); official `vitra.browser` plugin + scaffold/`generate` stubs |
+| OpenURL (`browser.open`) | Done (Linux `xdg-open`, Darwin `open`, Windows `rundll32 url.dll,FileProtocolHandler` for http(s)/mailto — never via cmd.exe); official `vitra.browser` plugin + scaffold/`generate` stubs |
 | Host info (`os.info`) | Done (stdlib GOOS/GOARCH/family + locale env); official `vitra.os` plugin + scaffold/`generate` stubs |
 | Notifications (`notifications.show`) | Done (title+body; Linux D-Bus Notifications, Darwin NSUserNotification, Windows tray balloon); official `vitra.notification` plugin + scaffold/`generate` stubs |
 | Open path (`path.open`) | Done (absolute local paths via `xdg-open` / `open` / `explorer`; PathScope-gated); official `vitra.path` plugin + scaffold/`generate` stubs |

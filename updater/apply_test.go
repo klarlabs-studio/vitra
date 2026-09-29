@@ -28,7 +28,7 @@ func TestApplyInstall_AtomicReplace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := updater.PlanInstall(m, pub, artifact)
+	plan, err := updater.PlanInstall(m, pub, artifact, updater.Installed{AppID: "com.example.app", Channel: updater.ChannelStable, Version: "1.0.0"})
 	if err != nil {
 		t.Fatal(err)
 	}

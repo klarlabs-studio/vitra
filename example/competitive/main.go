@@ -117,7 +117,10 @@ func run() error {
 	defer release()
 
 	var e2eOK atomic.Bool
-	caller, err := domain.NewCaller("main", domain.OriginPackagedLocal)
+	// hostCaller acts for host-initiated work (startup menus, deep links,
+	// single-instance). Command executors never use it: they act as the
+	// invoking window via domain.CallerExecutorFunc.
+	hostCaller, err := domain.NewCaller("main", domain.OriginPackagedLocal)
 	if err != nil {
 		return err
 	}
@@ -248,7 +251,7 @@ func run() error {
 		Host:    host,
 		OnLock:  func(ctx context.Context) (bool, error) { return true, nil },
 	}
-	if ok, err := single.Acquire(context.Background(), caller); err != nil {
+	if ok, err := single.Acquire(context.Background(), hostCaller); err != nil {
 		return err
 	} else if !ok {
 		return fmt.Errorf("single-instance acquire failed")
@@ -261,7 +264,7 @@ func run() error {
 		Patterns: []domain.DeepLinkPattern{{Scheme: "vitra"}},
 	}
 	handleDeepLink := func(raw string) {
-		ok, err := deepLinks.Handle(caller, raw)
+		ok, err := deepLinks.Handle(hostCaller, raw)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "deep link rejected: %v\n", err)
 			return
@@ -361,12 +364,12 @@ func run() error {
 	if err := rt.RegisterPlugin(context.Background(), officialapp.New()); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("clipboard.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("clipboard.read", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return clips.Read(ctx, caller)
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("clipboard.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("clipboard.write", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		text, _ := input.(string)
 		return nil, clips.Write(ctx, caller, text)
 	})); err != nil {
@@ -379,14 +382,14 @@ func run() error {
 			return host.OpenURL(ctx, rawURL)
 		},
 	}
-	if err := rt.BindExecutor("browser.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("browser.open", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		rawURL, _ := input.(string)
 		return nil, browserSvc.OpenURL(ctx, caller, rawURL)
 	})); err != nil {
 		return err
 	}
 	osSvc := &desktop.OsService{Gateway: rt}
-	if err := rt.BindExecutor("os.info", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("os.info", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return osSvc.Info(ctx, caller)
 	})); err != nil {
 		return err
@@ -398,7 +401,7 @@ func run() error {
 			return host.ShowNotification(title, body)
 		},
 	}
-	if err := rt.BindExecutor("notifications.show", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("notifications.show", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		title, body := "", ""
 		switch v := input.(type) {
 		case string:
@@ -418,28 +421,28 @@ func run() error {
 			return host.OpenPath(ctx, path)
 		},
 	}
-	if err := rt.BindExecutor("path.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("path.open", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		path, _ := input.(string)
 		return nil, pathSvc.Open(ctx, caller, path)
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("dialog.open", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("dialog.open", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		return dialogs.OpenFile(ctx, caller, desktop.ParseDialogFileOptions(input))
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("dialog.save", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("dialog.save", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		return dialogs.SaveFile(ctx, caller, desktop.ParseDialogFileOptions(input))
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("dialog.openDirectory", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("dialog.openDirectory", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		return dialogs.OpenDirectory(ctx, caller, desktop.ParseDialogFileOptions(input))
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("dialog.message", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("dialog.message", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		title, message, kind := "", "", "info"
 		switch v := input.(type) {
 		case string:
@@ -473,7 +476,7 @@ func run() error {
 		return err
 	}
 	files := &desktop.FileService{Gateway: rt}
-	if err := rt.BindExecutor("fs.read", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("fs.read", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		path, _ := input.(string)
 		data, err := files.Read(ctx, caller, path)
 		if err != nil {
@@ -483,7 +486,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("fs.write", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("fs.write", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		m, _ := input.(map[string]any)
 		path, _ := m["path"].(string)
 		data, _ := m["data"].(string)
@@ -522,7 +525,7 @@ func run() error {
 			return application.CloseWindow(ctx, id)
 		},
 	}
-	if err := rt.BindExecutor("window.create", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.create", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		opts, err := desktop.ParseWindowCreateOptions(input)
 		if err != nil {
 			return nil, err
@@ -535,7 +538,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.close", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.close", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -544,7 +547,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.chrome", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.chrome", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, chrome, err := desktop.ParseWindowChromeApply(input)
 		if err != nil {
 			return nil, err
@@ -553,7 +556,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.getChrome", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.getChrome", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -562,7 +565,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.focus", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.focus", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -571,7 +574,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.blur", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.blur", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -580,7 +583,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.hide", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.hide", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -589,7 +592,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.show", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.show", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -598,7 +601,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.minimize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.minimize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -607,7 +610,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.maximize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.maximize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -616,7 +619,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.unmaximize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.unmaximize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -625,7 +628,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.fullscreen", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.fullscreen", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -634,7 +637,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.unfullscreen", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.unfullscreen", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -643,7 +646,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.setAlwaysOnTop", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.setAlwaysOnTop", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, onTop, err := desktop.ParseWindowAlwaysOnTop(input)
 		if err != nil {
 			return nil, err
@@ -652,7 +655,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.restore", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.restore", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, err := desktop.ParseWindowID(input)
 		if err != nil {
 			return nil, err
@@ -661,7 +664,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.setTitle", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.setTitle", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, title, err := desktop.ParseWindowSetTitle(input)
 		if err != nil {
 			return nil, err
@@ -670,7 +673,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.setSize", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.setSize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, width, height, err := desktop.ParseWindowSetSize(input)
 		if err != nil {
 			return nil, err
@@ -679,7 +682,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("window.setIcon", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("window.setIcon", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		id, iconPath, err := desktop.ParseWindowSetIcon(input)
 		if err != nil {
 			return nil, err
@@ -688,7 +691,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("menu.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("menu.set", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		items, err := desktop.ParseMenuItems(input)
 		if err != nil {
 			return nil, err
@@ -697,12 +700,12 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("menu.clear", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("menu.clear", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return nil, menus.ClearMenu(ctx, caller)
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("tray.set", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("tray.set", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		tooltip, items, err := desktop.ParseTraySet(input)
 		if err != nil {
 			return nil, err
@@ -711,12 +714,12 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("tray.clear", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("tray.clear", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return nil, trays.ClearTray(ctx, caller)
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("shortcut.register", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("shortcut.register", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		acc, action, err := desktop.ParseShortcutRegister(input)
 		if err != nil {
 			return nil, err
@@ -725,7 +728,7 @@ func run() error {
 	})); err != nil {
 		return err
 	}
-	if err := rt.BindExecutor("shortcut.unregister", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("shortcut.unregister", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		acc, err := desktop.ParseShortcutUnregister(input)
 		if err != nil {
 			return nil, err
@@ -744,7 +747,7 @@ func run() error {
 			return nil
 		},
 	}
-	if err := rt.BindExecutor("app.quit", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, _ any) (any, error) {
+	if err := rt.BindExecutor("app.quit", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return nil, appSvc.Quit(ctx, caller)
 	})); err != nil {
 		return err
@@ -794,7 +797,7 @@ func run() error {
 			return host.EnableDragDrop(window, enabled)
 		},
 	}
-	if err := rt.BindExecutor("dragdrop.receive", domain.CommandExecutorFunc(func(ctx context.Context, _ domain.CommandName, input any) (any, error) {
+	if err := rt.BindExecutor("dragdrop.receive", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
 		win, enabled, err := desktop.ParseDragDropEnable(input)
 		if err != nil {
 			return nil, err
@@ -807,18 +810,18 @@ func run() error {
 	go func() {
 		// Wait until the GTK loop is up; cold WebKit on CI can exceed 500ms.
 		time.Sleep(1500 * time.Millisecond)
-		_ = menus.SetMenu(context.Background(), caller, []desktop.MenuItem{
+		_ = menus.SetMenu(context.Background(), hostCaller, []desktop.MenuItem{
 			{Menu: "File", ID: "app.quit", Label: "Quit", Shortcut: "Ctrl+Q"},
 			{Menu: "Help", ID: "help.about", Label: "About Vitra"},
 		})
-		_ = trays.SetTray(context.Background(), caller, "Vitra competitive demo", []desktop.MenuItem{
+		_ = trays.SetTray(context.Background(), hostCaller, "Vitra competitive demo", []desktop.MenuItem{
 			{ID: "help.about", Label: "About Vitra"},
 			{ID: "tray.quit", Label: "Quit"},
 		})
-		if err := shortcuts.Register(context.Background(), caller, "Ctrl+Shift+Q", "app.quit"); err != nil {
+		if err := shortcuts.Register(context.Background(), hostCaller, "Ctrl+Shift+Q", "app.quit"); err != nil {
 			fmt.Fprintf(os.Stderr, "global shortcut: %v\n", err)
 		}
-		if err := drops.Enable(context.Background(), caller, "main", true); err != nil {
+		if err := drops.Enable(context.Background(), hostCaller, "main", true); err != nil {
 			fmt.Fprintf(os.Stderr, "drag-drop enable: %v\n", err)
 		} else if _, err := rt.SubscribeEvent("drop-sub", "dragdrop.drop", "main"); err == nil {
 			if os.Getenv("VITRA_INJECT_DROP") == "1" {
@@ -852,13 +855,13 @@ func run() error {
 				fmt.Fprintf(os.Stderr, "window chrome: %v\n", err)
 			} else {
 				cur.Title = title
-				if err := winChrome.Apply(context.Background(), caller, "main", cur); err != nil {
+				if err := winChrome.Apply(context.Background(), hostCaller, "main", cur); err != nil {
 					fmt.Fprintf(os.Stderr, "window chrome apply: %v\n", err)
 				}
 			}
 		}
 		if openTarget := os.Getenv("VITRA_OPEN_URL"); openTarget != "" {
-			if err := browserSvc.OpenURL(context.Background(), caller, openTarget); err != nil {
+			if err := browserSvc.OpenURL(context.Background(), hostCaller, openTarget); err != nil {
 				fmt.Fprintf(os.Stderr, "open url: %v\n", err)
 			} else {
 				fmt.Println("opened url:", openTarget)
