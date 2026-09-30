@@ -62,3 +62,21 @@ func TestScaffold_NoOrphanTemplateDirectories(t *testing.T) {
 		}
 	}
 }
+
+// The starter is the first code people read: it should be small enough to
+// take in at once.
+func TestScaffold_StarterIsSmall(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "app")
+	capture(t, func() {
+		if err := run([]string{"new", dir}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	src, err := os.ReadFile(filepath.Join(dir, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(src), "\n"); n > 120 {
+		t.Fatalf("starter main.go has %d lines, want at most 120", n)
+	}
+}
