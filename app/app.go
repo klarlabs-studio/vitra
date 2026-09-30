@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"go.klarlabs.de/vitra"
+	"go.klarlabs.de/vitra/audit"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/internal/bridge"
 	"go.klarlabs.de/vitra/internal/ipc"
@@ -94,6 +95,13 @@ const EnvDevTools = "VITRA_DEVTOOLS"
 // must be called before windows are created.
 type devToolsSetter interface {
 	SetDevTools(enabled bool)
+}
+
+// rejectReporter is implemented by hosts that drop some bridge messages
+// before they reach the app (macOS drops messages posted by subframes), so the
+// app can audit them like the messages it drops itself.
+type rejectReporter interface {
+	SetRejectHandler(fn func(windowID domain.WindowID, reason string))
 }
 
 // App is a runnable desktop application.
@@ -180,6 +188,11 @@ func (a *App) Run(ctx context.Context) error {
 	}
 	a.host.SetInvokeHandler(a.handleInvoke)
 	a.host.SetNavPolicy(a.allowNav)
+	if rr, ok := a.host.(rejectReporter); ok {
+		rr.SetRejectHandler(func(id domain.WindowID, reason string) {
+			a.audit(audit.Event{Kind: audit.KindBridgeReject, Window: string(id), Outcome: "denied", Detail: reason})
+		})
+	}
 	a.host.SetDestroyHandler(a.onNativeDestroy)
 
 	if err := a.OpenWindow(ctx, a.opts.Window); err != nil {
@@ -359,9 +372,11 @@ func (a *App) handleInvoke(windowID domain.WindowID, origin domain.Origin, raw [
 	if errors.Is(err, ipc.ErrUntrustedSender) {
 		// Not from the window's top frame (for example a subframe that can
 		// reach the native handler): drop it without replying.
+		a.audit(audit.Event{Kind: audit.KindBridgeReject, Window: string(windowID), Origin: string(origin), Outcome: "denied", Detail: "untrusted sender"})
 		return nil
 	}
 	if err != nil {
+		a.audit(audit.Event{Kind: audit.KindBridgeReject, Window: string(windowID), Origin: string(origin), Outcome: "error", Detail: err.Error()})
 		return mustJSON(replyMsg{ID: id, OK: false, Error: err.Error(), Code: "bad_request"})
 	}
 	res, err := a.rt.Invoke(context.Background(), req)
@@ -373,6 +388,14 @@ func (a *App) handleInvoke(windowID domain.WindowID, origin domain.Origin, raw [
 }
 
 func (a *App) allowNav(windowID domain.WindowID, uri string) bool {
+	if a.isLocal(uri) {
+		return true
+	}
+	a.audit(audit.Event{Kind: audit.KindNavigationBlock, Window: string(windowID), Outcome: "denied", Detail: redactURL(uri)})
+	return false
+}
+
+func (a *App) isLocal(uri string) bool {
 	// Allow only the local asset server and about:blank. Everything else is
 	// external and must not keep privileged bridge access.
 	if uri == "about:blank" {
@@ -386,6 +409,24 @@ func (a *App) allowNav(windowID domain.WindowID, uri string) bool {
 		return false
 	}
 	return u.Scheme == "http" && u.Host == strings.TrimPrefix(a.addr, "http://")
+}
+
+// redactURL drops credentials, query, and fragment, which can carry secrets,
+// before a URL goes into the audit log.
+func redactURL(uri string) string {
+	u, err := url.Parse(uri)
+	if err != nil || u.Opaque != "" {
+		return "(unparseable URL)"
+	}
+	u.User, u.RawQuery, u.ForceQuery, u.Fragment, u.RawFragment = nil, "", false, "", ""
+	return u.String()
+}
+
+// audit records e in the runtime's audit sink, if one is installed.
+func (a *App) audit(e audit.Event) {
+	if s := a.rt.Audit(); s != nil {
+		_ = s.Append(e)
+	}
 }
 
 // newSenderToken returns 32 random bytes, hex-encoded.

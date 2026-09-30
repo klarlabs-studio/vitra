@@ -15,6 +15,7 @@ void vitra_set_devtools(int enabled) { vitra_devtools = enabled; }
 
 extern void goVitraIdle(unsigned long long);
 extern void goVitraMessage(char *, char *);
+extern void goVitraReject(char *, char *);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
 extern void goVitraAction(char *);
@@ -118,6 +119,9 @@ extern void goVitraDrop(char *, char *);
 	/* Only the top frame carries the bridge; drop anything a subframe posts
 	 * (the host also requires the top frame's sender token). */
 	if (!message.frameInfo.isMainFrame) {
+		if (windowID) {
+			goVitraReject(windowID, "message from a subframe");
+		}
 		return;
 	}
 	NSString *body = nil;

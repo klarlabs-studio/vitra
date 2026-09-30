@@ -17,6 +17,11 @@ const (
 	KindWorkerLifecycle    Kind = "worker.lifecycle"
 	KindUpdatePlan         Kind = "update.plan"
 	KindPolicyOverride     Kind = "policy.override"
+	// KindBridgeReject records a bridge message the app dropped or could not
+	// decode, such as one without the window's sender token.
+	KindBridgeReject Kind = "bridge.reject"
+	// KindNavigationBlock records a navigation the app's policy refused.
+	KindNavigationBlock Kind = "navigation.block"
 )
 
 // Event is an append-only audit record.
