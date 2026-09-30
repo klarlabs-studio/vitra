@@ -592,3 +592,70 @@ func mustInspect(t *testing.T, rt *vitra.Runtime, window domain.WindowID) string
 	}
 	return vitra.FormatInspect(rt.AppID(), surface)
 }
+
+// An audit trail must say what was attempted and why it was refused, not only
+// that a command was denied.
+func TestRuntime_AuditRecordsResourcePathAndDenialCode(t *testing.T) {
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.audit"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sink := &audit.MemorySink{}
+	rt.SetAudit(sink)
+	ctx := context.Background()
+	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
+		t.Fatal(err)
+	}
+	def, err := domain.NewCommandDefinition("notes.read", "read", "fs.read")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.RegisterCommand(def, echoExec{}); err != nil {
+		t.Fatal(err)
+	}
+	grant, err := domain.NewCapabilityGrant("vault", "vault",
+		[]domain.WindowID{"main"}, []domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{{Name: "fs.read", PathScope: &domain.PathScope{
+			Allow: []string{"/vault/**"}, Deny: []string{"/vault/.private/**"},
+		}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.RegisterGrant(grant); err != nil {
+		t.Fatal(err)
+	}
+	caller, _ := rt.CallerFor("main")
+
+	lastInvoke := func() audit.Event {
+		t.Helper()
+		events := sink.List()
+		for i := len(events) - 1; i >= 0; i-- {
+			if events[i].Kind == audit.KindCommandInvoke {
+				return events[i]
+			}
+		}
+		t.Fatal("no command.invoke audit event")
+		return audit.Event{}
+	}
+	for _, tc := range []struct {
+		path, outcome, code string
+	}{
+		{"/vault/a.md", "allowed", ""},
+		{"/etc/hosts", "denied", string(domain.DenialPathOutOfScope)},
+		{"/vault/.private/key.md", "denied", string(domain.DenialPathDenied)},
+	} {
+		_, _ = rt.Invoke(ctx, domain.InvocationRequest{Caller: caller, Command: "notes.read", ResourcePath: tc.path})
+		e := lastInvoke()
+		if e.Outcome != tc.outcome || e.Metadata["resource_path"] != tc.path {
+			t.Fatalf("%s: audit = %+v", tc.path, e)
+		}
+		if code, _ := e.Metadata["code"].(string); code != tc.code {
+			t.Fatalf("%s: code = %q, want %q", tc.path, code, tc.code)
+		}
+	}
+	// Commands without a resource path carry no path metadata.
+	_, _ = rt.Invoke(ctx, domain.InvocationRequest{Caller: caller, Command: "notes.read"})
+	if _, ok := lastInvoke().Metadata["resource_path"]; ok {
+		t.Fatal("resource_path recorded for a call without one")
+	}
+}
