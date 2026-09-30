@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The WebView inspector is off by default on all hosts. Linux forced WebKitGTK developer extras on and Windows left WebView2 DevTools at its enabled default, letting anyone at the keyboard run script with the page's bridge access. Opt in with `app.Options.DevTools`; `vitra dev` enables it via `VITRA_DEVTOOLS=1`.
 
 ### Fixed
+- Updates install correctly beyond a single Linux binary. `updater.ApplyInstall` (and `Runtime.ApplyUpdate` / `vitra update-apply`) now:
+  - replaces a whole directory, such as a macOS `.app` bundle, from a `.tar.gz`/`.tgz`/`.zip` artifact (a single top-level directory in the archive becomes the destination), keeping exec bits and internal symlinks;
+  - replaces a running Windows executable by moving it aside first, since Windows can rename a running `.exe` but not overwrite it;
+  - writes the new version fully before replacing anything and restores the old one if the swap fails;
+  - rejects archive entries that are absolute, use `..`, or are symlinks pointing outside the archive, and archives over 2 GiB unpacked or 200,000 entries.
+
+  `updater.CleanupStale(dest)` removes replaced installs that could not be deleted while running.
 - Windows `register-scheme` / `register-files`: the generated `.reg` files left the quotes around the executable path and `"%1"` unescaped, producing an invalid command value; quotes are now escaped and CR/LF stripped from values.
 - Windows: host calls from command handlers run on the UI thread. `vitra_idle_add` ran queued jobs immediately on the calling thread, so since invokes moved off the UI thread, clipboard, dialog, and window calls touched Win32/WebView2 objects from goroutines. Jobs are now posted to a message-only window on the UI thread (which keeps working during modal dialogs), and run inline when already on it.
 - Native hosts pass job ids to C as integers instead of casting them through `unsafe.Pointer` (`go vet` warning).

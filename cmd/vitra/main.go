@@ -87,7 +87,7 @@ Usage:
   vitra update-stage --out <dir> --manifest <json> --artifact <path>
                              Stage {out}/{app}/{channel}/manifest.json + artifact for static CDN upload
   vitra update-apply (--manifest <json> --artifact <path> | --base-url <url>) --app-id <id> [--channel name] --current-version <semver> --pubkey <hex> --dest <path> [--policy production|development]
-                             Verify a signed update and atomically install it (local files or HTTP channel fetch)
+                             Verify a signed update and install it (binary, or .tar.gz/.zip replacing a directory such as a .app)
   vitra notary-setup [--profile name]
                              Print a dry-run notarytool store-credentials plan (Darwin notarize bootstrap; not executed)
   vitra register-scheme <scheme> [app-id] [exec]
