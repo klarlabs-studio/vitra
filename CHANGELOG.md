@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-30
+
+Security hardening from an external-style audit, typed commands with generated
+TypeScript clients, and a much smaller public surface. Pre-1.0: several
+breaking changes, marked below.
+
+### Upgrading from 0.3.0
+- Update code: `PlanInstall` / `Runtime.ApplyUpdate` take `updater.Installed`; re-sign update manifests (they now need `expires_at`).
+- Imports: `plugin/official/<name>` → `plugin/official` (`official.FS()`, `official.All()`); packages moved under `internal/` are no longer importable.
+- `vitra update-apply` needs `--app-id` and `--current-version`.
+- Path scope patterns must be absolute.
+
 ### Added
 - Release pipeline: pushing a `v*` tag publishes the `vitra` CLI for linux, darwin, and windows (amd64, arm64) with reproducible `-trimpath` builds, an SPDX SBOM per archive, a keyless cosign signature over the checksums, and SLSA build provenance. Release notes include verification commands.
 - OpenSSF Scorecard runs weekly and on `main`; README badge.
@@ -354,5 +366,6 @@ Windows (WebView2) behind `-tags vitra_native`.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
 
-[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/klarlabs-studio/vitra/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/klarlabs-studio/vitra/releases/tag/v0.3.0
