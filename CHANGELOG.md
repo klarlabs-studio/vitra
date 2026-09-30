@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI pins GitHub Actions to commit SHAs.
 
 ### Security
+- Only a window's top frame can invoke commands. Each window gets a random 256-bit sender token, kept in the preload's closure (which returns early in subframes) and required on every bridge message; messages without it, or unparseable ones, are dropped without a reply. Before, any frame that could reach the native message handler, such as a cross-origin iframe (WebView2 injects the preload into every frame), was stamped with the window's identity. macOS additionally drops messages whose `frameInfo` is not the main frame.
 - Inbound invoke messages over 1 MiB (`ipc.MaxMessageBytes`) are rejected before JSON parsing; the decoder is fuzzed for panics and for identity always coming from the host.
 - The WebView inspector is off by default on all hosts. Linux forced WebKitGTK developer extras on and Windows left WebView2 DevTools at its enabled default, letting anyone at the keyboard run script with the page's bridge access. Opt in with `app.Options.DevTools`; `vitra dev` enables it via `VITRA_DEVTOOLS=1`.
 

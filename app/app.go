@@ -4,6 +4,8 @@ package app
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -103,6 +105,8 @@ type App struct {
 	addr    string
 	mu      sync.Mutex
 	windows map[domain.WindowID]WindowOptions
+	// tokens holds each window's bridge sender token (see bridge.Preload).
+	tokens map[domain.WindowID]string
 }
 
 // New constructs an App. Host must be a native desktop host (e.g. linux.New()).
@@ -227,7 +231,21 @@ func (a *App) OpenWindow(ctx context.Context, opts WindowOptions) error {
 		Width:  opts.Width,
 		Height: opts.Height,
 	}
-	if err := a.host.Open(spec, uri, bridge.PreloadJS); err != nil {
+	token, err := newSenderToken()
+	if err != nil {
+		_ = a.rt.CloseWindow(ctx, opts.ID)
+		return err
+	}
+	a.mu.Lock()
+	if a.tokens == nil {
+		a.tokens = map[domain.WindowID]string{}
+	}
+	a.tokens[opts.ID] = token
+	a.mu.Unlock()
+	if err := a.host.Open(spec, uri, bridge.Preload(token)); err != nil {
+		a.mu.Lock()
+		delete(a.tokens, opts.ID)
+		a.mu.Unlock()
 		_ = a.rt.CloseWindow(ctx, opts.ID)
 		return err
 	}
@@ -248,6 +266,7 @@ func (a *App) CloseWindow(ctx context.Context, id domain.WindowID) error {
 		return &domain.ErrNotFound{Entity: "window", ID: string(id)}
 	}
 	delete(a.windows, id)
+	delete(a.tokens, id)
 	remaining := len(a.windows)
 	a.mu.Unlock()
 
@@ -270,6 +289,7 @@ func (a *App) onNativeDestroy(id domain.WindowID) {
 	_, tracked := a.windows[id]
 	if tracked {
 		delete(a.windows, id)
+		delete(a.tokens, id)
 	}
 	remaining := len(a.windows)
 	a.mu.Unlock()
@@ -329,7 +349,18 @@ type replyMsg struct {
 }
 
 func (a *App) handleInvoke(windowID domain.WindowID, origin domain.Origin, raw []byte) []byte {
-	req, id, err := ipc.Bridge{Host: ipc.HostIdentity{Window: windowID, Origin: origin}}.DecodeInvoke(raw)
+	a.mu.Lock()
+	token := a.tokens[windowID]
+	a.mu.Unlock()
+	if token == "" {
+		return nil // not a window this app opened
+	}
+	req, id, err := ipc.Bridge{Host: ipc.HostIdentity{Window: windowID, Origin: origin}, Token: token}.DecodeInvoke(raw)
+	if errors.Is(err, ipc.ErrUntrustedSender) {
+		// Not from the window's top frame (for example a subframe that can
+		// reach the native handler): drop it without replying.
+		return nil
+	}
 	if err != nil {
 		return mustJSON(replyMsg{ID: id, OK: false, Error: err.Error(), Code: "bad_request"})
 	}
@@ -355,6 +386,15 @@ func (a *App) allowNav(windowID domain.WindowID, uri string) bool {
 		return false
 	}
 	return u.Scheme == "http" && u.Host == strings.TrimPrefix(a.addr, "http://")
+}
+
+// newSenderToken returns 32 random bytes, hex-encoded.
+func newSenderToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("sender token: %w", err)
+	}
+	return hex.EncodeToString(b), nil
 }
 
 func mustJSON(v any) []byte {
