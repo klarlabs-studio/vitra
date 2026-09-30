@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"go.klarlabs.de/vitra/app"
 )
 
 func runDev(args []string) error {
@@ -31,7 +33,7 @@ func runDev(args []string) error {
 		argsGo = append(argsGo, ".")
 		cmd = exec.Command("go", argsGo...)
 		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "CGO_ENABLED=1")
+		cmd.Env = append(os.Environ(), "CGO_ENABLED=1", app.EnvDevTools+"=1")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		fmt.Println("vitra dev: starting…")

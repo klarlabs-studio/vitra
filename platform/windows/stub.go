@@ -190,3 +190,6 @@ func (h *Host) err(f platform.Feature) error {
 		Detail:  "requires CGO_ENABLED=1 -tags vitra_native (Win32 + WebView2 DesktopHost)",
 	}
 }
+
+// SetDevTools is a no-op without the native host.
+func (h *Host) SetDevTools(bool) {}

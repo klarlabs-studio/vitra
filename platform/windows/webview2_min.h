@@ -203,7 +203,7 @@ typedef struct ICoreWebView2SettingsVtbl {
 	void *get_IsStatusBarEnabled;
 	void *put_IsStatusBarEnabled;
 	void *get_AreDevToolsEnabled;
-	void *put_AreDevToolsEnabled;
+	HRESULT(STDMETHODCALLTYPE *put_AreDevToolsEnabled)(ICoreWebView2Settings *, BOOL);
 	void *get_AreDefaultContextMenusEnabled;
 	void *put_AreDefaultContextMenusEnabled;
 	void *get_AreHostObjectsAllowed;

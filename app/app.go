@@ -78,6 +78,20 @@ type Options struct {
 	Host    DesktopHost
 	Runtime *vitra.Runtime
 	Window  WindowOptions
+	// DevTools enables the WebView inspector. Leave it off in shipped apps:
+	// anyone with the inspector can run script with the page's bridge
+	// access. `vitra dev` turns it on through EnvDevTools.
+	DevTools bool
+}
+
+// EnvDevTools, when set to "1", enables the WebView inspector regardless of
+// Options.DevTools. `vitra dev` sets it.
+const EnvDevTools = "VITRA_DEVTOOLS"
+
+// devToolsSetter is implemented by hosts whose inspector can be toggled. It
+// must be called before windows are created.
+type devToolsSetter interface {
+	SetDevTools(enabled bool)
 }
 
 // App is a runnable desktop application.
@@ -157,6 +171,9 @@ func (a *App) Run(ctx context.Context) error {
 		_ = a.server.Close()
 	}()
 
+	if dt, ok := a.host.(devToolsSetter); ok {
+		dt.SetDevTools(a.opts.DevTools || os.Getenv(EnvDevTools) == "1")
+	}
 	a.host.SetInvokeHandler(a.handleInvoke)
 	a.host.SetNavPolicy(a.allowNav)
 	a.host.SetDestroyHandler(a.onNativeDestroy)

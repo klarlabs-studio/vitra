@@ -8,7 +8,12 @@
 #import <string.h>
 #import <ctype.h>
 
-extern void goVitraIdle(void *);
+/* Web inspector for newly created webviews; off unless the app opts in. */
+static int vitra_devtools = 0;
+
+void vitra_set_devtools(int enabled) { vitra_devtools = enabled; }
+
+extern void goVitraIdle(unsigned long long);
 extern void goVitraMessage(char *, char *);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
@@ -205,9 +210,9 @@ void vitra_app_quit(void) {
 	});
 }
 
-void vitra_idle_add(void *data) {
+void vitra_idle_add(unsigned long long id) {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		goVitraIdle(data);
+		goVitraIdle(id);
 	});
 }
 
@@ -241,6 +246,11 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 	NSRect frame = NSMakeRect(0, 0, width > 0 ? width : 1024, height > 0 ? height : 768);
 	w->view = [[WKWebView alloc] initWithFrame:frame configuration:config];
 	[config release];
+	if (vitra_devtools) {
+		if (@available(macOS 13.3, *)) {
+			w->view.inspectable = YES;
+		}
+	}
 	w->view.navigationDelegate = w->delegate;
 	w->view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 

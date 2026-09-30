@@ -1,4 +1,4 @@
-// Package ipc defines Vitra's Phase 0 frontend↔runtime message protocol.
+// Package ipc defines Vitra's frontend↔runtime message protocol.
 //
 // The codec never trusts caller identity fields inside the payload. Adapters
 // must supply WindowID and Origin from the native WebView host when decoding
@@ -16,6 +16,14 @@ import (
 // ProtocolVersion is the wire protocol version carried on every envelope.
 // Generated frontend bindings must match this version (reliability invariant 8).
 const ProtocolVersion = "1"
+
+// MaxMessageBytes caps an inbound invoke message. Invokes are decoded on the
+// native message path before any authorization, so an unbounded message
+// would let any page allocate without limit.
+const MaxMessageBytes = 1 << 20 // 1 MiB
+
+// ErrMessageTooLarge is returned for inbound messages over MaxMessageBytes.
+var ErrMessageTooLarge = fmt.Errorf("ipc message exceeds %d bytes", MaxMessageBytes)
 
 // Kind classifies envelope payloads.
 type Kind string
@@ -79,6 +87,9 @@ type Bridge struct {
 // DecodeInvoke validates protocol version and builds a domain InvocationRequest
 // using Host identity, discarding any claimed window/origin in the payload.
 func (b Bridge) DecodeInvoke(raw []byte) (domain.InvocationRequest, string, error) {
+	if len(raw) > MaxMessageBytes {
+		return domain.InvocationRequest{}, "", ErrMessageTooLarge
+	}
 	var env Envelope
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return domain.InvocationRequest{}, "", fmt.Errorf("ipc decode: %w", err)
