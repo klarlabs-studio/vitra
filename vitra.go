@@ -40,7 +40,7 @@ import (
 
 // Version is the kernel API version. Generated frontend bindings should be
 // tied to this version (reliability invariant 8).
-const Version = "0.6.0"
+const Version = "0.7.0"
 
 // Config configures a Runtime.
 type Config struct {
