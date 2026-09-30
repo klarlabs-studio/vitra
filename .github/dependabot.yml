@@ -1,0 +1,30 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+
+  # Starter templates pin npm versions that users copy; keep them current so
+  # `vitra new` never hands out stale or vulnerable frontends.
+  - package-ecosystem: npm
+    directories:
+      - /cmd/vitra/templates/vite/frontend
+      - /cmd/vitra/templates/react/frontend
+      - /cmd/vitra/templates/svelte/frontend
+      - /cmd/vitra/templates/vue/frontend
+    schedule:
+      interval: monthly
+    groups:
+      templates:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(templates)"

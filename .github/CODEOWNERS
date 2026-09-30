@@ -1,0 +1,7 @@
+# Security-sensitive paths need a maintainer review.
+*                       @felixgeelhaar
+/domain/                @felixgeelhaar
+/desktop/               @felixgeelhaar
+/platform/              @felixgeelhaar
+/updater/               @felixgeelhaar
+/internal/ipc/          @felixgeelhaar

@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in Vitra does not work as documented.
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems (gateway bypass, path scope escape, spoofed identity, update verification) go to
+        [private vulnerability reporting](https://github.com/klarlabs-studio/vitra/security/advisories/new), not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. Include error text and denial codes.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest Go program, grant, and frontend call that shows the problem. A failing test is ideal.
+      render: go
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Vitra version
+      description: Output of `vitra version`, or the commit.
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: Host
+      options:
+        - Linux (WebKitGTK, X11)
+        - Linux (WebKitGTK, Wayland)
+        - macOS (WKWebView)
+        - Windows (WebView2)
+        - Not host-specific (kernel / CLI)
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: OS version, Go version, and `vitra doctor` output.
+      render: text

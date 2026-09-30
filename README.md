@@ -196,6 +196,13 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Darwin global shortcuts | **Done** (`RegisterEventHotKey`; Ctrl→Command) |
 | Linux global shortcuts | **Done on X11** (`XGrabKey`); unsupported on Wayland (use in-window `MenuItem.Shortcut`) |
 
+## Security
+
+The frontend is untrusted by design, so a gateway bypass, path scope escape,
+spoofed caller identity, or update verification failure is a vulnerability.
+Report it privately: see [SECURITY.md](SECURITY.md). Contributions follow the
+[Code of Conduct](CODE_OF_CONDUCT.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Development
 
 ```bash

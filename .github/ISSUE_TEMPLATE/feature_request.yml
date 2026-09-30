@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose a capability, desktop service, or developer-experience improvement.
+labels: [enhancement, triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to build, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The API or behavior you would like. Sketch the Go and frontend calls if you can.
+    validations:
+      required: true
+  - type: textarea
+    id: authority
+    attributes:
+      label: Authority
+      description: >
+        Vitra grants nothing implicitly. Which permission would this need, what should its scope be,
+        and what could a hostile page do with it?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
