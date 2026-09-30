@@ -46,3 +46,6 @@ The panel under the audit log runs real attacks through the real bridge:
 - `frontend/`: plain HTML, CSS, and JS with no build step.
 - `notes_test.go`: every attack above as a headless test.
 - `e2e_linux_test.go`: the real UI in WebKitGTK (`make e2e-notes`, runs in CI).
+- `tour_linux_test.go`: the paced tour behind the README recording.
+  `scripts/record-notes-demo.sh` records it under Xvfb; the *Record demo*
+  workflow does the same in CI and uploads the GIF.

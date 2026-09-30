@@ -21,6 +21,14 @@
     return (err && err.code && err.code !== "error" ? err.code + ": " : "") + ((err && err.message) || String(err));
   }
 
+  // verdict is the short form shown under an attack: the denial code when
+  // the gateway refused it, otherwise the error message.
+  function verdict(err) {
+    const code = err && err.code;
+    if (code && code !== "error" && code !== "bad_request") return "Refused: " + code;
+    return "Refused: " + ((err && err.message) || String(err));
+  }
+
   function show(msg, kind) {
     const s = $("status");
     s.textContent = msg;
@@ -243,7 +251,7 @@
       }
       result(a, "failed", "Not refused!");
     } catch (err) {
-      result(a, "blocked", "Refused: " + refusal(err));
+      result(a, "blocked", verdict(err));
     }
   }
 
