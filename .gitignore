@@ -39,3 +39,4 @@ findings.json
 /vitra
 /competitive
 .bin/
+dist/

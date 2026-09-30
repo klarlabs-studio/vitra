@@ -42,3 +42,12 @@ with `git commit -s` (DCO).
 - [ ] Race detector clean: `go test ./... -race`
 - [ ] Security invariants still hold
 - [ ] Docs updated if public API or architecture changed
+
+## Releasing
+
+1. Move the `CHANGELOG.md` Unreleased entries under the new version and set
+   `vitra.Version` (in `vitra.go`) to match; `vitra new` requires that tag.
+2. Merge to `main`, then push a signed tag: `git tag -s vX.Y.Z && git push origin vX.Y.Z`.
+3. `.github/workflows/release.yml` publishes the CLI archives with SBOMs, a
+   cosign-signed checksums file, and SLSA provenance. The release notes explain
+   how to verify them.
