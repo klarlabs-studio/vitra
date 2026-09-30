@@ -1,0 +1,97 @@
+# Release pipeline for the vitra CLI. Runs on v* tags (see
+# .github/workflows/release.yml). The library itself is consumed as a Go
+# module; this publishes the CLI binaries with checksums, SBOMs, a keyless
+# cosign signature over the checksums, and SLSA provenance.
+version: 2
+
+project_name: vitra
+
+builds:
+  - id: vitra
+    main: ./cmd/vitra
+    binary: vitra
+    # The CLI never needs the native WebView host; apps build that
+    # themselves with -tags vitra_native.
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+    # Reproducible: file times come from the commit, not the build machine.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+      - CHANGELOG.md
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+
+# One SPDX SBOM per archive (syft).
+sboms:
+  - artifacts: archive
+
+# Keyless signature over the checksums file; verifying it covers every
+# archive. Produces <checksums>.sigstore.json.
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - --yes
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Security
+      regexp: '^.*?(fix|feat)(\([^)]+\))?!?:.*(security|bypass|inject|escape|spoof|signature|verify).*$'
+      order: 0
+    - title: Features
+      regexp: '^.*?feat(\([^)]+\))?!?:.+$'
+      order: 1
+    - title: Fixes
+      regexp: '^.*?fix(\([^)]+\))?!?:.+$'
+      order: 2
+    - title: Other
+      order: 999
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^style:"
+      - "^ci:"
+      - "^chore:"
+
+release:
+  prerelease: auto
+  footer: |
+    ## Verify this release
+
+    ```bash
+    cosign verify-blob \
+      --bundle {{ .ProjectName }}_{{ .Version }}_checksums.txt.sigstore.json \
+      --certificate-identity-regexp '^https://github.com/klarlabs-studio/vitra/\.github/workflows/release\.yml@refs/tags/v' \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      {{ .ProjectName }}_{{ .Version }}_checksums.txt
+    sha256sum --ignore-missing -c {{ .ProjectName }}_{{ .Version }}_checksums.txt
+    slsa-verifier verify-artifact --provenance-path multiple.intoto.jsonl \
+      --source-uri github.com/klarlabs-studio/vitra --source-tag {{ .Tag }} <archive>
+    ```
+
+    Or install with Go: `go install go.klarlabs.de/vitra/cmd/vitra@{{ .Tag }}`.

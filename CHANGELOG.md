@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Release pipeline: pushing a `v*` tag publishes the `vitra` CLI for linux, darwin, and windows (amd64, arm64) with reproducible `-trimpath` builds, an SPDX SBOM per archive, a keyless cosign signature over the checksums, and SLSA build provenance. Release notes include verification commands.
+- OpenSSF Scorecard runs weekly and on `main`; README badge.
+
+### Changed
+- CI pins GitHub Actions to commit SHAs.
+
 ### Security
 - Inbound invoke messages over 1 MiB (`ipc.MaxMessageBytes`) are rejected before JSON parsing; the decoder is fuzzed for panics and for identity always coming from the host.
 - The WebView inspector is off by default on all hosts. Linux forced WebKitGTK developer extras on and Windows left WebView2 DevTools at its enabled default, letting anyone at the keyboard run script with the page's bridge access. Opt in with `app.Options.DevTools`; `vitra dev` enables it via `VITRA_DEVTOOLS=1`.
