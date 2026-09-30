@@ -53,7 +53,8 @@ authority its grants name. Anything that breaks that is in scope, for example:
 
 ## Security invariants
 
-The properties above are encoded as tests. See `docs/intent.md` §9 and the
+[`docs/security.md`](docs/security.md) describes the model, its known limits,
+and the test behind each property. See also `docs/intent.md` and the
 tests in `domain/`, `desktop/`, `app/`, `internal/ipc/`, and `updater/`,
 including the fuzz targets (`go test -fuzz`) for path scopes, IPC decoding,
 and version comparison.
