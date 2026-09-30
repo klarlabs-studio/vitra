@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-30
+
+One call to turn on the official desktop plugins, a documentation site, and
+deterministic refusals for unregistered commands.
+
+### Upgrading from 0.5.0
+- No code changes required. Apps that bind the official plugins by hand can replace that code with `a.UseOfficialPlugins(ctx)`; grants stay as they are.
+- Calls to unregistered commands now fail with the `command_missing` denial code instead of `error`.
+
 ### Added
 - `App.UseOfficialPlugins(ctx, plugins...)` registers the official plugins (all of them, or the ones passed) and binds every command to the native host through the capability-checked `desktop` services, replacing about 40 hand-written `BindExecutor` calls. It grants nothing. It also forwards native menu, tray, and shortcut activations and file drops as events. `example/competitive` uses it (987 → 580 lines).
 
@@ -395,7 +404,8 @@ Windows (WebView2) behind `-tags vitra_native`.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
 
-[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/klarlabs-studio/vitra/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/klarlabs-studio/vitra/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/klarlabs-studio/vitra/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/klarlabs-studio/vitra/releases/tag/v0.3.0
