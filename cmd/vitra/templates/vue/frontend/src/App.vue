@@ -1,35 +1,39 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { createClient } from "../vitra-client";
+import { createClient, type VitraInvoker } from "../vitra-client";
 
 declare global {
   interface Window {
-    vitra: { invoke: (cmd: string, input?: unknown) => Promise<unknown> };
+    vitra: { invoke: VitraInvoker };
   }
 }
 
-const client = createClient(window.vitra.invoke);
-const out = ref("");
+function describe(err: unknown): string {
+  const e = err as { code?: string; message?: string };
+  return (e.code ? e.code + ": " : "") + (e.message ?? String(err));
+}
 
-async function run(fn: () => Promise<unknown>) {
+const client = createClient(window.vitra.invoke);
+const name = ref("");
+const out = ref({ text: "", error: false });
+
+async function greet() {
   try {
-    out.value = JSON.stringify(await fn(), null, 2);
-  } catch (e) {
-    out.value = String(e);
+    out.value = { text: (await client.greet({ name: name.value })).message, error: false };
+  } catch (err) {
+    out.value = { text: describe(err), error: true };
   }
 }
 </script>
 
 <template>
-  <div style="font-family: Georgia, serif; margin: 2rem; background: #111; color: #eee; min-height: 100vh;">
-    <h1>Vitra</h1>
-    <p>Vite + Vue starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
-    <button @click="run(() => client.demoGreet('Vitra'))">demo.greet</button>
-    <button @click="run(() => client.dialogOpen())">dialog.open</button>
-    <button @click="run(() => client.clipboardRead())">clipboard.read</button>
-    <button @click="run(() => client.browserOpen('https://go.klarlabs.de/vitra'))">browser.open</button>
-    <button @click="run(() => client.osInfo())">os.info</button>
-    <button @click="run(() => client.notificationsShow({ title: 'Vitra', body: 'Hello from scaffold' }))">notifications.show</button>
-    <pre>{{ out }}</pre>
-  </div>
+  <main>
+    <h1>Hello from Vitra</h1>
+    <p>This page can call one Go command, <code>greet</code>, because main.go grants it. Everything else is refused.</p>
+    <form @submit.prevent="greet">
+      <input v-model="name" placeholder="Your name" aria-label="Your name" autocomplete="off" />
+      <button>Greet</button>
+    </form>
+    <output :class="{ error: out.error }" aria-live="polite">{{ out.text }}</output>
+  </main>
 </template>

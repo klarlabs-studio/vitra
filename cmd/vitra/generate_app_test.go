@@ -135,3 +135,35 @@ func TestParseTTL(t *testing.T) {
 		}
 	}
 }
+
+// The client `vitra new` ships must be exactly what `vitra generate
+// typescript --app` produces for the generated app, or the starter's types
+// drift from its Go commands.
+func TestScaffold_ClientMatchesGeneratedApp(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds and runs a Go program")
+	}
+	_, self, _, _ := runtime.Caller(0)
+	t.Setenv("VITRA_MODULE_PATH", filepath.Clean(filepath.Join(filepath.Dir(self), "..", "..")))
+	dir := filepath.Join(t.TempDir(), "app")
+	out := filepath.Join(t.TempDir(), "generated.ts")
+	capture(t, func() {
+		if err := run([]string{"new", dir}); err != nil {
+			t.Fatal(err)
+		}
+		if err := run([]string{"generate", "typescript", "--app", dir, "--out", out}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	shipped, err := os.ReadFile(filepath.Join(dir, "frontend", "vitra-client.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(shipped) != string(generated) {
+		t.Fatalf("scaffolded client differs from the generated one.\nshipped:\n%s\ngenerated:\n%s", shipped, generated)
+	}
+}

@@ -1,34 +1,43 @@
-import { useState } from "react";
-import { createClient } from "../vitra-client";
+import { useState, type FormEvent } from "react";
+import { createClient, type VitraInvoker } from "../vitra-client";
 
 declare global {
   interface Window {
-    vitra: { invoke: (cmd: string, input?: unknown) => Promise<unknown> };
+    vitra: { invoke: VitraInvoker };
   }
+}
+
+function describe(err: unknown): string {
+  const e = err as { code?: string; message?: string };
+  return (e.code ? e.code + ": " : "") + (e.message ?? String(err));
 }
 
 const client = createClient(window.vitra.invoke);
 
 export function App() {
-  const [out, setOut] = useState("");
-  const run = async (label: string, fn: () => Promise<unknown>) => {
+  const [name, setName] = useState("");
+  const [out, setOut] = useState({ text: "", error: false });
+
+  async function greet(ev: FormEvent) {
+    ev.preventDefault();
     try {
-      setOut(JSON.stringify(await fn(), null, 2));
-    } catch (e) {
-      setOut(String(e));
+      setOut({ text: (await client.greet({ name })).message, error: false });
+    } catch (err) {
+      setOut({ text: describe(err), error: true });
     }
-  };
+  }
+
   return (
-    <div style={{ fontFamily: "Georgia, serif", margin: "2rem", background: "#111", color: "#eee", minHeight: "100vh" }}>
-      <h1>Vitra</h1>
-      <p>Vite + React starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
-      <button onClick={() => run("greet", () => client.demoGreet("Vitra"))}>demo.greet</button>{" "}
-      <button onClick={() => run("open", () => client.dialogOpen())}>dialog.open</button>{" "}
-      <button onClick={() => run("clip", () => client.clipboardRead())}>clipboard.read</button>{" "}
-      <button onClick={() => run("browser", () => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>{" "}
-      <button onClick={() => run("os", () => client.osInfo())}>os.info</button>{" "}
-      <button onClick={() => run("notify", () => client.notificationsShow({ title: "Vitra", body: "Hello from scaffold" }))}>notifications.show</button>
-      <pre>{out}</pre>
-    </div>
+    <main>
+      <h1>Hello from Vitra</h1>
+      <p>
+        This page can call one Go command, <code>greet</code>, because main.go grants it. Everything else is refused.
+      </p>
+      <form onSubmit={greet}>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" autoComplete="off" />
+        <button>Greet</button>
+      </form>
+      <output className={out.error ? "error" : ""} aria-live="polite">{out.text}</output>
+    </main>
   );
 }

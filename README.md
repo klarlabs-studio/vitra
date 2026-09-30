@@ -105,7 +105,20 @@ await client.projectOpen({ path: "/project/.secrets/key" }, "/project/.secrets/k
 
 Runnable walkthrough: `go run ./example/quickstart`
 
-## Desktop app (competitive)
+## See it work
+
+```bash
+make notes   # or: CGO_ENABLED=1 go run -tags vitra_native ./example/notes
+```
+
+[`example/notes`](example/notes) is a Markdown notes app. Its window may read
+one vault folder (except `.private/`) and write `*.md` files in it, nothing
+else. The **Try to break it** panel attacks the app for real: reading
+`/etc/hosts`, climbing out with `../`, saving a shell script, embedding a
+remote page, forging a bridge call from a sandboxed frame. The live audit
+log shows each one refused, with the rule that refused it.
+
+## Desktop app
 
 ```bash
 vitra new myapp

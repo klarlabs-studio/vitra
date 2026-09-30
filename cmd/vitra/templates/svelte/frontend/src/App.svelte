@@ -1,32 +1,37 @@
 <script lang="ts">
-  import { createClient } from "../vitra-client";
+  import { createClient, type VitraInvoker } from "../vitra-client";
 
   declare global {
     interface Window {
-      vitra: { invoke: (cmd: string, input?: unknown) => Promise<unknown> };
+      vitra: { invoke: VitraInvoker };
     }
   }
 
-  const client = createClient(window.vitra.invoke);
-  let out = $state("");
+  function describe(err: unknown): string {
+    const e = err as { code?: string; message?: string };
+    return (e.code ? e.code + ": " : "") + (e.message ?? String(err));
+  }
 
-  async function run(fn: () => Promise<unknown>) {
+  const client = createClient(window.vitra.invoke);
+  let name = $state("");
+  let out = $state({ text: "", error: false });
+
+  async function greet(ev: SubmitEvent) {
+    ev.preventDefault();
     try {
-      out = JSON.stringify(await fn(), null, 2);
-    } catch (e) {
-      out = String(e);
+      out = { text: (await client.greet({ name })).message, error: false };
+    } catch (err) {
+      out = { text: describe(err), error: true };
     }
   }
 </script>
 
-<div style="font-family: Georgia, serif; margin: 2rem; background: #111; color: #eee; min-height: 100vh;">
-  <h1>Vitra</h1>
-  <p>Vite + Svelte starter (official fs + dialog + clipboard + browser + os + notification + path plugins).</p>
-  <button onclick={() => run(() => client.demoGreet("Vitra"))}>demo.greet</button>
-  <button onclick={() => run(() => client.dialogOpen())}>dialog.open</button>
-  <button onclick={() => run(() => client.clipboardRead())}>clipboard.read</button>
-  <button onclick={() => run(() => client.browserOpen("https://go.klarlabs.de/vitra"))}>browser.open</button>
-  <button onclick={() => run(() => client.osInfo())}>os.info</button>
-  <button onclick={() => run(() => client.notificationsShow({ title: "Vitra", body: "Hello from scaffold" }))}>notifications.show</button>
-  <pre>{out}</pre>
-</div>
+<main>
+  <h1>Hello from Vitra</h1>
+  <p>This page can call one Go command, <code>greet</code>, because main.go grants it. Everything else is refused.</p>
+  <form onsubmit={greet}>
+    <input bind:value={name} placeholder="Your name" aria-label="Your name" autocomplete="off" />
+    <button>Greet</button>
+  </form>
+  <output class={out.error ? "error" : ""} aria-live="polite">{out.text}</output>
+</main>

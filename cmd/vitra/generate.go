@@ -14,28 +14,37 @@ import (
 	"go.klarlabs.de/vitra/plugin/official"
 )
 
+// GreetRequest and Greeting mirror the starter's command types in
+// templates/main.go.tmpl; TestScaffold_ClientMatchesGeneratedApp keeps them
+// in sync.
+type GreetRequest struct {
+	Name string `json:"name"`
+}
+
+type Greeting struct {
+	Message string `json:"message"`
+}
+
+// scaffoldTypeScriptClient returns the client for the starter app, the same
+// one `vitra generate typescript --app` writes for it, so a new app's
+// frontend builds before Go is ever run.
 func scaffoldTypeScriptClient() (string, error) {
-	rt, err := vitra.New(vitra.Config{AppID: "com.example.app"})
+	const appID = "com.example.app"
+	rt, err := vitra.New(vitra.Config{AppID: appID})
 	if err != nil {
 		return "", err
 	}
-	ctx := context.Background()
-	for _, p := range official.All() {
-		if err := rt.RegisterPlugin(ctx, p); err != nil {
-			return "", err
-		}
-	}
-	greet, err := domain.NewCommandDefinition("demo.greet", "Greet", "demo.greet")
-	if err != nil {
+	if err := vitra.Register(rt, vitra.Command[GreetRequest, Greeting]{
+		Name:        "greet",
+		Description: "Greet someone by name",
+		Permission:  "greet",
+		Handler: func(context.Context, domain.Invocation, GreetRequest) (Greeting, error) {
+			return Greeting{}, nil
+		},
+	}); err != nil {
 		return "", err
 	}
-	cmds := []*domain.CommandDefinition{greet}
-	var events []domain.EventName
-	for _, reg := range rt.Plugins().List() {
-		cmds = append(cmds, reg.Contribution.Commands...)
-		events = append(events, reg.Contribution.Events...)
-	}
-	return bindings.GenerateTypeScript("vitra", vitra.Version, bindings.Untyped(cmds...), events)
+	return rt.TypeScript(appID)
 }
 
 // generateFromApp runs the app in dir in code-generation mode (see
