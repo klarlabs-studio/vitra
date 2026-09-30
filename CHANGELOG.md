@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The WebView inspector is off by default on all hosts. Linux forced WebKitGTK developer extras on and Windows left WebView2 DevTools at its enabled default, letting anyone at the keyboard run script with the page's bridge access. Opt in with `app.Options.DevTools`; `vitra dev` enables it via `VITRA_DEVTOOLS=1`.
 
 ### Fixed
+- Windows `register-scheme` / `register-files`: the generated `.reg` files left the quotes around the executable path and `"%1"` unescaped, producing an invalid command value; quotes are now escaped and CR/LF stripped from values.
 - Windows: host calls from command handlers run on the UI thread. `vitra_idle_add` ran queued jobs immediately on the calling thread, so since invokes moved off the UI thread, clipboard, dialog, and window calls touched Win32/WebView2 objects from goroutines. Jobs are now posted to a message-only window on the UI thread (which keeps working during modal dialogs), and run inline when already on it.
 - Native hosts pass job ids to C as integers instead of casting them through `unsafe.Pointer` (`go vet` warning).
 - CI builds and unit-tests the Darwin and Windows native hosts (`-tags vitra_native`) on macOS and Windows runners; before, only Linux native code was compiled in CI.

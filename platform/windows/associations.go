@@ -60,7 +60,7 @@ func (h *Host) RegisterFileAssociations(appID, execPath, name string, mimeTypes 
 	}
 	progID := safeName(appID) + ".file"
 	regPath := filepath.Join(root, safeName(appID)+"-files.reg")
-	cmd := fmt.Sprintf("\"%s\" \"%%1\"", strings.ReplaceAll(abs, `"`, `\"`))
+	cmd := fmt.Sprintf(`"%s" "%%1"`, abs)
 	var b strings.Builder
 	b.WriteString("Windows Registry Editor Version 5.00\n\n")
 	fmt.Fprintf(&b, "[HKEY_CURRENT_USER\\Software\\Classes\\%s]\n", progID)
