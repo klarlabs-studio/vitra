@@ -2,7 +2,7 @@
 
 This page explains what Vitra protects, how it decides what a page may do,
 where the known limits are, and which tests enforce each property. To report
-a problem, see [SECURITY.md](../SECURITY.md).
+a problem, see [SECURITY.md](https://github.com/klarlabs-studio/vitra/blob/main/SECURITY.md).
 
 ## Threat model
 

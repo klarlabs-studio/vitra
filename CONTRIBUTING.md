@@ -51,3 +51,15 @@ with `git commit -s` (DCO).
 3. `.github/workflows/release.yml` publishes the CLI archives with SBOMs, a
    cosign-signed checksums file, and SLSA provenance. The release notes explain
    how to verify them.
+
+## Documentation site
+
+The site at https://klarlabs-studio.github.io/vitra/ is built with VitePress from `docs/` and deployed by the *Docs* workflow on every push to main. To preview locally:
+
+```bash
+cd docs
+npm install
+npm run dev
+```
+
+`docs/spikes/` holds working notes and is not published.
