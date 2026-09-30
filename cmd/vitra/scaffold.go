@@ -172,6 +172,17 @@ vitra generate typescript --app . --out frontend/vitra-client.ts
 # Stage a package (optional)
 vitra package --out dist/ --format dir
 ` + "```" + `
+
+## Adding capabilities
+
+The frontend can call only what ` + "`main.go`" + ` registers and grants. To add a
+command, register it with ` + "`vitra.Register`" + ` and add its permission to the
+grant. For files, dialogs, the clipboard, menus, and more, register the
+official plugins (` + "`go.klarlabs.de/vitra/plugin/official`" + `), bind their
+services, and grant their permissions narrowly: path-scoped permissions such
+as ` + "`fs.read`" + ` take allow and deny patterns. See ` + "`example/notes`" + ` and
+` + "`example/competitive`" + ` in the Vitra repository, and
+[the security model](https://github.com/klarlabs-studio/vitra/blob/main/docs/security.md).
 `
 	if !tmpl.vite {
 		return body
