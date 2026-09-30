@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-30
+
+A flagship demo that attacks itself, a hello-world `vitra new`, audit events
+for refusals that happen before a command runs, and a warning-free macOS build.
+
+### Upgrading from 0.4.0
+- Existing apps need no code changes.
+- macOS: the native host requires macOS 11 or later.
+- macOS: `ShowNotification` from an unbundled binary (`go run`, `vitra dev`) now returns `platform.ErrUnsupported`; package the app to show notifications.
+- `vitra new` no longer wires the official plugins; copy that wiring from `example/competitive` if you relied on it.
+
 ### Added
 - `example/notes` (`make notes`): a Markdown notes app over a vault folder with a live audit panel and a "Try to break it" panel that runs nine real attacks (path escapes, a denied folder, writing a script, a path-binding mismatch, remote navigation and frames, a forged bridge call). CI drives its UI in WebKitGTK (`make e2e-notes`).
 - Audit events for attacks the app stops before a command runs: `bridge.reject` (a message without the window's sender token, an unparseable message, an invalid top-frame message, or, on macOS, a message from a subframe) and `navigation.block` (a navigation the policy refused, logged without credentials, query, or fragment).
@@ -378,6 +389,7 @@ Windows (WebView2) behind `-tags vitra_native`.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
 
-[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/klarlabs-studio/vitra/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/klarlabs-studio/vitra/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/klarlabs-studio/vitra/releases/tag/v0.3.0
