@@ -10,29 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Release pipeline: pushing a `v*` tag publishes the `vitra` CLI for linux, darwin, and windows (amd64, arm64) with reproducible `-trimpath` builds, an SPDX SBOM per archive, a keyless cosign signature over the checksums, and SLSA build provenance. Release notes include verification commands.
 - OpenSSF Scorecard runs weekly and on `main`; README badge.
-
-### Changed
-- **Breaking:** the 14 official plugin packages (`plugin/official/fs`, `…/dialog`, …) are one package, `plugin/official`: constructors `official.FS()`, `official.Dialog()`, … `official.DeepLink()`, ids `official.FSID`, …, and `official.All()` for every plugin. Each old package held one constructor and one constant. The `vitra new` starter registers them with a single loop over `official.All()`.
-- Starter templates use React 19, TypeScript 7, Vite 8, `@sveltejs/vite-plugin-svelte` 7, and `vue-tsc` 3 (via Dependabot). CI now scaffolds each Vite template and runs `npm install`, `npm run build`, and `go build` on the result, so dependency bumps cannot break `vitra new` unnoticed.
-- CI pins GitHub Actions to commit SHAs.
-
-### Security
-- Update manifests carry a signed `expires_at`; `PlanInstall` refuses manifests that are expired or have none, so a mirror cannot keep serving an old signed release forever (freeze attack). `BuildSignedManifest` defaults to 90 days (`DefaultManifestTTL`); `BuildSignedManifestTTL` and `vitra update-sign --expires-in 30d|72h` set it explicitly. **Breaking:** manifests signed before this change must be re-signed.
-- Only a window's top frame can invoke commands. Each window gets a random 256-bit sender token, kept in the preload's closure (which returns early in subframes) and required on every bridge message; messages without it, or unparseable ones, are dropped without a reply. Before, any frame that could reach the native message handler, such as a cross-origin iframe (WebView2 injects the preload into every frame), was stamped with the window's identity. macOS additionally drops messages whose `frameInfo` is not the main frame.
-- Inbound invoke messages over 1 MiB (`ipc.MaxMessageBytes`) are rejected before JSON parsing; the decoder is fuzzed for panics and for identity always coming from the host.
-- The WebView inspector is off by default on all hosts. Linux forced WebKitGTK developer extras on and Windows left WebView2 DevTools at its enabled default, letting anyone at the keyboard run script with the page's bridge access. Opt in with `app.Options.DevTools`; `vitra dev` enables it via `VITRA_DEVTOOLS=1`.
-
-### Fixed
-- Windows `register-scheme` / `register-files`: the generated `.reg` files left the quotes around the executable path and `"%1"` unescaped, producing an invalid command value; quotes are now escaped and CR/LF stripped from values.
-- Windows: host calls from command handlers run on the UI thread. `vitra_idle_add` ran queued jobs immediately on the calling thread, so since invokes moved off the UI thread, clipboard, dialog, and window calls touched Win32/WebView2 objects from goroutines. Jobs are now posted to a message-only window on the UI thread (which keeps working during modal dialogs), and run inline when already on it.
-- Native hosts pass job ids to C as integers instead of casting them through `unsafe.Pointer` (`go vet` warning).
-- CI builds and unit-tests the Darwin and Windows native hosts (`-tags vitra_native`) on macOS and Windows runners; before, only Linux native code was compiled in CI.
-
-### Removed
-- **Breaking:** packages apps never need are no longer importable: `application`, `inmemory`, `ipc`, `bridge`, `bindings`, `packaging`, `provenance`, and `platform/null` moved under `internal/`. The public surface is `vitra`, `app`, `domain`, `desktop`, `platform/*` hosts, `plugin`, `policy`, `audit`, `updater`, and `worker`. `Runtime.EmitEvent` now returns `[]domain.EventDelivery` (was `application.EventDelivery`).
-- **Breaking:** `vitra new` supports five starters: `vanilla`, `vite`, `react`, `svelte`, `vue`. The other 47 templates (solid, preact, lit, alpine, htmx, angular, qwik, … uland) are gone; start from `vite` and build to `frontend/dist` for any other framework. Each template pinned npm versions that went stale without anyone noticing, and several targeted abandoned projects. Starter files now live under `cmd/vitra/templates/` as real files embedded with `embed.FS`, instead of ~6,000 lines of Go string literals; `cmd/vitra/main.go` shrinks from 9,000 to 1,500 lines. Output of the five kept templates is unchanged apart from the vite README heading.
-
-### Added
 - `updater.CompareVersions`: SemVer 2.0.0 precedence (prereleases, build metadata ignored).
 - Typed commands: `vitra.Register(rt, vitra.Command[In, Out]{Name, Description, Permission, Handler})`. Input is decoded strictly into `In` (unknown fields and type mismatches are rejected as validation errors), the handler receives the authorized `domain.Invocation`, and when `In` implements `ResourcePath() string` it must equal the path the gateway checked.
 - `Runtime.TypeScript(module)`: a TypeScript client for every registered command, with interfaces generated from typed commands' Go types (JSON tags, `omitempty`, pointers, slices, maps, embedded and recursive structs, `time.Time`, `[]byte`).
@@ -43,17 +20,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `domain.Decision.ScopeRoot`: for an allowed path-scoped permission, the literal root of the allow pattern that matched (`/project` for `/project/**`).
 
 ### Changed
+- **Breaking:** the 14 official plugin packages (`plugin/official/fs`, `…/dialog`, …) are one package, `plugin/official`: constructors `official.FS()`, `official.Dialog()`, … `official.DeepLink()`, ids `official.FSID`, …, and `official.All()` for every plugin. Each old package held one constructor and one constant. The `vitra new` starter registers them with a single loop over `official.All()`.
 - **Breaking:** `updater.PlanInstall(m, pub, artifact, installed)` and `Runtime.ApplyUpdate(m, pub, artifact, dest, installed)` require the installed app description. `vitra update-apply` requires `--app-id` and `--current-version` in both local and channel mode.
 - **Breaking:** `bindings.GenerateTypeScript` takes `[]bindings.Command` (use `bindings.Untyped(defs...)` for definitions without types) and returns an error.
+- Starter templates use React 19, TypeScript 7, Vite 8, `@sveltejs/vite-plugin-svelte` 7, and `vue-tsc` 3 (via Dependabot). CI now scaffolds each Vite template and runs `npm install`, `npm run build`, and `go build` on the result, so dependency bumps cannot break `vitra new` unnoticed.
+- CI pins GitHub Actions to commit SHAs.
 - `PathScope` patterns must be absolute. `vitra inspect capabilities` shows `/project/**` instead of the unexpanded `${PROJECT_DIR}` placeholder.
 
+### Removed
+- **Breaking:** packages apps never need are no longer importable: `application`, `inmemory`, `ipc`, `bridge`, `bindings`, `packaging`, `provenance`, and `platform/null` moved under `internal/`. The public surface is `vitra`, `app`, `domain`, `desktop`, `platform/*` hosts, `plugin`, `policy`, `audit`, `updater`, and `worker`. `Runtime.EmitEvent` now returns `[]domain.EventDelivery` (was `application.EventDelivery`).
+- **Breaking:** `vitra new` supports five starters: `vanilla`, `vite`, `react`, `svelte`, `vue`. The other 47 templates (solid, preact, lit, alpine, htmx, angular, qwik, … uland) are gone; start from `vite` and build to `frontend/dist` for any other framework. Each template pinned npm versions that went stale without anyone noticing, and several targeted abandoned projects. Starter files now live under `cmd/vitra/templates/` as real files embedded with `embed.FS`, instead of ~6,000 lines of Go string literals; `cmd/vitra/main.go` shrinks from 9,000 to 1,500 lines. Output of the five kept templates is unchanged apart from the vite README heading.
+
 ### Fixed
+- Updates install correctly beyond a single Linux binary. `updater.ApplyInstall` (and `Runtime.ApplyUpdate` / `vitra update-apply`) now:
+  - replaces a whole directory, such as a macOS `.app` bundle, from a `.tar.gz`/`.tgz`/`.zip` artifact (a single top-level directory in the archive becomes the destination), keeping exec bits and internal symlinks;
+  - replaces a running Windows executable by moving it aside first, since Windows can rename a running `.exe` but not overwrite it;
+  - writes the new version fully before replacing anything and restores the old one if the swap fails;
+  - rejects archive entries that are absolute, use `..`, or are symlinks pointing outside the archive, and archives over 2 GiB unpacked or 200,000 entries.
+
+  `updater.CleanupStale(dest)` removes replaced installs that could not be deleted while running.
+- Windows `register-scheme` / `register-files`: the generated `.reg` files left the quotes around the executable path and `"%1"` unescaped, producing an invalid command value; quotes are now escaped and CR/LF stripped from values.
+- Windows: host calls from command handlers run on the UI thread. `vitra_idle_add` ran queued jobs immediately on the calling thread, so since invokes moved off the UI thread, clipboard, dialog, and window calls touched Win32/WebView2 objects from goroutines. Jobs are now posted to a message-only window on the UI thread (which keeps working during modal dialogs), and run inline when already on it.
+- Native hosts pass job ids to C as integers instead of casting them through `unsafe.Pointer` (`go vet` warning).
+- CI builds and unit-tests the Darwin and Windows native hosts (`-tags vitra_native`) on macOS and Windows runners; before, only Linux native code was compiled in CI.
 - Native hosts (Linux, Darwin, Windows) run frontend invokes, menu/tray/shortcut actions, and file-drop handlers off the UI thread. Before, a command that called back into the host (clipboard, dialogs, `Eval`, `App.Emit`), or an action handler that emitted an event, queued work to the UI thread from the UI thread and waited: the app froze. Slow commands no longer block the UI either. Replies are posted back to the UI thread and dropped if the loop has stopped.
 - `make e2e` round-trips `clipboard.write` → `clipboard.read` → `demo.greet` and is bounded by `timeout`, so a hang fails instead of stalling CI.
 - Generated TypeScript: two commands mapping to the same method (`fs.read` / `fs_read`) is an error instead of a duplicate method; descriptions can no longer close the doc comment (`*/`); string literals are valid JavaScript (JSON-encoded instead of Go `%q`, which could emit `\U` escapes); non-identifier names are quoted.
 - `vitra new` writes a `go.mod` that builds as generated: `go 1.26.2` (was `go 1.26`, older than vitra's, forcing `go mod tidy`) and `require go.klarlabs.de/vitra v0.3.0` (was the unresolvable `v0.0.0`).
 
 ### Security
+- Update manifests carry a signed `expires_at`; `PlanInstall` refuses manifests that are expired or have none, so a mirror cannot keep serving an old signed release forever (freeze attack). `BuildSignedManifest` defaults to 90 days (`DefaultManifestTTL`); `BuildSignedManifestTTL` and `vitra update-sign --expires-in 30d|72h` set it explicitly. **Breaking:** manifests signed before this change must be re-signed.
+- Only a window's top frame can invoke commands. Each window gets a random 256-bit sender token, kept in the preload's closure (which returns early in subframes) and required on every bridge message; messages without it, or unparseable ones, are dropped without a reply. Before, any frame that could reach the native message handler, such as a cross-origin iframe (WebView2 injects the preload into every frame), was stamped with the window's identity. macOS additionally drops messages whose `frameInfo` is not the main frame.
+- Inbound invoke messages over 1 MiB (`ipc.MaxMessageBytes`) are rejected before JSON parsing; the decoder is fuzzed for panics and for identity always coming from the host.
+- The WebView inspector is off by default on all hosts. Linux forced WebKitGTK developer extras on and Windows left WebView2 DevTools at its enabled default, letting anyone at the keyboard run script with the page's bridge access. Opt in with `app.Options.DevTools`; `vitra dev` enables it via `VITRA_DEVTOOLS=1`.
 - `vitra new` scaffolds least privilege. The main window no longer gets `fs.read`, `fs.write`, `path.open`, `browser.open`, or `clipboard.read` by default; they are listed commented out with guidance. The `aux` window only gets `demo.greet` instead of every permission. Before, the default grant let the frontend write a script with `fs.write` and launch it with `path.open`. Grant errors are no longer ignored.
 - `example/competitive` denies `path.open` inside its writable demo directory, under both its literal and symlink-resolved names.
 - Updates refuse validly signed releases that are not an upgrade. `updater.PlanInstall` and `Runtime.ApplyUpdate` take an `updater.Installed{AppID, Channel, Version}` and return `ErrWrongApp`, `ErrWrongChannel`, or `ErrNotNewer` unless the manifest is for the same app and channel and has a strictly newer SemVer version. Before, any old signed manifest could be replayed (downgrade), a beta build installed on stable, and another app's release installed when keys were shared.
