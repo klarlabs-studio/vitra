@@ -208,3 +208,21 @@ func TestCommandDefinition_RequiresPermission(t *testing.T) {
 		t.Fatalf("bad cmd %+v", cmd)
 	}
 }
+
+// Calling a command that was never registered is a probe, not a bug: it is
+// refused with a deterministic denial code, so it is audited as a denial.
+func TestInvocationService_UnregisteredCommandIsDenied(t *testing.T) {
+	win, _ := domain.NewWindow("main", domain.OriginPackagedLocal)
+	svc := &domain.InvocationService{
+		Commands:  &memCommands{byName: map[domain.CommandName]*domain.CommandDefinition{}},
+		Grants:    &memGrants{},
+		Windows:   &memWindows{byID: map[domain.WindowID]*domain.Window{win.ID(): win}},
+		Executors: memExecLookup{},
+	}
+	caller, _ := win.Caller()
+	_, err := svc.Invoke(context.Background(), domain.InvocationRequest{Caller: caller, Command: "shell.exec"})
+	var denied *domain.ErrDenied
+	if !errors.As(err, &denied) || denied.Code != domain.DenialCommandMissing || denied.Window != "main" {
+		t.Fatalf("expected command_missing denial, got %v", err)
+	}
+}

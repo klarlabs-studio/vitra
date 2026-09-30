@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -71,6 +72,17 @@ func (s *InvocationService) Invoke(ctx context.Context, req InvocationRequest) (
 	}
 
 	cmd, err := s.Commands.Get(req.Command)
+	var missing *ErrNotFound
+	if errors.As(err, &missing) {
+		// Only registered commands exist; calling anything else is refused
+		// like any other denial, so probes show up in the audit log.
+		return nil, &ErrDenied{
+			Window: req.Caller.Window,
+			Origin: req.Caller.Origin,
+			Code:   DenialCommandMissing,
+			Reason: "command is not registered",
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
