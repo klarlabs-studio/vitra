@@ -80,7 +80,7 @@ Usage:
   vitra update-keygen [--out <dir>]
                              Generate an ed25519 update-signing key pair (writes priv.key + pub.key hex)
   vitra update-sign --artifact <path> --app-id <id> --version <ver> --privkey <ref> --out <manifest.json>
-                     [--channel stable|beta] [--artifact-name name]
+                     [--channel stable|beta] [--artifact-name name] [--expires-in 90d]
                              Digest + sign an update manifest (privkey: env:/file:/secret:; bare hex rejected)
   vitra update-check --base-url <url> --app-id <id> --channel <name> --pubkey <hex>
                              Fetch + verify a signed channel manifest (HTTP(S) client; does not install)

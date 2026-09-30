@@ -23,6 +23,7 @@ func TestApplyInstall_AtomicReplace(t *testing.T) {
 		AppID: "com.example.app", Version: "2.0.0", Channel: updater.ChannelStable,
 		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {

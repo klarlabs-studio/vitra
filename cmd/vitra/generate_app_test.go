@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"go.klarlabs.de/vitra"
 )
@@ -119,5 +120,18 @@ func TestScaffoldGoMod_MatchesVitraModule(t *testing.T) {
 	}
 	if !strings.Contains(got, "require go.klarlabs.de/vitra v"+vitra.Version+"\n") {
 		t.Errorf("scaffold go.mod %q does not require v%s", got, vitra.Version)
+	}
+}
+
+func TestParseTTL(t *testing.T) {
+	for in, want := range map[string]time.Duration{"30d": 30 * 24 * time.Hour, "72h": 72 * time.Hour, "90m": 90 * time.Minute} {
+		if got, err := parseTTL(in); err != nil || got != want {
+			t.Errorf("parseTTL(%q) = %v, %v", in, got, err)
+		}
+	}
+	for _, bad := range []string{"", "0d", "-1d", "xd", "-5h", "soon"} {
+		if _, err := parseTTL(bad); err == nil {
+			t.Errorf("parseTTL(%q) accepted", bad)
+		}
 	}
 }

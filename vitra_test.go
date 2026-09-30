@@ -371,6 +371,7 @@ func TestRuntime_ApplyUpdate_PolicyAndInstall(t *testing.T) {
 		AppID: "com.example.demo", Version: "2.0.0", Channel: updater.ChannelBeta,
 		Artifact: "demo", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {

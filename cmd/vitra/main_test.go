@@ -140,6 +140,7 @@ func TestRun_UpdateApply(t *testing.T) {
 		AppID: "com.vitra.t", Version: "2.0.0", Channel: updater.ChannelStable,
 		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {
@@ -192,6 +193,7 @@ func TestRun_UpdateApplyChannel(t *testing.T) {
 		AppID: "com.vitra.channel", Version: "4.2.0", Channel: updater.ChannelBeta,
 		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {
@@ -269,6 +271,7 @@ func TestRun_UpdateCheck(t *testing.T) {
 		AppID: "com.vitra.channel", Version: "9.1.0", Channel: updater.ChannelStable,
 		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {
@@ -341,6 +344,7 @@ func TestRun_UpdateStage(t *testing.T) {
 		AppID: "com.vitra.stage", Version: "3.1.0", Channel: updater.ChannelStable,
 		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {

@@ -156,8 +156,10 @@ sender token rather than URL-string checks.
   `.reg` values escape quotes and drop newlines.
 - **Updates.** A manifest must carry a valid ed25519 signature, match the
   artifact's SHA-256, be for the installed app and channel, and have a
-  strictly newer SemVer version. Otherwise it is refused, so old signed
-  releases cannot be replayed. Channels require HTTPS (loopback excepted).
+  strictly newer SemVer version, and not be past its signed `expires_at`
+  (90 days by default, `vitra update-sign --expires-in`). Otherwise it is
+  refused, so old signed releases cannot be replayed and a mirror cannot keep
+  serving a stale one forever. Channels require HTTPS (loopback excepted).
   Signing keys never live in project configuration.
 
 ## Invariants and the tests that enforce them
@@ -172,7 +174,7 @@ sender token rather than URL-string checks.
 | Host-stamped identity (4) | `internal/ipc`: `TestBridge_DiscardsSpoofedCallerIdentity`, `FuzzBridge_DecodeInvoke`; `domain`: `TestInvocationService_RejectsSpoofedOrigin`, `TestCallerExecutorFunc_ReceivesInvokingWindow`, `TestCallerExecutorFunc_FailsClosedWithoutInvocation` |
 | Plugins cannot widen each other (6) | `plugin`: `TestRegistry_RejectsPermissionCollision` |
 | No shell by default (7) | `platform/windows`: `TestOpenURL_NeverInvokesShell`, `TestRegEscape` |
-| Verified updates (9) | `updater`: `TestPlanInstall_RequiresValidSignatureAndDigest`, `TestPlanInstall_RequiresNewerVersionSameAppAndChannel`, `TestChannelSource_RequiresHTTPSExceptLoopback`, `FuzzCompareVersions`; `policy`: `TestEngine_AuthorizeUpdate` |
+| Verified updates (9) | `updater`: `TestPlanInstall_RequiresValidSignatureAndDigest`, `TestPlanInstall_RequiresNewerVersionSameAppAndChannel`, `TestChannelSource_RequiresHTTPSExceptLoopback`, `TestPlanInstall_RejectsExpiredOrUndatedManifests`, `TestManifest_ExpiryIsSigned`, `FuzzCompareVersions`; `policy`: `TestEngine_AuthorizeUpdate` |
 | Signing secrets outside config (10) | `internal/packaging`: `TestSpec_RejectsInlineSigningSecretPattern` |
 | Dev privileges stay out of release (11) | `policy`: `TestEngine_ProductionForcesSignatureAndBlocksDevPerms`; `app`: `TestRun_DevToolsOffByDefault` |
 | Remote content has no authority (12) | `domain`: `TestGateway_RemoteContentDeniedByDefault`, `TestNavigationPolicy_UntrustedDeniedByDefault` |
