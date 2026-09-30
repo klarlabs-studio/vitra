@@ -1,18 +1,15 @@
-// Package os is the official Phase 3 host-info plugin contract.
-// It declares os.info permission and contributes a command; execution is
-// bound by the host application via desktop.OsService (stdlib fill-in).
-package os
+package official
 
 import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
 )
 
-// PluginID is the stable official plugin id.
-const PluginID domain.PluginID = "vitra.os"
+// OSID is the stable id of the OS plugin.
+const OSID domain.PluginID = "vitra.os"
 
-// New returns the official os plugin contribution.
-func New() plugin.Plugin {
+// OS returns the official os plugin contribution.
+func OS() plugin.Plugin {
 	return osPlugin{}
 }
 
@@ -20,7 +17,7 @@ type osPlugin struct{}
 
 func (osPlugin) Manifest() plugin.Manifest {
 	return plugin.Manifest{
-		ID:          PluginID,
+		ID:          OSID,
 		Name:        "OS",
 		Version:     plugin.SemVer{Major: 1, Minor: 0, Patch: 0},
 		Description: "Read-only host platform information",
@@ -34,6 +31,6 @@ func (osPlugin) Contribute() (plugin.Contribution, error) {
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	info.WithPlugin(PluginID)
+	info.WithPlugin(OSID)
 	return plugin.Contribution{Commands: []*domain.CommandDefinition{info}}, nil
 }

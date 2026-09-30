@@ -16,10 +16,7 @@ import (
 	"go.klarlabs.de/vitra/audit"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
-	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
-	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
-	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
-	officialpath "go.klarlabs.de/vitra/plugin/official/path"
+	"go.klarlabs.de/vitra/plugin/official"
 	"go.klarlabs.de/vitra/policy"
 	"go.klarlabs.de/vitra/updater"
 	"go.klarlabs.de/vitra/worker"
@@ -270,28 +267,28 @@ func TestRuntime_RegisterOfficialPlugins(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	if err := rt.RegisterPlugin(ctx, officialfs.New()); err != nil {
+	if err := rt.RegisterPlugin(ctx, official.FS()); err != nil {
 		t.Fatal(err)
 	}
-	if err := rt.RegisterPlugin(ctx, officialdialog.New()); err != nil {
+	if err := rt.RegisterPlugin(ctx, official.Dialog()); err != nil {
 		t.Fatal(err)
 	}
-	if err := rt.RegisterPlugin(ctx, officialnotification.New()); err != nil {
+	if err := rt.RegisterPlugin(ctx, official.Notification()); err != nil {
 		t.Fatal(err)
 	}
-	if err := rt.RegisterPlugin(ctx, officialpath.New()); err != nil {
+	if err := rt.RegisterPlugin(ctx, official.Path()); err != nil {
 		t.Fatal(err)
 	}
-	if owner, ok := rt.Plugins().OwnerOf("fs.read"); !ok || owner != officialfs.PluginID {
+	if owner, ok := rt.Plugins().OwnerOf("fs.read"); !ok || owner != official.FSID {
 		t.Fatalf("fs.read owner = %q ok=%v", owner, ok)
 	}
-	if owner, ok := rt.Plugins().OwnerOf("dialog.open"); !ok || owner != officialdialog.PluginID {
+	if owner, ok := rt.Plugins().OwnerOf("dialog.open"); !ok || owner != official.DialogID {
 		t.Fatalf("dialog.open owner = %q ok=%v", owner, ok)
 	}
-	if owner, ok := rt.Plugins().OwnerOf("notifications.show"); !ok || owner != officialnotification.PluginID {
+	if owner, ok := rt.Plugins().OwnerOf("notifications.show"); !ok || owner != official.NotificationID {
 		t.Fatalf("notifications.show owner = %q ok=%v", owner, ok)
 	}
-	if owner, ok := rt.Plugins().OwnerOf("path.open"); !ok || owner != officialpath.PluginID {
+	if owner, ok := rt.Plugins().OwnerOf("path.open"); !ok || owner != official.PathID {
 		t.Fatalf("path.open owner = %q ok=%v", owner, ok)
 	}
 
@@ -346,7 +343,7 @@ func TestRuntime_RejectPluginPermissionCollision(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	if err := rt.RegisterPlugin(ctx, officialfs.New()); err != nil {
+	if err := rt.RegisterPlugin(ctx, official.FS()); err != nil {
 		t.Fatal(err)
 	}
 	err = rt.RegisterPlugin(ctx, collidingFS{})
@@ -437,7 +434,7 @@ func TestRuntime_AuditEmitsDecisions(t *testing.T) {
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		t.Fatal(err)
 	}
-	if err := rt.RegisterPlugin(ctx, officialfs.New()); err != nil {
+	if err := rt.RegisterPlugin(ctx, official.FS()); err != nil {
 		t.Fatal(err)
 	}
 

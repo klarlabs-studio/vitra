@@ -1,19 +1,15 @@
-// Package deeplink is the official Phase 3 deep-link plugin contract.
-// It owns deeplink.handle and contributes deeplink.open; native hosts accept
-// links via DesktopHost.StartDeepLinkBridge / argv and emit after
-// desktop.DeepLinkService.Handle succeeds (patterns stay host-configured).
-package deeplink
+package official
 
 import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
 )
 
-// PluginID is the stable official plugin id.
-const PluginID domain.PluginID = "vitra.deeplink"
+// DeepLinkID is the stable id of the DeepLink plugin.
+const DeepLinkID domain.PluginID = "vitra.deeplink"
 
-// New returns the official deep-link plugin contribution.
-func New() plugin.Plugin {
+// DeepLink returns the official deep-link plugin contribution.
+func DeepLink() plugin.Plugin {
 	return deeplinkPlugin{}
 }
 
@@ -21,7 +17,7 @@ type deeplinkPlugin struct{}
 
 func (deeplinkPlugin) Manifest() plugin.Manifest {
 	return plugin.Manifest{
-		ID:          PluginID,
+		ID:          DeepLinkID,
 		Name:        "Deep Link",
 		Version:     plugin.SemVer{Major: 1},
 		Description: "Receive OS deep links matching host-configured patterns",

@@ -1,18 +1,15 @@
-// Package browser is the official Phase 3 system browser plugin contract.
-// It declares browser.open permission and contributes a command; native
-// execution is bound by the host application via desktop.BrowserService.
-package browser
+package official
 
 import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
 )
 
-// PluginID is the stable official plugin id.
-const PluginID domain.PluginID = "vitra.browser"
+// BrowserID is the stable id of the Browser plugin.
+const BrowserID domain.PluginID = "vitra.browser"
 
-// New returns the official browser plugin contribution.
-func New() plugin.Plugin {
+// Browser returns the official browser plugin contribution.
+func Browser() plugin.Plugin {
 	return browserPlugin{}
 }
 
@@ -20,7 +17,7 @@ type browserPlugin struct{}
 
 func (browserPlugin) Manifest() plugin.Manifest {
 	return plugin.Manifest{
-		ID:          PluginID,
+		ID:          BrowserID,
 		Name:        "Browser",
 		Version:     plugin.SemVer{Major: 1, Minor: 0, Patch: 0},
 		Description: "Open URLs in the system default browser",
@@ -34,6 +31,6 @@ func (browserPlugin) Contribute() (plugin.Contribution, error) {
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	open.WithPlugin(PluginID)
+	open.WithPlugin(BrowserID)
 	return plugin.Contribution{Commands: []*domain.CommandDefinition{open}}, nil
 }

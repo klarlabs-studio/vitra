@@ -1,19 +1,15 @@
-// Package menu is the official Phase 3 application menu-bar plugin contract.
-// It declares menu.set / menu.clear and contributes menu.action; native
-// execution is bound by the host via desktop.MenuService wrapping
-// DesktopHost.SetMenuBar (nil items clears the bar).
-package menu
+package official
 
 import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
 )
 
-// PluginID is the stable official plugin id.
-const PluginID domain.PluginID = "vitra.menu"
+// MenuID is the stable id of the Menu plugin.
+const MenuID domain.PluginID = "vitra.menu"
 
-// New returns the official menu plugin contribution.
-func New() plugin.Plugin {
+// Menu returns the official menu plugin contribution.
+func Menu() plugin.Plugin {
 	return menuPlugin{}
 }
 
@@ -21,7 +17,7 @@ type menuPlugin struct{}
 
 func (menuPlugin) Manifest() plugin.Manifest {
 	return plugin.Manifest{
-		ID:          PluginID,
+		ID:          MenuID,
 		Name:        "Menu",
 		Version:     plugin.SemVer{Major: 1},
 		Description: "Set or clear the application menu bar and receive menu actions",
@@ -35,12 +31,12 @@ func (menuPlugin) Contribute() (plugin.Contribution, error) {
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	set.WithPlugin(PluginID)
+	set.WithPlugin(MenuID)
 	clear, err := domain.NewCommandDefinition("menu.clear", "Clear the application menu bar", "menu.set")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	clear.WithPlugin(PluginID)
+	clear.WithPlugin(MenuID)
 	return plugin.Contribution{
 		Commands: []*domain.CommandDefinition{set, clear},
 		Events:   []domain.EventName{"menu.action"},

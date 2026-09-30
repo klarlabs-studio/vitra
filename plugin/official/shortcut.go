@@ -1,20 +1,15 @@
-// Package shortcut is the official Phase 3 global-shortcut plugin contract.
-// It declares shortcut.register / shortcut.unregister and contributes
-// shortcut.action; native execution is bound via desktop.ShortcutService →
-// RegisterGlobalShortcut / UnregisterGlobalShortcut.
-// Wayland hosts return ErrUnsupported (no portable global hotkey API).
-package shortcut
+package official
 
 import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
 )
 
-// PluginID is the stable official plugin id.
-const PluginID domain.PluginID = "vitra.shortcut"
+// ShortcutID is the stable id of the Shortcut plugin.
+const ShortcutID domain.PluginID = "vitra.shortcut"
 
-// New returns the official shortcut plugin contribution.
-func New() plugin.Plugin {
+// Shortcut returns the official shortcut plugin contribution.
+func Shortcut() plugin.Plugin {
 	return shortcutPlugin{}
 }
 
@@ -22,7 +17,7 @@ type shortcutPlugin struct{}
 
 func (shortcutPlugin) Manifest() plugin.Manifest {
 	return plugin.Manifest{
-		ID:          PluginID,
+		ID:          ShortcutID,
 		Name:        "Shortcut",
 		Version:     plugin.SemVer{Major: 1},
 		Description: "Register or unregister OS-wide global shortcuts (unsupported on Wayland)",
@@ -36,12 +31,12 @@ func (shortcutPlugin) Contribute() (plugin.Contribution, error) {
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	reg.WithPlugin(PluginID)
+	reg.WithPlugin(ShortcutID)
 	unreg, err := domain.NewCommandDefinition("shortcut.unregister", "Unregister a global OS shortcut", "shortcut.register")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	unreg.WithPlugin(PluginID)
+	unreg.WithPlugin(ShortcutID)
 	return plugin.Contribution{
 		Commands: []*domain.CommandDefinition{reg, unreg},
 		Events:   []domain.EventName{"shortcut.action"},
