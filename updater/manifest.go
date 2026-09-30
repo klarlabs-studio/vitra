@@ -121,21 +121,21 @@ func SignManifest(m Manifest, priv ed25519.PrivateKey) (Manifest, error) {
 // VerifyManifest checks authenticity of a manifest against a public key.
 func VerifyManifest(m Manifest, pub ed25519.PublicKey) error {
 	if m.Signature == "" {
-		return errors.New("manifest signature is required")
+		return fmt.Errorf("%w: manifest is unsigned", ErrBadSignature)
 	}
 	if len(pub) != ed25519.PublicKeySize {
 		return errors.New("invalid public key size")
 	}
 	sig, err := hex.DecodeString(m.Signature)
 	if err != nil {
-		return fmt.Errorf("signature encoding: %w", err)
+		return fmt.Errorf("%w: signature encoding: %v", ErrBadSignature, err)
 	}
 	payload, err := m.payloadBytes()
 	if err != nil {
 		return err
 	}
 	if !ed25519.Verify(pub, payload, sig) {
-		return errors.New("manifest signature verification failed")
+		return ErrBadSignature
 	}
 	return nil
 }
@@ -145,7 +145,7 @@ func VerifyArtifactDigest(m Manifest, artifact []byte) error {
 	sum := sha256.Sum256(artifact)
 	got := hex.EncodeToString(sum[:])
 	if got != m.SHA256 {
-		return fmt.Errorf("artifact digest mismatch: got %s want %s", got, m.SHA256)
+		return fmt.Errorf("%w: got %s want %s", ErrDigestMismatch, got, m.SHA256)
 	}
 	return nil
 }
@@ -158,6 +158,16 @@ type InstallPlan struct {
 	Artifact string
 	SHA256   string
 }
+
+// Errors returned when an update is forged or tampered with. Match them with
+// errors.Is.
+var (
+	// ErrBadSignature: the manifest is unsigned, or its signature does not
+	// verify with the public key (a forged or edited manifest).
+	ErrBadSignature = errors.New("manifest signature verification failed")
+	// ErrDigestMismatch: the artifact is not the one the manifest signed.
+	ErrDigestMismatch = errors.New("artifact digest mismatch")
+)
 
 // Errors returned by PlanInstall when a manifest is authentic but not an
 // acceptable update for the installed app.

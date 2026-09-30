@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `updater.ErrBadSignature` and `updater.ErrDigestMismatch`, so callers can recognise a forged or tampered update with `errors.Is` instead of matching message text.
+- Runnable examples on pkg.go.dev for typed commands, the TypeScript client, auditing, path scopes, grants, the update check, enterprise policy, and `App.UseOfficialPlugins`.
+
 ## [0.6.0] - 2026-09-30
 
 One call to turn on the official desktop plugins, a documentation site, and

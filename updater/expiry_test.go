@@ -78,3 +78,36 @@ func TestBuildSignedManifest_SetsDefaultExpiry(t *testing.T) {
 		t.Fatal("zero ttl accepted")
 	}
 }
+
+// Callers must be able to tell a forged or tampered update apart from other
+// failures without matching on message text.
+func TestPlanInstall_TamperingHasSentinelErrors(t *testing.T) {
+	keys, err := updater.GenerateKeyPair()
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact := []byte("release")
+	m, err := updater.BuildSignedManifestTTL("com.example.app", "2.0.0", updater.ChannelStable, "app", artifact, keys.PrivateKey, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed := updater.Installed{AppID: "com.example.app", Channel: updater.ChannelStable, Version: "1.0.0"}
+
+	if _, err := updater.PlanInstall(m, keys.PublicKey, []byte("tampered"), installed); !errors.Is(err, updater.ErrDigestMismatch) {
+		t.Fatalf("tampered artifact: %v, want updater.ErrDigestMismatch", err)
+	}
+	other, _ := updater.GenerateKeyPair()
+	if _, err := updater.PlanInstall(m, other.PublicKey, artifact, installed); !errors.Is(err, updater.ErrBadSignature) {
+		t.Fatalf("wrong key: %v, want updater.ErrBadSignature", err)
+	}
+	forged := m
+	forged.Version = "9.0.0"
+	if _, err := updater.PlanInstall(forged, keys.PublicKey, artifact, installed); !errors.Is(err, updater.ErrBadSignature) {
+		t.Fatalf("edited manifest: %v, want updater.ErrBadSignature", err)
+	}
+	unsigned := m
+	unsigned.Signature = ""
+	if _, err := updater.PlanInstall(unsigned, keys.PublicKey, artifact, installed); !errors.Is(err, updater.ErrBadSignature) {
+		t.Fatalf("unsigned manifest: %v, want updater.ErrBadSignature", err)
+	}
+}
