@@ -22,20 +22,7 @@ import (
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
-	officialapp "go.klarlabs.de/vitra/plugin/official/app"
-	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
-	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
-	officialdeeplink "go.klarlabs.de/vitra/plugin/official/deeplink"
-	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
-	officialdragdrop "go.klarlabs.de/vitra/plugin/official/dragdrop"
-	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
-	officialmenu "go.klarlabs.de/vitra/plugin/official/menu"
-	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
-	officialos "go.klarlabs.de/vitra/plugin/official/os"
-	officialpath "go.klarlabs.de/vitra/plugin/official/path"
-	officialshortcut "go.klarlabs.de/vitra/plugin/official/shortcut"
-	officialtray "go.klarlabs.de/vitra/plugin/official/tray"
-	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
+	"go.klarlabs.de/vitra/plugin/official"
 	"go.klarlabs.de/vitra/policy"
 )
 
@@ -322,47 +309,10 @@ func run() error {
 	_ = register // kept for local demo commands if needed
 
 	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* / os.* / notifications.* / path.* / window.* permissions (invariant 6).
-	if err := rt.RegisterPlugin(context.Background(), officialdialog.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialfs.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialclipboard.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialbrowser.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialos.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialnotification.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialpath.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialwindow.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialmenu.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialtray.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialdragdrop.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialdeeplink.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialshortcut.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(context.Background(), officialapp.New()); err != nil {
-		return err
+	for _, p := range official.All() {
+		if err := rt.RegisterPlugin(context.Background(), p); err != nil {
+			return err
+		}
 	}
 	if err := rt.BindExecutor("clipboard.read", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
 		return clips.Read(ctx, caller)

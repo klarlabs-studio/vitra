@@ -33,6 +33,9 @@ type Manifest struct {
 	Artifact  string    `json:"artifact"` // relative name
 	SHA256    string    `json:"sha256"`   // hex
 	CreatedAt time.Time `json:"created_at"`
+	// ExpiresAt bounds how long the signed manifest is accepted, so a mirror
+	// cannot keep serving an old release forever (freeze attack).
+	ExpiresAt time.Time `json:"expires_at,omitzero"`
 	Signature string    `json:"signature"` // ed25519 over canonical payload, hex
 }
 
@@ -44,19 +47,40 @@ type canonicalPayload struct {
 	Artifact  string    `json:"artifact"`
 	SHA256    string    `json:"sha256"`
 	CreatedAt time.Time `json:"created_at"`
+	// omitzero keeps manifests signed before expiry existed verifiable; they
+	// are still refused by PlanInstall.
+	ExpiresAt time.Time `json:"expires_at,omitzero"`
 }
 
 func (m Manifest) payloadBytes() ([]byte, error) {
-	return json.Marshal(canonicalPayload{
+	p := canonicalPayload{
 		AppID: m.AppID, Version: m.Version, Channel: m.Channel,
 		Artifact: m.Artifact, SHA256: m.SHA256, CreatedAt: m.CreatedAt.UTC(),
-	})
+	}
+	if !m.ExpiresAt.IsZero() {
+		p.ExpiresAt = m.ExpiresAt.UTC()
+	}
+	return json.Marshal(p)
 }
 
-// BuildSignedManifest constructs a manifest for artifact, digests it, and signs.
+// DefaultManifestTTL is how long BuildSignedManifest makes a manifest valid.
+const DefaultManifestTTL = 90 * 24 * time.Hour
+
+// BuildSignedManifest constructs a manifest for artifact, digests it, and
+// signs it, valid for DefaultManifestTTL.
 func BuildSignedManifest(appID, version string, channel Channel, artifactName string, artifact []byte, priv ed25519.PrivateKey) (Manifest, error) {
+	return BuildSignedManifestTTL(appID, version, channel, artifactName, artifact, priv, DefaultManifestTTL)
+}
+
+// BuildSignedManifestTTL is BuildSignedManifest with an explicit validity
+// period. Re-sign (or re-stage) before it runs out, or clients stop
+// accepting the release.
+func BuildSignedManifestTTL(appID, version string, channel Channel, artifactName string, artifact []byte, priv ed25519.PrivateKey, ttl time.Duration) (Manifest, error) {
 	if strings.TrimSpace(appID) == "" || strings.TrimSpace(version) == "" {
 		return Manifest{}, errors.New("app_id and version are required")
+	}
+	if ttl <= 0 {
+		return Manifest{}, errors.New("manifest ttl must be positive")
 	}
 	if channel == "" {
 		channel = ChannelStable
@@ -67,13 +91,15 @@ func BuildSignedManifest(appID, version string, channel Channel, artifactName st
 	if strings.TrimSpace(artifactName) == "" {
 		return Manifest{}, errors.New("artifact name is required")
 	}
+	now := time.Now().UTC()
 	m := Manifest{
 		AppID:     appID,
 		Version:   version,
 		Channel:   channel,
 		Artifact:  artifactName,
 		SHA256:    DigestArtifact(artifact),
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: now,
+		ExpiresAt: now.Add(ttl),
 	}
 	return SignManifest(m, priv)
 }
@@ -139,6 +165,7 @@ var (
 	ErrWrongApp     = errors.New("update manifest is for a different app")
 	ErrWrongChannel = errors.New("update manifest is for a different channel")
 	ErrNotNewer     = errors.New("update version is not newer than the installed version")
+	ErrExpired      = errors.New("update manifest is expired or has no expiry")
 )
 
 // Installed describes the app an update would replace.
@@ -150,8 +177,9 @@ type Installed struct {
 	Version string
 }
 
-// PlanInstall verifies signature and digest, then checks that m is an update
-// for installed: same app, same channel, and a strictly newer version. No
+// PlanInstall verifies signature and digest, that the manifest has not
+// expired, and that m is an update for installed: same app, same channel, and
+// a strictly newer version. No
 // plan is returned unless every check passes (invariant 9).
 func PlanInstall(m Manifest, pub ed25519.PublicKey, artifact []byte, installed Installed) (InstallPlan, error) {
 	if err := VerifyManifest(m, pub); err != nil {
@@ -159,6 +187,15 @@ func PlanInstall(m Manifest, pub ed25519.PublicKey, artifact []byte, installed I
 	}
 	if err := VerifyArtifactDigest(m, artifact); err != nil {
 		return InstallPlan{}, err
+	}
+	if m.ExpiresAt.IsZero() {
+		return InstallPlan{}, fmt.Errorf("%w: manifest has no expires_at", ErrExpired)
+	}
+	if !m.ExpiresAt.After(m.CreatedAt) {
+		return InstallPlan{}, errors.New("manifest expires_at is not after created_at")
+	}
+	if time.Now().After(m.ExpiresAt) {
+		return InstallPlan{}, fmt.Errorf("%w: expired %s", ErrExpired, m.ExpiresAt.UTC().Format(time.RFC3339))
 	}
 	if m.AppID != installed.AppID {
 		return InstallPlan{}, fmt.Errorf("%w: manifest %q, installed %q", ErrWrongApp, m.AppID, installed.AppID)

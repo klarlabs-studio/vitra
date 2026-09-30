@@ -74,6 +74,7 @@ func TestFetcher_FetchManifestAndArtifact(t *testing.T) {
 		AppID: "com.example.app", Version: "3.0.0", Channel: updater.ChannelBeta,
 		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {

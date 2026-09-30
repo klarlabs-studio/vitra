@@ -9,22 +9,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"go.klarlabs.de/vitra/plugin"
-
-	officialapp "go.klarlabs.de/vitra/plugin/official/app"
-	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
-	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
-	officialdeeplink "go.klarlabs.de/vitra/plugin/official/deeplink"
-	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
-	officialdragdrop "go.klarlabs.de/vitra/plugin/official/dragdrop"
-	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
-	officialmenu "go.klarlabs.de/vitra/plugin/official/menu"
-	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
-	officialos "go.klarlabs.de/vitra/plugin/official/os"
-	officialpath "go.klarlabs.de/vitra/plugin/official/path"
-	officialshortcut "go.klarlabs.de/vitra/plugin/official/shortcut"
-	officialtray "go.klarlabs.de/vitra/plugin/official/tray"
-	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
+	"go.klarlabs.de/vitra/plugin/official"
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/internal/packaging"
@@ -391,7 +376,7 @@ func runPackage(args []string) error {
 // provenance (declared surface, not a claim that --bin embeds them).
 func officialPluginInventory() []provenance.PluginInfo {
 	out := make([]provenance.PluginInfo, 0, 7)
-	for _, p := range []plugin.Plugin{officialfs.New(), officialdialog.New(), officialclipboard.New(), officialbrowser.New(), officialos.New(), officialnotification.New(), officialpath.New(), officialwindow.New(), officialmenu.New(), officialtray.New(), officialdragdrop.New(), officialdeeplink.New(), officialshortcut.New(), officialapp.New()} {
+	for _, p := range official.All() {
 		m := p.Manifest()
 		perms := make([]string, 0, len(m.Permissions))
 		for _, perm := range m.Permissions {

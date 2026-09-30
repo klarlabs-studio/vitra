@@ -1,22 +1,15 @@
-// Package window is the official Phase 3 multi-window plugin contract.
-// It declares window.create / window.close / window.chrome / window.getChrome /
-// window.focus / window.blur / window.hide / window.show / window.minimize /
-// window.maximize / window.unmaximize / window.fullscreen / window.unfullscreen / window.setAlwaysOnTop / window.restore /
-// window.setTitle / window.setSize / window.setIcon;
-// native execution is bound by the host via desktop.WindowService wrapping
-// app.App / DesktopHost.
-package window
+package official
 
 import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
 )
 
-// PluginID is the stable official plugin id.
-const PluginID domain.PluginID = "vitra.window"
+// WindowID is the stable id of the Window plugin.
+const WindowID domain.PluginID = "vitra.window"
 
-// New returns the official window plugin contribution.
-func New() plugin.Plugin {
+// Window returns the official window plugin contribution.
+func Window() plugin.Plugin {
 	return windowPlugin{}
 }
 
@@ -24,7 +17,7 @@ type windowPlugin struct{}
 
 func (windowPlugin) Manifest() plugin.Manifest {
 	return plugin.Manifest{
-		ID:          PluginID,
+		ID:          WindowID,
 		Name:        "Windows",
 		Version:     plugin.SemVer{Major: 1},
 		Description: "Create, close, apply, read, focus, blur, hide, show, minimize, maximize, unmaximize, fullscreen, unfullscreen, always-on-top, restore, set title, set size, and set icon for application windows",
@@ -38,91 +31,91 @@ func (windowPlugin) Contribute() (plugin.Contribution, error) {
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	create.WithPlugin(PluginID)
+	create.WithPlugin(WindowID)
 	closeCmd, err := domain.NewCommandDefinition("window.close", "Close an application window", "window.close")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	closeCmd.WithPlugin(PluginID)
+	closeCmd.WithPlugin(WindowID)
 	chrome, err := domain.NewCommandDefinition("window.chrome", "Apply window presentation (title, size, chrome)", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	chrome.WithPlugin(PluginID)
+	chrome.WithPlugin(WindowID)
 	getChrome, err := domain.NewCommandDefinition("window.getChrome", "Read window presentation (title, size, chrome)", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	getChrome.WithPlugin(PluginID)
+	getChrome.WithPlugin(WindowID)
 	focus, err := domain.NewCommandDefinition("window.focus", "Raise and focus an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	focus.WithPlugin(PluginID)
+	focus.WithPlugin(WindowID)
 	blur, err := domain.NewCommandDefinition("window.blur", "Resign key focus on an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	blur.WithPlugin(PluginID)
+	blur.WithPlugin(WindowID)
 	hide, err := domain.NewCommandDefinition("window.hide", "Hide an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	hide.WithPlugin(PluginID)
+	hide.WithPlugin(WindowID)
 	show, err := domain.NewCommandDefinition("window.show", "Show an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	show.WithPlugin(PluginID)
+	show.WithPlugin(WindowID)
 	minimize, err := domain.NewCommandDefinition("window.minimize", "Minimize an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	minimize.WithPlugin(PluginID)
+	minimize.WithPlugin(WindowID)
 	maximize, err := domain.NewCommandDefinition("window.maximize", "Maximize an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	maximize.WithPlugin(PluginID)
+	maximize.WithPlugin(WindowID)
 	unmaximize, err := domain.NewCommandDefinition("window.unmaximize", "Restore an application window from maximized", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	unmaximize.WithPlugin(PluginID)
+	unmaximize.WithPlugin(WindowID)
 	fullscreen, err := domain.NewCommandDefinition("window.fullscreen", "Enter fullscreen for an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	fullscreen.WithPlugin(PluginID)
+	fullscreen.WithPlugin(WindowID)
 	unfullscreen, err := domain.NewCommandDefinition("window.unfullscreen", "Exit fullscreen for an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	unfullscreen.WithPlugin(PluginID)
+	unfullscreen.WithPlugin(WindowID)
 	alwaysOnTop, err := domain.NewCommandDefinition("window.setAlwaysOnTop", "Toggle always-on-top for an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	alwaysOnTop.WithPlugin(PluginID)
+	alwaysOnTop.WithPlugin(WindowID)
 	restore, err := domain.NewCommandDefinition("window.restore", "Restore an application window from minimized/maximized/fullscreen", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	restore.WithPlugin(PluginID)
+	restore.WithPlugin(WindowID)
 	setTitle, err := domain.NewCommandDefinition("window.setTitle", "Set the title of an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	setTitle.WithPlugin(PluginID)
+	setTitle.WithPlugin(WindowID)
 	setSize, err := domain.NewCommandDefinition("window.setSize", "Set the size of an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	setSize.WithPlugin(PluginID)
+	setSize.WithPlugin(WindowID)
 	setIcon, err := domain.NewCommandDefinition("window.setIcon", "Set the icon of an application window", "window.chrome")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	setIcon.WithPlugin(PluginID)
+	setIcon.WithPlugin(WindowID)
 	return plugin.Contribution{Commands: []*domain.CommandDefinition{create, closeCmd, chrome, getChrome, focus, blur, hide, show, minimize, maximize, unmaximize, fullscreen, unfullscreen, alwaysOnTop, restore, setTitle, setSize, setIcon}}, nil
 }

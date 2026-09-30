@@ -140,6 +140,7 @@ func TestRun_UpdateApply(t *testing.T) {
 		AppID: "com.vitra.t", Version: "2.0.0", Channel: updater.ChannelStable,
 		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {
@@ -192,6 +193,7 @@ func TestRun_UpdateApplyChannel(t *testing.T) {
 		AppID: "com.vitra.channel", Version: "4.2.0", Channel: updater.ChannelBeta,
 		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {
@@ -269,6 +271,7 @@ func TestRun_UpdateCheck(t *testing.T) {
 		AppID: "com.vitra.channel", Version: "9.1.0", Channel: updater.ChannelStable,
 		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {
@@ -341,6 +344,7 @@ func TestRun_UpdateStage(t *testing.T) {
 		AppID: "com.vitra.stage", Version: "3.1.0", Channel: updater.ChannelStable,
 		Artifact: "app.bin", SHA256: hex.EncodeToString(sum[:]),
 		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(time.Hour),
 	}
 	m, err = updater.SignManifest(m, priv)
 	if err != nil {
@@ -1034,16 +1038,7 @@ func TestRun_NewScaffold(t *testing.T) {
 		"io/fs",
 		"go.klarlabs.de/vitra/desktop",
 		"go.klarlabs.de/vitra/platform",
-		"go.klarlabs.de/vitra/plugin/official/browser",
-		"go.klarlabs.de/vitra/plugin/official/clipboard",
-		"go.klarlabs.de/vitra/plugin/official/app",
-		"go.klarlabs.de/vitra/plugin/official/dialog",
-		"go.klarlabs.de/vitra/plugin/official/dragdrop",
-		"go.klarlabs.de/vitra/plugin/official/fs",
-		"go.klarlabs.de/vitra/plugin/official/menu",
-		"go.klarlabs.de/vitra/plugin/official/shortcut",
-		"go.klarlabs.de/vitra/plugin/official/tray",
-		"go.klarlabs.de/vitra/plugin/official/window",
+		"go.klarlabs.de/vitra/plugin/official",
 	} {
 		if !seen[want] {
 			t.Fatalf("scaffold missing import %q", want)
