@@ -37,6 +37,8 @@ A new window receives **no** privileged capability merely because it belongs
 to the application. Commands are explicitly registered. Grants are narrow,
 inspectable, and enforced at runtime.
 
+**Documentation: [klarlabs-studio.github.io/vitra](https://klarlabs-studio.github.io/vitra/)** (sources in [`docs/`](docs)).
+
 See [`docs/security.md`](docs/security.md) for the security model and its known
 limits, [`docs/intent.md`](docs/intent.md) for the full product charter, and
 [`docs/spikes/competitive.md`](docs/spikes/competitive.md) for the desktop host.

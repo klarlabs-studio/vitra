@@ -28,3 +28,13 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: "chore(templates)"
+
+  - package-ecosystem: npm
+    directory: /docs
+    schedule:
+      interval: monthly
+    groups:
+      docs:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(docs)"
