@@ -1,18 +1,15 @@
-// Package clipboard is the official Phase 3 system clipboard plugin contract.
-// It declares clipboard.read / clipboard.write permissions and contributes
-// commands; native execution is bound by the host application.
-package clipboard
+package official
 
 import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
 )
 
-// PluginID is the stable official plugin id.
-const PluginID domain.PluginID = "vitra.clipboard"
+// ClipboardID is the stable id of the Clipboard plugin.
+const ClipboardID domain.PluginID = "vitra.clipboard"
 
-// New returns the official clipboard plugin contribution.
-func New() plugin.Plugin {
+// Clipboard returns the official clipboard plugin contribution.
+func Clipboard() plugin.Plugin {
 	return clipboardPlugin{}
 }
 
@@ -20,7 +17,7 @@ type clipboardPlugin struct{}
 
 func (clipboardPlugin) Manifest() plugin.Manifest {
 	return plugin.Manifest{
-		ID:          PluginID,
+		ID:          ClipboardID,
 		Name:        "Clipboard",
 		Version:     plugin.SemVer{Major: 1, Minor: 0, Patch: 0},
 		Description: "System clipboard read/write",
@@ -34,11 +31,11 @@ func (clipboardPlugin) Contribute() (plugin.Contribution, error) {
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	read.WithPlugin(PluginID)
+	read.WithPlugin(ClipboardID)
 	write, err := domain.NewCommandDefinition("clipboard.write", "Write the system clipboard", "clipboard.write")
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	write.WithPlugin(PluginID)
+	write.WithPlugin(ClipboardID)
 	return plugin.Contribution{Commands: []*domain.CommandDefinition{read, write}}, nil
 }

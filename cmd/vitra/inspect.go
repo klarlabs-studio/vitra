@@ -4,23 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	officialapp "go.klarlabs.de/vitra/plugin/official/app"
-	officialbrowser "go.klarlabs.de/vitra/plugin/official/browser"
-	officialclipboard "go.klarlabs.de/vitra/plugin/official/clipboard"
-	officialdeeplink "go.klarlabs.de/vitra/plugin/official/deeplink"
-	officialdialog "go.klarlabs.de/vitra/plugin/official/dialog"
-	officialdragdrop "go.klarlabs.de/vitra/plugin/official/dragdrop"
-	officialfs "go.klarlabs.de/vitra/plugin/official/fs"
-	officialmenu "go.klarlabs.de/vitra/plugin/official/menu"
-	officialnotification "go.klarlabs.de/vitra/plugin/official/notification"
-	officialos "go.klarlabs.de/vitra/plugin/official/os"
-	officialpath "go.klarlabs.de/vitra/plugin/official/path"
-	officialshortcut "go.klarlabs.de/vitra/plugin/official/shortcut"
-	officialtray "go.klarlabs.de/vitra/plugin/official/tray"
-	officialwindow "go.klarlabs.de/vitra/plugin/official/window"
-
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/plugin/official"
 )
 
 func inspectDemo(args []string) error {
@@ -32,47 +18,10 @@ func inspectDemo(args []string) error {
 		return err
 	}
 	ctx := context.Background()
-	if err := rt.RegisterPlugin(ctx, officialfs.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialdialog.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialclipboard.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialbrowser.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialos.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialnotification.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialpath.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialwindow.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialmenu.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialtray.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialdragdrop.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialdeeplink.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialshortcut.New()); err != nil {
-		return err
-	}
-	if err := rt.RegisterPlugin(ctx, officialapp.New()); err != nil {
-		return err
+	for _, p := range official.All() {
+		if err := rt.RegisterPlugin(ctx, p); err != nil {
+			return err
+		}
 	}
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err

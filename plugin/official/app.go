@@ -1,17 +1,15 @@
-// Package app is the official Phase 3 application lifecycle plugin contract.
-// It declares app.quit; hosts bind execution via desktop.AppService → App.Quit.
-package app
+package official
 
 import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/plugin"
 )
 
-// PluginID is the stable official plugin id.
-const PluginID domain.PluginID = "vitra.app"
+// AppID is the stable id of the App plugin.
+const AppID domain.PluginID = "vitra.app"
 
-// New returns the official app plugin contribution.
-func New() plugin.Plugin {
+// App returns the official app plugin contribution.
+func App() plugin.Plugin {
 	return appPlugin{}
 }
 
@@ -19,7 +17,7 @@ type appPlugin struct{}
 
 func (appPlugin) Manifest() plugin.Manifest {
 	return plugin.Manifest{
-		ID:          PluginID,
+		ID:          AppID,
 		Name:        "App",
 		Version:     plugin.SemVer{Major: 1},
 		Description: "Application lifecycle commands",
@@ -33,6 +31,6 @@ func (appPlugin) Contribute() (plugin.Contribution, error) {
 	if err != nil {
 		return plugin.Contribution{}, err
 	}
-	quit.WithPlugin(PluginID)
+	quit.WithPlugin(AppID)
 	return plugin.Contribution{Commands: []*domain.CommandDefinition{quit}}, nil
 }

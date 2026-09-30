@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OpenSSF Scorecard runs weekly and on `main`; README badge.
 
 ### Changed
+- **Breaking:** the 14 official plugin packages (`plugin/official/fs`, `…/dialog`, …) are one package, `plugin/official`: constructors `official.FS()`, `official.Dialog()`, … `official.DeepLink()`, ids `official.FSID`, …, and `official.All()` for every plugin. Each old package held one constructor and one constant. The `vitra new` starter registers them with a single loop over `official.All()`.
 - Starter templates use React 19, TypeScript 7, Vite 8, `@sveltejs/vite-plugin-svelte` 7, and `vue-tsc` 3 (via Dependabot). CI now scaffolds each Vite template and runs `npm install`, `npm run build`, and `go build` on the result, so dependency bumps cannot break `vitra new` unnoticed.
 - CI pins GitHub Actions to commit SHAs.
 
