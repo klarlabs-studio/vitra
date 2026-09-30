@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Untrusted frame</title>
+  <style>
+    body { margin: 0; padding: 8px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #b42318; background: #fff5f4; }
+    p { margin: 0 0 4px; }
+  </style>
+</head>
+<body>
+  <!-- Stands in for hostile content: an ad, a compromised widget, an XSS
+       payload in a frame. It runs in a sandbox with an opaque origin and tries
+       to reach the native bridge directly. -->
+  <script src="untrusted.js"></script>
+</body>
+</html>

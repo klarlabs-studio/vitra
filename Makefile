@@ -1,4 +1,4 @@
-.PHONY: build build-native test test-native vet fmt fmt-check lint cover security check install-hooks demo e2e
+.PHONY: build build-native test test-native vet fmt fmt-check lint cover security check install-hooks demo e2e e2e-notes notes
 
 GO       := go
 LINT     := golangci-lint
@@ -24,6 +24,13 @@ e2e:
 	@out=$$(CGO_ENABLED=1 VITRA_DEMO_SECONDS=20 VITRA_E2E=1 timeout 90 xvfb-run -a .bin/competitive 2>&1); \
 	echo "$$out"; \
 	echo "$$out" | grep -q VITRA_E2E_OK
+
+# Notes demo in WebKitGTK: saves a note and runs every attack in the UI.
+e2e-notes:
+	CGO_ENABLED=1 timeout 120 xvfb-run -a $(GO) test -tags vitra_native -count=1 -run TestNotesE2E -v ./example/notes/
+
+notes:
+	CGO_ENABLED=1 $(GO) run -tags vitra_native ./example/notes
 
 test-native:
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeWindowChrome
