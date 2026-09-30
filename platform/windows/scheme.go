@@ -41,8 +41,11 @@ func safeName(appID string) string {
 	}, appID)
 }
 
+// regEscape encodes s for a quoted .reg string value: backslashes and quotes
+// are escaped, and CR/LF are dropped so a value cannot start a new line.
 func regEscape(s string) string {
-	return strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.NewReplacer("\r", "", "\n", "").Replace(s)
+	return strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(s)
 }
 
 // RegisterURLScheme writes an HKCU Classes .reg helper for scheme and
@@ -72,7 +75,7 @@ func (h *Host) RegisterURLScheme(scheme, appID, execPath string) error {
 		return err
 	}
 	regPath := filepath.Join(root, safeName(appID)+"-url.reg")
-	cmd := fmt.Sprintf("\"%s\" \"%%1\"", strings.ReplaceAll(abs, `"`, `\"`))
+	cmd := fmt.Sprintf(`"%s" "%%1"`, abs)
 	body := fmt.Sprintf(`Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Classes\%s]

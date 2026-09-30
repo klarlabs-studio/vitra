@@ -160,3 +160,6 @@ func (h *Host) err() error {
 
 // MenuItem matches the portable chrome menu entry.
 type MenuItem = platform.MenuItem
+
+// SetDevTools is a no-op without the native host.
+func (h *Host) SetDevTools(bool) {}

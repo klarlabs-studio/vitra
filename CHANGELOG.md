@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Inbound invoke messages over 1 MiB (`ipc.MaxMessageBytes`) are rejected before JSON parsing; the decoder is fuzzed for panics and for identity always coming from the host.
+- The WebView inspector is off by default on all hosts. Linux forced WebKitGTK developer extras on and Windows left WebView2 DevTools at its enabled default, letting anyone at the keyboard run script with the page's bridge access. Opt in with `app.Options.DevTools`; `vitra dev` enables it via `VITRA_DEVTOOLS=1`.
+
+### Fixed
+- Windows `register-scheme` / `register-files`: the generated `.reg` files left the quotes around the executable path and `"%1"` unescaped, producing an invalid command value; quotes are now escaped and CR/LF stripped from values.
+- Windows: host calls from command handlers run on the UI thread. `vitra_idle_add` ran queued jobs immediately on the calling thread, so since invokes moved off the UI thread, clipboard, dialog, and window calls touched Win32/WebView2 objects from goroutines. Jobs are now posted to a message-only window on the UI thread (which keeps working during modal dialogs), and run inline when already on it.
+- Native hosts pass job ids to C as integers instead of casting them through `unsafe.Pointer` (`go vet` warning).
+- CI builds and unit-tests the Darwin and Windows native hosts (`-tags vitra_native`) on macOS and Windows runners; before, only Linux native code was compiled in CI.
+
 ### Removed
 - **Breaking:** packages apps never need are no longer importable: `application`, `inmemory`, `ipc`, `bridge`, `bindings`, `packaging`, `provenance`, and `platform/null` moved under `internal/`. The public surface is `vitra`, `app`, `domain`, `desktop`, `platform/*` hosts, `plugin`, `policy`, `audit`, `updater`, and `worker`. `Runtime.EmitEvent` now returns `[]domain.EventDelivery` (was `application.EventDelivery`).
 - **Breaking:** `vitra new` supports five starters: `vanilla`, `vite`, `react`, `svelte`, `vue`. The other 47 templates (solid, preact, lit, alpine, htmx, angular, qwik, … uland) are gone; start from `vite` and build to `frontend/dist` for any other framework. Each template pinned npm versions that went stale without anyone noticing, and several targeted abandoned projects. Starter files now live under `cmd/vitra/templates/` as real files embedded with `embed.FS`, instead of ~6,000 lines of Go string literals; `cmd/vitra/main.go` shrinks from 9,000 to 1,500 lines. Output of the five kept templates is unchanged apart from the vite README heading.

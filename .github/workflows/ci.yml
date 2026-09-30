@@ -51,6 +51,44 @@ jobs:
           go build ./cmd/vitra ./internal/packaging ./app .
           go vet ./cmd/vitra ./internal/packaging ./app .
 
+  # Darwin and Windows native hosts only compile with cgo on their own OS, so
+  # cross-builds never see them. Build (and unit-test) them on real runners.
+  native-build:
+    name: Native build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build with -tags vitra_native
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          go build -tags vitra_native ./...
+          go vet -tags vitra_native ./app/... ./platform/... ./example/...
+
+      - name: Unit tests (native tag)
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        # Each runner tests its own host package; the others are covered on
+        # their own OS (their tests assume that OS's paths and locks).
+        run: |
+          host=$([ "$RUNNER_OS" = "Windows" ] && echo windows || echo darwin)
+          go test -tags vitra_native -count=1 ./app/... ./desktop/... ./platform ./platform/$host/...
+
   # Competitive Linux WebView host — not covered by the shared go-ci bar (CGO + GTK).
   native:
     name: Native Linux E2E

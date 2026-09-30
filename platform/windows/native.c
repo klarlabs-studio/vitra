@@ -12,7 +12,7 @@
 #include <shlobj.h>
 #include <stdio.h>
 
-extern void goVitraIdle(void *);
+extern void goVitraIdle(unsigned long long);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
 extern void goVitraAction(char *);
@@ -60,6 +60,10 @@ static int g_class_registered = 0;
 static int g_tray_class_registered = 0;
 static char *g_program_name = NULL;
 static int g_quit = 0;
+/* UI thread and its message-only window that runs queued Go jobs. */
+static DWORD g_ui_thread = 0;
+static HWND g_idle_hwnd = NULL;
+#define VITRA_WM_IDLE (WM_APP + 0x56)
 
 static HWND g_tray_hwnd = NULL;
 static NOTIFYICONDATAA g_nid;
@@ -473,8 +477,37 @@ const char *vitra_get_program_name(void) {
 	return g_program_name;
 }
 
+static LRESULT CALLBACK idle_wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	if (msg == VITRA_WM_IDLE) {
+		goVitraIdle((unsigned long long)lParam);
+		return 0;
+	}
+	return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+/* ensure_idle_window creates the job window on the calling (UI) thread.
+ * A message-only window, unlike a thread message, keeps receiving posts
+ * while a modal loop such as a file dialog runs. */
+static void ensure_idle_window(void) {
+	static const char *kIdleClassName = "VitraIdleWindow";
+	if (g_idle_hwnd) {
+		return;
+	}
+	WNDCLASSEXA wc;
+	memset(&wc, 0, sizeof(wc));
+	wc.cbSize = sizeof(wc);
+	wc.lpfnWndProc = idle_wnd_proc;
+	wc.hInstance = GetModuleHandle(NULL);
+	wc.lpszClassName = kIdleClassName;
+	RegisterClassExA(&wc);
+	g_idle_hwnd = CreateWindowExA(0, kIdleClassName, "", 0, 0, 0, 0, 0,
+		HWND_MESSAGE, NULL, GetModuleHandle(NULL), NULL);
+}
+
 void vitra_win32_main(void) {
 	MSG msg;
+	g_ui_thread = GetCurrentThreadId();
+	ensure_idle_window();
 	g_quit = 0;
 	while (!g_quit && GetMessage(&msg, NULL, 0, 0) > 0) {
 		VitraWin *w = NULL;
@@ -494,10 +527,16 @@ void vitra_win32_quit(void) {
 	PostQuitMessage(0);
 }
 
-void vitra_idle_add(void *data) {
-	/* Queue onto the UI thread via a custom message on a hidden helper — for
-	   the first scaffold, invoke immediately when already on the UI thread. */
-	goVitraIdle(data);
+void vitra_idle_add(unsigned long long id) {
+	/* Win32 windows and WebView2 objects belong to the UI thread: jobs from
+	 * other threads (invoke handlers run on goroutines) are posted to it.
+	 * On the UI thread itself, run inline so a waiting caller cannot
+	 * deadlock. */
+	if (!g_idle_hwnd || GetCurrentThreadId() == g_ui_thread) {
+		goVitraIdle(id);
+		return;
+	}
+	PostMessage(g_idle_hwnd, VITRA_WM_IDLE, 0, (LPARAM)id);
 }
 
 VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload) {

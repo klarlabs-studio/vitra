@@ -37,7 +37,7 @@ func TestRegisterURLScheme_WritesReg(t *testing.T) {
 	for _, want := range []string{
 		`Software\Classes\vitra`,
 		`"URL Protocol"=""`,
-		bin,
+		`@="\"` + strings.ReplaceAll(bin, `\`, `\\`) + `\" \"%1\""`,
 	} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("reg missing %q:\n%s", want, s)
@@ -61,5 +61,19 @@ func TestRegisterURLScheme_RejectsBadScheme(t *testing.T) {
 	h := New()
 	if err := h.RegisterURLScheme("Bad Scheme", "com.x", "/bin/true"); err == nil {
 		t.Fatal("expected rejection")
+	}
+}
+
+// .reg string values escape backslashes and quotes; a raw quote ends the
+// value early and a newline starts a new registry line.
+func TestRegEscape(t *testing.T) {
+	for in, want := range map[string]string{
+		`C:\Program Files\App\app.exe`:        `C:\\Program Files\\App\\app.exe`,
+		`"C:\a b\app.exe" "%1"`:               `\"C:\\a b\\app.exe\" \"%1\"`,
+		"My App\r\n[HKEY_CURRENT_USER\\Evil]": `My App[HKEY_CURRENT_USER\\Evil]`,
+	} {
+		if got := regEscape(in); got != want {
+			t.Errorf("regEscape(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

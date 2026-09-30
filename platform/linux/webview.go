@@ -777,13 +777,13 @@ func (h *Host) enqueue(fn func()) bool {
 	id := h.jobSeq
 	h.mu.Unlock()
 	h.jobs.Store(id, fn)
-	C.vitra_idle_add(unsafe.Pointer(uintptr(id)))
+	C.vitra_idle_add(C.ulonglong(id))
 	return true
 }
 
 //export goVitraIdle
-func goVitraIdle(ptr unsafe.Pointer) {
-	id := uint64(uintptr(ptr))
+func goVitraIdle(cid C.ulonglong) {
+	id := uint64(cid)
 	activeMu.Lock()
 	h := active
 	activeMu.Unlock()
@@ -925,4 +925,15 @@ func goVitraDrop(windowID, pathsJoined *C.char) {
 	}
 	// Off the UI thread, like goVitraAction.
 	go h.onDrop(domain.WindowID(C.GoString(windowID)), paths)
+}
+
+// SetDevTools enables or disables the web inspector for windows opened
+// afterwards. It is off unless enabled; app.Run sets it before opening
+// windows.
+func (h *Host) SetDevTools(enabled bool) {
+	v := C.int(0)
+	if enabled {
+		v = 1
+	}
+	C.vitra_set_devtools(v)
 }

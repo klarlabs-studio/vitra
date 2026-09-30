@@ -37,7 +37,9 @@ void vitra_gtk_init(const char *prgname);
 const char *vitra_get_prgname(void);
 void vitra_gtk_main(void);
 void vitra_gtk_quit(void);
-void vitra_idle_add(void *data);
+/* Queue Go job id for goVitraIdle on the UI thread. */
+void vitra_idle_add(unsigned long long id);
+void vitra_set_devtools(int enabled);
 
 VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload);
 void vitra_win_navigate(VitraWin *w, const char *uri);

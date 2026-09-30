@@ -10,7 +10,12 @@
 #include <X11/Xlib.h>
 #endif
 
-extern void goVitraIdle(void *);
+/* Web inspector for newly created webviews; off unless the app opts in. */
+static int vitra_devtools = 0;
+
+void vitra_set_devtools(int enabled) { vitra_devtools = enabled; }
+
+extern void goVitraIdle(unsigned long long);
 extern void goVitraMessage(char *, char *);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
@@ -21,7 +26,7 @@ static GtkStatusIcon *g_tray = NULL;
 static GtkWidget *g_tray_menu = NULL;
 
 static gboolean idle_cb(gpointer data) {
-	goVitraIdle(data);
+	goVitraIdle((unsigned long long)(guintptr)data);
 	return G_SOURCE_REMOVE;
 }
 
@@ -39,7 +44,7 @@ const char *vitra_get_prgname(void) {
 
 void vitra_gtk_main(void) { gtk_main(); }
 void vitra_gtk_quit(void) { gtk_main_quit(); }
-void vitra_idle_add(void *data) { g_idle_add(idle_cb, data); }
+void vitra_idle_add(unsigned long long id) { g_idle_add(idle_cb, (gpointer)(guintptr)id); }
 
 static void on_message(WebKitUserContentManager *mgr, WebKitJavascriptResult *js_result, gpointer user_data) {
 	(void)mgr;
@@ -106,7 +111,7 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 	}
 
 	w->view = WEBKIT_WEB_VIEW(webkit_web_view_new_with_user_content_manager(ucm));
-	webkit_settings_set_enable_developer_extras(webkit_web_view_get_settings(w->view), TRUE);
+	webkit_settings_set_enable_developer_extras(webkit_web_view_get_settings(w->view), vitra_devtools ? TRUE : FALSE);
 	g_signal_connect(w->view, "decide-policy", G_CALLBACK(on_policy), w->id);
 	g_signal_connect(w->window, "destroy", G_CALLBACK(on_destroy), w->id);
 	gtk_box_pack_start(GTK_BOX(w->vbox), GTK_WIDGET(w->view), TRUE, TRUE, 0);

@@ -7,6 +7,12 @@
 #include <wchar.h>
 #include <objbase.h>
 
+/* Web inspector for newly created webviews; WebView2 enables it by default,
+ * so it is switched off explicitly unless the app opts in. */
+static int vitra_devtools = 0;
+
+void vitra_set_devtools(int enabled) { vitra_devtools = enabled; }
+
 extern void goVitraMessage(char *, char *);
 extern int goVitraNav(char *, char *);
 
@@ -176,6 +182,7 @@ static HRESULT STDMETHODCALLTYPE on_controller_created(ICoreWebView2CreateCoreWe
 	ICoreWebView2Settings *settings = NULL;
 	if (SUCCEEDED(webview->lpVtbl->get_Settings(webview, &settings)) && settings) {
 		settings->lpVtbl->put_IsWebMessageEnabled(settings, TRUE);
+		settings->lpVtbl->put_AreDevToolsEnabled(settings, vitra_devtools ? TRUE : FALSE);
 		settings->lpVtbl->Release(settings);
 	}
 
