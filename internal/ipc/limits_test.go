@@ -68,3 +68,23 @@ func FuzzBridge_DecodeInvoke(f *testing.F) {
 		}
 	})
 }
+
+func TestBridge_RequiresSenderToken(t *testing.T) {
+	host := ipc.HostIdentity{Window: "main", Origin: domain.OriginPackagedLocal}
+	env := func(token string) []byte {
+		raw, _ := json.Marshal(map[string]any{
+			"protocol": ipc.ProtocolVersion, "kind": "invoke", "id": "1", "token": token,
+			"payload": map[string]any{"command": "x"},
+		})
+		return raw
+	}
+	bridge := ipc.Bridge{Host: host, Token: "s3cret"}
+	if _, _, err := bridge.DecodeInvoke(env("s3cret")); err != nil {
+		t.Fatalf("valid token rejected: %v", err)
+	}
+	for _, bad := range [][]byte{env(""), env("s3cre"), env("s3cret "), env("S3CRET"), []byte("{"), []byte(`{"protocol":"1","kind":"invoke","payload":{"command":"x"}}`)} {
+		if _, _, err := bridge.DecodeInvoke(bad); !errors.Is(err, ipc.ErrUntrustedSender) {
+			t.Fatalf("%s: err=%v, want ErrUntrustedSender", bad, err)
+		}
+	}
+}

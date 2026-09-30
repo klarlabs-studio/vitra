@@ -1,13 +1,20 @@
 // Package bridge contains the injected frontend runtime for Vitra WebViews.
 package bridge
 
-// PreloadJS is injected at document start. Identity is never trusted from JS —
-// the host stamps window/origin when handling invokes. Invoke traffic uses the
-// versioned ipc envelope (protocol "1"); replies keep the compact bridge shape
+import "strings"
+
+// preloadJS is injected at document start; Preload fills in __VITRA_TOKEN__
+// per window. Identity is never trusted from JS: the host stamps
+// window/origin when handling invokes. Invoke traffic uses the versioned ipc
+// envelope (protocol "1"); replies keep the compact bridge shape
 // {id,ok,result|error} for __recv.
-const PreloadJS = `
+const preloadJS = `
 (function() {
+  // WebView2 injects document-created scripts into every frame; only the top
+  // frame gets the bridge, and subframes never see the token.
+  if (window.top !== window) return;
   if (window.__vitra) return;
+  const token = "__VITRA_TOKEN__";
   const pending = new Map();
   const listeners = new Map();
   let seq = 0;
@@ -32,6 +39,7 @@ const PreloadJS = `
           protocol: "1",
           kind: "invoke",
           id: id,
+          token: token,
           payload: {
             command: command,
             input: input === undefined ? null : input,
@@ -72,3 +80,20 @@ const PreloadJS = `
   window.vitra = window.__vitra;
 })();
 `
+
+// Preload returns the bridge script for one window. token authenticates the
+// window's top frame to the host: it lives only in the script's closure and is
+// sent with every message, so a subframe (for example a cross-origin iframe
+// that can reach the native message handler) cannot forge calls. token must be
+// hex; anything else panics, since it is embedded in a JavaScript string.
+func Preload(token string) string {
+	if token == "" {
+		panic("bridge: empty token")
+	}
+	for _, r := range token {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", r) {
+			panic("bridge: token must be hex")
+		}
+	}
+	return strings.Replace(preloadJS, "__VITRA_TOKEN__", token, 1)
+}

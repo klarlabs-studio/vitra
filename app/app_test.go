@@ -204,16 +204,27 @@ func TestApp_RunInvokeAndNavPolicy(t *testing.T) {
 		}
 	}
 
-	raw, _ := json.Marshal(map[string]any{
-		"protocol": "1",
-		"kind":     "invoke",
-		"id":       "1",
-		"payload": map[string]any{
-			"command": "demo.greet",
-			"input":   "Klar",
-		},
-	})
-	resp := host.invoke("main", domain.OriginPackagedLocal, raw)
+	greet := func(token string) []byte {
+		raw, _ := json.Marshal(map[string]any{
+			"protocol": "1",
+			"kind":     "invoke",
+			"id":       "1",
+			"token":    token,
+			"payload": map[string]any{
+				"command": "demo.greet",
+				"input":   "Klar",
+			},
+		})
+		return raw
+	}
+	// A subframe can reach the native handler but not the top frame's token:
+	// its messages are dropped without a reply.
+	for _, forged := range []string{"", "0000", strings.Repeat("a", 64)} {
+		if resp := host.invoke("main", domain.OriginPackagedLocal, greet(forged)); resp != nil {
+			t.Fatalf("token %q: got reply %s, want none", forged, resp)
+		}
+	}
+	resp := host.invoke("main", domain.OriginPackagedLocal, greet(preloadToken(t, host.preload)))
 	var got map[string]any
 	if err := json.Unmarshal(resp, &got); err != nil {
 		t.Fatal(err)
@@ -289,12 +300,12 @@ func TestApp_HelpersAndBadInvoke(t *testing.T) {
 	if application.Addr() == "" || !strings.Contains(application.DebugString(), "com.vitra.helpers") {
 		t.Fatalf("addr/debug %q %q", application.Addr(), application.DebugString())
 	}
-	bad := host.invoke("main", domain.OriginPackagedLocal, []byte("{"))
-	if !strings.Contains(string(bad), "bad_request") && !strings.Contains(string(bad), "invalid") {
-		t.Fatalf("bad json: %s", bad)
+	// Unparseable messages cannot be attributed to the top frame: no reply.
+	if bad := host.invoke("main", domain.OriginPackagedLocal, []byte("{")); bad != nil {
+		t.Fatalf("bad json got reply: %s", bad)
 	}
 	wrongType, _ := json.Marshal(map[string]any{
-		"protocol": "1", "kind": "event", "id": "1", "payload": map[string]any{},
+		"protocol": "1", "kind": "event", "id": "1", "token": preloadToken(t, host.preload), "payload": map[string]any{},
 	})
 	resp := host.invoke("main", domain.OriginPackagedLocal, wrongType)
 	if !strings.Contains(string(resp), "bad_request") && !strings.Contains(string(resp), "expected kind") {
@@ -405,4 +416,17 @@ func TestApp_NativeDestroyQuitsLastWindow(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("expected quit after last native destroy")
 	}
+}
+
+// preloadToken extracts the sender token the app embedded in a window's
+// preload script.
+func preloadToken(t *testing.T, preload string) string {
+	t.Helper()
+	const marker = `const token = "`
+	i := strings.Index(preload, marker)
+	if i < 0 {
+		t.Fatal("preload has no sender token")
+	}
+	rest := preload[i+len(marker):]
+	return rest[:strings.IndexByte(rest, '"')]
 }

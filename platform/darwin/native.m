@@ -115,6 +115,11 @@ extern void goVitraDrop(char *, char *);
 - (void)userContentController:(WKUserContentController *)userContentController
       didReceiveScriptMessage:(WKScriptMessage *)message {
 	(void)userContentController;
+	/* Only the top frame carries the bridge; drop anything a subframe posts
+	 * (the host also requires the top frame's sender token). */
+	if (!message.frameInfo.isMainFrame) {
+		return;
+	}
 	NSString *body = nil;
 	if ([message.body isKindOfClass:[NSString class]]) {
 		body = (NSString *)message.body;

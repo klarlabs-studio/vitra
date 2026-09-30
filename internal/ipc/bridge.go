@@ -6,6 +6,7 @@
 package ipc
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +22,11 @@ const ProtocolVersion = "1"
 // native message path before any authorization, so an unbounded message
 // would let any page allocate without limit.
 const MaxMessageBytes = 1 << 20 // 1 MiB
+
+// ErrUntrustedSender is returned for inbound messages that cannot be
+// attributed to the window's top frame: unparseable, or without the window's
+// sender token. Callers should drop them without replying.
+var ErrUntrustedSender = errors.New("ipc message from an untrusted sender")
 
 // ErrMessageTooLarge is returned for inbound messages over MaxMessageBytes.
 var ErrMessageTooLarge = fmt.Errorf("ipc message exceeds %d bytes", MaxMessageBytes)
@@ -40,6 +46,7 @@ type Envelope struct {
 	Protocol string          `json:"protocol"`
 	Kind     Kind            `json:"kind"`
 	ID       string          `json:"id,omitempty"`
+	Token    string          `json:"token,omitempty"`
 	Payload  json.RawMessage `json:"payload"`
 }
 
@@ -82,6 +89,9 @@ type HostIdentity struct {
 // Bridge decodes inbound envelopes using host-supplied identity.
 type Bridge struct {
 	Host HostIdentity
+	// Token is the window's sender token (see bridge.Preload). When set,
+	// messages must carry it.
+	Token string
 }
 
 // DecodeInvoke validates protocol version and builds a domain InvocationRequest
@@ -92,7 +102,10 @@ func (b Bridge) DecodeInvoke(raw []byte) (domain.InvocationRequest, string, erro
 	}
 	var env Envelope
 	if err := json.Unmarshal(raw, &env); err != nil {
-		return domain.InvocationRequest{}, "", fmt.Errorf("ipc decode: %w", err)
+		return domain.InvocationRequest{}, "", fmt.Errorf("%w: %v", ErrUntrustedSender, err)
+	}
+	if b.Token != "" && subtle.ConstantTimeCompare([]byte(env.Token), []byte(b.Token)) != 1 {
+		return domain.InvocationRequest{}, "", ErrUntrustedSender
 	}
 	if env.Protocol != ProtocolVersion {
 		return domain.InvocationRequest{}, "", fmt.Errorf("unsupported ipc protocol %q (want %q)", env.Protocol, ProtocolVersion)

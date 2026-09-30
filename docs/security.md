@@ -118,11 +118,19 @@ neither by default.
   allowed to exactly that scheme and `host:port` (no userinfo) or to
   `about:blank`. Anything else loses the bridge. Earlier versions used a
   string-prefix check that `http://127.0.0.1:PORT@evil.example/` passed.
-- **Known limit:** the origin stamped on a call is the origin the host
-  recorded for the window, not yet the source frame of each message.
-  Verifying every message's frame natively (`WKScriptMessage.frameInfo`,
-  WebView2 `Source`, the WebKitGTK web view URI) and refusing subframes is
-  planned work.
+- **Only the top frame can call.** Each window gets a random 256-bit sender
+  token. It is embedded in the preload's closure, which runs only in the top
+  frame, and never placed on `window`. Every message must carry it (checked
+  in constant time). Messages without it are dropped without a reply. This
+  covers subframes that can reach the native message handler, including
+  cross-origin iframes: WebView2 injects the preload into every frame, but
+  the script returns in subframes before defining the token. macOS also
+  drops messages whose `frameInfo` is not the main frame.
+- **Known limit:** the origin stamped on a call is the one the host recorded
+  for the window, enforced by the navigation policy above. It is not read
+  from each message's document. A top frame that navigates away from the
+  asset server loses the bridge through navigation policy, not through a
+  per-message origin check.
 
 This is the class of bug behind Tauri's recent origin CVEs:
 
@@ -131,8 +139,8 @@ This is the class of bug behind Tauri's recent origin CVEs:
 - [GHSA-7gmj-67g7-phm9](https://github.com/tauri-apps/tauri/security/advisories/GHSA-7gmj-67g7-phm9):
   local-URL confusion let remote pages reach local-only IPC.
 
-Vitra's design keys authority on host-recorded identity rather than
-URL-string checks. The per-message frame check above is the remaining piece.
+Vitra's design keys authority on host-recorded identity and a top-frame
+sender token rather than URL-string checks.
 
 ## Other defenses
 
@@ -173,6 +181,7 @@ URL-string checks. The per-message frame check above is the remaining piece.
 | Path scopes | `domain`: `TestPathScope_RejectsBypasses`, `TestPathScope_WindowsDrivePaths`, `TestNewCapabilityGrant_RejectsMalformedPathPatterns`, `FuzzPathScope_Matches`; `desktop`: `TestFileService_ReadFollowsSymlinksOnlyWithinScope`, `TestFileService_WriteCannotEscapeThroughSymlinks` |
 | Least-privilege starter | `cmd/vitra`: `TestScaffold_GrantsLeastPrivilegeByDefault` |
 | IPC limits | `internal/ipc`: `TestBridge_RejectsOversizedMessages` |
+| Only the top frame can call | `internal/ipc`: `TestBridge_RequiresSenderToken`; `internal/bridge`: `TestPreload_KeepsSenderTokenInTopFrameClosure`; `app`: `TestApp_RunInvokeAndNavPolicy` (forged tokens get no reply) |
 | Host calls from commands don't deadlock | Native E2E (`make e2e`): clipboard round-trip from an invoke |
 
 Run the fuzz targets locally with, for example,
