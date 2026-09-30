@@ -222,7 +222,7 @@ typedef struct ICoreWebView2WebMessageReceivedEventArgsVtbl {
 	HRESULT(STDMETHODCALLTYPE *QueryInterface)(ICoreWebView2WebMessageReceivedEventArgs *, REFIID, void **);
 	ULONG(STDMETHODCALLTYPE *AddRef)(ICoreWebView2WebMessageReceivedEventArgs *);
 	ULONG(STDMETHODCALLTYPE *Release)(ICoreWebView2WebMessageReceivedEventArgs *);
-	void *get_Source;
+	HRESULT(STDMETHODCALLTYPE *get_Source)(ICoreWebView2WebMessageReceivedEventArgs *, LPWSTR *);
 	HRESULT(STDMETHODCALLTYPE *get_WebMessageAsJson)(ICoreWebView2WebMessageReceivedEventArgs *, LPWSTR *);
 	HRESULT(STDMETHODCALLTYPE *TryGetWebMessageAsString)(ICoreWebView2WebMessageReceivedEventArgs *, LPWSTR *);
 } ICoreWebView2WebMessageReceivedEventArgsVtbl;

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- The origin of a call is now checked on every bridge message. All three native hosts report the document that sent each message, and the app accepts it only from its own asset server, deriving the call's origin from it. Messages from any other document (a remote page, `about:blank`, another local port) are dropped and audited as `bridge.reject`. This closes the last documented bridge limit; before, the origin was the one last recorded for the window and relied on the navigation policy. Hosts gain an optional `SetMessageHandler`.
+
 ### Added
 - `updater.ErrBadSignature` and `updater.ErrDigestMismatch`, so callers can recognise a forged or tampered update with `errors.Is` instead of matching message text.
 - Runnable examples on pkg.go.dev for typed commands, the TypeScript client, auditing, path scopes, grants, the update check, enterprise policy, and `App.UseOfficialPlugins`.

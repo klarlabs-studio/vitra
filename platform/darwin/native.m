@@ -16,7 +16,7 @@ static int vitra_devtools = 0;
 void vitra_set_devtools(int enabled) { vitra_devtools = enabled; }
 
 extern void goVitraIdle(unsigned long long);
-extern void goVitraMessage(char *, char *);
+extern void goVitraMessage(char *, char *, char *);
 extern void goVitraReject(char *, char *);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
@@ -141,7 +141,10 @@ extern void goVitraDrop(char *, char *);
 	if (!body || !windowID) {
 		return;
 	}
-	goVitraMessage(windowID, (char *)[body UTF8String]);
+	/* The document that sent the message: the app checks it on every message. */
+	NSURL *senderURL = message.frameInfo.request.URL ?: message.webView.URL;
+	const char *sender = senderURL.absoluteString ? [senderURL.absoluteString UTF8String] : "";
+	goVitraMessage(windowID, (char *)[body UTF8String], (char *)sender);
 }
 
 - (void)webView:(WKWebView *)webView

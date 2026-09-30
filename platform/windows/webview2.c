@@ -13,7 +13,7 @@ static int vitra_devtools = 0;
 
 void vitra_set_devtools(int enabled) { vitra_devtools = enabled; }
 
-extern void goVitraMessage(char *, char *);
+extern void goVitraMessage(char *, char *, char *);
 extern int goVitraNav(char *, char *);
 
 typedef struct VitraWV2 VitraWV2;
@@ -125,9 +125,17 @@ static HRESULT STDMETHODCALLTYPE on_web_message(ICoreWebView2WebMessageReceivedE
 	if (SUCCEEDED(hr) && wmsg) {
 		char *msg = wide_to_utf8(wmsg);
 		CoTaskMemFree(wmsg);
-		if (msg && wv->id) {
-			goVitraMessage(wv->id, msg);
+		/* The document that sent the message: the app checks it on every message. */
+		LPWSTR wsrc = NULL;
+		char *src = NULL;
+		if (SUCCEEDED(args->lpVtbl->get_Source(args, &wsrc)) && wsrc) {
+			src = wide_to_utf8(wsrc);
+			CoTaskMemFree(wsrc);
 		}
+		if (msg && wv->id) {
+			goVitraMessage(wv->id, msg, src ? src : "");
+		}
+		free(src);
 		free(msg);
 	}
 	return S_OK;

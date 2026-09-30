@@ -35,6 +35,7 @@ type Host struct {
 	windows     map[domain.WindowID]*nativeWindow
 	origins     map[domain.WindowID]domain.Origin
 	onInvoke    func(domain.WindowID, domain.Origin, []byte) []byte
+	onMessage   func(domain.WindowID, string, []byte) []byte
 	onReject    func(domain.WindowID, string)
 	onNav       func(domain.WindowID, string) bool
 	onAction    func(id string)
@@ -189,6 +190,13 @@ func (h *Host) Features() platform.FeatureSet {
 // SetInvokeHandler registers the IPC callback.
 func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) []byte) {
 	h.onInvoke = fn
+}
+
+// SetMessageHandler registers the IPC callback that also receives the URL of
+// the document that sent each message. When set, it is used instead of the
+// invoke handler.
+func (h *Host) SetMessageHandler(fn func(windowID domain.WindowID, senderURL string, raw []byte) []byte) {
+	h.onMessage = fn
 }
 
 // SetRejectHandler is called for bridge messages the host drops before they
@@ -773,11 +781,11 @@ func goVitraIdle(cid C.ulonglong) {
 }
 
 //export goVitraMessage
-func goVitraMessage(windowID, msg *C.char) {
+func goVitraMessage(windowID, msg, sender *C.char) {
 	activeMu.Lock()
 	h := active
 	activeMu.Unlock()
-	if h == nil || h.onInvoke == nil {
+	if h == nil || (h.onInvoke == nil && h.onMessage == nil) {
 		return
 	}
 	id := domain.WindowID(C.GoString(windowID))
@@ -793,7 +801,7 @@ func goVitraMessage(windowID, msg *C.char) {
 	// them here would deadlock the loop, and a slow command would freeze the
 	// UI. The reply hops back to the UI thread.
 	payload := []byte(C.GoString(msg))
-	go h.handleMessage(id, origin, payload)
+	go h.handleMessage(id, origin, C.GoString(sender), payload)
 }
 
 //export goVitraReject
@@ -810,8 +818,13 @@ func goVitraReject(windowID, reason *C.char) {
 	go h.onReject(id, why)
 }
 
-func (h *Host) handleMessage(id domain.WindowID, origin domain.Origin, payload []byte) {
-	resp := h.onInvoke(id, origin, payload)
+func (h *Host) handleMessage(id domain.WindowID, origin domain.Origin, sender string, payload []byte) {
+	var resp []byte
+	if h.onMessage != nil {
+		resp = h.onMessage(id, sender, payload)
+	} else {
+		resp = h.onInvoke(id, origin, payload)
+	}
 	if len(resp) == 0 {
 		return
 	}
