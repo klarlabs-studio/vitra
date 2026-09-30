@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- frame-src allows https: on purpose: the "embed a remote page" attack
+       should be stopped by Vitra's navigation policy, not by this header.
+       A real app should restrict frame-src as well. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self' https:">
+  <title>Vitra Notes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Notes">
+    <header class="sidebar-head">
+      <h1>Notes</h1>
+      <button id="new-note" class="icon-btn" title="New note (Ctrl/Cmd+N)" aria-label="New note">+</button>
+    </header>
+    <form id="new-form" class="new-form" hidden>
+      <input id="new-name" type="text" placeholder="Note name" aria-label="Note name" autocomplete="off">
+    </form>
+    <nav id="tree" class="tree"></nav>
+    <footer class="vault" id="vault" title=""></footer>
+  </aside>
+
+  <main class="editor">
+    <header class="editor-head">
+      <div class="crumbs" id="crumbs">No note open</div>
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tab-edit" aria-selected="true">Edit</button>
+        <button role="tab" id="tab-preview" aria-selected="false">Preview</button>
+      </div>
+      <button id="save" class="primary" disabled>Save</button>
+    </header>
+    <textarea id="text" spellcheck="true" aria-label="Note text" disabled></textarea>
+    <article id="preview" class="preview" hidden></article>
+    <p id="status" class="status" role="status"></p>
+  </main>
+
+  <aside class="audit" aria-label="Audit log">
+    <header class="audit-head">
+      <h2>Audit log</h2>
+      <div class="filters" role="group" aria-label="Filter">
+        <button id="filter-all" aria-pressed="true">All</button>
+        <button id="filter-refused" aria-pressed="false">Refused <span id="refused-count" class="count">0</span></button>
+      </div>
+    </header>
+    <ol id="log" class="log" aria-live="polite"></ol>
+
+    <section class="attacks" aria-labelledby="attacks-title">
+      <h2 id="attacks-title">Try to break it</h2>
+      <p class="hint">Each button makes this page attempt a real attack through the real bridge.</p>
+      <ul id="attack-list"></ul>
+      <div id="frames" class="frames"></div>
+    </section>
+  </aside>
+
+  <script src="markdown.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -158,3 +158,6 @@ jobs:
 
       - name: Eval → invoke → gateway E2E
         run: make e2e
+
+      - name: Notes demo E2E (real UI, every attack refused)
+        run: make e2e-notes
