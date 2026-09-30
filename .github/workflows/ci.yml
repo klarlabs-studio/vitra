@@ -51,6 +51,42 @@ jobs:
           go build ./cmd/vitra ./internal/packaging ./app .
           go vet ./cmd/vitra ./internal/packaging ./app .
 
+  # Starter templates are copied by every `vitra new`; build each frontend so
+  # dependency bumps (Dependabot) cannot break them unnoticed.
+  templates:
+    name: Template build (${{ matrix.template }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        template: [vite, react, svelte, vue]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+
+      - name: Scaffold, build frontend, build app
+        env:
+          VITRA_MODULE_PATH: ${{ github.workspace }}
+          TEMPLATE: ${{ matrix.template }}
+        run: |
+          go run ./cmd/vitra new "$RUNNER_TEMP/app" --template "$TEMPLATE"
+          cd "$RUNNER_TEMP/app/frontend"
+          npm install --no-audit --no-fund
+          npm run build
+          test -f dist/index.html
+          cd ..
+          go mod tidy
+          go build -o /dev/null .
+
   # Darwin and Windows native hosts only compile with cgo on their own OS, so
   # cross-builds never see them. Build (and unit-test) them on real runners.
   native-build:
