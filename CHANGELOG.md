@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vitra new` generates a 120-line hello-world instead of a 658-line tour of every plugin: one typed `greet` command, one grant, and a matching generated client. Every template's frontend calls `client.greet`. The plugin tour lives on in `example/competitive`, and `example/notes` shows a complete app.
 
 ### Added
+- `example/notes` (`make notes`): a Markdown notes app over a vault folder with a live audit panel and a "Try to break it" panel that runs nine real attacks (path escapes, a denied folder, writing a script, a path-binding mismatch, remote navigation and frames, a forged bridge call). CI drives its UI in WebKitGTK (`make e2e-notes`).
 - Audit events for attacks the app stops before a command runs: `bridge.reject` (a message without the window's sender token, an unparseable message, an invalid top-frame message, or, on macOS, a message from a subframe) and `navigation.block` (a navigation the policy refused, logged without credentials, query, or fragment).
 - `command.invoke` audit events carry the checked `resource_path` and, for denials, the denial `code` in `Metadata`, so the log says what was attempted and why it was refused.
 
