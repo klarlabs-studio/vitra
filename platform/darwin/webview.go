@@ -6,7 +6,7 @@ package darwin
 
 /*
 #cgo CFLAGS: -x objective-c -fno-objc-arc
-#cgo LDFLAGS: -framework Cocoa -framework WebKit -framework Carbon
+#cgo LDFLAGS: -framework Cocoa -framework WebKit -framework Carbon -framework UniformTypeIdentifiers -framework UserNotifications
 #include "native.h"
 #include <stdlib.h>
 */
@@ -140,8 +140,8 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "NSAlert info/confirm",
 		},
 		platform.FeatureNotificationShow: {
-			Feature: platform.FeatureNotificationShow, Available: true,
-			Detail: "NSUserNotification title+body",
+			Feature: platform.FeatureNotificationShow, Available: C.vitra_has_bundle_id() != 0,
+			Detail: notificationDetail,
 		},
 		platform.FeatureMenuBar: {
 			Feature: platform.FeatureMenuBar, Available: true,
@@ -567,6 +567,9 @@ func (h *Host) MessageDialog(title, message, kind string) (bool, error) {
 
 // ShowNotification displays a title+body desktop notification.
 func (h *Host) ShowNotification(title, body string) error {
+	if C.vitra_has_bundle_id() == 0 {
+		return &platform.ErrUnsupported{Feature: platform.FeatureNotificationShow, OS: platform.OSDarwin, Detail: notificationDetail}
+	}
 	errCh := make(chan error, 1)
 	h.dispatch(func() {
 		h.ensureInit()
@@ -583,6 +586,11 @@ func (h *Host) ShowNotification(title, body string) error {
 	})
 	return <-errCh
 }
+
+// notificationDetail explains the bundle requirement: macOS delivers
+// notifications only to apps with a bundle identifier, so `go run` and
+// unbundled binaries cannot show them.
+const notificationDetail = "UNUserNotificationCenter; needs an app bundle with a bundle identifier (vitra package --format app-dir)"
 
 // SetMenuBar replaces the application main menu with the given flat items.
 func (h *Host) SetMenuBar(id domain.WindowID, items []platform.MenuItem) error {

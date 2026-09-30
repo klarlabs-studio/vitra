@@ -48,6 +48,9 @@ go get go.klarlabs.de/vitra
 go install go.klarlabs.de/vitra/cmd/vitra@latest
 ```
 
+Native hosts: macOS 11 or later (WKWebView), Windows 10/11 with the
+WebView2 Evergreen Runtime, and Linux with WebKitGTK 4.1.
+
 Linux native host dependencies:
 
 ```bash

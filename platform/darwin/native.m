@@ -3,6 +3,8 @@
 #import "native.h"
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <UserNotifications/UserNotifications.h>
 #import <Carbon/Carbon.h>
 #import <stdlib.h>
 #import <string.h>
@@ -64,7 +66,7 @@ extern void goVitraDrop(char *, char *);
 - (void)setDropEnabled:(int)enabled {
 	dropEnabled = enabled ? 1 : 0;
 	if (dropEnabled) {
-		[self registerForDraggedTypes:@[NSFilenamesPboardType]];
+		[self registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
 	} else {
 		[self unregisterDraggedTypes];
 	}
@@ -80,13 +82,15 @@ extern void goVitraDrop(char *, char *);
 		return NO;
 	}
 	NSPasteboard *pb = [sender draggingPasteboard];
-	NSArray *files = [pb propertyListForType:NSFilenamesPboardType];
-	if (![files isKindOfClass:[NSArray class]] || files.count == 0) {
+	NSArray<NSURL *> *urls = [pb readObjectsForClasses:@[[NSURL class]]
+					   options:@{NSPasteboardURLReadingFileURLsOnlyKey: @YES}];
+	if (urls.count == 0) {
 		return NO;
 	}
 	NSMutableString *joined = [NSMutableString string];
-	for (NSString *path in files) {
-		if (![path isKindOfClass:[NSString class]] || path.length == 0) {
+	for (NSURL *url in urls) {
+		NSString *path = url.path;
+		if (path.length == 0) {
 			continue;
 		}
 		if (joined.length > 0) {
@@ -659,6 +663,34 @@ void vitra_win_set_drag_drop(VitraWin *w, int enabled) {
 	[w->dropView setDropEnabled:enabled];
 }
 
+
+/* vitra_apply_filters restricts panel to the extensions in filters, which is
+ * "Label:ext1,ext2;Other:ext3". */
+static void vitra_apply_filters(NSSavePanel *panel, const char *filters) {
+	if (!filters || !filters[0]) {
+		return;
+	}
+	NSMutableArray<UTType *> *types = [NSMutableArray array];
+	NSString *spec = [NSString stringWithUTF8String:filters];
+	for (NSString *group in [spec componentsSeparatedByString:@";"]) {
+		NSRange colon = [group rangeOfString:@":"];
+		if (colon.location == NSNotFound) {
+			continue;
+		}
+		NSString *list = [group substringFromIndex:colon.location + 1];
+		for (NSString *ext in [list componentsSeparatedByString:@","]) {
+			NSString *trimmed = [ext stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+			UTType *type = trimmed.length > 0 ? [UTType typeWithFilenameExtension:trimmed] : nil;
+			if (type) {
+				[types addObject:type];
+			}
+		}
+	}
+	if (types.count > 0) {
+		panel.allowedContentTypes = types;
+	}
+}
+
 char *vitra_open_dialog(const char *title, const char *default_path, const char *filters) {
 	NSOpenPanel *panel = [NSOpenPanel openPanel];
 	panel.canChooseFiles = YES;
@@ -672,26 +704,7 @@ char *vitra_open_dialog(const char *title, const char *default_path, const char 
 	if (default_path && default_path[0]) {
 		panel.directoryURL = [NSURL fileURLWithPath:[NSString stringWithUTF8String:default_path] isDirectory:YES];
 	}
-	if (filters && filters[0]) {
-		NSMutableArray<NSString *> *exts = [NSMutableArray array];
-		NSString *spec = [NSString stringWithUTF8String:filters];
-		for (NSString *group in [spec componentsSeparatedByString:@";"]) {
-			NSRange colon = [group rangeOfString:@":"];
-			if (colon.location == NSNotFound) {
-				continue;
-			}
-			NSString *list = [group substringFromIndex:colon.location + 1];
-			for (NSString *ext in [list componentsSeparatedByString:@","]) {
-				NSString *trimmed = [ext stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-				if (trimmed.length > 0) {
-					[exts addObject:trimmed];
-				}
-			}
-		}
-		if (exts.count > 0) {
-			panel.allowedFileTypes = exts;
-		}
-	}
+	vitra_apply_filters(panel, filters);
 	if ([panel runModal] != NSModalResponseOK) {
 		return NULL;
 	}
@@ -744,26 +757,7 @@ char *vitra_save_dialog(const char *title, const char *default_path, const char 
 			panel.nameFieldStringValue = [path lastPathComponent];
 		}
 	}
-	if (filters && filters[0]) {
-		NSMutableArray<NSString *> *exts = [NSMutableArray array];
-		NSString *spec = [NSString stringWithUTF8String:filters];
-		for (NSString *group in [spec componentsSeparatedByString:@";"]) {
-			NSRange colon = [group rangeOfString:@":"];
-			if (colon.location == NSNotFound) {
-				continue;
-			}
-			NSString *list = [group substringFromIndex:colon.location + 1];
-			for (NSString *ext in [list componentsSeparatedByString:@","]) {
-				NSString *trimmed = [ext stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-				if (trimmed.length > 0) {
-					[exts addObject:trimmed];
-				}
-			}
-		}
-		if (exts.count > 0) {
-			panel.allowedFileTypes = exts;
-		}
-	}
+	vitra_apply_filters(panel, filters);
 	if ([panel runModal] != NSModalResponseOK) {
 		return NULL;
 	}
@@ -795,13 +789,34 @@ int vitra_message_dialog(const char *title, const char *message, int confirm) {
 	}
 }
 
+int vitra_has_bundle_id(void) {
+	@autoreleasepool {
+		return [[NSBundle mainBundle] bundleIdentifier].length > 0 ? 1 : 0;
+	}
+}
+
+/* Requires a bundle identifier (UNUserNotificationCenter raises without
+ * one); callers check vitra_has_bundle_id first. Delivery is asynchronous
+ * and needs the user's permission, which macOS asks for once. */
 int vitra_show_notification(const char *title, const char *body) {
 	@autoreleasepool {
-		NSUserNotification *n = [[NSUserNotification alloc] init];
-		n.title = title ? [NSString stringWithUTF8String:title] : @"";
-		n.informativeText = body ? [NSString stringWithUTF8String:body] : @"";
-		n.soundName = nil;
-		[[NSUserNotificationCenter defaultUserNotificationCenter] deliverNotification:n];
+		if (!vitra_has_bundle_id()) {
+			return 0;
+		}
+		UNMutableNotificationContent *content = [[[UNMutableNotificationContent alloc] init] autorelease];
+		content.title = title ? [NSString stringWithUTF8String:title] : @"";
+		content.body = body ? [NSString stringWithUTF8String:body] : @"";
+		UNNotificationRequest *req = [UNNotificationRequest requestWithIdentifier:[[NSUUID UUID] UUIDString]
+									     content:content
+									     trigger:nil];
+		UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+		[center requestAuthorizationWithOptions:UNAuthorizationOptionAlert
+				      completionHandler:^(BOOL granted, NSError *error) {
+					      (void)error;
+					      if (granted) {
+						      [center addNotificationRequest:req withCompletionHandler:nil];
+					      }
+				      }];
 		return 1;
 	}
 }
