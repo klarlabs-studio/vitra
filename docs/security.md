@@ -52,9 +52,12 @@ Desktop services (fs, dialogs, clipboard, …)  ── re-authorize the exact
    context; `domain.CallerExecutorFunc` and typed `vitra.Command` handlers
    receive it. A typed input that names a resource (`ResourcePath()`) must
    equal the path the gateway checked.
-6. **Denials are deterministic.** Every refusal has a `domain.DenialCode`
-   (`no_grant`, `window_mismatch`, `origin_mismatch`, `path_denied`,
-   `path_out_of_scope`, …) and a reason, and is recorded by the audit sink.
+6. **Denials are deterministic and audited.** Every refusal has a
+   `domain.DenialCode` (`no_grant`, `window_mismatch`, `origin_mismatch`,
+   `path_denied`, `path_out_of_scope`, …) and a reason, and is recorded by
+   the audit sink. So are refusals before a command runs: dropped bridge
+   messages (`bridge.reject`) and blocked navigations (`navigation.block`,
+   logged without credentials, query, or fragment).
 7. **Enterprise policy can only tighten.** A `policy.Engine` overlay can turn
    an allow into a deny, never the reverse.
 
@@ -181,7 +184,7 @@ sender token rather than URL-string checks.
 | Signing secrets outside config (10) | `internal/packaging`: `TestSpec_RejectsInlineSigningSecretPattern` |
 | Dev privileges stay out of release (11) | `policy`: `TestEngine_ProductionForcesSignatureAndBlocksDevPerms`; `app`: `TestRun_DevToolsOffByDefault` |
 | Remote content has no authority (12) | `domain`: `TestGateway_RemoteContentDeniedByDefault`, `TestNavigationPolicy_UntrustedDeniedByDefault` |
-| Deterministic denials (13) | `domain`: `TestGateway_DenialDeterministicAndInspectable` |
+| Deterministic denials (13) | `domain`: `TestGateway_DenialDeterministicAndInspectable`; `app`: `TestApp_AuditsRejectedMessagesAndBlockedNavigation` |
 | Unsupported behavior is explicit (14) | `internal/platform/null`: `TestNullHost_ExplicitUnsupportedDialog` |
 | Path scopes | `domain`: `TestPathScope_RejectsBypasses`, `TestPathScope_WindowsDrivePaths`, `TestNewCapabilityGrant_RejectsMalformedPathPatterns`, `FuzzPathScope_Matches`; `desktop`: `TestFileService_ReadFollowsSymlinksOnlyWithinScope`, `TestFileService_WriteCannotEscapeThroughSymlinks` |
 | Least-privilege starter | `cmd/vitra`: `TestScaffold_GrantsLeastPrivilegeByDefault` |

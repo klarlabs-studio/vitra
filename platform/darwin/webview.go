@@ -35,6 +35,7 @@ type Host struct {
 	windows     map[domain.WindowID]*nativeWindow
 	origins     map[domain.WindowID]domain.Origin
 	onInvoke    func(domain.WindowID, domain.Origin, []byte) []byte
+	onReject    func(domain.WindowID, string)
 	onNav       func(domain.WindowID, string) bool
 	onAction    func(id string)
 	onDrop      func(windowID domain.WindowID, paths []string)
@@ -188,6 +189,12 @@ func (h *Host) Features() platform.FeatureSet {
 // SetInvokeHandler registers the IPC callback.
 func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) []byte) {
 	h.onInvoke = fn
+}
+
+// SetRejectHandler is called for bridge messages the host drops before they
+// reach the invoke handler (messages posted by subframes).
+func (h *Host) SetRejectHandler(fn func(windowID domain.WindowID, reason string)) {
+	h.onReject = fn
 }
 
 // SetNavPolicy registers navigation allow/deny.
@@ -779,6 +786,20 @@ func goVitraMessage(windowID, msg *C.char) {
 	// UI. The reply hops back to the UI thread.
 	payload := []byte(C.GoString(msg))
 	go h.handleMessage(id, origin, payload)
+}
+
+//export goVitraReject
+func goVitraReject(windowID, reason *C.char) {
+	activeMu.Lock()
+	h := active
+	activeMu.Unlock()
+	if h == nil || h.onReject == nil {
+		return
+	}
+	id, why := domain.WindowID(C.GoString(windowID)), C.GoString(reason)
+	// Off the UI thread like invokes: the handler writes to the audit sink,
+	// which may call back into the host.
+	go h.onReject(id, why)
 }
 
 func (h *Host) handleMessage(id domain.WindowID, origin domain.Origin, payload []byte) {

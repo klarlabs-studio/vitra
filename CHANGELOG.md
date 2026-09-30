@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Audit events for attacks the app stops before a command runs: `bridge.reject` (a message without the window's sender token, an unparseable message, an invalid top-frame message, or, on macOS, a message from a subframe) and `navigation.block` (a navigation the policy refused, logged without credentials, query, or fragment).
+- `command.invoke` audit events carry the checked `resource_path` and, for denials, the denial `code` in `Metadata`, so the log says what was attempted and why it was refused.
+
 ## [0.4.0] - 2026-09-30
 
 Security hardening from an external-style audit, typed commands with generated

@@ -342,23 +342,32 @@ func (rt *Runtime) Invoke(ctx context.Context, req domain.InvocationRequest) (*d
 	res, err := rt.invoke.Execute(ctx, req)
 	outcome := "allowed"
 	detail := ""
+	var meta map[string]any
+	if req.ResourcePath != "" {
+		meta = map[string]any{"resource_path": req.ResourcePath}
+	}
 	if err != nil {
 		var denied *domain.ErrDenied
 		if errors.As(err, &denied) {
 			outcome = "denied"
 			detail = denied.Reason
+			if meta == nil {
+				meta = map[string]any{}
+			}
+			meta["code"] = string(denied.Code)
 		} else {
 			outcome = "error"
 			detail = err.Error()
 		}
 	}
 	rt.emitAudit(audit.Event{
-		Kind:    audit.KindCommandInvoke,
-		Window:  string(req.Caller.Window),
-		Origin:  string(req.Caller.Origin),
-		Action:  string(req.Command),
-		Outcome: outcome,
-		Detail:  detail,
+		Kind:     audit.KindCommandInvoke,
+		Window:   string(req.Caller.Window),
+		Origin:   string(req.Caller.Origin),
+		Action:   string(req.Command),
+		Outcome:  outcome,
+		Detail:   detail,
+		Metadata: meta,
 	})
 	return res, err
 }
