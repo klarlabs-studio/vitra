@@ -73,9 +73,22 @@ func authorizeScoped(gw Gateway, caller domain.Caller, perm domain.PermissionNam
 		}
 	}
 	sp := scopedPath{real: real, scoped: true, root: root, realRoot: realRoot, rel: rel}
-	sp.info, _ = os.Stat(real)
-	sp.parentInfo, _ = os.Stat(filepath.Dir(real))
+	sp.info = statNow(real)
+	sp.parentInfo = statNow(filepath.Dir(real))
 	return sp, nil
+}
+
+// statNow returns path's FileInfo with its file identity read now. On
+// Windows, os.Stat defers reading the identity until the first os.SameFile
+// call, and reads it by path then; comparing later would see whatever the
+// path points to by that time.
+func statNow(path string) fs.FileInfo {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return nil
+	}
+	os.SameFile(fi, fi) // loads and caches the identity
+	return fi
 }
 
 // resolvePath resolves every symlink in path. For a path that does not exist
