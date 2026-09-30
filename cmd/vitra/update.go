@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/domain"
@@ -305,6 +307,7 @@ func runUpdateKeygen(args []string) error {
 func runUpdateSign(args []string) error {
 	artifactPath, appID, version, privRef, outPath, artifactName := "", "", "", "", "", ""
 	channel := string(updater.ChannelStable)
+	ttl := updater.DefaultManifestTTL
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--artifact":
@@ -349,6 +352,16 @@ func runUpdateSign(args []string) error {
 				return fmt.Errorf("--artifact-name requires a name")
 			}
 			artifactName = args[i]
+		case "--expires-in":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--expires-in requires a duration (e.g. 30d, 72h)")
+			}
+			d, err := parseTTL(args[i])
+			if err != nil {
+				return fmt.Errorf("--expires-in: %w", err)
+			}
+			ttl = d
 		default:
 			return fmt.Errorf("unknown update-sign flag %q", args[i])
 		}
@@ -367,7 +380,7 @@ func runUpdateSign(args []string) error {
 	if err != nil {
 		return err
 	}
-	m, err := updater.BuildSignedManifest(appID, version, updater.Channel(channel), artifactName, artifact, priv)
+	m, err := updater.BuildSignedManifestTTL(appID, version, updater.Channel(channel), artifactName, artifact, priv, ttl)
 	if err != nil {
 		return err
 	}
@@ -385,4 +398,20 @@ func runUpdateSign(args []string) error {
 	fmt.Printf("signed update manifest\n  out:      %s\n  app:      %s\n  version:  %s (%s)\n  artifact: %s\n  sha256:   %s\n",
 		outPath, m.AppID, m.Version, m.Channel, m.Artifact, m.SHA256)
 	return nil
+}
+
+// parseTTL accepts Go durations ("72h") and whole days ("30d").
+func parseTTL(s string) (time.Duration, error) {
+	if days, ok := strings.CutSuffix(s, "d"); ok {
+		n, err := strconv.Atoi(days)
+		if err != nil || n <= 0 {
+			return 0, fmt.Errorf("invalid day count %q", s)
+		}
+		return time.Duration(n) * 24 * time.Hour, nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil || d <= 0 {
+		return 0, fmt.Errorf("invalid duration %q", s)
+	}
+	return d, nil
 }
