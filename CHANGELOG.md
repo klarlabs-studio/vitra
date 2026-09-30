@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Calling a command that was never registered is refused with the `command_missing` denial code (and audited as `denied`) instead of a generic error. The code existed but was never returned.
+
 ## [0.5.0] - 2026-09-30
 
 A flagship demo that attacks itself, a hello-world `vitra new`, audit events

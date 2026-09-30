@@ -127,7 +127,7 @@ func TestVault_RefusesEverythingElse(t *testing.T) {
 		{"symlinked file leaving the vault", mainWindow, "notes.read", map[string]any{"path": root + "/link.md"}, root + "/link.md", ""},
 		{"symlinked folder leaving the vault", mainWindow, "notes.list", map[string]any{"dir": root + "/linkdir"}, root + "/linkdir", ""},
 		{"another window", "other", "notes.read", map[string]any{"path": root + "/Welcome.md"}, root + "/Welcome.md", domain.DenialWindowMismatch},
-		{"unregistered command", mainWindow, "shell.exec", map[string]any{"command": "rm -rf ~"}, "", ""},
+		{"unregistered command", mainWindow, "shell.exec", map[string]any{"command": "rm -rf ~"}, "", domain.DenialCommandMissing},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			out, err := invoke(t, rt, tc.window, tc.cmd, tc.input, tc.rp)
