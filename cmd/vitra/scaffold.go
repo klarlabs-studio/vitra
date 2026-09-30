@@ -177,12 +177,11 @@ vitra package --out dist/ --format dir
 
 The frontend can call only what ` + "`main.go`" + ` registers and grants. To add a
 command, register it with ` + "`vitra.Register`" + ` and add its permission to the
-grant. For files, dialogs, the clipboard, menus, and more, register the
-official plugins (` + "`go.klarlabs.de/vitra/plugin/official`" + `), bind their
-services, and grant their permissions narrowly: path-scoped permissions such
-as ` + "`fs.read`" + ` take allow and deny patterns. See ` + "`example/notes`" + ` and
-` + "`example/competitive`" + ` in the Vitra repository, and
-[the security model](https://github.com/klarlabs-studio/vitra/blob/main/docs/security.md).
+grant. For files, dialogs, the clipboard, menus, and more, call
+` + "`a.UseOfficialPlugins(ctx)`" + ` after ` + "`app.New`" + ` and grant the permissions
+you need narrowly: path-scoped permissions such as ` + "`fs.read`" + ` take allow and
+deny patterns. See the [desktop features guide](https://klarlabs-studio.github.io/vitra/guide/desktop)
+and [the security model](https://klarlabs-studio.github.io/vitra/security).
 `
 	if !tmpl.vite {
 		return body

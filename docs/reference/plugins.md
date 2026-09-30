@@ -1,6 +1,6 @@
 # Official plugins
 
-`plugin/official` declares the built-in desktop commands. `official.All()` returns every plugin; each also has its own constructor. A plugin declares commands and permissions only; see [Desktop features](/guide/desktop) for binding them to services.
+`plugin/official` declares the built-in desktop commands. `official.All()` returns every plugin; each also has its own constructor. A plugin declares commands and permissions only. `app.App.UseOfficialPlugins` binds them to the native host in one call; see [Desktop features](/guide/desktop).
 
 | Plugin | Constructor | Permissions | Commands | Events |
 |---|---|---|---|---|

@@ -72,10 +72,9 @@ func run() error {
 	}
 
 	// The grant: the main window, showing the app's own assets, may call
-	// greet. Nothing else is allowed. To use files, dialogs, the clipboard,
-	// and more, register the official plugins (plugin/official) and grant
-	// their permissions the same way; see example/competitive in the Vitra
-	// repository.
+	// greet. Nothing else is allowed. For files, dialogs, the clipboard, and
+	// more, call a.UseOfficialPlugins(ctx) after app.New and grant the
+	// permissions you need the same way.
 	grant, err := domain.NewCapabilityGrant(
 		"main-window", "what the main window may do",
 		[]domain.WindowID{"main"},
