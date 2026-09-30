@@ -8,23 +8,33 @@ Files, dialogs, the clipboard, menus, the tray, notifications, and more come fro
 
 See the [plugin reference](/reference/plugins) for every command and permission.
 
-## Register the plugins
+## Turn them on
 
 ```go
-for _, p := range official.All() { // or pick: official.Clipboard(), official.Dialog(), …
-    if err := rt.RegisterPlugin(ctx, p); err != nil {
-        return err
-    }
+a, err := app.New(app.Options{ /* ... */ })
+if err != nil {
+    return err
+}
+// Register every official plugin and bind its commands to the native host.
+if err := a.UseOfficialPlugins(ctx); err != nil {
+    return err
 }
 ```
 
-Registering a plugin claims its permissions: no other plugin can declare them, so plugins cannot widen each other.
+Or take only what you need: `a.UseOfficialPlugins(ctx, official.Clipboard(), official.Dialog())`. Call it after `app.New` and before `Run`.
 
-## Bind commands to services
+This **grants nothing**. Every command still needs a grant for the calling window, and each service checks that grant again before it touches the host, including path scopes for `fs.*` and `path.open`.
+
+It also forwards native activations: menu, tray, and shortcut activations become `menu.action`, `tray.action`, and `shortcut.action` events (`{"id": ...}`), and file drops become `dragdrop.drop` (`{"window", "paths"}`). [Subscribe](/guide/events) the windows that should receive them.
+
+## Binding by hand
+
+`UseOfficialPlugins` is a convenience over the pieces in `desktop`. To change how a command behaves, register the plugin yourself and bind its commands to a service:
 
 ```go
-host := linux.New() // or darwin.New(), windows.New()
-
+if err := rt.RegisterPlugin(ctx, official.Clipboard()); err != nil {
+    return err
+}
 clips := &desktop.ClipboardService{
     Gateway: rt, Host: host,
     OnRead:  func(context.Context) (string, error) { return host.ClipboardGet() },
@@ -34,19 +44,9 @@ rt.BindExecutor("clipboard.read", domain.CallerExecutorFunc(
     func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
         return clips.Read(ctx, caller)
     }))
-
-files := &desktop.FileService{Gateway: rt}
-rt.BindExecutor("fs.read", domain.CallerExecutorFunc(
-    func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-        path, _ := input.(string)
-        b, err := files.Read(ctx, caller, path)
-        return string(b), err
-    }))
 ```
 
-Each service re-checks the caller's grant (`clipboard.read`, `fs.read` with its path scope, …) before it acts, and returns `platform.ErrUnsupported` when the host can't do it.
-
-`example/competitive` binds every official command. Copy from there.
+Registering a plugin claims its permissions, so no other plugin can declare them.
 
 ## Then grant the permissions
 

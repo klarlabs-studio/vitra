@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `App.UseOfficialPlugins(ctx, plugins...)` registers the official plugins (all of them, or the ones passed) and binds every command to the native host through the capability-checked `desktop` services, replacing about 40 hand-written `BindExecutor` calls. It grants nothing. It also forwards native menu, tray, and shortcut activations and file drops as events. `example/competitive` uses it (987 → 580 lines).
+
 ### Fixed
 - Calling a command that was never registered is refused with the `command_missing` denial code (and audited as `denied`) instead of a generic error. The code existed but was never returned.
 

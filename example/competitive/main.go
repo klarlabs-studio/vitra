@@ -22,7 +22,6 @@ import (
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
-	"go.klarlabs.de/vitra/plugin/official"
 	"go.klarlabs.de/vitra/policy"
 )
 
@@ -197,32 +196,6 @@ func run() error {
 			return nil
 		},
 	}
-	dialogs := &desktop.DialogService{
-		Gateway: rt,
-		Host:    host,
-		OnOpen: func(ctx context.Context, opts platform.DialogFileOptions) ([]string, error) {
-			path, err := host.OpenFileDialog(opts)
-			if err != nil || path == "" {
-				return nil, err
-			}
-			return []string{path}, nil
-		},
-		OnSave: func(ctx context.Context, opts platform.DialogFileOptions) (string, error) {
-			return host.SaveFileDialog(opts)
-		},
-		OnOpenDirectory: func(ctx context.Context, opts platform.DialogFileOptions) (string, error) {
-			return host.OpenDirectoryDialog(opts)
-		},
-		OnMessage: func(ctx context.Context, title, message, kind string) (bool, error) {
-			return host.MessageDialog(title, message, kind)
-		},
-	}
-	clips := &desktop.ClipboardService{
-		Gateway: rt,
-		Host:    host,
-		OnRead:  func(ctx context.Context) (string, error) { return host.ClipboardGet() },
-		OnWrite: func(ctx context.Context, text string) error { return host.ClipboardSet(text) },
-	}
 	shortcuts := &desktop.ShortcutService{
 		Gateway: rt,
 		Host:    host,
@@ -308,107 +281,6 @@ func run() error {
 	}
 	_ = register // kept for local demo commands if needed
 
-	// Official plugins own dialog.* / fs.* / clipboard.* / browser.* / os.* / notifications.* / path.* / window.* permissions (invariant 6).
-	for _, p := range official.All() {
-		if err := rt.RegisterPlugin(context.Background(), p); err != nil {
-			return err
-		}
-	}
-	if err := rt.BindExecutor("clipboard.read", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-		return clips.Read(ctx, caller)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("clipboard.write", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		text, _ := input.(string)
-		return nil, clips.Write(ctx, caller, text)
-	})); err != nil {
-		return err
-	}
-	browserSvc := &desktop.BrowserService{
-		Gateway: rt,
-		Host:    host,
-		OnOpen: func(ctx context.Context, rawURL string) error {
-			return host.OpenURL(ctx, rawURL)
-		},
-	}
-	if err := rt.BindExecutor("browser.open", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		rawURL, _ := input.(string)
-		return nil, browserSvc.OpenURL(ctx, caller, rawURL)
-	})); err != nil {
-		return err
-	}
-	osSvc := &desktop.OsService{Gateway: rt}
-	if err := rt.BindExecutor("os.info", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-		return osSvc.Info(ctx, caller)
-	})); err != nil {
-		return err
-	}
-	notifs := &desktop.NotificationService{
-		Gateway: rt,
-		Host:    host,
-		OnShow: func(ctx context.Context, title, body string) error {
-			return host.ShowNotification(title, body)
-		},
-	}
-	if err := rt.BindExecutor("notifications.show", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		title, body := "", ""
-		switch v := input.(type) {
-		case string:
-			body = v
-		case map[string]any:
-			title, _ = v["title"].(string)
-			body, _ = v["body"].(string)
-		}
-		return nil, notifs.Show(ctx, caller, title, body)
-	})); err != nil {
-		return err
-	}
-	pathSvc := &desktop.PathService{
-		Gateway: rt,
-		Host:    host,
-		OnOpen: func(ctx context.Context, path string) error {
-			return host.OpenPath(ctx, path)
-		},
-	}
-	if err := rt.BindExecutor("path.open", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		path, _ := input.(string)
-		return nil, pathSvc.Open(ctx, caller, path)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("dialog.open", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		return dialogs.OpenFile(ctx, caller, desktop.ParseDialogFileOptions(input))
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("dialog.save", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		return dialogs.SaveFile(ctx, caller, desktop.ParseDialogFileOptions(input))
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("dialog.openDirectory", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		return dialogs.OpenDirectory(ctx, caller, desktop.ParseDialogFileOptions(input))
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("dialog.message", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		title, message, kind := "", "", "info"
-		switch v := input.(type) {
-		case string:
-			message = v
-		case map[string]any:
-			title, _ = v["title"].(string)
-			message, _ = v["message"].(string)
-			if k, ok := v["kind"].(string); ok {
-				kind = k
-			}
-		}
-		return dialogs.Message(ctx, caller, title, message, kind)
-	})); err != nil {
-		return err
-	}
-
 	fsGrant, err := domain.NewCapabilityGrant(
 		"demo-files",
 		"scoped demo filesystem",
@@ -425,283 +297,6 @@ func run() error {
 	if err := rt.RegisterGrant(fsGrant); err != nil {
 		return err
 	}
-	files := &desktop.FileService{Gateway: rt}
-	if err := rt.BindExecutor("fs.read", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		path, _ := input.(string)
-		data, err := files.Read(ctx, caller, path)
-		if err != nil {
-			return nil, err
-		}
-		return string(data), nil
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("fs.write", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		m, _ := input.(map[string]any)
-		path, _ := m["path"].(string)
-		data, _ := m["data"].(string)
-		return nil, files.Write(ctx, caller, path, []byte(data))
-	})); err != nil {
-		return err
-	}
-
-	winSvc := &desktop.WindowService{
-		Gateway: rt,
-		Host:    host,
-		OnApply: func(_ context.Context, window domain.WindowID, chrome platform.WindowChrome) error {
-			return host.ApplyWindowChrome(window, chrome)
-		},
-		OnRead: func(_ context.Context, window domain.WindowID) (platform.WindowChrome, error) {
-			return host.ReadWindowChrome(window)
-		},
-		OnFocus: func(_ context.Context, window domain.WindowID) error {
-			return host.FocusWindow(window)
-		},
-		OnBlur: func(_ context.Context, window domain.WindowID) error {
-			return host.BlurWindow(window)
-		},
-		OnCreate: func(ctx context.Context, opts desktop.WindowCreateOptions) error {
-			if application == nil {
-				return fmt.Errorf("app is not ready")
-			}
-			return application.OpenWindow(ctx, app.WindowOptions{
-				ID: opts.ID, Title: opts.Title, Path: opts.Path, Width: opts.Width, Height: opts.Height,
-			})
-		},
-		OnClose: func(ctx context.Context, id domain.WindowID) error {
-			if application == nil {
-				return fmt.Errorf("app is not ready")
-			}
-			return application.CloseWindow(ctx, id)
-		},
-	}
-	if err := rt.BindExecutor("window.create", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		opts, err := desktop.ParseWindowCreateOptions(input)
-		if err != nil {
-			return nil, err
-		}
-		id, err := winSvc.Create(ctx, caller, opts)
-		if err != nil {
-			return nil, err
-		}
-		return map[string]any{"id": string(id)}, nil
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.close", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Close(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.chrome", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, chrome, err := desktop.ParseWindowChromeApply(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Apply(ctx, caller, id, chrome)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.getChrome", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return winSvc.Read(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.focus", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Focus(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.blur", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Blur(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.hide", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Hide(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.show", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Show(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.minimize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Minimize(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.maximize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Maximize(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.unmaximize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Unmaximize(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.fullscreen", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Fullscreen(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.unfullscreen", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Unfullscreen(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.setAlwaysOnTop", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, onTop, err := desktop.ParseWindowAlwaysOnTop(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.SetAlwaysOnTop(ctx, caller, id, onTop)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.restore", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, err := desktop.ParseWindowID(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.Restore(ctx, caller, id)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.setTitle", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, title, err := desktop.ParseWindowSetTitle(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.SetTitle(ctx, caller, id, title)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.setSize", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, width, height, err := desktop.ParseWindowSetSize(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.SetSize(ctx, caller, id, width, height)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("window.setIcon", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		id, iconPath, err := desktop.ParseWindowSetIcon(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, winSvc.SetIcon(ctx, caller, id, iconPath)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("menu.set", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		items, err := desktop.ParseMenuItems(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, menus.SetMenu(ctx, caller, items)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("menu.clear", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-		return nil, menus.ClearMenu(ctx, caller)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("tray.set", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		tooltip, items, err := desktop.ParseTraySet(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, trays.SetTray(ctx, caller, tooltip, items)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("tray.clear", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-		return nil, trays.ClearTray(ctx, caller)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("shortcut.register", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		acc, action, err := desktop.ParseShortcutRegister(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, shortcuts.Register(ctx, caller, acc, action)
-	})); err != nil {
-		return err
-	}
-	if err := rt.BindExecutor("shortcut.unregister", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		acc, err := desktop.ParseShortcutUnregister(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, shortcuts.Unregister(ctx, caller, acc)
-	})); err != nil {
-		return err
-	}
-	appSvc := &desktop.AppService{
-		Gateway: rt,
-		OnQuit: func(ctx context.Context) error {
-			if application == nil {
-				return fmt.Errorf("app is not ready")
-			}
-			application.Quit()
-			return nil
-		},
-	}
-	if err := rt.BindExecutor("app.quit", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-		return nil, appSvc.Quit(ctx, caller)
-	})); err != nil {
-		return err
-	}
 
 	application, err = app.New(app.Options{
 		AppID:   "com.vitra.competitive",
@@ -712,6 +307,12 @@ func run() error {
 		Window:  app.WindowOptions{ID: "main", Width: 960, Height: 640, Path: "/"},
 	})
 	if err != nil {
+		return err
+	}
+
+	// Bind every official plugin command to the host. Grants above decide
+	// what each window may actually use.
+	if err := application.UseOfficialPlugins(context.Background()); err != nil {
 		return err
 	}
 
@@ -746,15 +347,6 @@ func run() error {
 		OnEnable: func(_ context.Context, window domain.WindowID, enabled bool) error {
 			return host.EnableDragDrop(window, enabled)
 		},
-	}
-	if err := rt.BindExecutor("dragdrop.receive", domain.CallerExecutorFunc(func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-		win, enabled, err := desktop.ParseDragDropEnable(input)
-		if err != nil {
-			return nil, err
-		}
-		return nil, drops.Enable(ctx, caller, win, enabled)
-	})); err != nil {
-		return err
 	}
 
 	go func() {
@@ -811,7 +403,8 @@ func run() error {
 			}
 		}
 		if openTarget := os.Getenv("VITRA_OPEN_URL"); openTarget != "" {
-			if err := browserSvc.OpenURL(context.Background(), hostCaller, openTarget); err != nil {
+			browser := &desktop.BrowserService{Gateway: rt, Host: host, OnOpen: host.OpenURL}
+			if err := browser.OpenURL(context.Background(), hostCaller, openTarget); err != nil {
 				fmt.Fprintf(os.Stderr, "open url: %v\n", err)
 			} else {
 				fmt.Println("opened url:", openTarget)
