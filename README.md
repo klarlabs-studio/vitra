@@ -110,6 +110,8 @@ Runnable walkthrough: `go run ./example/quickstart`
 
 ## See it work
 
+![The notes demo: a note is edited and saved, then nine attacks from the page are each refused and shown in the live audit log](docs/assets/notes-demo.gif)
+
 ```bash
 make notes   # or: CGO_ENABLED=1 go run -tags vitra_native ./example/notes
 ```
