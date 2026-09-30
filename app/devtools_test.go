@@ -15,8 +15,8 @@ import (
 // before the first window opened (settings apply at webview creation).
 type devtoolsHost struct {
 	*fakeHost
-	set         []bool
-	beforeOpen  bool
+	set        []bool
+	beforeOpen bool
 }
 
 func (h *devtoolsHost) SetDevTools(enabled bool) {
