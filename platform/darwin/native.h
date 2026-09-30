@@ -51,6 +51,7 @@ char *vitra_open_dialog(const char *title, const char *default_path, const char 
 char *vitra_save_dialog(const char *title, const char *default_path, const char *filters);
 char *vitra_open_directory_dialog(const char *title, const char *default_path);
 int vitra_message_dialog(const char *title, const char *message, int confirm);
+int vitra_has_bundle_id(void);
 int vitra_show_notification(const char *title, const char *body);
 
 int vitra_register_hotkey(const char *accelerator, const char *action_id);
