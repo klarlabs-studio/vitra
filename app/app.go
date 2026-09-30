@@ -104,6 +104,14 @@ type rejectReporter interface {
 	SetRejectHandler(fn func(windowID domain.WindowID, reason string))
 }
 
+// messageReporter is implemented by hosts that report the URL of the
+// document that sent each bridge message. The app then checks the sender on
+// every message instead of trusting the origin it last recorded for the
+// window.
+type messageReporter interface {
+	SetMessageHandler(fn func(windowID domain.WindowID, senderURL string, raw []byte) []byte)
+}
+
 // App is a runnable desktop application.
 type App struct {
 	opts    Options
@@ -187,6 +195,9 @@ func (a *App) Run(ctx context.Context) error {
 		dt.SetDevTools(a.opts.DevTools || os.Getenv(EnvDevTools) == "1")
 	}
 	a.host.SetInvokeHandler(a.handleInvoke)
+	if mr, ok := a.host.(messageReporter); ok {
+		mr.SetMessageHandler(a.handleMessage)
+	}
 	a.host.SetNavPolicy(a.allowNav)
 	if rr, ok := a.host.(rejectReporter); ok {
 		rr.SetRejectHandler(func(id domain.WindowID, reason string) {
@@ -385,6 +396,20 @@ func (a *App) handleInvoke(windowID domain.WindowID, origin domain.Origin, raw [
 		return mustJSON(replyMsg{ID: id, OK: false, Error: err.Error(), Code: code})
 	}
 	return mustJSON(replyMsg{ID: id, OK: true, Result: res.Output})
+}
+
+// handleMessage accepts a bridge message only from a document served by the
+// app's asset server; the call's origin follows from that. Anything else,
+// including about:blank and remote pages, is dropped without a reply.
+func (a *App) handleMessage(windowID domain.WindowID, senderURL string, raw []byte) []byte {
+	if senderURL == "about:blank" || !a.isLocal(senderURL) {
+		a.audit(audit.Event{
+			Kind: audit.KindBridgeReject, Window: string(windowID), Outcome: "denied",
+			Detail: "message from a document outside the app: " + redactURL(senderURL),
+		})
+		return nil
+	}
+	return a.handleInvoke(windowID, domain.OriginPackagedLocal, raw)
 }
 
 func (a *App) allowNav(windowID domain.WindowID, uri string) bool {

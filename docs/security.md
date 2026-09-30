@@ -129,11 +129,15 @@ neither by default.
   cross-origin iframes: WebView2 injects the preload into every frame, but
   the script returns in subframes before defining the token. macOS also
   drops messages whose `frameInfo` is not the main frame.
-- **Known limit:** the origin stamped on a call is the one the host recorded
-  for the window, enforced by the navigation policy above. It is not read
-  from each message's document. A top frame that navigates away from the
-  asset server loses the bridge through navigation policy, not through a
-  per-message origin check.
+- **Every message is checked against the document that sent it.** The
+  native hosts report the sender with each message (WebView2's message
+  source, WKWebView's frame request URL, WebKitGTK's page URI). The app
+  accepts a message only if that document was served by its own asset
+  server, and derives the call's origin from it. Anything else (a remote
+  page, `about:blank`, another local port) is dropped without a reply and
+  audited as `bridge.reject`, so authority does not depend on the navigation
+  policy alone. Custom hosts that do not report the sender fall back to the
+  origin recorded for the window.
 
 This is the class of bug behind Tauri's recent origin CVEs:
 
@@ -142,8 +146,9 @@ This is the class of bug behind Tauri's recent origin CVEs:
 - [GHSA-7gmj-67g7-phm9](https://github.com/tauri-apps/tauri/security/advisories/GHSA-7gmj-67g7-phm9):
   local-URL confusion let remote pages reach local-only IPC.
 
-Vitra's design keys authority on host-recorded identity and a top-frame
-sender token rather than URL-string checks.
+Vitra's design keys authority on host-recorded identity, a top-frame sender
+token, and a per-message check of the sending document, parsed exactly
+rather than compared as URL strings.
 
 ## Other defenses
 
@@ -189,6 +194,7 @@ sender token rather than URL-string checks.
 | Path scopes | `domain`: `TestPathScope_RejectsBypasses`, `TestPathScope_WindowsDrivePaths`, `TestNewCapabilityGrant_RejectsMalformedPathPatterns`, `FuzzPathScope_Matches`; `desktop`: `TestFileService_ReadFollowsSymlinksOnlyWithinScope`, `TestFileService_WriteCannotEscapeThroughSymlinks` |
 | Least-privilege starter | `cmd/vitra`: `TestScaffold_GrantsLeastPrivilegeByDefault` |
 | IPC limits | `internal/ipc`: `TestBridge_RejectsOversizedMessages` |
+| Every message's sender is checked | `app`: `TestApp_ChecksSenderOfEveryMessage` |
 | Only the top frame can call | `internal/ipc`: `TestBridge_RequiresSenderToken`; `internal/bridge`: `TestPreload_KeepsSenderTokenInTopFrameClosure`; `app`: `TestApp_RunInvokeAndNavPolicy` (forged tokens get no reply) |
 | Host calls from commands don't deadlock | Native E2E (`make e2e`): clipboard round-trip from an invoke |
 

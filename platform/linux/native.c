@@ -16,7 +16,7 @@ static int vitra_devtools = 0;
 void vitra_set_devtools(int enabled) { vitra_devtools = enabled; }
 
 extern void goVitraIdle(unsigned long long);
-extern void goVitraMessage(char *, char *);
+extern void goVitraMessage(char *, char *, char *);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
 extern void goVitraAction(char *);
@@ -48,9 +48,12 @@ void vitra_idle_add(unsigned long long id) { g_idle_add(idle_cb, (gpointer)(guin
 
 static void on_message(WebKitUserContentManager *mgr, WebKitJavascriptResult *js_result, gpointer user_data) {
 	(void)mgr;
+	VitraWin *w = (VitraWin *)user_data;
 	JSCValue *value = webkit_javascript_result_get_js_value(js_result);
 	gchar *msg = jsc_value_to_string(value);
-	goVitraMessage((char *)user_data, msg);
+	/* The page that sent the message: the app checks it on every message. */
+	const gchar *sender = w->view ? webkit_web_view_get_uri(w->view) : NULL;
+	goVitraMessage(w->id, msg, (char *)(sender ? sender : ""));
 	g_free(msg);
 }
 
@@ -98,7 +101,7 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 
 	WebKitUserContentManager *ucm = webkit_user_content_manager_new();
 	webkit_user_content_manager_register_script_message_handler(ucm, "vitra");
-	g_signal_connect(ucm, "script-message-received::vitra", G_CALLBACK(on_message), w->id);
+	g_signal_connect(ucm, "script-message-received::vitra", G_CALLBACK(on_message), w);
 
 	if (preload && preload[0] != '\0') {
 		WebKitUserScript *script = webkit_user_script_new(
