@@ -3,6 +3,7 @@ package desktop_test
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"go.klarlabs.de/vitra"
@@ -60,13 +61,13 @@ func TestFileService_PathScopeEnforced(t *testing.T) {
 	if _, err := files.Read(context.Background(), caller, "/project/a.go"); err != nil {
 		t.Fatal(err)
 	}
-	if readPath != "/project/a.go" {
+	if readPath != filepath.FromSlash("/project/a.go") {
 		t.Fatalf("readPath=%q", readPath)
 	}
 	if err := files.Write(context.Background(), caller, "/project/out.txt", []byte("hi")); err != nil {
 		t.Fatal(err)
 	}
-	if writePath != "/project/out.txt" {
+	if writePath != filepath.FromSlash("/project/out.txt") {
 		t.Fatalf("writePath=%q", writePath)
 	}
 
@@ -83,7 +84,7 @@ func TestFileService_PathScopeEnforced(t *testing.T) {
 	if !errors.As(err, &denied) {
 		t.Fatalf("expected deny for out of scope, got %v", err)
 	}
-	if readPath != "/project/a.go" {
+	if readPath != filepath.FromSlash("/project/a.go") {
 		t.Fatal("OnRead must not run for denied paths")
 	}
 }

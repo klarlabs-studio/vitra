@@ -3,6 +3,8 @@ package desktop_test
 import (
 	"context"
 	"errors"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"go.klarlabs.de/vitra/desktop"
@@ -848,16 +850,23 @@ func TestPathService_GrantFeatureAndHook(t *testing.T) {
 	caller, _ := domain.NewCaller("main", domain.OriginPackagedLocal)
 	host := null.New(platform.OSLinux)
 	ctx := context.Background()
+	// An absolute local path on this OS (abs("/tmp/x") is drive-relative on Windows).
+	abs := func(p string) string {
+		if runtime.GOOS == "windows" {
+			return `C:` + filepath.FromSlash(p)
+		}
+		return p
+	}
 
 	denied := &desktop.PathService{Gateway: denyAll{}, Host: host}
-	err := denied.Open(ctx, caller, "/tmp/x")
+	err := denied.Open(ctx, caller, abs("/tmp/x"))
 	var d *domain.ErrDenied
 	if !errors.As(err, &d) || d.Code != domain.DenialNoGrant {
 		t.Fatalf("expected denial, got %v", err)
 	}
 
 	bare := &desktop.PathService{Gateway: allowAll{}, Host: host}
-	err = bare.Open(ctx, caller, "/tmp/x")
+	err = bare.Open(ctx, caller, abs("/tmp/x"))
 	var un *platform.ErrUnsupported
 	if !errors.As(err, &un) || un.Feature != platform.FeaturePathOpen {
 		t.Fatalf("expected unsupported path.open, got %v", err)
@@ -873,10 +882,10 @@ func TestPathService_GrantFeatureAndHook(t *testing.T) {
 			return nil
 		},
 	}
-	if err := ok.Open(ctx, caller, "/tmp/vitra-path"); err != nil {
+	if err := ok.Open(ctx, caller, abs("/tmp/vitra-path")); err != nil {
 		t.Fatal(err)
 	}
-	if got != "/tmp/vitra-path" {
+	if got != abs("/tmp/vitra-path") {
 		t.Fatalf("got %q", got)
 	}
 	for _, bad := range []string{"", "relative", "https://example.com", "file:///etc/passwd"} {
@@ -885,7 +894,7 @@ func TestPathService_GrantFeatureAndHook(t *testing.T) {
 		}
 	}
 	missing := &desktop.PathService{Gateway: allowAll{}, Host: okHost}
-	if err := missing.Open(ctx, caller, "/tmp/x"); err == nil {
+	if err := missing.Open(ctx, caller, abs("/tmp/x")); err == nil {
 		t.Fatal("expected missing adapter")
 	}
 }

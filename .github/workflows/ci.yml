@@ -83,7 +83,11 @@ jobs:
         shell: bash
         env:
           CGO_ENABLED: "1"
-        run: go test -tags vitra_native -count=1 ./app/... ./desktop/... ./platform/...
+        # Each runner tests its own host package; the others are covered on
+        # their own OS (their tests assume that OS's paths and locks).
+        run: |
+          host=$([ "$RUNNER_OS" = "Windows" ] && echo windows || echo darwin)
+          go test -tags vitra_native -count=1 ./app/... ./desktop/... ./platform ./platform/$host/...
 
   # Competitive Linux WebView host — not covered by the shared go-ci bar (CGO + GTK).
   native:
