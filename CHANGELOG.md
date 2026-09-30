@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-30
+
+Every bridge message is checked against the document that sent it, forged
+and tampered updates have their own errors, and pkg.go.dev has runnable
+examples.
+
+### Upgrading from 0.6.0
+- `about:blank` documents can no longer call commands. Serve every page that calls Go from the app's assets.
+- Custom `app.DesktopHost` implementations keep working; implement `SetMessageHandler` to get the per-message sender check.
+- To tell a forged or tampered update apart, use `errors.Is(err, updater.ErrBadSignature)` / `updater.ErrDigestMismatch` instead of matching message text.
+
 ### Security
 - The origin of a call is now checked on every bridge message. All three native hosts report the document that sent each message, and the app accepts it only from its own asset server, deriving the call's origin from it. Messages from any other document (a remote page, `about:blank`, another local port) are dropped and audited as `bridge.reject`. This closes the last documented bridge limit; before, the origin was the one last recorded for the window and relied on the navigation policy. Hosts gain an optional `SetMessageHandler`.
 
@@ -411,7 +422,8 @@ Windows (WebView2) behind `-tags vitra_native`.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
 
-[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/klarlabs-studio/vitra/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/klarlabs-studio/vitra/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/klarlabs-studio/vitra/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/klarlabs-studio/vitra/compare/v0.3.0...v0.4.0
