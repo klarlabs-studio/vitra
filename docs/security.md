@@ -93,6 +93,17 @@ resolve the real target before acting:
    rules apply to what a link points at.
 3. Dangling links are refused for writes.
 
+**No check-then-use race for files.** `desktop.FileService` does not reopen
+the checked path. It opens the file through an `os.Root` at the scope's real
+root, so the kernel refuses anything that leaves the scope however
+directories are swapped in the meantime. It then asks the OS where the open
+file actually is (`/proc/self/fd` on Linux, `F_GETPATH` on macOS,
+`GetFinalPathNameByHandle` on Windows) and authorizes that location again,
+deny patterns included. All I/O goes through that handle. A new file is
+created exclusively inside the handle of the directory that was authorized,
+so nothing is ever created elsewhere. Where the OS cannot report a file's
+path, the opened file must be the one identified at authorization.
+
 **Known limits:**
 
 - **Aliases above a deny root.** A deny written as `/var/app/**` does not
@@ -102,10 +113,11 @@ resolve the real target before acting:
 - **Unicode normalization.** APFS treats NFC and NFD spellings as the same
   file; path scopes do not normalize Unicode. Avoid relying on deny patterns
   for non-ASCII names.
-- **Time of check vs. use.** Resolution and the file operation are separate
-  steps. A process that can rename directories inside the scope between them
-  can race the check. Page content alone cannot; it needs local code
-  execution.
+- **`path.open` hands over a path.** File reads and writes cannot be raced
+  (see below), but `path.open` passes a checked path to the OS's default
+  application, which opens it later on its own. A local process that can
+  rename directories inside the scope in that window could redirect it. Page
+  content alone cannot; it needs local code execution.
 - **Paths from your own executors.** Scopes only protect paths the gateway
   sees. An executor that reads a path from its input must use the checked
   `ResourcePath` (typed commands enforce this via `ResourcePath()`).
@@ -191,7 +203,7 @@ rather than compared as URL strings.
 | Remote content has no authority (12) | `domain`: `TestGateway_RemoteContentDeniedByDefault`, `TestNavigationPolicy_UntrustedDeniedByDefault` |
 | Deterministic denials (13) | `domain`: `TestGateway_DenialDeterministicAndInspectable`; `app`: `TestApp_AuditsRejectedMessagesAndBlockedNavigation` |
 | Unsupported behavior is explicit (14) | `internal/platform/null`: `TestNullHost_ExplicitUnsupportedDialog` |
-| Path scopes | `domain`: `TestPathScope_RejectsBypasses`, `TestPathScope_WindowsDrivePaths`, `TestNewCapabilityGrant_RejectsMalformedPathPatterns`, `FuzzPathScope_Matches`; `desktop`: `TestFileService_ReadFollowsSymlinksOnlyWithinScope`, `TestFileService_WriteCannotEscapeThroughSymlinks` |
+| Path scopes | `domain`: `TestPathScope_RejectsBypasses`, `TestPathScope_WindowsDrivePaths`, `TestNewCapabilityGrant_RejectsMalformedPathPatterns`, `FuzzPathScope_Matches`; `desktop`: `TestFileService_ReadFollowsSymlinksOnlyWithinScope`, `TestFileService_WriteCannotEscapeThroughSymlinks`, `TestFileService_ReadCannotBeRacedOutOfScope`, `TestFileService_WriteCannotBeRacedOutOfScope`, `TestFileService_RaceWithoutFdPathLookup` |
 | Least-privilege starter | `cmd/vitra`: `TestScaffold_GrantsLeastPrivilegeByDefault` |
 | IPC limits | `internal/ipc`: `TestBridge_RejectsOversizedMessages` |
 | Every message's sender is checked | `app`: `TestApp_ChecksSenderOfEveryMessage` |

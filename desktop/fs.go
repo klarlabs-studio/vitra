@@ -2,6 +2,7 @@ package desktop
 
 import (
 	"context"
+	"io"
 	"os"
 
 	"go.klarlabs.de/vitra/domain"
@@ -25,24 +26,62 @@ type FileService struct {
 
 // Read authorizes fs.read for path then reads the file.
 func (s *FileService) Read(ctx context.Context, caller domain.Caller, path string) ([]byte, error) {
-	real, err := authorizeRealPath(s.Gateway, caller, PermFSRead, path)
+	sp, err := authorizeScoped(s.Gateway, caller, PermFSRead, path)
 	if err != nil {
 		return nil, err
 	}
-	if s.OnRead != nil {
-		return s.OnRead(ctx, real)
+	if beforeOpen != nil {
+		beforeOpen()
 	}
-	return os.ReadFile(real)
+	if s.OnRead != nil {
+		return s.OnRead(ctx, sp.real)
+	}
+	if !sp.scoped {
+		return os.ReadFile(sp.real)
+	}
+	f, err := sp.open(s.Gateway, caller, PermFSRead, os.O_RDONLY)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	return io.ReadAll(f)
 }
 
-// Write authorizes fs.write for path then writes data.
+// Write authorizes fs.write for path then writes data, creating the file if
+// needed.
 func (s *FileService) Write(ctx context.Context, caller domain.Caller, path string, data []byte) error {
-	real, err := authorizeRealPath(s.Gateway, caller, PermFSWrite, path)
+	sp, err := authorizeScoped(s.Gateway, caller, PermFSWrite, path)
 	if err != nil {
 		return err
 	}
-	if s.OnWrite != nil {
-		return s.OnWrite(ctx, real, data)
+	if beforeOpen != nil {
+		beforeOpen()
 	}
-	return os.WriteFile(real, data, 0o644)
+	if s.OnWrite != nil {
+		return s.OnWrite(ctx, sp.real, data)
+	}
+	if !sp.scoped {
+		return os.WriteFile(sp.real, data, 0o644)
+	}
+	// Open without truncating, so nothing is lost if the opened file turns
+	// out not to be the authorized one. A file that did not exist is created
+	// exclusively in the authorized directory.
+	var f *os.File
+	if sp.info != nil {
+		f, err = sp.open(s.Gateway, caller, PermFSWrite, os.O_WRONLY)
+	} else {
+		f, err = sp.create(s.Gateway, caller, PermFSWrite)
+	}
+	if err != nil {
+		return err
+	}
+	if err := f.Truncate(0); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }

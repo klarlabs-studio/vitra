@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- File reads and writes through `desktop.FileService` can no longer be raced. Before, the path was checked and then opened again, so a local process that swapped a directory in between could redirect the operation into a denied folder or out of the scope. Files are now opened through an `os.Root` at the scope's real root, the opened file's actual location is looked up from the handle and authorized again, and new files are created exclusively inside the authorized directory's handle. The remaining documented limit is `path.open`, which hands a path to the OS's default application.
+
 ## [0.7.0] - 2026-09-30
 
 Every bridge message is checked against the document that sent it, forged
