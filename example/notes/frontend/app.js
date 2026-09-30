@@ -305,7 +305,7 @@
 
     window.vitra.on("audit.event", addAudit);
     try {
-      for (const e of await call("audit.follow")) addAudit(e);
+      for (const e of (await call("audit.follow")) || []) addAudit(e);
       state.root = (await call("vault.info")).root;
     } catch (err) {
       show("Could not start: " + refusal(err), "error");

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -170,5 +171,22 @@ func TestOpenVault_SeedsOnlyAnEmptyFolder(t *testing.T) {
 		if info.Mode().Perm()&0o200 == 0 {
 			t.Fatalf("seed %s is read-only", name)
 		}
+	}
+}
+
+// A fresh app has an empty audit log; the page iterates the result, so it
+// must be a JSON array, not null.
+func TestAuditFollow_EmptyLogIsAnArray(t *testing.T) {
+	rt, _, _ := setup(t)
+	out, err := invoke(t, rt, mainWindow, "audit.follow", map[string]any{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "[]" {
+		t.Fatalf("audit.follow on an empty log = %s, want []", b)
 	}
 }

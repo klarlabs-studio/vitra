@@ -45,11 +45,12 @@ func (s *liveAudit) Append(e audit.Event) error {
 	return nil
 }
 
-// List returns a copy of the retained events, oldest first.
+// List returns a copy of the retained events, oldest first. It is never nil,
+// so an empty log reaches the page as [] rather than null.
 func (s *liveAudit) List() []audit.Event {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return append([]audit.Event(nil), s.events...)
+	return append([]audit.Event{}, s.events...)
 }
 
 // Subscribe starts pushing new events to publish, one at a time and in
