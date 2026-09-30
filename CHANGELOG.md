@@ -366,5 +366,6 @@ Windows (WebView2) behind `-tags vitra_native`.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
 
-[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/klarlabs-studio/vitra/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/klarlabs-studio/vitra/releases/tag/v0.3.0
