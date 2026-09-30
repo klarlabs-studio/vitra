@@ -68,8 +68,8 @@ func TestRegisterURLScheme_RejectsBadScheme(t *testing.T) {
 // value early and a newline starts a new registry line.
 func TestRegEscape(t *testing.T) {
 	for in, want := range map[string]string{
-		`C:\Program Files\App\app.exe`:         `C:\\Program Files\\App\\app.exe`,
-		`"C:\a b\app.exe" "%1"`:                `\"C:\\a b\\app.exe\" \"%1\"`,
+		`C:\Program Files\App\app.exe`:        `C:\\Program Files\\App\\app.exe`,
+		`"C:\a b\app.exe" "%1"`:               `\"C:\\a b\\app.exe\" \"%1\"`,
 		"My App\r\n[HKEY_CURRENT_USER\\Evil]": `My App[HKEY_CURRENT_USER\\Evil]`,
 	} {
 		if got := regEscape(in); got != want {
