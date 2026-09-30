@@ -11,7 +11,30 @@ import (
 )
 
 // authorizeRealPath authorizes perm for path and returns the path to act on:
-// path with every symlink resolved.
+// path with every symlink resolved. Callers that open the file themselves
+// should use authorizeScoped and scopedPath.open instead, which cannot be
+// raced.
+func authorizeRealPath(gw Gateway, caller domain.Caller, perm domain.PermissionName, path string) (string, error) {
+	sp, err := authorizeScoped(gw, caller, perm, path)
+	return sp.real, err
+}
+
+// scopedPath is an authorized path. For path-scoped permissions it also
+// records the scope root, so the file can be opened without leaving it.
+type scopedPath struct {
+	real     string // path with every symlink resolved
+	scoped   bool   // the permission is path-scoped
+	root     string // lexical scope root, as the grant names it
+	realRoot string // scope root with symlinks resolved
+	rel      string // real, relative to realRoot
+
+	// Identities at authorization, for systems that cannot look up where an
+	// open file is: the file (nil if it did not exist) and its directory.
+	info       fs.FileInfo
+	parentInfo fs.FileInfo
+}
+
+// authorizeScoped authorizes perm for path.
 //
 // Path scopes are lexical, so a link inside the scope ("proj/escape ->
 // /etc") would otherwise carry an allowed path anywhere on disk. After the
@@ -19,40 +42,40 @@ import (
 // aliases above the root, such as macOS /var -> /private/var, are fine), and
 // its location mapped back under the scope root is authorized again, so deny
 // patterns also apply to where a link points.
-//
-// The check and the later file operation are not atomic: a process that can
-// swap directories inside the scope between the two can still race it.
-func authorizeRealPath(gw Gateway, caller domain.Caller, perm domain.PermissionName, path string) (string, error) {
+func authorizeScoped(gw Gateway, caller domain.Caller, perm domain.PermissionName, path string) (scopedPath, error) {
 	if gw == nil {
-		return "", errGatewayRequired
+		return scopedPath{}, errGatewayRequired
 	}
 	d := gw.Authorize(caller, perm, path)
 	if !d.Allowed {
-		return "", deniedErr(caller, perm, d.Code, d.Reason)
+		return scopedPath{}, deniedErr(caller, perm, d.Code, d.Reason)
 	}
 	if d.ScopeRoot == "" {
 		// Not path-scoped: there is no boundary for a link to cross.
-		return path, nil
+		return scopedPath{real: path}, nil
 	}
 	root := filepath.FromSlash(d.ScopeRoot)
 	realRoot, err := resolvePath(root)
 	if err != nil {
-		return "", deniedErr(caller, perm, domain.DenialPathOutOfScope, err.Error())
+		return scopedPath{}, deniedErr(caller, perm, domain.DenialPathOutOfScope, err.Error())
 	}
 	real, err := resolvePath(path)
 	if err != nil {
-		return "", deniedErr(caller, perm, domain.DenialPathOutOfScope, err.Error())
+		return scopedPath{}, deniedErr(caller, perm, domain.DenialPathOutOfScope, err.Error())
 	}
 	rel, err := filepath.Rel(realRoot, real)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", deniedErr(caller, perm, domain.DenialPathOutOfScope, "path resolves outside its scope through a symlink")
+		return scopedPath{}, deniedErr(caller, perm, domain.DenialPathOutOfScope, "path resolves outside its scope through a symlink")
 	}
 	if mapped := filepath.Join(root, rel); mapped != filepath.Clean(path) {
 		if d := gw.Authorize(caller, perm, mapped); !d.Allowed {
-			return "", deniedErr(caller, perm, d.Code, "symlink target: "+d.Reason)
+			return scopedPath{}, deniedErr(caller, perm, d.Code, "symlink target: "+d.Reason)
 		}
 	}
-	return real, nil
+	sp := scopedPath{real: real, scoped: true, root: root, realRoot: realRoot, rel: rel}
+	sp.info, _ = os.Stat(real)
+	sp.parentInfo, _ = os.Stat(filepath.Dir(real))
+	return sp, nil
 }
 
 // resolvePath resolves every symlink in path. For a path that does not exist
@@ -91,3 +114,6 @@ func deniedErr(caller domain.Caller, perm domain.PermissionName, code domain.Den
 		Reason:     reason,
 	}
 }
+
+// beforeOpen runs between authorization and the file operation (tests only).
+var beforeOpen func()
