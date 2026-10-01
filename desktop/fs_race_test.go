@@ -3,8 +3,10 @@ package desktop_test
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"go.klarlabs.de/vitra"
@@ -65,12 +67,19 @@ func raceFixture(t *testing.T) (proj, outside string, files *desktop.FileService
 	return proj, outside, &desktop.FileService{Gateway: rt}, caller
 }
 
-// swapDocsAt is swapDocs at a given hook point.
-func swapDocsAt(t *testing.T, set func(func()) func(), proj, target string) {
+// swapDocsAt is swapDocs at a given hook point. It reports whether the OS
+// refused the swap: Windows will not rename a directory while a file in it
+// is open, which makes swaps after path.open's verification impossible there.
+func swapDocsAt(t *testing.T, set func(func()) func(), proj, target string) (blocked *bool) {
 	t.Helper()
+	blocked = new(bool)
 	t.Cleanup(set(func() {
 		docs := filepath.Join(proj, "docs")
 		if err := os.Rename(docs, docs+".moved"); err != nil {
+			if runtime.GOOS == "windows" && errors.Is(err, fs.ErrPermission) {
+				*blocked = true
+				return
+			}
 			t.Fatal(err)
 		}
 		link := target
@@ -81,6 +90,7 @@ func swapDocsAt(t *testing.T, set func(func()) func(), proj, target string) {
 			t.Skipf("symlinks unavailable: %v", err)
 		}
 	}))
+	return blocked
 }
 
 // swapDocs replaces proj/docs with a symlink to target once the path has
@@ -217,8 +227,17 @@ func TestPathService_OpenCannotBeRacedOutOfScope(t *testing.T) {
 				proj, outside, files, caller := raceFixture(t)
 				svc, opened := pathOpener(proj)
 				svc.Gateway = files.Gateway
-				swapDocsAt(t, set, proj, target(proj, outside))
-				err := svc.Open(context.Background(), caller, filepath.Join(proj, "docs", "f.txt"))
+				blocked := swapDocsAt(t, set, proj, target(proj, outside))
+				want := filepath.Join(proj, "docs", "f.txt")
+				err := svc.Open(context.Background(), caller, want)
+				if *blocked {
+					// The OS kept the verified file in place: the opener
+					// must get exactly that file.
+					if err != nil || len(*opened) != 1 || !sameFile((*opened)[0], want) {
+						t.Fatalf("swap was blocked, but open = %v, opener got %v", err, *opened)
+					}
+					return
+				}
 				var denied *domain.ErrDenied
 				if !errors.As(err, &denied) {
 					t.Fatalf("open after swap: %v, want a denial", err)
