@@ -113,14 +113,14 @@ path, the opened file must be the one identified at authorization.
 - **Unicode normalization.** APFS treats NFC and NFD spellings as the same
   file; path scopes do not normalize Unicode. Avoid relying on deny patterns
   for non-ASCII names.
-- **`path.open` hands over a path.** File reads and writes cannot be raced
-  (see below), but `path.open` passes a checked path to the OS's default
-  application, which opens it later on its own. A local process that can
-  rename directories inside the scope in that window could redirect it. Page
-  content alone cannot; it needs local code execution.
-- **Paths from your own executors.** Scopes only protect paths the gateway
-  sees. An executor that reads a path from its input must use the checked
-  `ResourcePath` (typed commands enforce this via `ResourcePath()`).
+- **The opener's own open.** `path.open` is verified like a read: the target
+  is opened through the scope, its real location is authorized, and the
+  opener receives that symlink-free location only after checking it still
+  leads to the same file. The OS's default application then opens the path
+  itself (no platform opener accepts a file handle), so a process that
+  swaps a directory in the instant after this last check could still
+  redirect it. That needs local code execution racing a millisecond
+  window; page content alone cannot do it.
 
 **Never grant `fs.write` and `path.open` on the same directory.** Opening a
 file with its default handler runs executables and scripts, so together they
@@ -203,7 +203,7 @@ rather than compared as URL strings.
 | Remote content has no authority (12) | `domain`: `TestGateway_RemoteContentDeniedByDefault`, `TestNavigationPolicy_UntrustedDeniedByDefault` |
 | Deterministic denials (13) | `domain`: `TestGateway_DenialDeterministicAndInspectable`; `app`: `TestApp_AuditsRejectedMessagesAndBlockedNavigation` |
 | Unsupported behavior is explicit (14) | `internal/platform/null`: `TestNullHost_ExplicitUnsupportedDialog` |
-| Path scopes | `domain`: `TestPathScope_RejectsBypasses`, `TestPathScope_WindowsDrivePaths`, `TestNewCapabilityGrant_RejectsMalformedPathPatterns`, `FuzzPathScope_Matches`; `desktop`: `TestFileService_ReadFollowsSymlinksOnlyWithinScope`, `TestFileService_WriteCannotEscapeThroughSymlinks`, `TestFileService_ReadCannotBeRacedOutOfScope`, `TestFileService_WriteCannotBeRacedOutOfScope`, `TestFileService_RaceWithoutFdPathLookup` |
+| Path scopes | `domain`: `TestPathScope_RejectsBypasses`, `TestPathScope_WindowsDrivePaths`, `TestNewCapabilityGrant_RejectsMalformedPathPatterns`, `FuzzPathScope_Matches`; `desktop`: `TestFileService_ReadFollowsSymlinksOnlyWithinScope`, `TestFileService_WriteCannotEscapeThroughSymlinks`, `TestFileService_ReadCannotBeRacedOutOfScope`, `TestFileService_WriteCannotBeRacedOutOfScope`, `TestFileService_RaceWithoutFdPathLookup`, `TestPathService_OpenCannotBeRacedOutOfScope`, `TestPathService_OpenPassesTheVerifiedPath` |
 | Least-privilege starter | `cmd/vitra`: `TestScaffold_GrantsLeastPrivilegeByDefault` |
 | IPC limits | `internal/ipc`: `TestBridge_RejectsOversizedMessages` |
 | Every message's sender is checked | `app`: `TestApp_ChecksSenderOfEveryMessage` |

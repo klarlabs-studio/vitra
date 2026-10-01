@@ -17,3 +17,11 @@ func ForceFdPathFallback() (restore func()) {
 	lookupFdPath = func(*os.File) (string, error) { return "", errFdPathUnsupported }
 	return func() { lookupFdPath = prev }
 }
+
+// SetBeforeLaunchHook runs fn after path.open has verified the opened file
+// and before it hands the path to the opener. It returns a restore function.
+func SetBeforeLaunchHook(fn func()) (restore func()) {
+	prev := beforeLaunch
+	beforeLaunch = fn
+	return func() { beforeLaunch = prev }
+}

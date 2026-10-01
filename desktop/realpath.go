@@ -10,15 +10,6 @@ import (
 	"go.klarlabs.de/vitra/domain"
 )
 
-// authorizeRealPath authorizes perm for path and returns the path to act on:
-// path with every symlink resolved. Callers that open the file themselves
-// should use authorizeScoped and scopedPath.open instead, which cannot be
-// raced.
-func authorizeRealPath(gw Gateway, caller domain.Caller, perm domain.PermissionName, path string) (string, error) {
-	sp, err := authorizeScoped(gw, caller, perm, path)
-	return sp.real, err
-}
-
 // scopedPath is an authorized path. For path-scoped permissions it also
 // records the scope root, so the file can be opened without leaving it.
 type scopedPath struct {
@@ -128,5 +119,6 @@ func deniedErr(caller domain.Caller, perm domain.PermissionName, code domain.Den
 	}
 }
 
-// beforeOpen runs between authorization and the file operation (tests only).
-var beforeOpen func()
+// Test hooks: beforeOpen runs between authorization and the file operation,
+// beforeLaunch between path.open's verification and the hand-off.
+var beforeOpen, beforeLaunch func()
