@@ -1101,13 +1101,22 @@ type PathService struct {
 	OnOpen  func(ctx context.Context, path string) error
 }
 
-// Open authorizes path.open for an absolute local path then opens it.
+// Open authorizes path.open for an absolute local path then opens it with
+// the OS's default application.
+//
+// For a path-scoped grant, the target is first opened the same way as a
+// FileService read (it cannot leave the scope or reach a denied path through
+// a racing swap). The opener then gets the location the OS reports for that
+// open file, which has no symlinks left in it, and only after checking that
+// the location still leads to the same file. The opener resolves that path
+// itself, so a process swapping a directory in the instant between this last
+// check and the opener's own open is the one case left; see docs/security.md.
 func (s *PathService) Open(ctx context.Context, caller domain.Caller, path string) error {
 	cleaned, err := validateLocalPath(path)
 	if err != nil {
 		return err
 	}
-	real, err := authorizeRealPath(s.Gateway, caller, PermPathOpen, cleaned)
+	sp, err := authorizeScoped(s.Gateway, caller, PermPathOpen, cleaned)
 	if err != nil {
 		return err
 	}
@@ -1117,7 +1126,47 @@ func (s *PathService) Open(ctx context.Context, caller domain.Caller, path strin
 	if s.OnOpen == nil {
 		return &platform.ErrUnsupported{Feature: platform.FeaturePathOpen, OS: s.Host.OS(), Detail: "no path opener bound"}
 	}
-	return s.OnOpen(ctx, real)
+	if !sp.scoped {
+		return s.OnOpen(ctx, sp.real)
+	}
+	target, f, err := s.verifiedTarget(sp, caller)
+	if err != nil {
+		return err
+	}
+	// Keep the verified file open while the opener starts.
+	defer func() { _ = f.Close() }()
+	return s.OnOpen(ctx, target)
+}
+
+// verifiedTarget opens sp and returns the path to hand to the opener: where
+// the OS says the opened file is, still leading to that same file.
+func (s *PathService) verifiedTarget(sp scopedPath, caller domain.Caller) (string, *os.File, error) {
+	if beforeOpen != nil {
+		beforeOpen()
+	}
+	f, err := sp.open(s.Gateway, caller, PermPathOpen, os.O_RDONLY)
+	if err != nil {
+		return "", nil, err
+	}
+	target, err := lookupFdPath(f)
+	if errors.Is(err, errFdPathUnsupported) {
+		target, err = sp.real, nil
+	}
+	if err == nil && beforeLaunch != nil {
+		beforeLaunch()
+	}
+	if err == nil {
+		opened, serr := f.Stat()
+		current, cerr := os.Stat(target)
+		if serr != nil || cerr != nil || !os.SameFile(opened, current) {
+			err = deniedErr(caller, PermPathOpen, domain.DenialPathOutOfScope, "file changed after it was authorized")
+		}
+	}
+	if err != nil {
+		_ = f.Close()
+		return "", nil, err
+	}
+	return target, f, nil
 }
 
 func validateLocalPath(path string) (string, error) {

@@ -10,6 +10,7 @@ import (
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/desktop"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/platform"
 )
 
 // raceFixture lays out a scope with a denied subtree and a directory outside
@@ -52,6 +53,7 @@ func raceFixture(t *testing.T) (proj, outside string, files *desktop.FileService
 		[]domain.Origin{domain.OriginPackagedLocal}, []domain.PermissionSpec{
 			{Name: desktop.PermFSRead, PathScope: scope},
 			{Name: desktop.PermFSWrite, PathScope: scope},
+			{Name: desktop.PermPathOpen, PathScope: scope},
 		})
 	if err != nil {
 		t.Fatal(err)
@@ -61,6 +63,24 @@ func raceFixture(t *testing.T) (proj, outside string, files *desktop.FileService
 	}
 	caller, _ = rt.CallerFor("main")
 	return proj, outside, &desktop.FileService{Gateway: rt}, caller
+}
+
+// swapDocsAt is swapDocs at a given hook point.
+func swapDocsAt(t *testing.T, set func(func()) func(), proj, target string) {
+	t.Helper()
+	t.Cleanup(set(func() {
+		docs := filepath.Join(proj, "docs")
+		if err := os.Rename(docs, docs+".moved"); err != nil {
+			t.Fatal(err)
+		}
+		link := target
+		if rel, err := filepath.Rel(filepath.Dir(docs), target); err == nil {
+			link = rel
+		}
+		if err := os.Symlink(link, docs); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+	}))
 }
 
 // swapDocs replaces proj/docs with a symlink to target once the path has
@@ -166,4 +186,76 @@ func TestFileService_RaceWithoutFdPathLookup(t *testing.T) {
 	t.Run("read", TestFileService_ReadCannotBeRacedOutOfScope)
 	t.Run("write", TestFileService_WriteCannotBeRacedOutOfScope)
 	t.Run("no race", TestFileService_ReadWriteWithoutRace)
+	t.Run("path.open", TestPathService_OpenCannotBeRacedOutOfScope)
+	t.Run("path.open target", TestPathService_OpenPassesTheVerifiedPath)
+}
+
+func pathOpener(proj string) (*desktop.PathService, *[]string) {
+	var opened []string
+	return &desktop.PathService{
+		Host: openHost(),
+		OnOpen: func(_ context.Context, path string) error {
+			opened = append(opened, path)
+			return nil
+		},
+	}, &opened
+}
+
+// path.open hands the opener a verified, symlink-free path, and refuses if
+// anything was swapped before the hand-over.
+func TestPathService_OpenCannotBeRacedOutOfScope(t *testing.T) {
+	hooks := map[string]func(func()) func(){
+		"before the check":    desktop.SetBeforeOpenHook,
+		"before the hand-off": desktop.SetBeforeLaunchHook,
+	}
+	for hookName, set := range hooks {
+		for name, target := range map[string]func(proj, outside string) string{
+			"into the denied subtree": func(proj, _ string) string { return filepath.Join(proj, ".secrets") },
+			"out of the scope":        func(_, outside string) string { return outside },
+		} {
+			t.Run(hookName+"/"+name, func(t *testing.T) {
+				proj, outside, files, caller := raceFixture(t)
+				svc, opened := pathOpener(proj)
+				svc.Gateway = files.Gateway
+				swapDocsAt(t, set, proj, target(proj, outside))
+				err := svc.Open(context.Background(), caller, filepath.Join(proj, "docs", "f.txt"))
+				var denied *domain.ErrDenied
+				if !errors.As(err, &denied) {
+					t.Fatalf("open after swap: %v, want a denial", err)
+				}
+				if len(*opened) != 0 {
+					t.Fatalf("opener was called with %v", *opened)
+				}
+			})
+		}
+	}
+}
+
+func TestPathService_OpenPassesTheVerifiedPath(t *testing.T) {
+	proj, _, files, caller := raceFixture(t)
+	if err := os.Symlink("f.txt", filepath.Join(proj, "docs", "alias.txt")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	svc, opened := pathOpener(proj)
+	svc.Gateway = files.Gateway
+	if err := svc.Open(context.Background(), caller, filepath.Join(proj, "docs", "alias.txt")); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(proj, "docs", "f.txt")
+	if len(*opened) != 1 || !sameFile((*opened)[0], want) {
+		t.Fatalf("opener got %v, want the link's target %s", *opened, want)
+	}
+	if fi, err := os.Lstat((*opened)[0]); err != nil || fi.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("opener got a symlink or missing path: %v", err)
+	}
+}
+
+func sameFile(a, b string) bool {
+	fa, err1 := os.Stat(a)
+	fb, err2 := os.Stat(b)
+	return err1 == nil && err2 == nil && os.SameFile(fa, fb)
+}
+
+func openHost() platform.Host {
+	return withFeatures(platform.OSLinux, platform.FeaturePathOpen)
 }
