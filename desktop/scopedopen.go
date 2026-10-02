@@ -102,7 +102,7 @@ func (sp scopedPath) verify(gw Gateway, caller domain.Caller, perm domain.Permis
 	if d := gw.Authorize(caller, perm, filepath.Join(sp.root, rel)); !d.Allowed {
 		return deniedErr(caller, perm, d.Code, "opened file: "+d.Reason)
 	}
-	return nil
+	return denyRealSpelling(gw, caller, perm, actual)
 }
 
 // verifyIdentity is verify for systems that cannot say where an open file

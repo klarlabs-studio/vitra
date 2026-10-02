@@ -84,6 +84,13 @@ patterns ignore letter case, so `/project/.SECRETS` cannot slip past a
 `.secrets` deny on APFS or NTFS. Allow patterns are case-sensitive, so an
 ambiguous path fails closed both ways.
 
+**Aliases.** A directory can have several absolute spellings (macOS `/var`
+is `/private/var`). Deny patterns cover both: when a grant is registered,
+each deny pattern's folder is resolved and its real spelling added as
+another deny (shown by `inspect`), and file operations also check the
+resolved real path of every file against the deny patterns. Allow patterns
+are never widened this way.
+
 **Symlinks.** Scopes compare strings. The desktop file and path services
 resolve the real target before acting:
 
@@ -106,10 +113,11 @@ path, the opened file must be the one identified at authorization.
 
 **Known limits:**
 
-- **Aliases above a deny root.** A deny written as `/var/app/**` does not
-  cover `/private/var/app/**` (macOS), because both spellings are absolute
-  and lexically different. Write sensitive denies under every name the
-  directory has. `filepath.EvalSymlinks` on the directory gives the real one.
+- **Aliases created after registration.** Deny patterns cover their folder's
+  real spelling as resolved when the grant is registered. A symlink created
+  later that renames a denied folder is still caught when files are opened
+  (the real path is checked), but plain `Authorize` calls only see the
+  spellings known at registration.
 - **Unicode normalization.** APFS treats NFC and NFD spellings as the same
   file; path scopes do not normalize Unicode. Avoid relying on deny patterns
   for non-ASCII names.
@@ -203,7 +211,7 @@ rather than compared as URL strings.
 | Remote content has no authority (12) | `domain`: `TestGateway_RemoteContentDeniedByDefault`, `TestNavigationPolicy_UntrustedDeniedByDefault` |
 | Deterministic denials (13) | `domain`: `TestGateway_DenialDeterministicAndInspectable`; `app`: `TestApp_AuditsRejectedMessagesAndBlockedNavigation` |
 | Unsupported behavior is explicit (14) | `internal/platform/null`: `TestNullHost_ExplicitUnsupportedDialog` |
-| Path scopes | `domain`: `TestPathScope_RejectsBypasses`, `TestPathScope_WindowsDrivePaths`, `TestNewCapabilityGrant_RejectsMalformedPathPatterns`, `FuzzPathScope_Matches`; `desktop`: `TestFileService_ReadFollowsSymlinksOnlyWithinScope`, `TestFileService_WriteCannotEscapeThroughSymlinks`, `TestFileService_ReadCannotBeRacedOutOfScope`, `TestFileService_WriteCannotBeRacedOutOfScope`, `TestFileService_RaceWithoutFdPathLookup`, `TestPathService_OpenCannotBeRacedOutOfScope`, `TestPathService_OpenPassesTheVerifiedPath` |
+| Path scopes | `domain`: `TestPathScope_RejectsBypasses`, `TestPathScope_WindowsDrivePaths`, `TestNewCapabilityGrant_RejectsMalformedPathPatterns`, `FuzzPathScope_Matches`; `desktop`: `TestFileService_ReadFollowsSymlinksOnlyWithinScope`, `TestFileService_WriteCannotEscapeThroughSymlinks`, `TestFileService_ReadCannotBeRacedOutOfScope`, `TestFileService_WriteCannotBeRacedOutOfScope`, `TestFileService_RaceWithoutFdPathLookup`, `TestPathService_OpenCannotBeRacedOutOfScope`, `TestPathService_OpenPassesTheVerifiedPath`; `domain`: `TestPathScope_WithDenyAliases`; `vitra`: `TestRegisterGrant_DenyCoversRealSpelling`; `desktop`: `TestFileService_DenyOnRealPathAppliesThroughAlias` |
 | Least-privilege starter | `cmd/vitra`: `TestScaffold_GrantsLeastPrivilegeByDefault` |
 | IPC limits | `internal/ipc`: `TestBridge_RejectsOversizedMessages` |
 | Every message's sender is checked | `app`: `TestApp_ChecksSenderOfEveryMessage` |
