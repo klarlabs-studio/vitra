@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `vitra doctor --json` prints every doctor check as one JSON object, each with a `name`, a `status` (`ok`, `warn`, `fail`), and a `detail`, for CI jobs and bug reports. The text report and the exit status are unchanged. The bug report template now asks for this output.
+
 ## [0.7.1] - 2026-10-02
 
 Security fix: file access through `desktop.FileService` and `path.open` can no longer be redirected by a directory swap after the path was checked. No API changes.
