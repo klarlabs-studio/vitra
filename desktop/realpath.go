@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/fspath"
 )
 
 // scopedPath is an authorized path. For path-scoped permissions it also
@@ -54,6 +55,9 @@ func authorizeScoped(gw Gateway, caller domain.Caller, perm domain.PermissionNam
 	if err != nil {
 		return scopedPath{}, deniedErr(caller, perm, domain.DenialPathOutOfScope, err.Error())
 	}
+	// Compare stored spellings, so Unicode spelling variants of a name
+	// (one file on APFS) cannot slip past a deny.
+	realRoot, real = canonical(realRoot), canonicalDir(real)
 	rel, err := filepath.Rel(realRoot, real)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return scopedPath{}, deniedErr(caller, perm, domain.DenialPathOutOfScope, "path resolves outside its scope through a symlink")
@@ -63,10 +67,37 @@ func authorizeScoped(gw Gateway, caller domain.Caller, perm domain.PermissionNam
 			return scopedPath{}, deniedErr(caller, perm, d.Code, "symlink target: "+d.Reason)
 		}
 	}
+	if err := denyRealSpelling(gw, caller, perm, real); err != nil {
+		return scopedPath{}, err
+	}
 	sp := scopedPath{real: real, scoped: true, root: root, realRoot: realRoot, rel: rel}
 	sp.info = statNow(real)
 	sp.parentInfo = statNow(filepath.Dir(real))
 	return sp, nil
+}
+
+// denyRealSpelling refuses real if a deny pattern names it by its real
+// spelling, even when the allow pattern used another (an alias such as
+// macOS /var for /private/var). Only a deny counts here: the real spelling
+// may legitimately sit outside the allow patterns' spelling.
+func denyRealSpelling(gw Gateway, caller domain.Caller, perm domain.PermissionName, real string) error {
+	if d := gw.Authorize(caller, perm, filepath.ToSlash(real)); !d.Allowed && d.Code == domain.DenialPathDenied {
+		return deniedErr(caller, perm, d.Code, "real path: "+d.Reason)
+	}
+	return nil
+}
+
+// canonical returns dir's stored spelling, or dir if it cannot be found.
+func canonical(dir string) string {
+	if c, err := fspath.Canonical(dir); err == nil {
+		return c
+	}
+	return dir
+}
+
+// canonicalDir returns p with its directory in the stored spelling.
+func canonicalDir(p string) string {
+	return filepath.Join(canonical(filepath.Dir(p)), filepath.Base(p))
 }
 
 // statNow returns path's FileInfo with its file identity read now. On

@@ -76,7 +76,7 @@ Scopes compare strings, so a symlink inside an allowed folder could point anywhe
 
 ### Write scopes with the real path
 
-Scopes are strings, and a directory can have several names: on macOS `/var` is `/private/var`, and `$TMPDIR` lives there. Resolve the directory before building the grant:
+Scopes are strings, and a directory can have several names: on macOS `/var` is `/private/var`, and `$TMPDIR` lives there. Vitra makes deny patterns cover both spellings for you, but allow patterns are matched as written, so resolve the directory before building the grant:
 
 ```go
 root, err := filepath.EvalSymlinks(dir)

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Windows: the navigation policy now applies to iframes. WebView2's `NavigationStarting` fires for the top-level document only, so a remote page embedded in an `<iframe>` loaded on Windows (it still could not call Go: it has no sender token and WebView2 does not deliver its messages to the app). Frame navigations now go through the same check and are blocked and audited as `navigation.block`, as on Linux and macOS. Found by the new Windows E2E run of the notes demo.
+- Deny patterns cover every spelling of their folder. A deny written as `/var/app/secret/**` also refuses `/private/var/app/secret/...` (macOS `/var` is a link): `Runtime.RegisterGrant` adds the real spelling of each deny pattern's folder, and file operations check each file's resolved real path against the deny patterns, so a deny written with the real path also applies through an alias. Allow patterns are never widened. New `domain.PathScope.WithDenyAliases` and `CapabilityGrant.WithDenyAliases`.
+- On macOS, a deny pattern also refuses other Unicode spellings of its folder name (composed vs decomposed `é`), which APFS treats as the same file. Names are compared in the spelling stored on disk, read from open handles; no Unicode tables are added to the kernel.
+
 ### Added
 - `vitra doctor --json` prints every doctor check as one JSON object, each with a `name`, a `status` (`ok`, `warn`, `fail`), and a `detail`, for CI jobs and bug reports. The text report and the exit status are unchanged. The bug report template now asks for this output.
 - `audit.FileSink` (`audit.NewFileSink(path, maxBytes, maxBackups)`): writes audit events as JSON lines to a file, rotates it before it would exceed `maxBytes`, and keeps `maxBackups` old files (`audit.jsonl.1` newest). Files are mode `0600`, an existing file is reopened and appended to, and `Append` never waits for the disk: a full queue returns `audit.ErrSinkFull`. Dropped events are recorded in the file as an `audit.dropped` event (new `audit.KindAuditDropped`) with the number lost. Write errors surface from `Flush` and `Close`.

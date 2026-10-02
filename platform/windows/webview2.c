@@ -201,6 +201,9 @@ static HRESULT STDMETHODCALLTYPE on_controller_created(ICoreWebView2CreateCoreWe
 	EventRegistrationToken token;
 	webview->lpVtbl->add_WebMessageReceived(webview, &wv->msg_handler, &token);
 	webview->lpVtbl->add_NavigationStarting(webview, &wv->nav_handler, &token);
+	/* NavigationStarting fires for the top-level document only; iframes go
+	 * through FrameNavigationStarting, so the same policy applies to them. */
+	webview->lpVtbl->add_FrameNavigationStarting(webview, &wv->nav_handler, &token);
 
 	const char *preload = (wv->preload && wv->preload[0] != '\0') ? wv->preload : "/* vitra */";
 	wchar_t *wpreload = utf8_to_wide(preload);
