@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-02
+
+Deny rules that hold across folder aliases and Unicode spellings, iframes
+blocked on Windows, the notes demo tested end to end on all three
+platforms, and the first contributor issues shipped: `doctor --json`, a
+rotating audit sink, `vitra new --with`, and multi-select file dialogs.
+
+### Upgrading from 0.7.1
+- No code changes required.
+- Windows: remote pages in `<iframe>`s are now blocked by the navigation policy, as on Linux and macOS. Serve every frame from the app's own assets.
+- Window sizes from the page above 2^53 or outside the `int` range are now rejected instead of rounded or clamped.
+
 ### Security
 - Windows: the navigation policy now applies to iframes. WebView2's `NavigationStarting` fires for the top-level document only, so a remote page embedded in an `<iframe>` loaded on Windows (it still could not call Go: it has no sender token and WebView2 does not deliver its messages to the app). Frame navigations now go through the same check and are blocked and audited as `navigation.block`, as on Linux and macOS. Found by the new Windows E2E run of the notes demo.
 - Deny patterns cover every spelling of their folder. A deny written as `/var/app/secret/**` also refuses `/private/var/app/secret/...` (macOS `/var` is a link): `Runtime.RegisterGrant` adds the real spelling of each deny pattern's folder, and file operations check each file's resolved real path against the deny patterns, so a deny written with the real path also applies through an alias. Allow patterns are never widened. New `domain.PathScope.WithDenyAliases` and `CapabilityGrant.WithDenyAliases`.
@@ -440,7 +452,8 @@ Windows (WebView2) behind `-tags vitra_native`.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
 
-[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/klarlabs-studio/vitra/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/klarlabs-studio/vitra/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/klarlabs-studio/vitra/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/klarlabs-studio/vitra/compare/v0.5.0...v0.6.0
