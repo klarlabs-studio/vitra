@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-02
+
+Security fix: file access through `desktop.FileService` and `path.open` can no longer be redirected by a directory swap after the path was checked. No API changes.
+
 ### Security
 - File reads and writes through `desktop.FileService` can no longer be raced. Before, the path was checked and then opened again, so a local process that swapped a directory in between could redirect the operation into a denied folder or out of the scope. Files are now opened through an `os.Root` at the scope's real root, the opened file's actual location is looked up from the handle and authorized again, and new files are created exclusively inside the authorized directory's handle. `path.open` is verified the same way, and hands the OS opener the file's real, symlink-free location only after checking it still leads to the verified file. The opener's own open of that path is the one remaining window.
 
@@ -425,7 +429,8 @@ Windows (WebView2) behind `-tags vitra_native`.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
 
-[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/klarlabs-studio/vitra/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/klarlabs-studio/vitra/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/klarlabs-studio/vitra/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/klarlabs-studio/vitra/compare/v0.4.0...v0.5.0
