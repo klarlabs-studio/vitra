@@ -63,10 +63,24 @@ func authorizeScoped(gw Gateway, caller domain.Caller, perm domain.PermissionNam
 			return scopedPath{}, deniedErr(caller, perm, d.Code, "symlink target: "+d.Reason)
 		}
 	}
+	if err := denyRealSpelling(gw, caller, perm, real); err != nil {
+		return scopedPath{}, err
+	}
 	sp := scopedPath{real: real, scoped: true, root: root, realRoot: realRoot, rel: rel}
 	sp.info = statNow(real)
 	sp.parentInfo = statNow(filepath.Dir(real))
 	return sp, nil
+}
+
+// denyRealSpelling refuses real if a deny pattern names it by its real
+// spelling, even when the allow pattern used another (an alias such as
+// macOS /var for /private/var). Only a deny counts here: the real spelling
+// may legitimately sit outside the allow patterns' spelling.
+func denyRealSpelling(gw Gateway, caller domain.Caller, perm domain.PermissionName, real string) error {
+	if d := gw.Authorize(caller, perm, filepath.ToSlash(real)); !d.Allowed && d.Code == domain.DenialPathDenied {
+		return deniedErr(caller, perm, d.Code, "real path: "+d.Reason)
+	}
+	return nil
 }
 
 // statNow returns path's FileInfo with its file identity read now. On
