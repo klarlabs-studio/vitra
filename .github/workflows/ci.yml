@@ -87,6 +87,21 @@ jobs:
           go mod tidy
           go build -o /dev/null .
 
+      # `vitra new --with` adds plugin demos (src/plugins.ts) to the frontend.
+      - name: Scaffold with every --with plugin, build frontend, build app
+        env:
+          VITRA_MODULE_PATH: ${{ github.workspace }}
+          TEMPLATE: ${{ matrix.template }}
+        run: |
+          go run ./cmd/vitra new "$RUNNER_TEMP/app-with" --template "$TEMPLATE" --with fs,dialog,clipboard,notification,os
+          cd "$RUNNER_TEMP/app-with/frontend"
+          npm install --no-audit --no-fund
+          npm run build
+          test -f dist/index.html
+          cd ..
+          go mod tidy
+          go build -o /dev/null .
+
   # Darwin and Windows native hosts only compile with cgo on their own OS, so
   # cross-builds never see them. Build (and unit-test) them on real runners.
   native-build:

@@ -138,32 +138,58 @@ func TestParseTTL(t *testing.T) {
 
 // The client `vitra new` ships must be exactly what `vitra generate
 // typescript --app` produces for the generated app, or the starter's types
-// drift from its Go commands.
+// drift from its Go commands. This holds with and without --with.
 func TestScaffold_ClientMatchesGeneratedApp(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds and runs a Go program")
 	}
 	_, self, _, _ := runtime.Caller(0)
 	t.Setenv("VITRA_MODULE_PATH", filepath.Clean(filepath.Join(filepath.Dir(self), "..", "..")))
-	dir := filepath.Join(t.TempDir(), "app")
-	out := filepath.Join(t.TempDir(), "generated.ts")
-	capture(t, func() {
-		if err := run([]string{"new", dir}); err != nil {
-			t.Fatal(err)
-		}
-		if err := run([]string{"generate", "typescript", "--app", dir, "--out", out}); err != nil {
-			t.Fatal(err)
-		}
-	})
-	shipped, err := os.ReadFile(filepath.Join(dir, "frontend", "vitra-client.ts"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	generated, err := os.ReadFile(out)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(shipped) != string(generated) {
-		t.Fatalf("scaffolded client differs from the generated one.\nshipped:\n%s\ngenerated:\n%s", shipped, generated)
+	// Running a --with fs app creates its data folder; keep that out of the
+	// real home.
+	home := isolateHome(t)
+	for name, args := range map[string][]string{
+		"starter":      nil,
+		"with-plugins": {"--with", allScaffoldPlugins},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), "app")
+			out := filepath.Join(t.TempDir(), "generated.ts")
+			capture(t, func() {
+				if err := run(append([]string{"new", dir}, args...)); err != nil {
+					t.Fatal(err)
+				}
+				if err := run([]string{"generate", "typescript", "--app", dir, "--out", out}); err != nil {
+					t.Fatal(err)
+				}
+			})
+			shipped, err := os.ReadFile(filepath.Join(dir, "frontend", "vitra-client.ts"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			generated, err := os.ReadFile(out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(shipped) != string(generated) {
+				t.Fatalf("scaffolded client differs from the generated one.\nshipped:\n%s\ngenerated:\n%s", shipped, generated)
+			}
+			if args == nil {
+				return
+			}
+			// Running the --with fs app created its data folder under the
+			// (isolated) home directory.
+			config, err := os.UserConfigDir()
+			if err != nil {
+				t.Fatal(err)
+			}
+			data := filepath.Join(config, "com.example.app")
+			if fi, err := os.Stat(data); err != nil || !fi.IsDir() {
+				t.Fatalf("data folder %s not created: %v", data, err)
+			}
+			if rel, err := filepath.Rel(home, data); err != nil || strings.HasPrefix(rel, "..") {
+				t.Fatalf("data folder %s is not under home %s", data, home)
+			}
+		})
 	}
 }

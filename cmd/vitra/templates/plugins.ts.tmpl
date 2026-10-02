@@ -1,0 +1,95 @@
+// One call per official plugin this app was created with (`vitra new
+// --with [[.PluginNames]]`). Each works only because main.go grants it.
+import { createClient, type VitraInvoker } from "../vitra-client";
+
+const client = createClient((window as unknown as { vitra: { invoke: VitraInvoker } }).vitra.invoke);
+
+function describe(err: unknown): string {
+  const e = err as { code?: string; message?: string };
+  return (e.code ? e.code + ": " : "") + (e.message ?? String(err));
+}
+
+const demos: { label: string; run: () => Promise<string> }[] = [
+[[- if .FS]]
+  {
+    // fs: write a file in the app's data folder, then read it back. The last
+    // argument is the path the grant's scope is checked against.
+    label: "Write & read a file",
+    async run() {
+      const { path } = await client.dataDir({});
+      const file = path + "/hello.txt";
+      await client.fsWrite({ path: file, data: "Saved at " + new Date().toLocaleTimeString() }, file);
+      return file + ": " + String(await client.fsRead(file, file));
+    },
+  },
+[[- end]]
+[[- if .Dialog]]
+  {
+    label: "Open…",
+    async run() {
+      const picked = (await client.dialogOpen({ title: "Pick a file" })) as string[] | null;
+      return picked && picked.length ? "Picked " + picked[0] : "Cancelled";
+    },
+  },
+  {
+    label: "Save as…",
+    async run() {
+      const path = (await client.dialogSave({ title: "Save as", defaultPath: "untitled.txt" })) as string;
+      return path ? "Picked " + path + " (saving there needs fs.write on its folder)" : "Cancelled";
+    },
+  },
+[[- end]]
+[[- if .Clipboard]]
+  {
+    label: "Copy text",
+    async run() {
+      const text = "Copied from Vitra at " + new Date().toLocaleTimeString();
+      await client.clipboardWrite(text);
+      return "Copied: " + text;
+    },
+  },
+[[- end]]
+[[- if .Notification]]
+  {
+    label: "Notify",
+    async run() {
+      await client.notificationsShow({ title: "Vitra", body: "Hello from your app" });
+      return "Notification sent";
+    },
+  },
+[[- end]]
+[[- if .OS]]
+  {
+    label: "OS info",
+    async run() {
+      const info = (await client.osInfo()) as { os: string; arch: string };
+      return "Running on " + info.os + "/" + info.arch;
+    },
+  },
+[[- end]]
+];
+
+const section = document.createElement("section");
+section.style.width = "min(440px, 100% - 32px)";
+section.innerHTML = "<h2>Desktop plugins</h2><p>main.go grants a narrow slice of the [[.PluginList]] plugins. Each button makes one call.</p>";
+const buttons = document.createElement("div");
+buttons.style.cssText = "display: flex; flex-wrap: wrap; gap: 8px";
+const out = document.createElement("output");
+out.setAttribute("aria-live", "polite");
+for (const demo of demos) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = demo.label;
+  button.addEventListener("click", async () => {
+    try {
+      out.className = "";
+      out.textContent = await demo.run();
+    } catch (err) {
+      out.className = "error";
+      out.textContent = describe(err);
+    }
+  });
+  buttons.append(button);
+}
+section.append(buttons, out);
+document.body.append(section);
