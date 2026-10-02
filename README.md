@@ -218,6 +218,10 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Darwin global shortcuts | **Done** (`RegisterEventHotKey`; Ctrl→Command) |
 | Linux global shortcuts | **Done on X11** (`XGrabKey`); unsupported on Wayland (use in-window `MenuItem.Shortcut`) |
 
+## Stability
+
+Vitra is pre-1.0: minor releases may break things, and each one says how to upgrade. See [compatibility and the road to 1.0](https://klarlabs-studio.github.io/vitra/compatibility) for what is covered and what is still open.
+
 ## Security
 
 The frontend is untrusted by design, so a gateway bypass, path scope escape,
