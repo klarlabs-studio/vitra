@@ -636,6 +636,12 @@ int vitra_show_notification(const char *title, const char *body) {
 	return 1;
 }
 
+/* GTK3 has no tray API that is not deprecated: GtkStatusIcon is the only
+ * built-in one, and its replacement (StatusNotifierItem via
+ * libayatana-appindicator) is a separate library. Keep the tray on
+ * GtkStatusIcon without warning every build about it. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 static void on_tray_activate(GtkStatusIcon *icon, gpointer user_data) {
 	(void)icon;
 	(void)user_data;
@@ -690,6 +696,7 @@ void vitra_tray_clear(void) {
 		gtk_status_icon_set_visible(g_tray, FALSE);
 	}
 }
+#pragma GCC diagnostic pop
 
 static void on_drag_data(GtkWidget *widget, GdkDragContext *ctx, gint x, gint y,
 	GtkSelectionData *data, guint info, guint time, gpointer user_data) {
