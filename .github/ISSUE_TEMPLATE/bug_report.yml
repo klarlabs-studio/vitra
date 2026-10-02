@@ -45,5 +45,5 @@ body:
     id: env
     attributes:
       label: Environment
-      description: OS version, Go version, and `vitra doctor` output.
+      description: OS version, Go version, and `vitra doctor --json` output.
       render: text

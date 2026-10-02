@@ -23,6 +23,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,6 +32,7 @@ import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/internal/application"
 	"go.klarlabs.de/vitra/internal/bindings"
+	"go.klarlabs.de/vitra/internal/fspath"
 	"go.klarlabs.de/vitra/internal/inmemory"
 	"go.klarlabs.de/vitra/plugin"
 	"go.klarlabs.de/vitra/policy"
@@ -241,8 +243,29 @@ func (rt *Runtime) Worker(id worker.ID) (worker.Record, error) {
 func (rt *Runtime) Workers() []worker.Record { return rt.workers.List() }
 
 // RegisterGrant installs a capability grant.
+//
+// Deny patterns also cover the real spelling of their directory: a deny on
+// /var/app/secret/** refuses /private/var/app/secret/... too where /var is a
+// link (macOS). Directories are resolved when the grant is registered.
 func (rt *Runtime) RegisterGrant(grant *domain.CapabilityGrant) error {
+	if grant != nil {
+		resolved, err := grant.WithDenyAliases(resolveDir)
+		if err != nil {
+			return err
+		}
+		grant = resolved
+	}
 	return rt.registerGrant.Execute(grant)
+}
+
+// resolveDir resolves a slash-form directory to its real path, spelled as
+// stored on disk (see fspath.Canonical).
+func resolveDir(dir string) (string, bool) {
+	real, err := fspath.Canonical(filepath.FromSlash(dir))
+	if err != nil {
+		return "", false
+	}
+	return filepath.ToSlash(real), true
 }
 
 // RegisterCommand registers a command and its executor.

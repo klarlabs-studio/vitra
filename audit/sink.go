@@ -22,6 +22,10 @@ const (
 	KindBridgeReject Kind = "bridge.reject"
 	// KindNavigationBlock records a navigation the app's policy refused.
 	KindNavigationBlock Kind = "navigation.block"
+	// KindAuditDropped records that a sink dropped events before writing
+	// them, such as FileSink when its write queue was full. Metadata
+	// "count" is the number of events lost at that point in the log.
+	KindAuditDropped Kind = "audit.dropped"
 )
 
 // Event is an append-only audit record.

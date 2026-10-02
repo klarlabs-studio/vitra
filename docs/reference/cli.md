@@ -9,12 +9,28 @@ go install go.klarlabs.de/vitra/cmd/vitra@latest
 | Command | What it does |
 |---|---|
 | `vitra version` | Print the Vitra version |
-| `vitra doctor` | Check Go, cgo, and the WebView toolchain for this OS |
+| `vitra doctor [--json]` | Check Go, cgo, and the WebView toolchain for this OS. `--json` prints the same checks as one JSON object for CI and bug reports |
 | `vitra new <dir> [--template vanilla\|vite\|react\|svelte\|vue] [--with <plugins>]` | Create a starter app. `--with` takes a comma-separated list of `fs`, `dialog`, `clipboard`, `notification`, `os`: those official plugins are registered with least-privilege grants and a demo call each; see [Start with desktop plugins](/guide/getting-started#start-with-desktop-plugins) |
 | `vitra dev [dir]` | Run the app with the native host and the inspector; restart when `.go`, `.html`, `.css`, or `.js` files change |
 | `vitra build [dir]` | Build the app binary with the native host |
 | `vitra generate typescript [--app dir] [--out path] [--module name]` | Write a TypeScript client. With `--app`, the client covers that app's own commands; without it, the official plugin commands |
 | `vitra inspect capabilities` | Print the capability surface of a demo runtime |
+
+### `vitra doctor --json`
+
+Prints one JSON object with every check from the text report, in the same order:
+
+```json
+{
+  "checks": [
+    { "name": "go", "status": "ok", "detail": "go1.25.0" },
+    { "name": "cgo", "status": "warn", "detail": "disabled" },
+    { "name": "pkg-config", "status": "fail", "detail": "webkit2gtk-4.1 not found (exit status 1 )" }
+  ]
+}
+```
+
+`status` is `ok`, `warn` (works, but something is missing or off, such as an optional packaging tool), or `fail` (a prerequisite for the native host is missing). `detail` is the text the plain report shows. Without `--json` the output is unchanged, and the exit status is the same with or without the flag.
 
 ## Package and integrate
 

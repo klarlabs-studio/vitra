@@ -898,3 +898,26 @@ func TestPathService_GrantFeatureAndHook(t *testing.T) {
 		t.Fatal("expected missing adapter")
 	}
 }
+
+// A size must be exactly the integer the page sent. Numbers above 2^53 are
+// not exact once decoded from JSON (2e16+1 arrives as 2e16), and numbers
+// beyond the int range would be saturated or wrapped by the float-to-int
+// conversion (which differs by CPU), so both are rejected.
+func TestParseWindowSizes_RejectInexactOrOutOfRangeNumbers(t *testing.T) {
+	_, w, _, err := desktop.ParseWindowSetSize(map[string]any{"id": "main", "width": float64(1 << 53), "height": 1.0})
+	if err != nil || w != 1<<53 {
+		t.Fatalf("2^53 must stay accepted: w=%d err=%v", w, err)
+	}
+	for _, n := range []float64{1<<53 + 2, 2.000000000000001e16, 1 << 63, 1 << 64, 1e19, 1e308} {
+		in := map[string]any{"id": "main", "width": n, "height": n}
+		if _, w, h, err := desktop.ParseWindowSetSize(in); err == nil {
+			t.Errorf("ParseWindowSetSize accepted %v as %dx%d", n, w, h)
+		}
+		if opts, err := desktop.ParseWindowCreateOptions(in); err != nil || opts.Width != 0 || opts.Height != 0 {
+			t.Errorf("ParseWindowCreateOptions(%v) = %+v, %v; want size ignored", n, opts, err)
+		}
+		if _, chrome, err := desktop.ParseWindowChromeApply(in); err != nil || chrome.Width != 0 || chrome.Height != 0 {
+			t.Errorf("ParseWindowChromeApply(%v) = %+v, %v; want size ignored", n, chrome, err)
+		}
+	}
+}

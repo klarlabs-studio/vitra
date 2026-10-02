@@ -659,3 +659,48 @@ func TestRuntime_AuditRecordsResourcePathAndDenialCode(t *testing.T) {
 		t.Fatal("resource_path recorded for a call without one")
 	}
 }
+
+// A deny written with a symlinked spelling of a folder also refuses the
+// folder's real spelling.
+func TestRegisterGrant_DenyCoversRealSpelling(t *testing.T) {
+	tmp, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	real := filepath.Join(tmp, "data")
+	if err := os.MkdirAll(filepath.Join(real, "secret"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(tmp, "alias")
+	if err := os.Symlink(real, alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.alias"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rt.OpenWindow(context.Background(), "main", domain.OriginPackagedLocal); err != nil {
+		t.Fatal(err)
+	}
+	slash := filepath.ToSlash
+	grant, err := domain.NewCapabilityGrant("files", "files", []domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal}, []domain.PermissionSpec{{
+			Name: "fs.read", PathScope: &domain.PathScope{
+				Allow: []string{slash(real) + "/**"},
+				Deny:  []string{slash(alias) + "/secret/**"},
+			},
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.RegisterGrant(grant); err != nil {
+		t.Fatal(err)
+	}
+	caller, _ := rt.CallerFor("main")
+	if d := rt.Authorize(caller, "fs.read", slash(real)+"/secret/key"); d.Allowed || d.Code != domain.DenialPathDenied {
+		t.Fatalf("real spelling of a denied folder: %+v", d)
+	}
+	if d := rt.Authorize(caller, "fs.read", slash(real)+"/notes.md"); !d.Allowed {
+		t.Fatalf("allowed file refused: %+v", d)
+	}
+}
