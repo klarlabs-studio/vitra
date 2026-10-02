@@ -35,9 +35,12 @@ var (
 // reopened, tightened to 0600, and appended to.
 //
 // Append never waits for the disk: it encodes the event and queues it for a
-// background writer, returning ErrSinkFull if the queue is full. Write
-// errors are reported by Flush and Close. Call Close on shutdown so queued
-// events reach the file.
+// background writer, returning ErrSinkFull if the queue is full. Dropped
+// events leave a visible gap in the log: before its next write (or at Flush
+// or Close), the writer records an event of kind KindAuditDropped with
+// Outcome "error" and Metadata "count" set to the number lost since the
+// previous marker. Write errors are reported by Flush and Close. Call Close
+// on shutdown so queued events reach the file.
 type FileSink struct {
 	path       string
 	maxBytes   int64
@@ -49,7 +52,8 @@ type FileSink struct {
 	queue  chan fileItem
 	done   chan struct{}
 
-	dropped atomic.Uint64
+	dropped atomic.Uint64 // cumulative, reported by Dropped
+	pending atomic.Uint64 // drops not yet recorded in the file
 
 	// fileMu guards the writer state below; held while writing or rotating.
 	fileMu sync.Mutex
@@ -111,6 +115,7 @@ func (s *FileSink) Append(e Event) error {
 		return nil
 	default:
 		s.dropped.Add(1)
+		s.pending.Add(1)
 		return ErrSinkFull
 	}
 }
@@ -176,30 +181,60 @@ func (s *FileSink) run() {
 	defer close(s.done)
 	for it := range s.queue {
 		s.fileMu.Lock()
+		s.writeDropMarker()
 		if it.flushed != nil {
 			it.flushed <- s.takeErr()
 		} else {
-			s.write(it.line)
+			s.recordErr(s.write(it.line))
 		}
 		s.fileMu.Unlock()
+	}
+	// Close stops new drops before closing the queue, so this is the last.
+	s.fileMu.Lock()
+	s.writeDropMarker()
+	s.fileMu.Unlock()
+}
+
+// writeDropMarker records events dropped since the last marker, directly
+// from the writer so the marker itself can never be dropped. If the write
+// fails, the count is kept for the next attempt. Callers hold fileMu.
+func (s *FileSink) writeDropMarker() {
+	n := s.pending.Swap(0)
+	if n == 0 {
+		return
+	}
+	b, err := json.Marshal(Event{
+		At:       time.Now().UTC(),
+		Kind:     KindAuditDropped,
+		Outcome:  "error",
+		Detail:   fmt.Sprintf("%d audit events dropped: write queue full", n),
+		Metadata: map[string]any{"count": n},
+	})
+	if err == nil {
+		err = s.write(append(b, '\n'))
+	}
+	if err != nil {
+		s.pending.Add(n)
+		s.recordErr(err)
 	}
 }
 
 // write appends one line, rotating first if it would exceed maxBytes. A line
-// longer than maxBytes is written alone into a fresh file. Callers hold fileMu.
-func (s *FileSink) write(line []byte) {
+// longer than maxBytes is written alone into a fresh file. Rotation errors
+// are recorded; the returned error is whether the line was written. Callers
+// hold fileMu.
+func (s *FileSink) write(line []byte) error {
 	if s.file != nil && s.size > 0 && s.size+int64(len(line)) > s.maxBytes {
 		s.recordErr(s.rotate())
 	}
 	if s.file == nil {
 		if err := s.open(); err != nil {
-			s.recordErr(err)
-			return
+			return err
 		}
 	}
 	n, err := s.file.Write(line)
 	s.size += int64(n)
-	s.recordErr(err)
+	return err
 }
 
 // open opens the current file for appending with mode 0600. Callers hold

@@ -279,12 +279,27 @@ func TestFileSink_ConcurrentAppends(t *testing.T) {
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	got := s.List()
+	var got []audit.Event
+	var markedDropped uint64
+	for _, e := range s.List() {
+		if e.Kind == audit.KindAuditDropped {
+			c, ok := e.Metadata["count"].(float64)
+			if !ok || c < 1 {
+				t.Fatalf("bad drop marker: %+v", e)
+			}
+			markedDropped += uint64(c)
+			continue
+		}
+		got = append(got, e)
+	}
 	if len(got) != accepted {
 		t.Fatalf("wrote %d events, accepted %d", len(got), accepted)
 	}
 	if uint64(workers*each-accepted) != s.Dropped() {
 		t.Fatalf("dropped %d, want %d", s.Dropped(), workers*each-accepted)
+	}
+	if markedDropped != s.Dropped() {
+		t.Fatalf("drop markers report %d, dropped %d", markedDropped, s.Dropped())
 	}
 	seen := make(map[string]bool, len(got))
 	for _, e := range got {
