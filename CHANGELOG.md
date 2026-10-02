@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `audit.FileSink` (`audit.NewFileSink(path, maxBytes, maxBackups)`): writes audit events as JSON lines to a file, rotates it before it would exceed `maxBytes`, and keeps `maxBackups` old files (`audit.jsonl.1` newest). Files are mode `0600`, an existing file is reopened and appended to, and `Append` never waits for the disk: a full queue returns `audit.ErrSinkFull`. Write errors surface from `Flush` and `Close`.
+
 ## [0.7.1] - 2026-10-02
 
 Security fix: file access through `desktop.FileService` and `path.open` can no longer be redirected by a directory swap after the path was checked. No API changes.
