@@ -25,7 +25,7 @@ func run(args []string) error {
 		fmt.Printf("vitra %s\n", vitra.Version)
 		return nil
 	case "doctor":
-		return doctor()
+		return doctor(args[1:])
 	case "inspect":
 		return inspectDemo(args[1:])
 	case "new":
@@ -67,7 +67,7 @@ func printUsage() {
 
 Usage:
   vitra version              Print kernel version
-  vitra doctor               Diagnose WebView / CGO prerequisites
+  vitra doctor [--json]      Diagnose WebView / CGO prerequisites (--json: one JSON object)
   vitra new <dir> [--template vanilla|vite|react|svelte|vue]
                              Scaffold a starter desktop app (default: vanilla HTML; vite/react/svelte/vue add Vite frontends)
   vitra dev [dir]            Watch + run the app with the native host (-tags vitra_native on Linux/Darwin/Windows)
