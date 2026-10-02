@@ -25,10 +25,18 @@ type Greeting struct {
 	Message string `json:"message"`
 }
 
-// scaffoldTypeScriptClient returns the client for the starter app, the same
-// one `vitra generate typescript --app` writes for it, so a new app's
-// frontend builds before Go is ever run.
-func scaffoldTypeScriptClient() (string, error) {
+// DataDirRequest and DataDir mirror the dataDir command a `--with fs`
+// starter registers.
+type DataDirRequest struct{}
+
+type DataDir struct {
+	Path string `json:"path"`
+}
+
+// scaffoldTypeScriptClient returns the client for the starter app with the
+// given plugins, the same one `vitra generate typescript --app` writes for
+// it, so a new app's frontend builds before Go is ever run.
+func scaffoldTypeScriptClient(plugins []scaffoldPlugin) (string, error) {
 	const appID = "com.example.app"
 	rt, err := vitra.New(vitra.Config{AppID: appID})
 	if err != nil {
@@ -43,6 +51,26 @@ func scaffoldTypeScriptClient() (string, error) {
 		},
 	}); err != nil {
 		return "", err
+	}
+	for _, p := range plugins {
+		if p.name != "fs" {
+			continue
+		}
+		if err := vitra.Register(rt, vitra.Command[DataDirRequest, DataDir]{
+			Name:        "dataDir",
+			Description: "The folder the page may read and write",
+			Permission:  "dataDir",
+			Handler: func(context.Context, domain.Invocation, DataDirRequest) (DataDir, error) {
+				return DataDir{}, nil
+			},
+		}); err != nil {
+			return "", err
+		}
+	}
+	for _, p := range plugins {
+		if err := rt.RegisterPlugin(context.Background(), p.new()); err != nil {
+			return "", err
+		}
 	}
 	return rt.TypeScript(appID)
 }

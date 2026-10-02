@@ -64,6 +64,26 @@ grant, err := domain.NewCapabilityGrant(
 
 Remove the grant and the button fails with `no_grant`. Nothing in the frontend can change that.
 
+## Start with desktop plugins
+
+To begin with files, dialogs, or the clipboard, name the plugins with `--with`:
+
+```bash
+vitra new hello --with fs,dialog,clipboard
+```
+
+`main.go` then registers exactly those [official plugins](/guide/desktop) with `a.UseOfficialPlugins(ctx, official.FS(), official.Dialog(), official.Clipboard())` and grants each one as narrowly as a starter can. The page gets one button per plugin that makes a real call.
+
+| `--with` | Granted | Left out on purpose |
+|---|---|---|
+| `fs` | `fs.read` and `fs.write`, scoped to one data folder under your home (`os.UserConfigDir()/<app id>`, symlinks resolved), plus a `dataDir` command that tells the page where it is | Any other folder. Narrowing writes to `dataDir + "/**/*.md"` is a commented option |
+| `dialog` | `dialog.open`, `dialog.save` | `dialog.openDirectory`, `dialog.message` |
+| `clipboard` | `clipboard.write` | `clipboard.read`, which would show the page whatever you copied elsewhere |
+| `notification` | `notifications.show` | |
+| `os` | `os.info` | |
+
+A picked file is not a grant: reading or writing it still needs a scoped `fs` permission on its folder. `path.open` is never granted, and should never be granted on a folder the page can write. Plugins that need app-specific scopes or ids (`path`, `browser`, `window`, `menu`, `tray`, `shortcut`, `dragdrop`, `app`, `deeplink`) are not offered by `--with`; add them by hand as described in [Desktop features](/guide/desktop). An unknown name is an error that lists the valid ones.
+
 ## Build and run without the CLI
 
 ```bash

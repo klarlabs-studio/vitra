@@ -8,13 +8,13 @@ import (
 	"testing"
 )
 
-// scaffoldGrant generates a starter app and returns its main.go without
-// comment lines.
-func scaffoldGrant(t *testing.T) string {
+// scaffoldGrant generates a starter app with the given extra `vitra new`
+// arguments and returns its main.go without comment lines.
+func scaffoldGrant(t *testing.T, args ...string) string {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), "app")
 	capture(t, func() {
-		if err := run([]string{"new", dir}); err != nil {
+		if err := run(append([]string{"new", dir}, args...)); err != nil {
 			t.Fatal(err)
 		}
 	})
