@@ -9,6 +9,7 @@
 #import <stdlib.h>
 #import <string.h>
 #import <ctype.h>
+#import <limits.h>
 
 /* Web inspector for newly created webviews; off unless the app opts in. */
 static int vitra_devtools = 0;
@@ -716,6 +717,56 @@ char *vitra_open_dialog(const char *title, const char *default_path, const char 
 		return NULL;
 	}
 	return strdup(url.fileSystemRepresentation);
+}
+
+/* vitra_open_dialog_multi runs a multi-select NSOpenPanel. It returns the
+ * selected paths as one malloc'd buffer of NUL-terminated paths (NUL is the
+ * only byte a path cannot contain), its byte length in *out_len, or NULL when
+ * the user cancels or picks nothing. Free it with free(). The panel and its
+ * URLs are autoreleased; nothing here is retained. */
+char *vitra_open_dialog_multi(const char *title, const char *default_path, const char *filters, int *out_len) {
+	*out_len = 0;
+	NSOpenPanel *panel = [NSOpenPanel openPanel];
+	panel.canChooseFiles = YES;
+	panel.canChooseDirectories = NO;
+	panel.allowsMultipleSelection = YES;
+	panel.resolvesAliases = YES;
+	if (title && title[0]) {
+		panel.title = [NSString stringWithUTF8String:title];
+		panel.message = panel.title;
+	}
+	if (default_path && default_path[0]) {
+		panel.directoryURL = [NSURL fileURLWithPath:[NSString stringWithUTF8String:default_path] isDirectory:YES];
+	}
+	vitra_apply_filters(panel, filters);
+	if ([panel runModal] != NSModalResponseOK) {
+		return NULL;
+	}
+	size_t total = 0;
+	for (NSURL *url in panel.URLs) {
+		if (url.isFileURL) {
+			total += strlen(url.fileSystemRepresentation) + 1;
+		}
+	}
+	if (total == 0 || total > INT_MAX) {
+		return NULL;
+	}
+	char *buf = malloc(total);
+	if (!buf) {
+		return NULL;
+	}
+	size_t off = 0;
+	for (NSURL *url in panel.URLs) {
+		if (!url.isFileURL) {
+			continue;
+		}
+		const char *p = url.fileSystemRepresentation;
+		size_t n = strlen(p) + 1;
+		memcpy(buf + off, p, n);
+		off += n;
+	}
+	*out_len = (int)off;
+	return buf;
 }
 
 char *vitra_open_directory_dialog(const char *title, const char *default_path) {

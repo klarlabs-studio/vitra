@@ -101,12 +101,19 @@ func FuzzParseDialogFileOptions(f *testing.F) {
 		`{"filters":[{"name":"Text","extensions":"txt"}]}`,
 		`{"filters":[null,1,{"extensions":[1,null,"go"]}]}`,
 		`{"filters":{}}`, `{"title":["x"],"defaultPath":{}}`,
+		`{"multiple":true}`, `{"multiple":"true"}`, `{"multiple":1,"filters":[]}`,
 	}, func(t *testing.T, input any) {
 		opts := desktop.ParseDialogFileOptions(input)
-		if _, isObject := input.(map[string]any); !isObject {
-			if opts.Title != "" || opts.DefaultPath != "" || len(opts.Filters) != 0 {
+		m, isObject := input.(map[string]any)
+		if !isObject {
+			if opts.Title != "" || opts.DefaultPath != "" || len(opts.Filters) != 0 || opts.Multiple {
 				t.Fatalf("non-object input %#v produced options %+v", input, opts)
 			}
+			return
+		}
+		// Only a JSON true opts into a multi-file selection.
+		if want := m["multiple"] == true; opts.Multiple != want {
+			t.Fatalf("input %#v: Multiple = %v, want %v", input, opts.Multiple, want)
 		}
 	})
 }

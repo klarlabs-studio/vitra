@@ -28,6 +28,9 @@ func TestHost_ExplicitUnsupported(t *testing.T) {
 	if _, err := h.OpenFileDialog(platform.DialogFileOptions{}); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureDialogOpen {
 		t.Fatalf("open dialog: %v", err)
 	}
+	if _, err := h.OpenFilesDialog(platform.DialogFileOptions{Multiple: true}); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureDialogOpen {
+		t.Fatalf("open files dialog: %v", err)
+	}
 	if _, err := h.SaveFileDialog(platform.DialogFileOptions{}); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureDialogSave {
 		t.Fatalf("save dialog: %v", err)
 	}

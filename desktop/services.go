@@ -201,7 +201,8 @@ type DialogService struct {
 	OnMessage       func(ctx context.Context, title, message, kind string) (bool, error)
 }
 
-// ParseDialogFileOptions extracts title/defaultPath/filters from an invoke payload.
+// ParseDialogFileOptions extracts title/defaultPath/filters/multiple from an invoke payload.
+// Only a boolean true for "multiple" asks for a multi-file selection.
 // nil or unrecognized input yields zero options (legacy unfiltered dialogs).
 func ParseDialogFileOptions(input any) platform.DialogFileOptions {
 	var opts platform.DialogFileOptions
@@ -214,6 +215,9 @@ func ParseDialogFileOptions(input any) platform.DialogFileOptions {
 	}
 	if d, ok := m["defaultPath"].(string); ok {
 		opts.DefaultPath = d
+	}
+	if multiple, ok := m["multiple"].(bool); ok {
+		opts.Multiple = multiple
 	}
 	rawFilters, ok := m["filters"]
 	if !ok {

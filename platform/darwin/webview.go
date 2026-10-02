@@ -512,6 +512,34 @@ func (h *Host) OpenFileDialog(opts platform.DialogFileOptions) (string, error) {
 	return <-ch, nil
 }
 
+// Host can select several files in one open dialog.
+var _ platform.MultiFileOpener = (*Host)(nil)
+
+// OpenFilesDialog opens an NSOpenPanel that can select several files
+// (platform.MultiFileOpener). It returns nil when the user cancels.
+func (h *Host) OpenFilesDialog(opts platform.DialogFileOptions) ([]string, error) {
+	ch := make(chan []string, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ctitle := C.CString(opts.Title)
+		cdefault := C.CString(opts.DefaultPath)
+		cfilters := C.CString(platform.EncodeFileFilters(opts.Filters))
+		var n C.int
+		p := C.vitra_open_dialog_multi(ctitle, cdefault, cfilters, &n)
+		C.free(unsafe.Pointer(ctitle))
+		C.free(unsafe.Pointer(cdefault))
+		C.free(unsafe.Pointer(cfilters))
+		if p == nil {
+			ch <- nil
+			return
+		}
+		paths := platform.DecodePathList(C.GoBytes(unsafe.Pointer(p), n))
+		C.free(unsafe.Pointer(p))
+		ch <- paths
+	})
+	return <-ch, nil
+}
+
 // SaveFileDialog opens a native save-file chooser (NSSavePanel).
 func (h *Host) SaveFileDialog(opts platform.DialogFileOptions) (string, error) {
 	ch := make(chan string, 1)

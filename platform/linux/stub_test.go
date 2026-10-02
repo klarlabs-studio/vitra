@@ -49,6 +49,8 @@ func TestStubHost_ReportsNativeRequirement(t *testing.T) {
 	mustErr(h.ClipboardSet("x"))
 	_, err = h.OpenFileDialog(platform.DialogFileOptions{})
 	mustErr(err)
+	_, err = h.OpenFilesDialog(platform.DialogFileOptions{Multiple: true})
+	mustErr(err)
 	_, err = h.SaveFileDialog(platform.DialogFileOptions{})
 	mustErr(err)
 	_, err = h.OpenDirectoryDialog(platform.DialogFileOptions{})

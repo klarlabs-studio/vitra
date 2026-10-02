@@ -3,6 +3,7 @@
 #include "native.h"
 #include "webview2.h"
 #include <ctype.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
@@ -954,6 +955,216 @@ char *vitra_open_dialog(const char *title, const char *default_path, const char 
 		return NULL;
 	}
 	return _strdup(path);
+}
+
+static wchar_t *vitra_utf8_to_wide(const char *s) {
+	int n = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
+	if (n <= 0) {
+		return NULL;
+	}
+	wchar_t *w = (wchar_t *)malloc((size_t)n * sizeof(wchar_t));
+	if (w) {
+		MultiByteToWideChar(CP_UTF8, 0, s, -1, w, n);
+	}
+	return w;
+}
+
+/* VitraFileTypes holds the COMDLG_FILTERSPEC list for an IFileDialog and the
+ * wide strings it points at, which must outlive Show. */
+typedef struct {
+	COMDLG_FILTERSPEC *specs;
+	UINT count;
+	wchar_t **strings;
+	size_t nstrings;
+} VitraFileTypes;
+
+static void vitra_file_types_free(VitraFileTypes *ft) {
+	if (ft->strings) {
+		for (size_t i = 0; i < ft->nstrings; i++) {
+			free(ft->strings[i]);
+		}
+		free(ft->strings);
+	}
+	free(ft->specs);
+	memset(ft, 0, sizeof(*ft));
+}
+
+/* vitra_file_types_build converts the "Label:ext1,ext2;..." filter spec into
+ * file types, reusing the GetOpenFileName filter buffer (label\0pattern\0...\0)
+ * so both dialogs show the same filters, "All Files" last. */
+static void vitra_file_types_build(VitraFileTypes *ft, const char *filters) {
+	memset(ft, 0, sizeof(*ft));
+	char *buf = vitra_win_filter_buffer(filters);
+	if (!buf) {
+		return;
+	}
+	size_t pairs = 0;
+	for (const char *p = buf; *p;) {
+		const char *pattern = p + strlen(p) + 1;
+		if (!*pattern) {
+			break;
+		}
+		pairs++;
+		p = pattern + strlen(pattern) + 1;
+	}
+	if (pairs > 0) {
+		ft->specs = (COMDLG_FILTERSPEC *)calloc(pairs, sizeof(COMDLG_FILTERSPEC));
+		ft->strings = (wchar_t **)calloc(pairs * 2, sizeof(wchar_t *));
+		if (!ft->specs || !ft->strings) {
+			free(buf);
+			vitra_file_types_free(ft);
+			return;
+		}
+		ft->nstrings = pairs * 2;
+		const char *p = buf;
+		for (size_t i = 0; i < pairs; i++) {
+			const char *pattern = p + strlen(p) + 1;
+			wchar_t *wname = vitra_utf8_to_wide(p);
+			wchar_t *wpattern = vitra_utf8_to_wide(pattern);
+			ft->strings[2 * i] = wname;
+			ft->strings[2 * i + 1] = wpattern;
+			if (wname && wpattern) {
+				ft->specs[ft->count].pszName = wname;
+				ft->specs[ft->count].pszSpec = wpattern;
+				ft->count++;
+			}
+			p = pattern + strlen(pattern) + 1;
+		}
+	}
+	free(buf);
+}
+
+/* vitra_dialog_set_default points the dialog at default_path: a directory
+ * opens there; a file path opens its folder with the name prefilled. */
+static void vitra_dialog_set_default(IFileOpenDialog *pfd, const char *default_path) {
+	if (!default_path || !default_path[0]) {
+		return;
+	}
+	wchar_t *wpath = vitra_utf8_to_wide(default_path);
+	if (!wpath) {
+		return;
+	}
+	size_t len = wcslen(wpath);
+	DWORD attrs = GetFileAttributesW(wpath);
+	int is_dir = (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY)) ||
+		(len > 0 && (wpath[len - 1] == L'\\' || wpath[len - 1] == L'/'));
+	if (!is_dir) {
+		wchar_t *slash = wcsrchr(wpath, L'\\');
+		wchar_t *slash2 = wcsrchr(wpath, L'/');
+		if (slash2 && (!slash || slash2 > slash)) {
+			slash = slash2;
+		}
+		if (!slash) {
+			pfd->lpVtbl->SetFileName(pfd, wpath);
+			free(wpath);
+			return;
+		}
+		pfd->lpVtbl->SetFileName(pfd, slash + 1);
+		*slash = L'\0';
+	}
+	IShellItem *folder = NULL;
+	if (SUCCEEDED(SHCreateItemFromParsingName(wpath, NULL, &IID_IShellItem, (void **)&folder))) {
+		pfd->lpVtbl->SetFolder(pfd, folder);
+		folder->lpVtbl->Release(folder);
+	}
+	free(wpath);
+}
+
+/* vitra_append_item_path appends psi's file-system path, UTF-8 and
+ * NUL-terminated, to the growing *buf. Returns 0 on allocation failure. */
+static int vitra_append_item_path(IShellItem *psi, char **buf, size_t *len) {
+	PWSTR wpath = NULL;
+	if (FAILED(psi->lpVtbl->GetDisplayName(psi, SIGDN_FILESYSPATH, &wpath))) {
+		return 1;
+	}
+	int ok = 1;
+	int n = WideCharToMultiByte(CP_UTF8, 0, wpath, -1, NULL, 0, NULL, NULL);
+	if (n > 1) {
+		char *grown = (char *)realloc(*buf, *len + (size_t)n);
+		if (grown) {
+			WideCharToMultiByte(CP_UTF8, 0, wpath, -1, grown + *len, n, NULL, NULL);
+			*buf = grown;
+			*len += (size_t)n;
+		} else {
+			ok = 0;
+		}
+	}
+	CoTaskMemFree(wpath);
+	return ok;
+}
+
+/* vitra_open_dialog_multi runs a multi-select IFileOpenDialog. It returns the
+ * selected paths as one malloc'd buffer of NUL-terminated UTF-8 paths (NUL is
+ * the only byte a path cannot contain), its byte length in *out_len, or NULL
+ * when the user cancels or picks nothing. Free it with free(). */
+char *vitra_open_dialog_multi(const char *title, const char *default_path, const char *filters, int *out_len) {
+	*out_len = 0;
+	HRESULT hrInit = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	IFileOpenDialog *pfd = NULL;
+	HRESULT hr = CoCreateInstance(
+		&CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER,
+		&IID_IFileOpenDialog, (void **)&pfd);
+	if (FAILED(hr)) {
+		if (hrInit == S_OK) {
+			CoUninitialize();
+		}
+		return NULL;
+	}
+	DWORD opts = 0;
+	pfd->lpVtbl->GetOptions(pfd, &opts);
+	pfd->lpVtbl->SetOptions(pfd, opts | FOS_ALLOWMULTISELECT | FOS_FORCEFILESYSTEM |
+		FOS_FILEMUSTEXIST | FOS_PATHMUSTEXIST | FOS_NOCHANGEDIR);
+	wchar_t *wtitle = NULL;
+	if (title && title[0]) {
+		wtitle = vitra_utf8_to_wide(title);
+		if (wtitle) {
+			pfd->lpVtbl->SetTitle(pfd, wtitle);
+		}
+	}
+	VitraFileTypes types;
+	vitra_file_types_build(&types, filters);
+	if (types.count > 0) {
+		pfd->lpVtbl->SetFileTypes(pfd, types.count, types.specs);
+		pfd->lpVtbl->SetFileTypeIndex(pfd, 1);
+	}
+	vitra_dialog_set_default(pfd, default_path);
+	hr = pfd->lpVtbl->Show(pfd, NULL);
+	char *buf = NULL;
+	size_t len = 0;
+	if (SUCCEEDED(hr)) {
+		IShellItemArray *items = NULL;
+		if (SUCCEEDED(pfd->lpVtbl->GetResults(pfd, &items))) {
+			DWORD count = 0;
+			items->lpVtbl->GetCount(items, &count);
+			for (DWORD i = 0; i < count; i++) {
+				IShellItem *psi = NULL;
+				if (FAILED(items->lpVtbl->GetItemAt(items, i, &psi))) {
+					continue;
+				}
+				int ok = vitra_append_item_path(psi, &buf, &len);
+				psi->lpVtbl->Release(psi);
+				if (!ok) {
+					free(buf);
+					buf = NULL;
+					len = 0;
+					break;
+				}
+			}
+			items->lpVtbl->Release(items);
+		}
+	}
+	free(wtitle);
+	vitra_file_types_free(&types);
+	pfd->lpVtbl->Release(pfd);
+	if (hrInit == S_OK) {
+		CoUninitialize();
+	}
+	if (!buf || len == 0 || len > INT_MAX) {
+		free(buf);
+		return NULL;
+	}
+	*out_len = (int)len;
+	return buf;
 }
 
 char *vitra_open_directory_dialog(const char *title, const char *default_path) {

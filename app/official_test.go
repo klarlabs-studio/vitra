@@ -60,11 +60,19 @@ func (h *pluginHost) SetMenuBar(id domain.WindowID, items []platform.MenuItem) e
 
 func runPluginApp(t *testing.T, plugins ...plugin.Plugin) (*vitra.Runtime, *pluginHost, *app.App) {
 	t.Helper()
+	host := newPluginHost()
+	rt, a := runPluginAppOn(t, host, host.ran, plugins...)
+	return rt, host, a
+}
+
+// runPluginAppOn runs an app with the official plugins on host; ran closes
+// once the host's Run has started.
+func runPluginAppOn(t *testing.T, host app.DesktopHost, ran <-chan struct{}, plugins ...plugin.Plugin) (*vitra.Runtime, *app.App) {
+	t.Helper()
 	rt, err := vitra.New(vitra.Config{AppID: "com.example.plugins"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	host := newPluginHost()
 	a, err := app.New(app.Options{
 		AppID:   "com.example.plugins",
 		Assets:  fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("x")}},
@@ -80,12 +88,12 @@ func runPluginApp(t *testing.T, plugins ...plugin.Plugin) (*vitra.Runtime, *plug
 	}
 	go func() { _ = a.Run(context.Background()) }()
 	select {
-	case <-host.ran:
+	case <-ran:
 	case <-time.After(2 * time.Second):
 		t.Fatal("Run did not start")
 	}
 	t.Cleanup(a.Quit)
-	return rt, host, a
+	return rt, a
 }
 
 func grantAll(t *testing.T, rt *vitra.Runtime) {
@@ -236,6 +244,59 @@ func TestUseOfficialPlugins_Subset(t *testing.T) {
 	var denied *domain.ErrDenied
 	if !errors.As(err, &denied) || denied.Code != domain.DenialCommandMissing {
 		t.Fatalf("dialog.open without the dialog plugin: %v", err)
+	}
+}
+
+// multiPickHost is a pluginHost whose open dialog can select several files.
+type multiPickHost struct {
+	*pluginHost
+	gotOpts platform.DialogFileOptions
+}
+
+func (h *multiPickHost) OpenFilesDialog(opts platform.DialogFileOptions) ([]string, error) {
+	h.gotOpts = opts
+	return []string{"/etc/picked-a.txt", "/etc/picked-b.txt"}, nil
+}
+
+func TestDialogOpen_MultipleReturnsEverySelectedPath(t *testing.T) {
+	host := &multiPickHost{pluginHost: newPluginHost()}
+	rt, _ := runPluginAppOn(t, host, host.ran)
+	grantAll(t, rt)
+
+	out, err := call(t, rt, "dialog.open", map[string]any{"title": "Pick", "multiple": true}, "")
+	paths, _ := out.([]string)
+	if err != nil || len(paths) != 2 || paths[0] != "/etc/picked-a.txt" || paths[1] != "/etc/picked-b.txt" {
+		t.Fatalf("dialog.open multiple = %v, %v", out, err)
+	}
+	if !host.gotOpts.Multiple || host.gotOpts.Title != "Pick" {
+		t.Fatalf("host got options %+v", host.gotOpts)
+	}
+
+	// Without multiple, the single-file dialog is used, as before.
+	out, err = call(t, rt, "dialog.open", map[string]any{"title": "Pick"}, "")
+	if paths, _ := out.([]string); err != nil || len(paths) != 1 || paths[0] != "/tmp/x" {
+		t.Fatalf("dialog.open = %v, %v", out, err)
+	}
+
+	// Picking files grants nothing: the picked paths lie outside the fs.read
+	// scope, so reading them is still denied.
+	for _, p := range paths {
+		_, err := call(t, rt, "fs.read", p, p)
+		var denied *domain.ErrDenied
+		if !errors.As(err, &denied) {
+			t.Fatalf("fs.read %s after picking it: %v, want denied", p, err)
+		}
+	}
+}
+
+func TestDialogOpen_MultipleUnsupportedByHost(t *testing.T) {
+	rt, _, _ := runPluginApp(t)
+	grantAll(t, rt)
+
+	out, err := call(t, rt, "dialog.open", map[string]any{"multiple": true}, "")
+	var unsupp *platform.ErrUnsupported
+	if !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureDialogOpen {
+		t.Fatalf("dialog.open multiple on a single-pick host = %v, %v; want ErrUnsupported", out, err)
 	}
 }
 

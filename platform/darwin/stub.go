@@ -136,6 +136,13 @@ func (h *Host) CloseWindow(context.Context, domain.WindowID) error {
 func (h *Host) OpenFileDialog(platform.DialogFileOptions) (string, error) {
 	return "", h.err(platform.FeatureDialogOpen)
 }
+
+// The stub keeps the native host's method set; it still fails explicitly.
+var _ platform.MultiFileOpener = (*Host)(nil)
+
+func (h *Host) OpenFilesDialog(platform.DialogFileOptions) ([]string, error) {
+	return nil, h.err(platform.FeatureDialogOpen)
+}
 func (h *Host) SaveFileDialog(platform.DialogFileOptions) (string, error) {
 	return "", h.err(platform.FeatureDialogSave)
 }
