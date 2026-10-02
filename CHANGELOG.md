@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `vitra doctor --json` prints every doctor check as one JSON object, each with a `name`, a `status` (`ok`, `warn`, `fail`), and a `detail`, for CI jobs and bug reports. The text report and the exit status are unchanged. The bug report template now asks for this output.
+- `audit.FileSink` (`audit.NewFileSink(path, maxBytes, maxBackups)`): writes audit events as JSON lines to a file, rotates it before it would exceed `maxBytes`, and keeps `maxBackups` old files (`audit.jsonl.1` newest). Files are mode `0600`, an existing file is reopened and appended to, and `Append` never waits for the disk: a full queue returns `audit.ErrSinkFull`. Dropped events are recorded in the file as an `audit.dropped` event (new `audit.KindAuditDropped`) with the number lost. Write errors surface from `Flush` and `Close`.
 
 ## [0.7.1] - 2026-10-02
 
