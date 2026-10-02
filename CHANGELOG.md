@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `vitra new <dir> --with fs,dialog,clipboard,notification,os` scaffolds an app that registers exactly those official plugins with least-privilege grants: `fs.read` and `fs.write` scoped to one per-user data folder (symlinks resolved), `dialog.open` and `dialog.save` only, `clipboard.write` only (reading is a commented opt-in), `notifications.show`, `os.info`. `path.open` is never granted. The frontend (vanilla page, or `src/plugins.ts` for the Vite templates) makes one call per plugin, and the shipped `vitra-client.ts` matches `vitra generate typescript --app`. An unknown plugin name is an error listing the valid ones. Without `--with`, the output is unchanged.
+
 ## [0.7.1] - 2026-10-02
 
 Security fix: file access through `desktop.FileService` and `path.open` can no longer be redirected by a directory swap after the path was checked. No API changes.
