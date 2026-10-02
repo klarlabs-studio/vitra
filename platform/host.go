@@ -1,4 +1,4 @@
-// Package platform defines Phase 0 ports for OS-native desktop adapters.
+// Package platform defines the ports that OS-native desktop hosts implement.
 //
 // Each OS has a first-class adapter. Unsupported operations must surface as
 // explicit FeatureUnavailable results — never silent no-ops (security

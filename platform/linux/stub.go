@@ -1,5 +1,11 @@
 //go:build !linux || !cgo || !vitra_native
 
+// Package linux provides the Linux WebKitGTK/GTK3 host adapter.
+//
+// Without CGO_ENABLED=1 -tags vitra_native this is an explicit stub
+// (security invariant 14). Enable the native host on Linux with:
+//
+//	CGO_ENABLED=1 go build -tags vitra_native
 package linux
 
 import (
