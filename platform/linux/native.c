@@ -495,6 +495,47 @@ char *vitra_open_dialog(const char *title, const char *default_path, const char 
 	return path;
 }
 
+/* vitra_open_dialog_multi runs a multi-select open dialog. It returns the
+ * selected paths as one g_malloc'd buffer of NUL-terminated paths (NUL is the
+ * only byte a path cannot contain), its byte length in *out_len, or NULL when
+ * the user cancels or picks nothing. Free it with g_free. */
+char *vitra_open_dialog_multi(const char *title, const char *default_path, const char *filters, int *out_len) {
+	*out_len = 0;
+	GtkWidget *dialog = gtk_file_chooser_dialog_new(
+		title && title[0] ? title : "Open Files", NULL, GTK_FILE_CHOOSER_ACTION_OPEN,
+		"_Cancel", GTK_RESPONSE_CANCEL,
+		"_Open", GTK_RESPONSE_ACCEPT, NULL);
+	GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
+	gtk_file_chooser_set_select_multiple(chooser, TRUE);
+	vitra_apply_dialog_defaults(chooser, title, default_path, dialog);
+	vitra_apply_file_filters(chooser, filters);
+	GString *buf = NULL;
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		GSList *names = gtk_file_chooser_get_filenames(chooser);
+		for (GSList *it = names; it; it = it->next) {
+			const char *name = (const char *)it->data;
+			if (!name || !name[0]) {
+				continue;
+			}
+			if (!buf) {
+				buf = g_string_new(NULL);
+			}
+			g_string_append_len(buf, name, (gssize)strlen(name) + 1);
+		}
+		g_slist_free_full(names, g_free);
+	}
+	gtk_widget_destroy(dialog);
+	if (!buf) {
+		return NULL;
+	}
+	if (buf->len > G_MAXINT) {
+		g_string_free(buf, TRUE);
+		return NULL;
+	}
+	*out_len = (int)buf->len;
+	return g_string_free(buf, FALSE);
+}
+
 char *vitra_open_directory_dialog(const char *title, const char *default_path) {
 	GtkWidget *dialog = gtk_file_chooser_dialog_new(
 		title && title[0] ? title : "Open Folder", NULL, GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,

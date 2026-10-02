@@ -27,6 +27,22 @@ This **grants nothing**. Every command still needs a grant for the calling windo
 
 It also forwards native activations: menu, tray, and shortcut activations become `menu.action`, `tray.action`, and `shortcut.action` events (`{"id": ...}`), and file drops become `dragdrop.drop` (`{"window", "paths"}`). [Subscribe](/guide/events) the windows that should receive them.
 
+## Picking files
+
+`dialog.open` returns an array of paths, or `null` when the user cancels. It takes an optional object: `title`, `defaultPath`, `filters` (`[{"name": "Images", "extensions": ["png", "jpg"]}]`), and `multiple`:
+
+```js
+const paths = await window.vitra.invoke("dialog.open", {
+  title: "Add attachments",
+  multiple: true,
+  filters: [{ name: "Documents", extensions: ["pdf", "md"] }],
+});
+```
+
+Without `multiple` (or with anything but `true`) the dialog selects one file, as before. With `multiple: true` the Linux, macOS, and Windows hosts let the user select several files and return all of them. A host that cannot do that returns `platform.ErrUnsupported`; it never quietly returns a single file. Custom hosts opt in by implementing `platform.MultiFileOpener`.
+
+Picking a file grants nothing. Reading it with `fs.read` still needs an `fs.read` grant whose path scope covers it.
+
 ## Binding by hand
 
 `UseOfficialPlugins` is a convenience over the pieces in `desktop`. To change how a command behaves, register the plugin yourself and bind its commands to a service:

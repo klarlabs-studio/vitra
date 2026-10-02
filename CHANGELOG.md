@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `vitra doctor --json` prints every doctor check as one JSON object, each with a `name`, a `status` (`ok`, `warn`, `fail`), and a `detail`, for CI jobs and bug reports. The text report and the exit status are unchanged. The bug report template now asks for this output.
+- `dialog.open` can select several files: pass `{"multiple": true}` and it returns every selected path. The Linux (GTK), macOS (`NSOpenPanel`), and Windows (`IFileOpenDialog`) hosts support it; without `multiple` the dialog is unchanged. `platform.DialogFileOptions` has a new `Multiple` field, and hosts opt in through the new optional `platform.MultiFileOpener` interface, so custom `app.DesktopHost` implementations keep compiling. A host without it returns `platform.ErrUnsupported` instead of returning one file. Picking files grants nothing: `fs.read` still needs its own grant.
 
 ## [0.7.1] - 2026-10-02
 

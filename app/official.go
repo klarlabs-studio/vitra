@@ -113,17 +113,35 @@ func (a *App) bindFS() error {
 	})
 }
 
+// openFiles runs the host's open dialog. With opts.Multiple it needs a host
+// that implements platform.MultiFileOpener and fails explicitly otherwise,
+// so a caller asking for several files never silently gets one.
+func openFiles(h DesktopHost, opts platform.DialogFileOptions) ([]string, error) {
+	if opts.Multiple {
+		multi, ok := h.(platform.MultiFileOpener)
+		if !ok {
+			return nil, &platform.ErrUnsupported{
+				Feature: platform.FeatureDialogOpen,
+				OS:      h.OS(),
+				Detail:  "this host cannot select multiple files",
+			}
+		}
+		return multi.OpenFilesDialog(opts)
+	}
+	path, err := h.OpenFileDialog(opts)
+	if err != nil || path == "" {
+		return nil, err
+	}
+	return []string{path}, nil
+}
+
 func (a *App) bindDialog() error {
 	h := a.host
 	dialogs := &desktop.DialogService{
 		Gateway: a.rt,
 		Host:    h,
 		OnOpen: func(_ context.Context, opts platform.DialogFileOptions) ([]string, error) {
-			path, err := h.OpenFileDialog(opts)
-			if err != nil || path == "" {
-				return nil, err
-			}
-			return []string{path}, nil
+			return openFiles(h, opts)
 		},
 		OnSave: func(_ context.Context, opts platform.DialogFileOptions) (string, error) {
 			return h.SaveFileDialog(opts)

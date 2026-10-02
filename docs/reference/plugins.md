@@ -19,6 +19,8 @@
 | `vitra.app` | `official.App()` | `app.quit` | `app.quit` | |
 | `vitra.deeplink` | `official.DeepLink()` | `deeplink.handle` | | `deeplink.open` |
 
+`dialog.open` takes `{"multiple": true}` to select several files and returns every selected path; a host that cannot select several files returns `platform.ErrUnsupported`. See [Picking files](/guide/desktop#picking-files).
+
 The permission constants live in `desktop` (`desktop.PermFSRead`, `desktop.PermClipboardWrite`, …).
 
 ## Writing a plugin

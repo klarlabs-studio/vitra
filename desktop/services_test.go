@@ -921,3 +921,26 @@ func TestParseWindowSizes_RejectInexactOrOutOfRangeNumbers(t *testing.T) {
 		}
 	}
 }
+
+func TestParseDialogFileOptions_Multiple(t *testing.T) {
+	for _, input := range []map[string]any{
+		{"multiple": true},
+		{"multiple": true, "filters": []any{map[string]any{"name": "Docs", "extensions": []any{"md"}}}},
+	} {
+		if got := desktop.ParseDialogFileOptions(input); !got.Multiple {
+			t.Errorf("ParseDialogFileOptions(%v).Multiple = false, want true", input)
+		}
+	}
+	// Only a JSON true opts in; anything else keeps the single-file dialog.
+	for _, input := range []any{
+		nil,
+		map[string]any{},
+		map[string]any{"multiple": false},
+		map[string]any{"multiple": "true"},
+		map[string]any{"multiple": 1.0},
+	} {
+		if got := desktop.ParseDialogFileOptions(input); got.Multiple {
+			t.Errorf("ParseDialogFileOptions(%v).Multiple = true, want false", input)
+		}
+	}
+}

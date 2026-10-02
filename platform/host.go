@@ -77,6 +77,35 @@ type DialogFileOptions struct {
 	Title       string
 	DefaultPath string
 	Filters     []FileFilter
+	// Multiple lets the open dialog select several files. Hosts honour it
+	// through MultiFileOpener; it is ignored by save and directory dialogs.
+	Multiple bool
+}
+
+// MultiFileOpener is implemented by hosts whose open-file dialog can select
+// several files at once. It is optional so existing hosts keep satisfying
+// Host; a caller asking for multiple files from a host without it gets an
+// explicit ErrUnsupported, never a silent single selection.
+//
+// OpenFilesDialog returns every selected path, or nil when the user cancels.
+// Selecting a file grants nothing: reading it still needs an fs grant.
+type MultiFileOpener interface {
+	OpenFilesDialog(opts DialogFileOptions) ([]string, error)
+}
+
+// DecodePathList splits a buffer of NUL-terminated paths, the format native
+// hosts use to hand a multi-file selection to Go. NUL is the one byte no path
+// can contain on any supported OS (unlike newline, which Linux allows), so
+// no path is ever split or merged. Empty entries are dropped; nil or an empty
+// buffer yields nil.
+func DecodePathList(buf []byte) []string {
+	var paths []string
+	for _, p := range strings.Split(string(buf), "\x00") {
+		if p != "" {
+			paths = append(paths, p)
+		}
+	}
+	return paths
 }
 
 // EncodeFileFilters serializes filters as "Name:ext1,ext2;Other:txt" for C hosts.
