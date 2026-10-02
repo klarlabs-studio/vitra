@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Windows: the navigation policy now applies to iframes. WebView2's `NavigationStarting` fires for the top-level document only, so a remote page embedded in an `<iframe>` loaded on Windows (it still could not call Go: it has no sender token and WebView2 does not deliver its messages to the app). Frame navigations now go through the same check and are blocked and audited as `navigation.block`, as on Linux and macOS. Found by the new Windows E2E run of the notes demo.
+
 ### Added
 - `vitra doctor --json` prints every doctor check as one JSON object, each with a `name`, a `status` (`ok`, `warn`, `fail`), and a `detail`, for CI jobs and bug reports. The text report and the exit status are unchanged. The bug report template now asks for this output.
 
