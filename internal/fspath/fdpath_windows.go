@@ -1,4 +1,4 @@
-package desktop
+package fspath
 
 import (
 	"os"
@@ -10,10 +10,10 @@ import (
 
 var procGetFinalPathNameByHandleW = syscall.NewLazyDLL("kernel32.dll").NewProc("GetFinalPathNameByHandleW")
 
-// fdPath returns the current path of the open file f.
-func fdPath(f *os.File) (string, error) {
+// FdPath returns the current path of the open file f.
+func FdPath(f *os.File) (string, error) {
 	if err := procGetFinalPathNameByHandleW.Find(); err != nil {
-		return "", errFdPathUnsupported
+		return "", ErrUnsupported
 	}
 	buf := make([]uint16, 512)
 	for {

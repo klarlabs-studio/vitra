@@ -8,14 +8,15 @@ import (
 	"strings"
 
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/fspath"
 )
 
-// errFdPathUnsupported is returned by fdPath where the OS cannot say where
-// an open file is.
-var errFdPathUnsupported = errors.New("open file path lookup unsupported")
+// errFdPathUnsupported is returned by lookupFdPath where the OS cannot say
+// where an open file is.
+var errFdPathUnsupported = fspath.ErrUnsupported
 
-// lookupFdPath is fdPath; tests replace it to exercise the fallback.
-var lookupFdPath = fdPath
+// lookupFdPath is fspath.FdPath; tests replace it to exercise the fallback.
+var lookupFdPath = fspath.FdPath
 
 // open opens the existing file at sp for reading or writing so that nothing
 // done to the filesystem after authorization can redirect it:

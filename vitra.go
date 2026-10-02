@@ -32,6 +32,7 @@ import (
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/internal/application"
 	"go.klarlabs.de/vitra/internal/bindings"
+	"go.klarlabs.de/vitra/internal/fspath"
 	"go.klarlabs.de/vitra/internal/inmemory"
 	"go.klarlabs.de/vitra/plugin"
 	"go.klarlabs.de/vitra/policy"
@@ -257,9 +258,10 @@ func (rt *Runtime) RegisterGrant(grant *domain.CapabilityGrant) error {
 	return rt.registerGrant.Execute(grant)
 }
 
-// resolveDir resolves a slash-form directory to its real path.
+// resolveDir resolves a slash-form directory to its real path, spelled as
+// stored on disk (see fspath.Canonical).
 func resolveDir(dir string) (string, bool) {
-	real, err := filepath.EvalSymlinks(filepath.FromSlash(dir))
+	real, err := fspath.Canonical(filepath.FromSlash(dir))
 	if err != nil {
 		return "", false
 	}
