@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/fspath"
 )
 
 // scopedPath is an authorized path. For path-scoped permissions it also
@@ -54,6 +55,9 @@ func authorizeScoped(gw Gateway, caller domain.Caller, perm domain.PermissionNam
 	if err != nil {
 		return scopedPath{}, deniedErr(caller, perm, domain.DenialPathOutOfScope, err.Error())
 	}
+	// Compare stored spellings, so Unicode spelling variants of a name
+	// (one file on APFS) cannot slip past a deny.
+	realRoot, real = canonical(realRoot), canonicalDir(real)
 	rel, err := filepath.Rel(realRoot, real)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return scopedPath{}, deniedErr(caller, perm, domain.DenialPathOutOfScope, "path resolves outside its scope through a symlink")
@@ -81,6 +85,19 @@ func denyRealSpelling(gw Gateway, caller domain.Caller, perm domain.PermissionNa
 		return deniedErr(caller, perm, d.Code, "real path: "+d.Reason)
 	}
 	return nil
+}
+
+// canonical returns dir's stored spelling, or dir if it cannot be found.
+func canonical(dir string) string {
+	if c, err := fspath.Canonical(dir); err == nil {
+		return c
+	}
+	return dir
+}
+
+// canonicalDir returns p with its directory in the stored spelling.
+func canonicalDir(p string) string {
+	return filepath.Join(canonical(filepath.Dir(p)), filepath.Base(p))
 }
 
 // statNow returns path's FileInfo with its file identity read now. On

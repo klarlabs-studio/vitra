@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Deny patterns cover every spelling of their folder. A deny written as `/var/app/secret/**` also refuses `/private/var/app/secret/...` (macOS `/var` is a link): `Runtime.RegisterGrant` adds the real spelling of each deny pattern's folder, and file operations check each file's resolved real path against the deny patterns, so a deny written with the real path also applies through an alias. Allow patterns are never widened. New `domain.PathScope.WithDenyAliases` and `CapabilityGrant.WithDenyAliases`.
+- On macOS, a deny pattern also refuses other Unicode spellings of its folder name (composed vs decomposed `é`), which APFS treats as the same file. Names are compared in the spelling stored on disk, read from open handles; no Unicode tables are added to the kernel.
 
 ## [0.7.1] - 2026-10-02
 
