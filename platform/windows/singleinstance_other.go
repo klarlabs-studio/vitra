@@ -91,6 +91,8 @@ func DeepLinksFromArgs(args []string) []string {
 	return out
 }
 
+// StartDeepLinkBridge listens on a per-app unix socket and invokes onLink
+// for each newline-delimited URL. Call stop to close it.
 func (h *Host) StartDeepLinkBridge(appID string, onLink func(raw string)) (stop func(), err error) {
 	if appID == "" {
 		return nil, fmt.Errorf("app id required for deep-link bridge")
@@ -149,6 +151,8 @@ func (h *Host) StartDeepLinkBridge(appID string, onLink func(raw string)) (stop 
 	return stop, nil
 }
 
+// ForwardToPrimary sends URLs to the primary instance's deep-link socket.
+// ok is false when no primary instance is listening.
 func (h *Host) ForwardToPrimary(appID string, urls []string) (ok bool, err error) {
 	if appID == "" {
 		return false, fmt.Errorf("app id required for deep-link forward")
