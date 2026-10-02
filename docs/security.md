@@ -193,7 +193,7 @@ rather than compared as URL strings.
 |---|---|
 | New windows have no authority (1) | `domain`: `TestGateway_NewWindowHasNoPrivileges` |
 | Navigation drops authority (2) | `domain`: `TestGateway_NavigationDropsAuthority`; `app`: `TestApp_RunInvokeAndNavPolicy` (exact-origin nav, userinfo and adjacent-port bypasses) |
-| Frontend input not trusted (3) | `vitra`: `TestRegister_RejectsMalformedInput`, `TestRegister_BindsInputResourcePathToAuthorizedPath` |
+| Frontend input not trusted (3) | `vitra`: `TestRegister_RejectsMalformedInput`, `TestRegister_BindsInputResourcePathToAuthorizedPath`; `desktop`: `TestParseWindowSizes_RejectInexactOrOutOfRangeNumbers`, `FuzzParseMenuItems`, `FuzzParseTraySet`, `FuzzParseDialogFileOptions`, `FuzzParseShortcutRegister`, `FuzzParseShortcutUnregister`, `FuzzParseDragDropEnable`, `FuzzParseWindowCreateOptions`, `FuzzParseWindowID`, `FuzzParseWindowAlwaysOnTop`, `FuzzParseWindowSetTitle`, `FuzzParseWindowSetSize`, `FuzzParseWindowSetIcon`, `FuzzParseWindowChromeApply` |
 | Host-stamped identity (4) | `internal/ipc`: `TestBridge_DiscardsSpoofedCallerIdentity`, `FuzzBridge_DecodeInvoke`; `domain`: `TestInvocationService_RejectsSpoofedOrigin`, `TestCallerExecutorFunc_ReceivesInvokingWindow`, `TestCallerExecutorFunc_FailsClosedWithoutInvocation` |
 | Plugins cannot widen each other (6) | `plugin`: `TestRegistry_RejectsPermissionCollision` |
 | No shell by default (7) | `platform/windows`: `TestOpenURL_NeverInvokesShell`, `TestRegEscape` |
@@ -212,3 +212,5 @@ rather than compared as URL strings.
 
 Run the fuzz targets locally with, for example,
 `go test ./domain -run '^$' -fuzz FuzzPathScope_Matches -fuzztime 60s`.
+The desktop parser targets run one at a time the same way, for example
+`go test ./desktop -run '^$' -fuzz '^FuzzParseWindowSetSize$' -fuzztime 30s`.

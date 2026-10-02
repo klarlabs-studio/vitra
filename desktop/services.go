@@ -8,6 +8,7 @@ package desktop
 import (
 	"context"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -589,15 +590,26 @@ func ParseWindowCreateOptions(input any) (WindowCreateOptions, error) {
 	return opts, nil
 }
 
+// maxExactJSONInt is 2^53, the largest integer below which every JSON number
+// decodes to exactly the integer the page wrote (JavaScript's
+// Number.MAX_SAFE_INTEGER + 1).
+const maxExactJSONInt = 1 << 53
+
+// asPositiveInt accepts only positive integers the page sent exactly.
+// JSON numbers arrive as float64. Above 2^53 they may already be rounded,
+// and converting one outside the int range is implementation-specific
+// (amd64 wraps, arm64 saturates), so both are rejected before conversion.
 func asPositiveInt(v any) (int, bool) {
 	switch n := v.(type) {
 	case int:
 		return n, n > 0
 	case int64:
-		return int(n), n > 0
+		return int(n), n > 0 && int64(int(n)) == n
 	case float64:
-		i := int(n)
-		return i, n == float64(i) && i > 0
+		if !(n >= 1 && n <= maxExactJSONInt && n <= float64(math.MaxInt)) || n != math.Trunc(n) {
+			return 0, false
+		}
+		return int(n), true
 	default:
 		return 0, false
 	}
