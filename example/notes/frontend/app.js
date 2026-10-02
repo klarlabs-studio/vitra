@@ -267,12 +267,21 @@
     const frame = document.querySelector('iframe[src="untrusted.html"]');
     if (!frame || ev.source !== frame.contentWindow || !ev.data || ev.data.type !== "untrusted-report") return;
     const forge = attacks.find((a) => a.id === "forge");
-    if (!ev.data.posted) {
+    const settle = (text) => {
       const list = watching["bridge.reject"] || [];
       const i = list.indexOf(forge);
-      if (i >= 0) list.splice(i, 1);
-      result(forge, "blocked", "Refused: the frame cannot reach the bridge at all");
+      if (i < 0) return; // already settled by the audit log
+      list.splice(i, 1);
+      result(forge, "blocked", text);
+    };
+    if (!ev.data.posted) {
+      settle("Refused: the frame cannot reach the bridge at all");
+      return;
     }
+    // Some WebViews (WebView2) deliver frame messages to a per-frame handler
+    // the app never listens on, so no refusal is ever logged. No reply is
+    // still a refusal.
+    setTimeout(() => settle("Refused: the forged call never reached the app"), 3000);
   });
 
   function buildAttacks() {

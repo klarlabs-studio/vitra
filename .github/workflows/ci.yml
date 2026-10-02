@@ -125,6 +125,13 @@ jobs:
           host=$([ "$RUNNER_OS" = "Windows" ] && echo windows || echo darwin)
           go test -tags vitra_native -count=1 ./app/... ./desktop/... ./platform "./platform/$host/..."
 
+      - name: Notes demo E2E (real UI, every attack refused)
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        # The same test as the Linux job, in WKWebView / WebView2.
+        run: go test -tags vitra_native -count=1 -timeout 5m -run TestNotesE2E -v ./example/notes
+
   # Competitive Linux WebView host — not covered by the shared go-ci bar (CGO + GTK).
   native:
     name: Native Linux E2E
