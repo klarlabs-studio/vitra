@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-02
+
+Deny rules that hold across folder aliases and Unicode spellings, iframes
+blocked on Windows, the notes demo tested end to end on all three
+platforms, and the first contributor issues shipped: `doctor --json`, a
+rotating audit sink, `vitra new --with`, and multi-select file dialogs.
+
+### Upgrading from 0.7.1
+- No code changes required.
+- Windows: remote pages in `<iframe>`s are now blocked by the navigation policy, as on Linux and macOS. Serve every frame from the app's own assets.
+- Window sizes from the page above 2^53 or outside the `int` range are now rejected instead of rounded or clamped.
+
 ### Security
 - Windows: the navigation policy now applies to iframes. WebView2's `NavigationStarting` fires for the top-level document only, so a remote page embedded in an `<iframe>` loaded on Windows (it still could not call Go: it has no sender token and WebView2 does not deliver its messages to the app). Frame navigations now go through the same check and are blocked and audited as `navigation.block`, as on Linux and macOS. Found by the new Windows E2E run of the notes demo.
 - Deny patterns cover every spelling of their folder. A deny written as `/var/app/secret/**` also refuses `/private/var/app/secret/...` (macOS `/var` is a link): `Runtime.RegisterGrant` adds the real spelling of each deny pattern's folder, and file operations check each file's resolved real path against the deny patterns, so a deny written with the real path also applies through an alias. Allow patterns are never widened. New `domain.PathScope.WithDenyAliases` and `CapabilityGrant.WithDenyAliases`.
@@ -14,8 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `vitra doctor --json` prints every doctor check as one JSON object, each with a `name`, a `status` (`ok`, `warn`, `fail`), and a `detail`, for CI jobs and bug reports. The text report and the exit status are unchanged. The bug report template now asks for this output.
+- `vitra new <dir> --with fs,dialog,clipboard,notification,os` scaffolds an app that registers exactly those official plugins with least-privilege grants: `fs.read` and `fs.write` scoped to one per-user data folder (symlinks resolved), `dialog.open` and `dialog.save` only, `clipboard.write` only (reading is a commented opt-in), `notifications.show`, `os.info`. `path.open` is never granted. The frontend (vanilla page, or `src/plugins.ts` for the Vite templates) makes one call per plugin, and the shipped `vitra-client.ts` matches `vitra generate typescript --app`. An unknown plugin name is an error listing the valid ones. Without `--with`, the output is unchanged.
+- `audit.FileSink` (`audit.NewFileSink(path, maxBytes, maxBackups)`): writes audit events as JSON lines to a file, rotates it before it would exceed `maxBytes`, and keeps `maxBackups` old files (`audit.jsonl.1` newest). Files are mode `0600`, an existing file is reopened and appended to, and `Append` never waits for the disk: a full queue returns `audit.ErrSinkFull`. Dropped events are recorded in the file as an `audit.dropped` event (new `audit.KindAuditDropped`) with the number lost. Write errors surface from `Flush` and `Close`.
+- `dialog.open` can select several files: pass `{"multiple": true}` and it returns every selected path. The Linux (GTK), macOS (`NSOpenPanel`), and Windows (`IFileOpenDialog`) hosts support it; without `multiple` the dialog is unchanged. `platform.DialogFileOptions` has a new `Multiple` field, and hosts opt in through the new optional `platform.MultiFileOpener` interface, so custom `app.DesktopHost` implementations keep compiling. A host without it returns `platform.ErrUnsupported` instead of returning one file. Picking files grants nothing: `fs.read` still needs its own grant.
 
 ### Fixed
+- Window sizes sent by the page (`window.setSize`, `window.create`, `window.chrome`) are accepted only as the exact integer the page sent: values above 2^53, outside the `int` range, or non-integral are rejected. Before, conversion was CPU-dependent (arm64 clamped, amd64 rejected) and large values were rounded. Found by the new fuzz targets for every `desktop.Parse*` input parser.
 - Linux: the native host builds without warnings. The tray stays on `GtkStatusIcon`, GTK3's only built-in tray API, with its deprecation warnings silenced in that code only.
 
 ## [0.7.1] - 2026-10-02
@@ -440,7 +456,8 @@ Windows (WebView2) behind `-tags vitra_native`.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
 
-[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/klarlabs-studio/vitra/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/klarlabs-studio/vitra/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/klarlabs-studio/vitra/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/klarlabs-studio/vitra/compare/v0.5.0...v0.6.0
