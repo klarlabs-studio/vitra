@@ -44,7 +44,6 @@ func TestNotesTour(t *testing.T) {
 	if os.Getenv("VITRA_RECORD_TOUR") != "1" {
 		t.Skip("set VITRA_RECORD_TOUR=1 to play the demo tour")
 	}
-	runtime.LockOSThread()
 	// VITRA_TOUR_VAULT gives the recording a readable path in the footer.
 	dir := os.Getenv("VITRA_TOUR_VAULT")
 	if dir == "" {
@@ -94,7 +93,9 @@ func TestNotesTour(t *testing.T) {
 			t.Error("the tour did not finish")
 		}
 	}()
-	if err := a.Run(t.Context()); err != nil {
-		t.Fatal(err)
+	var runErr error
+	onMainThread(func() { runErr = a.Run(t.Context()) })
+	if runErr != nil {
+		t.Fatal(runErr)
 	}
 }

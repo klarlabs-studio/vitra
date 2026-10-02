@@ -1,4 +1,4 @@
-//go:build linux && cgo && vitra_native
+//go:build cgo && vitra_native
 
 package main
 
@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"go.klarlabs.de/vitra/audit"
-	"go.klarlabs.de/vitra/platform/linux"
 )
 
 // reportPrefix is where the page sends its attack results: the navigation
@@ -21,20 +20,20 @@ import (
 // reads them back.
 const reportPrefix = "https://e2e.invalid/report/"
 
-// TestNotesE2E drives the real frontend in WebKitGTK: it saves a note and
+// TestNotesE2E drives the real frontend in the native WebView (WebKitGTK,
+// WKWebView, or WebView2): it saves a note and
 // clicks every "Try to break it" attack, then checks the audit log and that
 // the page reported every attack as refused.
 func TestNotesE2E(t *testing.T) {
-	if os.Getenv("DISPLAY") == "" {
+	if runtime.GOOS == "linux" && os.Getenv("DISPLAY") == "" {
 		t.Skip("DISPLAY is required (run under xvfb-run)")
 	}
-	runtime.LockOSThread()
 
 	root, err := openVault(filepath.Join(t.TempDir(), "vault"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	host := linux.New()
+	host := newHost()
 	a, log, err := newApp(root, host)
 	if err != nil {
 		t.Fatal(err)
@@ -99,8 +98,10 @@ setTimeout(function(){
 			t.Errorf("attack report %q: %v", e.Detail, err)
 		}
 	}()
-	if err := a.Run(t.Context()); err != nil {
-		t.Fatal(err)
+	var runErr error
+	onMainThread(func() { runErr = a.Run(t.Context()) })
+	if runErr != nil {
+		t.Fatal(runErr)
 	}
 
 	if b, _ := os.ReadFile(filepath.FromSlash(root + "/Welcome.md")); !strings.Contains(string(b), "Edited by E2E.") {
@@ -109,8 +110,12 @@ setTimeout(function(){
 	if _, ok := find(invoked("notes.write", "allowed", root+"/Welcome.md")); !ok {
 		t.Error("no allowed notes.write in the audit log")
 	}
+	outside := "/etc/hosts"
+	if runtime.GOOS == "windows" {
+		outside = "C:/Windows/win.ini"
+	}
 	for code, path := range map[string]string{
-		"path_out_of_scope": "/etc/hosts",
+		"path_out_of_scope": outside,
 		"path_denied":       root + "/.private/credentials.md",
 	} {
 		if _, ok := find(func(e audit.Event) bool {
