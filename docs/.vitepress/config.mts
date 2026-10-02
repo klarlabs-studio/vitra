@@ -50,6 +50,7 @@ export default defineConfig({
           { text: "Security model", link: "/security" },
           { text: "Architecture", link: "/architecture-ddd" },
           { text: "Product intent", link: "/intent" },
+          { text: "Compatibility and 1.0", link: "/compatibility" },
         ],
       },
       {
