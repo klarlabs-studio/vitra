@@ -10,7 +10,7 @@ go install go.klarlabs.de/vitra/cmd/vitra@latest
 |---|---|
 | `vitra version` | Print the Vitra version |
 | `vitra doctor [--json]` | Check Go, cgo, and the WebView toolchain for this OS. `--json` prints the same checks as one JSON object for CI and bug reports |
-| `vitra new <dir> [--template vanilla\|vite\|react\|svelte\|vue]` | Create a starter app |
+| `vitra new <dir> [--template vanilla\|vite\|react\|svelte\|vue] [--with <plugins>]` | Create a starter app. `--with` takes a comma-separated list of `fs`, `dialog`, `clipboard`, `notification`, `os`: those official plugins are registered with least-privilege grants and a demo call each; see [Start with desktop plugins](/guide/getting-started#start-with-desktop-plugins) |
 | `vitra dev [dir]` | Run the app with the native host and the inspector; restart when `.go`, `.html`, `.css`, or `.js` files change |
 | `vitra build [dir]` | Build the app binary with the native host |
 | `vitra generate typescript [--app dir] [--out path] [--module name]` | Write a TypeScript client. With `--app`, the client covers that app's own commands; without it, the official plugin commands |

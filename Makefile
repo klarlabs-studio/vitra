@@ -25,7 +25,8 @@ e2e:
 	echo "$$out"; \
 	echo "$$out" | grep -q VITRA_E2E_OK
 
-# Notes demo in WebKitGTK: saves a note and runs every attack in the UI.
+# Notes demo in the native WebView: saves a note and runs every attack in the UI.
+# Linux needs xvfb; on macOS and Windows run: go test -tags vitra_native -run TestNotesE2E ./example/notes
 e2e-notes:
 	CGO_ENABLED=1 timeout 120 xvfb-run -a $(GO) test -tags vitra_native -count=1 -run TestNotesE2E -v ./example/notes/
 

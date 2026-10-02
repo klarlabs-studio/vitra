@@ -1,4 +1,4 @@
-package desktop
+package fspath
 
 import (
 	"os"
@@ -13,8 +13,8 @@ const (
 	maxPathLen = 1024
 )
 
-// fdPath returns the current path of the open file f.
-func fdPath(f *os.File) (string, error) {
+// FdPath returns the current path of the open file f.
+func FdPath(f *os.File) (string, error) {
 	var buf [maxPathLen]byte
 	_, _, errno := syscall.Syscall(syscall.SYS_FCNTL, f.Fd(), fGetPath, uintptr(unsafe.Pointer(&buf[0])))
 	runtime.KeepAlive(f)

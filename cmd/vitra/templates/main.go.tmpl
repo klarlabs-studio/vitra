@@ -6,6 +6,9 @@
 // The frontend is untrusted. It can call a command only if a grant names the
 // window, its origin, and the command's permission. This starter grants one
 // command, greet, to the main window.
+[[- if .Plugins]] It also uses the official [[.PluginList]]
+// plugins, each granted as narrowly as a starter can.
+[[- end]]
 package main
 
 import (
@@ -14,20 +17,29 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+[[- if .FS]]
+	"path/filepath"
+[[- end]]
 	"runtime"
 	"strings"
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/app"
+[[- if .Plugins]]
+	"go.klarlabs.de/vitra/desktop"
+[[- end]]
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/platform/darwin"
 	"go.klarlabs.de/vitra/platform/linux"
 	"go.klarlabs.de/vitra/platform/windows"
+[[- if .Plugins]]
+	"go.klarlabs.de/vitra/plugin/official"
+[[- end]]
 )
 
 const appID = "com.example.app"
 
-//go:embed __VITRA_EMBED__
+//go:embed [[.Embed]]
 var frontendRoot embed.FS
 
 // GreetRequest is the input of the greet command. The frontend's JSON is
@@ -40,6 +52,17 @@ type GreetRequest struct {
 type Greeting struct {
 	Message string `json:"message"`
 }
+[[- if .FS]]
+
+// DataDirRequest is the (empty) input of the dataDir command.
+type DataDirRequest struct{}
+
+// DataDir is the result of the dataDir command: the one folder the page may
+// read and write.
+type DataDir struct {
+	Path string `json:"path"`
+}
+[[- end]]
 
 func main() {
 	if err := run(); err != nil {
@@ -70,6 +93,68 @@ func run() error {
 	}); err != nil {
 		return err
 	}
+[[- if .FS]]
+
+	// The app's data folder. fs.read and fs.write are scoped to it below, so
+	// the page cannot touch any other file; dataDir tells the page where it is.
+	dataDir, err := appDataDir()
+	if err != nil {
+		return err
+	}
+	if err := vitra.Register(rt, vitra.Command[DataDirRequest, DataDir]{
+		Name:        "dataDir",
+		Description: "The folder the page may read and write",
+		Permission:  "dataDir",
+		Handler: func(context.Context, domain.Invocation, DataDirRequest) (DataDir, error) {
+			return DataDir{Path: dataDir}, nil
+		},
+	}); err != nil {
+		return err
+	}
+	inDataDir := &domain.PathScope{Allow: []string{dataDir + "/**"}}
+[[- end]]
+[[- if .Plugins]]
+
+	// The grant: the main window, showing the app's own assets, may call
+	// greet and the plugin permissions below. Nothing else is allowed.
+	grant, err := domain.NewCapabilityGrant(
+		"main-window", "what the main window may do",
+		[]domain.WindowID{"main"},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{
+			{Name: "greet"},
+[[- if .FS]]
+			// fs: read and write inside the data folder only. To narrow
+			// writes further, for example to Markdown notes, scope fs.write
+			// to dataDir + "/**/*.md". Never grant path.open on a folder the
+			// page can write: it could drop a program there and launch it.
+			{Name: "dataDir"},
+			{Name: desktop.PermFSRead, PathScope: inDataDir},
+			{Name: desktop.PermFSWrite, PathScope: inDataDir},
+[[- end]]
+[[- if .Dialog]]
+			// dialog: the open and save pickers only. A picked path is not a
+			// grant: reading or writing it still needs a scoped fs permission.
+			{Name: desktop.PermDialogOpen},
+			{Name: desktop.PermDialogSave},
+[[- end]]
+[[- if .Clipboard]]
+			// clipboard: write only. Reading would show the page whatever the
+			// user copied in other apps; add desktop.PermClipboardRead only
+			// if a feature needs it.
+			{Name: desktop.PermClipboardWrite},
+[[- end]]
+[[- if .Notification]]
+			// notification: show desktop notifications.
+			{Name: desktop.PermNotificationShow},
+[[- end]]
+[[- if .OS]]
+			// os: read-only platform facts (OS, architecture, locale).
+			{Name: desktop.PermOsInfo},
+[[- end]]
+		},
+	)
+[[- else]]
 
 	// The grant: the main window, showing the app's own assets, may call
 	// greet. Nothing else is allowed. For files, dialogs, the clipboard, and
@@ -81,6 +166,7 @@ func run() error {
 		[]domain.Origin{domain.OriginPackagedLocal},
 		[]domain.PermissionSpec{{Name: "greet"}},
 	)
+[[- end]]
 	if err != nil {
 		return err
 	}
@@ -88,7 +174,7 @@ func run() error {
 		return err
 	}
 
-	assets, err := fs.Sub(frontendRoot, "__VITRA_ROOT__")
+	assets, err := fs.Sub(frontendRoot, "[[.Root]]")
 	if err != nil {
 		return err
 	}
@@ -103,6 +189,13 @@ func run() error {
 	if err != nil {
 		return err
 	}
+[[- if .Plugins]]
+	// Only these official plugins. UseOfficialPlugins grants nothing: the
+	// grant above decides what the page may call.
+	if err := a.UseOfficialPlugins(context.Background(), [[.PluginCalls]]); err != nil {
+		return err
+	}
+[[- end]]
 	return a.Run(context.Background())
 }
 
@@ -117,3 +210,24 @@ func newHost() app.DesktopHost {
 		return linux.New()
 	}
 }
+[[- if .FS]]
+
+// appDataDir creates the app's per-user data folder (under the home
+// directory) and returns it with symlinks resolved, in slash form: path
+// scopes compare strings, so the grant must name the real location.
+func appDataDir() (string, error) {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(base, appID)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", err
+	}
+	real, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.ToSlash(real), nil
+}
+[[- end]]
