@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- Windows: the navigation policy now applies to iframes. WebView2's `NavigationStarting` fires for the top-level document only, so a remote page embedded in an `<iframe>` loaded on Windows (it still could not call Go: it has no sender token and WebView2 does not deliver its messages to the app). Frame navigations now go through the same check and are blocked and audited as `navigation.block`, as on Linux and macOS. Found by the new Windows E2E run of the notes demo.
 - Deny patterns cover every spelling of their folder. A deny written as `/var/app/secret/**` also refuses `/private/var/app/secret/...` (macOS `/var` is a link): `Runtime.RegisterGrant` adds the real spelling of each deny pattern's folder, and file operations check each file's resolved real path against the deny patterns, so a deny written with the real path also applies through an alias. Allow patterns are never widened. New `domain.PathScope.WithDenyAliases` and `CapabilityGrant.WithDenyAliases`.
+
+### Added
+- `vitra doctor --json` prints every doctor check as one JSON object, each with a `name`, a `status` (`ok`, `warn`, `fail`), and a `detail`, for CI jobs and bug reports. The text report and the exit status are unchanged. The bug report template now asks for this output.
 
 ## [0.7.1] - 2026-10-02
 

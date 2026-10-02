@@ -164,7 +164,7 @@ typedef struct ICoreWebView2Vtbl {
 	void *remove_HistoryChanged;
 	void *add_NavigationCompleted;
 	void *remove_NavigationCompleted;
-	void *add_FrameNavigationStarting;
+	HRESULT(STDMETHODCALLTYPE *add_FrameNavigationStarting)(ICoreWebView2 *, ICoreWebView2NavigationStartingEventHandler *, EventRegistrationToken *);
 	void *remove_FrameNavigationStarting;
 	void *add_FrameNavigationCompleted;
 	void *remove_FrameNavigationCompleted;
