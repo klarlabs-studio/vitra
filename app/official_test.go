@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"testing/fstest"
@@ -322,5 +326,117 @@ func TestUseOfficialPlugins_RejectsOtherPlugins(t *testing.T) {
 	}
 	if err := a.UseOfficialPlugins(context.Background(), customPlugin{}); err == nil {
 		t.Fatal("a non-official plugin was accepted")
+	}
+}
+
+// Official commands decode their input strictly: an unknown field or a
+// wrong type is a validation error before the host is touched, while every
+// documented shorthand keeps working.
+func TestUseOfficialPlugins_DecodesInputStrictly(t *testing.T) {
+	rt, _, _ := runPluginApp(t)
+	grantAll(t, rt)
+
+	for _, tc := range []struct {
+		cmd   domain.CommandName
+		input any
+		rp    string
+	}{
+		{"fs.write", map[string]any{"path": "/tmp/x", "data": "d", "mode": 511.0}, "/tmp/x"},
+		{"fs.read", map[string]any{"path": "/tmp/x"}, "/tmp/x"},
+		{"dialog.open", map[string]any{"title": "Pick", "bogus": true}, ""},
+		{"dialog.open", "Pick", ""},
+		{"dialog.message", map[string]any{"message": "m", "buttons": []any{}}, ""},
+		{"notifications.show", map[string]any{"body": "b", "icon": "x"}, ""},
+		{"clipboard.write", map[string]any{"text": "x"}, ""},
+		{"clipboard.read", "x", ""},
+		{"window.close", map[string]any{"id": "main", "force": true}, ""},
+		{"window.setSize", map[string]any{"id": "main", "width": 640.5, "height": 480.0}, ""},
+		{"window.chrome", map[string]any{"id": "main", "maximized": "yes"}, ""},
+		{"menu.set", []any{map[string]any{"id": "a", "label": "A", "onClick": "x"}}, ""},
+		{"tray.set", map[string]any{"tooltip": "t", "icon": "x"}, ""},
+		{"dragdrop.receive", map[string]any{"id": "main", "enabled": "yes"}, ""},
+		{"shortcut.register", map[string]any{"accelerator": "Ctrl+K", "action": "a", "global": true}, ""},
+		{"app.quit", map[string]any{"force": true}, ""},
+	} {
+		_, err := call(t, rt, tc.cmd, tc.input, tc.rp)
+		if !errors.Is(err, &domain.ErrValidation{}) {
+			t.Errorf("%s(%v) = %v, want a validation error", tc.cmd, tc.input, err)
+		}
+	}
+
+	for _, tc := range []struct {
+		cmd   domain.CommandName
+		input any
+	}{
+		{"notifications.show", "body only"},
+		{"dialog.message", "message only"},
+		{"window.focus", "main"},
+		{"window.getChrome", map[string]any{"id": "main"}},
+		{"dragdrop.receive", true},
+		{"menu.set", map[string]any{"items": []any{map[string]any{"id": "a", "label": "A"}}}},
+		{"tray.set", []any{map[string]any{"id": "a", "label": "A"}}},
+		{"menu.clear", nil},
+	} {
+		if _, err := call(t, rt, tc.cmd, tc.input, ""); errors.Is(err, &domain.ErrValidation{}) {
+			t.Errorf("%s(%v) = %v; the shorthand must stay accepted", tc.cmd, tc.input, err)
+		}
+	}
+}
+
+// Commands that return nothing still send null to the page, and
+// window.create still returns {"id": ...}.
+func TestUseOfficialPlugins_KeepsOutputShapes(t *testing.T) {
+	rt, _, _ := runPluginApp(t)
+	grantAll(t, rt)
+	out, err := call(t, rt, "tray.clear", nil, "")
+	if err != nil || out != nil {
+		t.Fatalf("tray.clear = %#v, %v; want nil", out, err)
+	}
+	out, err = call(t, rt, "window.create", "aux", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := json.Marshal(out)
+	if err != nil || string(b) != `{"id":"aux"}` {
+		t.Fatalf("window.create encodes as %s, %v", b, err)
+	}
+}
+
+var update = flag.Bool("update", false, "rewrite golden files")
+
+// The generated client types every official command. The golden file is
+// what `vitra generate typescript` writes; after an intended change,
+// regenerate it with go test ./app -run TestUseOfficialPlugins_TypedClient -update.
+func TestUseOfficialPlugins_TypedClient(t *testing.T) {
+	rt, err := vitra.New(vitra.Config{AppID: "com.example.plugins"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := app.New(app.Options{AppID: "com.example.plugins", Runtime: rt, Host: newPluginHost()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.UseOfficialPlugins(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	ts, err := rt.TypeScript("vitra")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(ts, "(input?: unknown, resourcePath?: string)") || strings.Contains(ts, "resourcePath?: string): Promise<unknown>") {
+		t.Errorf("an official command is still untyped:\n%s", ts)
+	}
+	golden := filepath.Join("testdata", "official-client.ts")
+	if *update {
+		if err := os.WriteFile(golden, []byte(ts), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(golden)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ts != string(want) {
+		t.Fatalf("client differs from %s (run with -update after an intended change):\n%s", golden, ts)
 	}
 }

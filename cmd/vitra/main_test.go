@@ -475,6 +475,29 @@ func TestRun_GenerateTypeScript(t *testing.T) {
 			t.Fatalf("missing %q in:\n%s", want, text)
 		}
 	}
+	// The official commands are typed, as app.UseOfficialPlugins binds them.
+	for _, want := range []string{
+		"fsWrite(input: WriteFileInput, resourcePath?: string): Promise<void>;",
+		"dialogOpen(input?: DialogOptions, resourcePath?: string): Promise<string[] | null>;",
+		"windowSetSize(input: WindowSizeInput, resourcePath?: string): Promise<void>;",
+		"osInfo(input?: {}, resourcePath?: string): Promise<OsInfo>;",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("missing %q in:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "(input?: unknown, resourcePath?: string)") {
+		t.Fatalf("an official command is untyped:\n%s", text)
+	}
+	// Byte for byte the client the app package's golden test pins, apart
+	// from the module name.
+	golden, err := os.ReadFile(filepath.Join("..", "..", "app", "testdata", "official-client.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := strings.Replace(string(golden), "// module: vitra\n", "// module: demo\n", 1); text != want {
+		t.Fatalf("generated client differs from app/testdata/official-client.ts:\n%s", text)
+	}
 	if err := run([]string{"generate"}); err == nil {
 		t.Fatal("expected usage error")
 	}
