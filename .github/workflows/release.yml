@@ -1,6 +1,8 @@
 # Publishes the vitra CLI when a v* tag is pushed: GoReleaser builds the
 # archives, SBOMs, and checksums and signs the checksums with keyless
 # cosign; the SLSA generator attaches build provenance to the release.
+# macOS notarization and Windows Authenticode signing turn on when their
+# secrets exist (CONTRIBUTING.md, "Code-signing certificates").
 name: Release
 
 on:
@@ -32,6 +34,23 @@ jobs:
 
       - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
 
+      # Windows Authenticode signing (scripts/sign-windows.sh) needs
+      # osslsigncode, but only once the certificate secret exists. Only a
+      # boolean reaches this step, never the secret.
+      - name: Install osslsigncode
+        env:
+          SIGN_WINDOWS: ${{ secrets.WINDOWS_SIGN_PFX != '' }}
+        run: |
+          if [ "$SIGN_WINDOWS" = "true" ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq osslsigncode
+          else
+            echo "WINDOWS_SIGN_PFX not set; Windows binaries stay unsigned."
+          fi
+
+      # The signing secrets are optional. While they are absent, GoReleaser
+      # skips macOS notarization and the Windows hook exits early, so the
+      # release is built exactly as before.
       - name: Run GoReleaser
         id: goreleaser
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
@@ -41,6 +60,14 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          WINDOWS_SIGN_PFX: ${{ secrets.WINDOWS_SIGN_PFX }}
+          WINDOWS_SIGN_PASSWORD: ${{ secrets.WINDOWS_SIGN_PASSWORD }}
+          WINDOWS_SIGN_TIMESTAMP_URL: ${{ vars.WINDOWS_SIGN_TIMESTAMP_URL }}
 
       - name: Provenance subjects
         id: hash
