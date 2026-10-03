@@ -19,8 +19,13 @@ const runKey = `Software\Microsoft\Windows\CurrentVersion\Run`
 var (
 	advapi32          = syscall.NewLazyDLL("advapi32.dll")
 	procRegSetValueEx = advapi32.NewProc("RegSetValueExW")
+	procRegCreateKey  = advapi32.NewProc("RegCreateKeyExW")
 	procRegDeleteVal  = advapi32.NewProc("RegDeleteValueW")
 )
+
+// errNoRunKey is returned by openRunKey when the Run key does not exist,
+// which it does not on a fresh profile until something starts at login.
+var errNoRunKey = errors.New("no Run key")
 
 // openRunKey opens HKCU\...\Run with access.
 func openRunKey(access uint32) (syscall.Handle, error) {
@@ -30,7 +35,25 @@ func openRunKey(access uint32) (syscall.Handle, error) {
 	}
 	var key syscall.Handle
 	if err := syscall.RegOpenKeyEx(syscall.HKEY_CURRENT_USER, name, 0, access, &key); err != nil {
+		if errors.Is(err, syscall.ERROR_FILE_NOT_FOUND) {
+			return 0, errNoRunKey
+		}
 		return 0, fmt.Errorf("open %s: %w", runKey, err)
+	}
+	return key, nil
+}
+
+// createRunKey opens HKCU\...\Run for writing, creating it if needed.
+func createRunKey() (syscall.Handle, error) {
+	name, err := syscall.UTF16PtrFromString(runKey)
+	if err != nil {
+		return 0, err
+	}
+	var key syscall.Handle
+	r, _, _ := procRegCreateKey.Call(uintptr(syscall.HKEY_CURRENT_USER), uintptr(unsafe.Pointer(name)), 0, 0, 0,
+		uintptr(syscall.KEY_SET_VALUE), 0, uintptr(unsafe.Pointer(&key)), 0)
+	if r != 0 {
+		return 0, fmt.Errorf("create %s: %w", runKey, syscall.Errno(r))
 	}
 	return key, nil
 }
@@ -49,6 +72,9 @@ func (h *Host) LoginItemEnabled(appID string) (bool, error) {
 		return false, err
 	}
 	key, err := openRunKey(syscall.KEY_QUERY_VALUE)
+	if errors.Is(err, errNoRunKey) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
@@ -69,12 +95,15 @@ func (h *Host) SetLoginItem(appID, execPath string, enabled bool) error {
 	if err != nil {
 		return err
 	}
-	key, err := openRunKey(syscall.KEY_SET_VALUE)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = syscall.RegCloseKey(key) }()
 	if !enabled {
+		key, err := openRunKey(syscall.KEY_SET_VALUE)
+		if errors.Is(err, errNoRunKey) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		defer func() { _ = syscall.RegCloseKey(key) }()
 		r, _, _ := procRegDeleteVal.Call(uintptr(key), uintptr(unsafe.Pointer(name)))
 		if r != 0 && syscall.Errno(r) != syscall.ERROR_FILE_NOT_FOUND {
 			return fmt.Errorf("delete Run value: %w", syscall.Errno(r))
@@ -95,6 +124,11 @@ func (h *Host) SetLoginItem(appID, execPath string, enabled bool) error {
 	if err != nil {
 		return err
 	}
+	key, err := createRunKey()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = syscall.RegCloseKey(key) }()
 	r, _, _ := procRegSetValueEx.Call(uintptr(key), uintptr(unsafe.Pointer(name)), 0, uintptr(syscall.REG_SZ),
 		uintptr(unsafe.Pointer(&data[0])), uintptr(len(data)*2))
 	if r != 0 {
