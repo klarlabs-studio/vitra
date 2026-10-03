@@ -40,8 +40,14 @@ func main() {
 	}
 }
 
-func run(out io.Writer) error {
+func run(w io.Writer) (err error) {
 	ctx := context.Background()
+	out := &printer{w: w}
+	defer func() {
+		if err == nil {
+			err = out.err
+		}
+	}()
 	rt, err := vitra.New(vitra.Config{AppID: "com.example.quickstart"})
 	if err != nil {
 		return err
@@ -50,12 +56,12 @@ func run(out io.Writer) error {
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "1) opened window main at app://local (no privileges yet)")
+	out.printf("1) opened window main at app://local (no privileges yet)\n")
 	surface, err := rt.InspectCapabilities("main")
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(out, vitra.FormatInspect(rt.AppID(), surface))
+	out.printf("%s", vitra.FormatInspect(rt.AppID(), surface))
 
 	grant, err := domain.NewCapabilityGrant(
 		"project-files",
@@ -89,7 +95,7 @@ func run(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "2) registered grant project-files + command project.open")
+	out.printf("2) registered grant project-files + command project.open\n")
 
 	// open invokes project.open as the window, the way the bridge does for
 	// the page: the caller comes from the window, not from the input.
@@ -110,12 +116,12 @@ func run(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "3) invoke authorized via grant %s → %+v\n", res.Decision.Grant, res.Output)
+	out.printf("3) invoke authorized via grant %s → %+v\n", res.Decision.Grant, res.Output)
 
 	if err := expectDenied(open("/project/.secrets/token")); err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "4) /project/.secrets/token is denied: deny patterns win over allow")
+	out.printf("4) /project/.secrets/token is denied: deny patterns win over allow\n")
 
 	if err := rt.NavigateWindow(ctx, "main", "https://untrusted.example"); err != nil {
 		return err
@@ -123,7 +129,7 @@ func run(out io.Writer) error {
 	if err := expectDenied(open("/project/app")); err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "5) after navigating to an untrusted origin, the same call is denied: authority does not follow navigation")
+	out.printf("5) after navigating to an untrusted origin, the same call is denied: authority does not follow navigation\n")
 	return nil
 }
 
@@ -134,4 +140,16 @@ func expectDenied(_ *domain.InvocationResult, err error) error {
 		return fmt.Errorf("expected a denial, got %v", err)
 	}
 	return nil
+}
+
+// printer writes the walkthrough and keeps the first write error.
+type printer struct {
+	w   io.Writer
+	err error
+}
+
+func (p *printer) printf(format string, a ...any) {
+	if p.err == nil {
+		_, p.err = fmt.Fprintf(p.w, format, a...)
+	}
 }
