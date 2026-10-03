@@ -19,10 +19,15 @@ type InvocationService struct {
 	// Overlay optionally tightens an allow decision (enterprise policy).
 	// Never used to loosen a denial.
 	Overlay func(permission domain.PermissionName, d domain.Decision) domain.Decision
+	// Observe, when set, runs around each authorized execution: it returns
+	// the handler's context and a function called with the handler's error.
+	// The authorized invocation is attached to the context after Observe,
+	// so it cannot be replaced.
+	Observe func(ctx context.Context, inv domain.Invocation) (context.Context, func(error))
 }
 
 // Invoke runs the secure invocation pipeline.
-func (s *InvocationService) Invoke(ctx context.Context, req domain.InvocationRequest) (*domain.InvocationResult, error) {
+func (s *InvocationService) Invoke(ctx context.Context, req domain.InvocationRequest) (_ *domain.InvocationResult, err error) {
 	if req.Command == "" {
 		return nil, &domain.ErrValidation{Message: "command is required"}
 	}
@@ -101,12 +106,19 @@ func (s *InvocationService) Invoke(ctx context.Context, req domain.InvocationReq
 	if !ok {
 		return nil, &domain.ErrNotFound{Entity: "command executor", ID: string(req.Command)}
 	}
-	ctx = domain.WithInvocation(ctx, domain.Invocation{
+	inv := domain.Invocation{
 		Caller:       req.Caller,
 		Command:      req.Command,
 		ResourcePath: req.ResourcePath,
 		Grant:        decision.Grant,
-	})
+	}
+	ctx = domain.WithInvocation(ctx, inv)
+	if s.Observe != nil {
+		var finish func(error)
+		ctx, finish = s.Observe(ctx, inv)
+		ctx = domain.WithInvocation(ctx, inv)
+		defer func() { finish(err) }()
+	}
 	out, err := exec.Execute(ctx, req.Command, req.Input)
 	if err != nil {
 		return nil, err

@@ -107,6 +107,28 @@ rt.RegisterCommand(def, domain.CallerExecutorFunc(
 
 Prefer typed commands: strict decoding and the path binding are easy to forget by hand.
 
+## Observing commands
+
+To log, measure or trace commands, add an observer. It runs around every invocation the gateway allowed, for typed and untyped commands alike:
+
+```go
+type logObserver struct{ log *slog.Logger }
+
+func (o logObserver) Start(ctx context.Context, inv domain.Invocation) context.Context {
+    return ctx // or a context carrying a trace span
+}
+
+func (o logObserver) Finish(ctx context.Context, inv domain.Invocation, elapsed time.Duration, err error) {
+    o.log.InfoContext(ctx, "command",
+        "command", inv.Command, "window", inv.Caller.Window, "grant", inv.Grant,
+        "elapsed", elapsed, "error", err)
+}
+
+rt.Observe(logObserver{log: slog.Default()})
+```
+
+An observer is not middleware, and that is deliberate. It runs only after the call was authorized, and it cannot change the decision, the caller, the input or the result: whatever `Start` puts in the context reaches the handler, but the runtime re-attaches the authorized invocation afterwards, so the handler always sees the real caller. Denied calls never reach observers; they are in the audit log (`Runtime.SetAudit`). A panicking observer is recovered and does not affect the command. Observers start in the order you add them and finish in reverse, as nested spans do.
+
 ## Acting on behalf of the caller
 
 Handlers that call [desktop services](/guide/desktop) pass `inv.Caller`, so the service checks the same window's grants again, including for the real target of a symlink:

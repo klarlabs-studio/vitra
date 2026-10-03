@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `Runtime.Observe` and `vitra.Observer`: watch authorized command invocations for logging, metrics and tracing. An observer runs after the capability gateway allowed the call, may add to the handler's context (a trace span), and cannot change the decision, the caller, the input or the result. Denied calls stay in the audit log. See [Observing commands](https://klarlabs-studio.github.io/vitra/guide/commands#observing-commands).
+
 ## [0.10.0] - 2026-10-03
 
 Menu bar (tray) apps: a live status and icon in the menu bar, a panel that
