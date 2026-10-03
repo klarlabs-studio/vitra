@@ -284,6 +284,8 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 					    styleMask:style
 					      backing:NSBackingStoreBuffered
 						defer:NO];
+	/* vitra_win_free releases the window: closing it must not as well. */
+	w->window.releasedWhenClosed = NO;
 	w->window.title = title ? [NSString stringWithUTF8String:title] : @"";
 	w->window.contentView = w->dropView;
 	w->window.delegate = w->delegate;
@@ -345,7 +347,8 @@ void vitra_win_free(VitraWin *w) {
 		w->dropView = nil;
 	}
 	if (w->window) {
-		[w->window release];
+		/* Autorelease: this may run inside the window's own close. */
+		[w->window autorelease];
 		w->window = nil;
 	}
 	if (w->delegate) {

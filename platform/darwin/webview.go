@@ -474,17 +474,9 @@ func (h *Host) CloseWindow(_ context.Context, id domain.WindowID) error {
 		delete(h.windows, id)
 		delete(h.origins, id)
 		ptr := w.ptr
-		empty := len(h.windows) == 0
 		h.mu.Unlock()
 		C.vitra_win_close(ptr)
 		C.vitra_win_free(ptr)
-		if empty {
-			activeMu.Lock()
-			if active == h {
-				active = nil
-			}
-			activeMu.Unlock()
-		}
 		errCh <- nil
 	})
 	return <-errCh
@@ -911,15 +903,7 @@ func goVitraDestroy(windowID *C.char) {
 		delete(h.origins, id)
 	}
 	onDestroy := h.onDestroy
-	empty := len(h.windows) == 0
 	h.mu.Unlock()
-	if empty {
-		activeMu.Lock()
-		if active == h {
-			active = nil
-		}
-		activeMu.Unlock()
-	}
 	if onDestroy != nil {
 		onDestroy(id)
 	}

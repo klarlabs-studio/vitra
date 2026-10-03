@@ -53,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** pipeline internals in `domain`: `InvocationService`, `CapabilityGateway`, `NewCapabilityGateway`, `GrantRepository`, `WindowRepository`, `CommandRepository`, `ResourceRepository`, `SubscriptionRepository`, `CommandExecutorLookup`, `ResourceHandle`, `NewResourceHandle`, `ResourceID`, and `NewResourceID`. They moved to `internal/application`; `domain` now holds only what apps use. Part of [#292](https://github.com/klarlabs-studio/vitra/issues/292).
 
 ### Fixed
+- macOS: closing a window (`CloseWindow`, `window.close`) no longer crashes the process. AppKit released the window on close and Vitra released it again.
+- Hosts keep delivering native callbacks (menu, tray and shortcut actions, dispatched calls) after the last window closes, instead of silently dropping them. Apps that outlive their windows, such as tray apps, kept running without reacting to anything.
 - macOS: a host call made from another goroutine before `Run` started the loop (for example opening a dialog or a window from a startup goroutine) ran AppKit code off the main thread, and AppKit aborted the process. Such calls are now queued and run on the main thread once the loop starts.
 - Linux and Windows: the same call before `Run` ran inline on whatever thread made it. On Linux that drove GTK, which is not thread-safe, from the wrong thread; on Windows a window created there belonged to that thread and `Run`'s message loop never pumped it. Before `Run`, a call now runs inline only on the main thread, where `Run` must be called; from any other thread it is queued and runs on the main thread once the loop starts.
 
