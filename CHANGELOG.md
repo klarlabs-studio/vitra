@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Upgrading
+- Apps that pass `linux.New()`, `darwin.New()` or `windows.New()` to `app.Options.Host` need no change.
+- If you call host methods beyond the core through an `app.DesktopHost` value (for example `host.SetTray`, `host.TrySingleInstance`, `host.Eval`), keep the concrete host type (`*linux.Host`, …), declare your own interface that embeds `app.DesktopHost` and the `platform` capabilities you use, or type-assert (`host.(platform.Tray)`).
+- Custom host authors: implement `platform.DesktopHost` (12 methods) plus only the capabilities you support. Drop methods you only stubbed out; a missing capability now fails with `*platform.ErrUnsupported`. A host that shows menus, a tray or global shortcuts must also implement `SetActionHandler` (`platform.ActionReporter`). Add `var _ platform.X = (*YourHost)(nil)` for each interface you mean to implement, so a signature change fails to compile instead of silently dropping the capability.
+- If you construct `desktop.MenuService` or `desktop.TrayService` yourself, set `OnSet` and `OnClear`; a nil hook now fails with `ErrUnsupported`.
+
+### Added
+- Every host interface is exported and documented in package `platform`: the core `DesktopHost`, the optional `Clipboard`, `Dialogs`, `MultiFileOpener`, `Notifier`, `MenuBar`, `Tray`, `GlobalShortcuts`, `ActionReporter`, `DragDrop`, `WindowControls`, `URLOpener`, `PathOpener`, `SingleInstance`, `URLSchemeRegistrar`, `FileAssociationRegistrar`, `ScriptEvaluator` and `FileDropInjector`, and the hooks `DevToolsSetter`, `MessageReporter` and `RejectReporter` (previously unexported in `app`). See the new [Host interfaces](https://klarlabs-studio.github.io/vitra/reference/hosts) reference.
+
+### Changed
+- **Breaking:** `app.DesktopHost` is now an alias of `platform.DesktopHost`, the 12-method core `app.Run` needs, instead of a 40-method interface. Everything else is an optional `platform` interface the app detects on the host; an official command whose capability is missing fails with `*platform.ErrUnsupported` naming the feature.
+- **Breaking:** `desktop.MenuService` and `desktop.TrayService` with no `OnSet`/`OnClear` hook fail with `*platform.ErrUnsupported` instead of returning success without doing anything, like the other services.
+- `vitra register-scheme` and `vitra register-files` report a host without the capability as `*platform.ErrUnsupported`.
+
 ## [0.9.0] - 2026-10-03
 
 Consistent errors from every stub host, and a complete Go reference on

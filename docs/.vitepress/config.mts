@@ -59,6 +59,7 @@ export default defineConfig({
           { text: "CLI", link: "/reference/cli" },
           { text: "Official plugins", link: "/reference/plugins" },
           { text: "Denial codes", link: "/reference/denials" },
+          { text: "Host interfaces", link: "/reference/hosts" },
         ],
       },
     ],
