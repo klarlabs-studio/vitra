@@ -195,6 +195,7 @@ func (h *Host) Features() platform.FeatureSet {
 	}
 }
 
+// SetInvokeHandler registers the IPC callback.
 func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) []byte) {
 	h.onInvoke = fn
 }
@@ -205,11 +206,19 @@ func (h *Host) SetInvokeHandler(fn func(domain.WindowID, domain.Origin, []byte) 
 func (h *Host) SetMessageHandler(fn func(windowID domain.WindowID, senderURL string, raw []byte) []byte) {
 	h.onMessage = fn
 }
+
+// SetNavPolicy registers navigation allow/deny.
 func (h *Host) SetNavPolicy(fn func(domain.WindowID, string) bool) { h.onNav = fn }
-func (h *Host) SetActionHandler(fn func(id string))                { h.onAction = fn }
+
+// SetActionHandler registers menu/tray action callbacks.
+func (h *Host) SetActionHandler(fn func(id string)) { h.onAction = fn }
+
+// SetDragDropHandler registers file-drop callbacks (absolute paths).
 func (h *Host) SetDragDropHandler(fn func(windowID domain.WindowID, paths []string)) {
 	h.onDrop = fn
 }
+
+// SetDestroyHandler registers callbacks when a native window is destroyed.
 func (h *Host) SetDestroyHandler(fn func(windowID domain.WindowID)) {
 	h.onDestroy = fn
 }
@@ -351,10 +360,12 @@ func (h *Host) BlurWindow(id domain.WindowID) error {
 	return <-errCh
 }
 
+// CreateWindow implements platform.Host.
 func (h *Host) CreateWindow(_ context.Context, spec platform.WindowSpec) error {
 	return h.Open(spec, "about:blank", "")
 }
 
+// Open creates a native window loading uri with optional preload JS.
 func (h *Host) Open(spec platform.WindowSpec, uri, preload string) error {
 	if spec.ID == "" {
 		return errors.New("window id required")
@@ -454,6 +465,7 @@ func (h *Host) Eval(id domain.WindowID, js string) error {
 	return <-errCh
 }
 
+// CloseWindow destroys a native window.
 func (h *Host) CloseWindow(_ context.Context, id domain.WindowID) error {
 	errCh := make(chan error, 1)
 	h.dispatch(func() {
@@ -730,6 +742,7 @@ func (h *Host) UnregisterGlobalShortcut(accelerator string) error {
 	return <-errCh
 }
 
+// Run runs the Win32 message loop (blocking). Must be called from the main OS thread.
 func (h *Host) Run() error {
 	h.ensureInit()
 	h.mu.Lock()
@@ -739,6 +752,7 @@ func (h *Host) Run() error {
 	return nil
 }
 
+// Quit leaves the Win32 message loop.
 func (h *Host) Quit() {
 	h.dispatch(func() { C.vitra_win32_quit() })
 }
