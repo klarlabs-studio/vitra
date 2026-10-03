@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Upgrading
+## [0.10.0] - 2026-10-03
+
+Menu bar (tray) apps: a live status and icon in the menu bar, a panel that
+drops down from it, no Dock or taskbar entry, and launch at login, on macOS,
+Windows and Linux. Also typed official commands, versioned wire formats, a
+smaller host interface, and a slimmer `domain` package.
+
+### Upgrading from 0.9.0
 - Update manifests, policy documents, and audit event JSON now carry a format version, `"schema": "1"`. Existing files keep working: a manifest or policy document without `schema` is read as schema 1, and manifests signed by 0.9 still verify.
 - Upgrade apps before you publish manifests signed by this CLI or deploy policies saved by this release. An older runtime reads the new files, but cannot tell a future format from this one; from this release on, a runtime refuses formats newer than it knows with `ErrUnsupportedSchema`.
 - Add `"schema": "1"` to hand-written policy documents, and re-sign update manifests with this CLI (`vitra update-sign`). Unversioned manifests and policy documents are deprecated and stop being accepted before 1.0.
@@ -529,7 +536,8 @@ Windows (WebView2) behind `-tags vitra_native`.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
 
-[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/klarlabs-studio/vitra/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/klarlabs-studio/vitra/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/klarlabs-studio/vitra/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/klarlabs-studio/vitra/compare/v0.7.0...v0.7.1
