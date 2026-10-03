@@ -36,9 +36,6 @@ type GrantName string
 // PluginID identifies a plugin contribution.
 type PluginID string
 
-// ResourceID identifies a long-lived native resource handle.
-type ResourceID string
-
 // NewAppID validates and returns an AppID.
 func NewAppID(s string) (AppID, error) {
 	s = strings.TrimSpace(s)
@@ -137,12 +134,4 @@ func NewPluginID(s string) (PluginID, error) {
 		return "", errors.New("plugin id must not be empty")
 	}
 	return PluginID(s), nil
-}
-
-// NewResourceID validates and returns a ResourceID.
-func NewResourceID(s string) (ResourceID, error) {
-	if s == "" {
-		return "", errors.New("resource id must not be empty")
-	}
-	return ResourceID(s), nil
 }

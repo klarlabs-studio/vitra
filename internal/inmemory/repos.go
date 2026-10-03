@@ -1,4 +1,4 @@
-// Package inmemory provides in-memory adapters for Vitra domain ports.
+// Package inmemory provides in-memory adapters for the application ports.
 // Suitable for tests and single-process development runtimes.
 package inmemory
 
@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/application"
 )
 
 // GrantRepo is a thread-safe GrantRepository.
@@ -145,16 +146,16 @@ func (r *CommandRepo) List() ([]*domain.CommandDefinition, error) {
 // ResourceRepo is a thread-safe ResourceRepository.
 type ResourceRepo struct {
 	mu   sync.RWMutex
-	byID map[domain.ResourceID]*domain.ResourceHandle
+	byID map[application.ResourceID]*application.ResourceHandle
 }
 
 // NewResourceRepo constructs an empty resource repository.
 func NewResourceRepo() *ResourceRepo {
-	return &ResourceRepo{byID: make(map[domain.ResourceID]*domain.ResourceHandle)}
+	return &ResourceRepo{byID: make(map[application.ResourceID]*application.ResourceHandle)}
 }
 
 // Save stores a resource handle.
-func (r *ResourceRepo) Save(handle *domain.ResourceHandle) error {
+func (r *ResourceRepo) Save(handle *application.ResourceHandle) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.byID[handle.ID()] = handle
@@ -162,7 +163,7 @@ func (r *ResourceRepo) Save(handle *domain.ResourceHandle) error {
 }
 
 // Get returns a handle by id.
-func (r *ResourceRepo) Get(id domain.ResourceID) (*domain.ResourceHandle, error) {
+func (r *ResourceRepo) Get(id application.ResourceID) (*application.ResourceHandle, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	h, ok := r.byID[id]
@@ -173,7 +174,7 @@ func (r *ResourceRepo) Get(id domain.ResourceID) (*domain.ResourceHandle, error)
 }
 
 // Delete removes a handle.
-func (r *ResourceRepo) Delete(id domain.ResourceID) error {
+func (r *ResourceRepo) Delete(id application.ResourceID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.byID, id)
@@ -181,10 +182,10 @@ func (r *ResourceRepo) Delete(id domain.ResourceID) error {
 }
 
 // ListByOwner returns handles owned by window.
-func (r *ResourceRepo) ListByOwner(window domain.WindowID) ([]*domain.ResourceHandle, error) {
+func (r *ResourceRepo) ListByOwner(window domain.WindowID) ([]*application.ResourceHandle, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*domain.ResourceHandle, 0)
+	out := make([]*application.ResourceHandle, 0)
 	for _, h := range r.byID {
 		if h.Owner() == window {
 			out = append(out, h)

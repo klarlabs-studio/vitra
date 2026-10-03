@@ -1,4 +1,4 @@
-package domain_test
+package application_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/application"
 )
 
 type memCommands struct {
@@ -99,7 +100,7 @@ func TestInvocationService_AuthorizeThenExecute(t *testing.T) {
 	}
 	win, _ := domain.NewWindow("main", domain.OriginPackagedLocal)
 
-	svc := &domain.InvocationService{
+	svc := &application.InvocationService{
 		Commands: &memCommands{byName: map[domain.CommandName]*domain.CommandDefinition{cmd.Name(): cmd}},
 		Grants:   &memGrants{items: []*domain.CapabilityGrant{grant}},
 		Windows:  &memWindows{byID: map[domain.WindowID]*domain.Window{win.ID(): win}},
@@ -123,7 +124,7 @@ func TestInvocationService_AuthorizeThenExecute(t *testing.T) {
 func TestInvocationService_DeniesWithoutGrant(t *testing.T) {
 	cmd, _ := domain.NewCommandDefinition("project.open", "Open project", "fs.read")
 	win, _ := domain.NewWindow("main", domain.OriginPackagedLocal)
-	svc := &domain.InvocationService{
+	svc := &application.InvocationService{
 		Commands:  &memCommands{byName: map[domain.CommandName]*domain.CommandDefinition{cmd.Name(): cmd}},
 		Grants:    &memGrants{},
 		Windows:   &memWindows{byID: map[domain.WindowID]*domain.Window{win.ID(): win}},
@@ -145,7 +146,7 @@ func TestInvocationService_RejectsSpoofedOrigin(t *testing.T) {
 	grant := mustGrant(t)
 	cmd, _ := domain.NewCommandDefinition("project.open", "Open", "fs.read")
 	win, _ := domain.NewWindow("main", domain.OriginPackagedLocal)
-	svc := &domain.InvocationService{
+	svc := &application.InvocationService{
 		Commands:  &memCommands{byName: map[domain.CommandName]*domain.CommandDefinition{cmd.Name(): cmd}},
 		Grants:    &memGrants{items: []*domain.CapabilityGrant{grant}},
 		Windows:   &memWindows{byID: map[domain.WindowID]*domain.Window{win.ID(): win}},
@@ -167,7 +168,7 @@ func TestInvocationService_OverlayTightensAllow(t *testing.T) {
 	grant := mustGrant(t)
 	cmd, _ := domain.NewCommandDefinition("project.open", "Open project", "fs.read")
 	win, _ := domain.NewWindow("main", domain.OriginPackagedLocal)
-	svc := &domain.InvocationService{
+	svc := &application.InvocationService{
 		Commands: &memCommands{byName: map[domain.CommandName]*domain.CommandDefinition{cmd.Name(): cmd}},
 		Grants:   &memGrants{items: []*domain.CapabilityGrant{grant}},
 		Windows:  &memWindows{byID: map[domain.WindowID]*domain.Window{win.ID(): win}},
@@ -194,26 +195,11 @@ func TestInvocationService_OverlayTightensAllow(t *testing.T) {
 	}
 }
 
-func TestCommandDefinition_RequiresPermission(t *testing.T) {
-	_, err := domain.NewCommandDefinition("x", "", "")
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	cmd, err := domain.NewCommandDefinition("project.open", "Open", "fs.read")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd.WithPlugin("fs")
-	if cmd.Plugin() != "fs" || cmd.Permission() != "fs.read" {
-		t.Fatalf("bad cmd %+v", cmd)
-	}
-}
-
 // Calling a command that was never registered is a probe, not a bug: it is
 // refused with a deterministic denial code, so it is audited as a denial.
 func TestInvocationService_UnregisteredCommandIsDenied(t *testing.T) {
 	win, _ := domain.NewWindow("main", domain.OriginPackagedLocal)
-	svc := &domain.InvocationService{
+	svc := &application.InvocationService{
 		Commands:  &memCommands{byName: map[domain.CommandName]*domain.CommandDefinition{}},
 		Grants:    &memGrants{},
 		Windows:   &memWindows{byID: map[domain.WindowID]*domain.Window{win.ID(): win}},

@@ -1,15 +1,16 @@
-package domain_test
+package application_test
 
 import (
 	"testing"
 
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/application"
 )
 
 func TestGateway_NewWindowHasNoPrivileges(t *testing.T) {
 	// Security invariant 1: a newly created WebView has no privileged native
 	// API access unless a capability grants it.
-	gw := domain.NewCapabilityGateway() // no grants
+	gw := application.NewCapabilityGateway() // no grants
 	caller, _ := domain.NewCaller("main", domain.OriginPackagedLocal)
 	d := gw.Authorize(caller, "fs.read", "/project/a.go")
 	if d.Allowed || d.Code != domain.DenialNoGrant {
@@ -21,7 +22,7 @@ func TestGateway_NavigationDropsAuthority(t *testing.T) {
 	// Security invariant 2: navigation to a new origin cannot retain authority
 	// granted to another origin.
 	grant := mustGrant(t)
-	gw := domain.NewCapabilityGateway(grant)
+	gw := application.NewCapabilityGateway(grant)
 
 	win, err := domain.NewWindow("main", domain.OriginPackagedLocal)
 	if err != nil {
@@ -52,7 +53,7 @@ func TestGateway_RemoteContentDeniedByDefault(t *testing.T) {
 	// Security invariant 12: remote/untrusted content has no native authority
 	// by default.
 	grant := mustGrant(t)
-	gw := domain.NewCapabilityGateway(grant)
+	gw := application.NewCapabilityGateway(grant)
 	caller, _ := domain.NewCaller("main", "https://cdn.example")
 	d := gw.Authorize(caller, "fs.read", "/project/a.go")
 	if d.Allowed {
@@ -63,7 +64,7 @@ func TestGateway_RemoteContentDeniedByDefault(t *testing.T) {
 func TestGateway_DenialDeterministicAndInspectable(t *testing.T) {
 	// Security invariant 13.
 	grant := mustGrant(t)
-	gw := domain.NewCapabilityGateway(grant)
+	gw := application.NewCapabilityGateway(grant)
 	caller, _ := domain.NewCaller("main", domain.OriginPackagedLocal)
 
 	d1 := gw.Authorize(caller, "shell.exec", "")
@@ -78,7 +79,7 @@ func TestGateway_DenialDeterministicAndInspectable(t *testing.T) {
 
 func TestGateway_InspectEffectiveSurface(t *testing.T) {
 	grant := mustGrant(t)
-	gw := domain.NewCapabilityGateway(grant)
+	gw := application.NewCapabilityGateway(grant)
 	surface := gw.Inspect("main", domain.OriginPackagedLocal)
 	if len(surface.GrantNames) != 1 || surface.GrantNames[0] != "project-files" {
 		t.Fatalf("grants=%v", surface.GrantNames)
@@ -90,4 +91,25 @@ func TestGateway_InspectEffectiveSurface(t *testing.T) {
 	if len(empty.GrantNames) != 0 || len(empty.Permissions) != 0 {
 		t.Fatalf("expected empty surface for other origin: %+v", empty)
 	}
+}
+func mustGrant(t *testing.T) *domain.CapabilityGrant {
+	t.Helper()
+	name, _ := domain.NewGrantName("project-files")
+	perm, _ := domain.NewPermissionName("fs.read")
+	win, _ := domain.NewWindowID("main")
+	scope := &domain.PathScope{
+		Allow: []string{"/project/**"},
+		Deny:  []string{"/project/.secrets/**"},
+	}
+	g, err := domain.NewCapabilityGrant(
+		name,
+		"project file access",
+		[]domain.WindowID{win},
+		[]domain.Origin{domain.OriginPackagedLocal},
+		[]domain.PermissionSpec{{Name: perm, PathScope: scope}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return g
 }

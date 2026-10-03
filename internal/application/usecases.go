@@ -11,7 +11,7 @@ import (
 
 // RegisterGrantUseCase persists a capability grant.
 type RegisterGrantUseCase struct {
-	Grants domain.GrantRepository
+	Grants GrantRepository
 }
 
 // Execute saves the grant.
@@ -24,7 +24,7 @@ func (uc *RegisterGrantUseCase) Execute(grant *domain.CapabilityGrant) error {
 
 // OpenWindowUseCase creates and persists a window.
 type OpenWindowUseCase struct {
-	Windows domain.WindowRepository
+	Windows WindowRepository
 }
 
 // Execute opens a window at origin.
@@ -44,7 +44,7 @@ func (uc *OpenWindowUseCase) Execute(id domain.WindowID, origin domain.Origin) (
 
 // NavigateWindowUseCase changes a window's origin.
 type NavigateWindowUseCase struct {
-	Windows domain.WindowRepository
+	Windows WindowRepository
 }
 
 // Execute navigates the window.
@@ -61,9 +61,9 @@ func (uc *NavigateWindowUseCase) Execute(id domain.WindowID, origin domain.Origi
 
 // CloseWindowUseCase closes a window and releases owned resources/subscriptions.
 type CloseWindowUseCase struct {
-	Windows       domain.WindowRepository
-	Resources     domain.ResourceRepository
-	Subscriptions domain.SubscriptionRepository
+	Windows       WindowRepository
+	Resources     ResourceRepository
+	Subscriptions SubscriptionRepository
 }
 
 // Execute closes the window and owned handles/subscriptions.
@@ -104,7 +104,7 @@ func (uc *CloseWindowUseCase) Execute(id domain.WindowID) error {
 
 // RegisterCommandUseCase registers a command definition.
 type RegisterCommandUseCase struct {
-	Commands domain.CommandRepository
+	Commands CommandRepository
 }
 
 // Execute saves the command definition.
@@ -117,7 +117,7 @@ func (uc *RegisterCommandUseCase) Execute(cmd *domain.CommandDefinition) error {
 
 // InvokeCommandUseCase is the frontend→Go invocation entry.
 type InvokeCommandUseCase struct {
-	Invoker *domain.InvocationService
+	Invoker *InvocationService
 }
 
 // Execute runs the secure invocation pipeline.
@@ -127,8 +127,8 @@ func (uc *InvokeCommandUseCase) Execute(ctx context.Context, req domain.Invocati
 
 // InspectCapabilitiesUseCase projects the effective privileged surface.
 type InspectCapabilitiesUseCase struct {
-	Grants  domain.GrantRepository
-	Windows domain.WindowRepository
+	Grants  GrantRepository
+	Windows WindowRepository
 }
 
 // Execute returns the inspectable surface for a window.
@@ -141,14 +141,14 @@ func (uc *InspectCapabilitiesUseCase) Execute(windowID domain.WindowID) (domain.
 	if err != nil {
 		return domain.EffectiveSurface{}, err
 	}
-	gw := domain.NewCapabilityGateway(grants...)
+	gw := NewCapabilityGateway(grants...)
 	return gw.Inspect(win.ID(), win.Origin()), nil
 }
 
 // SubscribeEventUseCase registers a window-owned event subscription.
 type SubscribeEventUseCase struct {
-	Windows       domain.WindowRepository
-	Subscriptions domain.SubscriptionRepository
+	Windows       WindowRepository
+	Subscriptions SubscriptionRepository
 }
 
 // Execute creates a subscription owned by the window.
@@ -177,7 +177,7 @@ func (uc *SubscribeEventUseCase) Execute(id domain.SubscriptionID, event domain.
 
 // NavigateWithPolicyUseCase navigates only when policy allows in-webview load.
 type NavigateWithPolicyUseCase struct {
-	Windows domain.WindowRepository
+	Windows WindowRepository
 	Policy  *domain.NavigationPolicy
 }
 
@@ -207,8 +207,8 @@ func (uc *NavigateWithPolicyUseCase) Execute(id domain.WindowID, origin domain.O
 
 // EmitEventUseCase resolves open window subscribers for a named event.
 type EmitEventUseCase struct {
-	Windows       domain.WindowRepository
-	Subscriptions domain.SubscriptionRepository
+	Windows       WindowRepository
+	Subscriptions SubscriptionRepository
 }
 
 // Execute builds deliveries for every open window subscribed to the event.

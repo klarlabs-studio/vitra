@@ -5,6 +5,11 @@ import (
 	"errors"
 )
 
+// CommandExecutor executes a registered command after authorization.
+type CommandExecutor interface {
+	Execute(ctx context.Context, name CommandName, input any) (any, error)
+}
+
 // CommandExecutorFunc adapts a function to CommandExecutor.
 type CommandExecutorFunc func(ctx context.Context, name CommandName, input any) (any, error)
 
@@ -18,8 +23,7 @@ func (f CommandExecutorFunc) Execute(ctx context.Context, name CommandName, inpu
 var ErrNoInvocation = errors.New("no authorized invocation in context")
 
 // Invocation describes a command call the gateway has authorized. The
-// InvocationService puts it on the executor's context; read it with
-// InvocationFrom.
+// runtime puts it on the executor's context; read it with InvocationFrom.
 type Invocation struct {
 	// Caller is the identity established at the native boundary: the window
 	// that sent the call and its live origin.
@@ -36,8 +40,9 @@ type Invocation struct {
 
 type invocationKey struct{}
 
-// WithInvocation returns a context carrying inv. The InvocationService calls
-// it before running an executor.
+// WithInvocation returns a context carrying inv. The runtime calls it before
+// running an executor; tests call it to run an executor or a
+// CallerExecutorFunc as a given caller without a runtime.
 func WithInvocation(ctx context.Context, inv Invocation) context.Context {
 	return context.WithValue(ctx, invocationKey{}, inv)
 }

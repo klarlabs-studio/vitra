@@ -57,18 +57,18 @@ type Config struct {
 type Runtime struct {
 	appID domain.AppID
 
-	grants        domain.GrantRepository
-	windows       domain.WindowRepository
-	commands      domain.CommandRepository
-	resources     domain.ResourceRepository
-	subscriptions domain.SubscriptionRepository
+	grants        application.GrantRepository
+	windows       application.WindowRepository
+	commands      application.CommandRepository
+	resources     application.ResourceRepository
+	subscriptions application.SubscriptionRepository
 	executors     *inmemory.ExecutorRegistry
 	navPolicy     *domain.NavigationPolicy
 	plugins       *plugin.Registry
 	policyEng     *policy.Engine
 	auditSink     audit.Sink
 	workers       *worker.Supervisor
-	invoker       *domain.InvocationService
+	invoker       *application.InvocationService
 	typed         map[domain.CommandName]bindings.Command // guarded by typedMu
 	typedMu       sync.Mutex
 
@@ -147,7 +147,7 @@ func (rt *Runtime) wire() {
 			},
 		})
 	}
-	rt.invoker = &domain.InvocationService{
+	rt.invoker = &application.InvocationService{
 		Commands:  rt.commands,
 		Grants:    rt.grants,
 		Windows:   rt.windows,
@@ -412,7 +412,7 @@ func (rt *Runtime) Authorize(caller domain.Caller, permission domain.PermissionN
 		})
 		return d
 	}
-	d := domain.NewCapabilityGateway(grants...).Authorize(caller, permission, resourcePath)
+	d := application.NewCapabilityGateway(grants...).Authorize(caller, permission, resourcePath)
 	if rt.policyEng != nil {
 		before := d
 		d = rt.policyEng.OverlayDecision(permission, d)
