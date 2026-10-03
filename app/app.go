@@ -25,44 +25,11 @@ import (
 	"go.klarlabs.de/vitra/platform"
 )
 
-// DesktopHost is the native surface required to run a Vitra desktop app.
-type DesktopHost interface {
-	platform.Host
-	Open(spec platform.WindowSpec, uri, preload string) error
-	SetInvokeHandler(fn func(windowID domain.WindowID, origin domain.Origin, raw []byte) []byte)
-	SetNavPolicy(fn func(windowID domain.WindowID, uri string) bool)
-	SetActionHandler(fn func(id string))
-	SetDragDropHandler(fn func(windowID domain.WindowID, paths []string))
-	SetDestroyHandler(fn func(windowID domain.WindowID))
-	EnableDragDrop(id domain.WindowID, enabled bool) error
-	Eval(id domain.WindowID, js string) error
-	ClipboardGet() (string, error)
-	ClipboardSet(text string) error
-	OpenFileDialog(opts platform.DialogFileOptions) (string, error)
-	SaveFileDialog(opts platform.DialogFileOptions) (string, error)
-	OpenDirectoryDialog(opts platform.DialogFileOptions) (string, error)
-	MessageDialog(title, message, kind string) (bool, error)
-	ShowNotification(title, body string) error
-	SetMenuBar(id domain.WindowID, items []platform.MenuItem) error
-	SetTray(tooltip string, items []platform.MenuItem) error
-	ClearTray()
-	TrySingleInstance(appID string) (held bool, release func(), err error)
-	StartDeepLinkBridge(appID string, onLink func(raw string)) (stop func(), err error)
-	ForwardToPrimary(appID string, urls []string) (ok bool, err error)
-	RegisterURLScheme(scheme, appID, execPath string) error
-	RegisterFileAssociations(appID, execPath, name string, mimeTypes []string) error
-	InjectFileDrop(id domain.WindowID, paths []string)
-	ApplyWindowChrome(id domain.WindowID, chrome platform.WindowChrome) error
-	ReadWindowChrome(id domain.WindowID) (platform.WindowChrome, error)
-	FocusWindow(id domain.WindowID) error
-	BlurWindow(id domain.WindowID) error
-	OpenURL(ctx context.Context, rawURL string) error
-	OpenPath(ctx context.Context, path string) error
-	RegisterGlobalShortcut(accelerator, actionID string) error
-	UnregisterGlobalShortcut(accelerator string) error
-	Run() error
-	Quit()
-}
+// DesktopHost is the core a host implements to run an app. It is an alias
+// of platform.DesktopHost; the optional capabilities (clipboard, dialogs,
+// menus, tray, …) are separate interfaces in package platform, detected on
+// the host when a command needs them.
+type DesktopHost = platform.DesktopHost
 
 // WindowOptions configures an application window.
 type WindowOptions struct {
@@ -90,27 +57,6 @@ type Options struct {
 // EnvDevTools, when set to "1", enables the WebView inspector regardless of
 // Options.DevTools. `vitra dev` sets it.
 const EnvDevTools = "VITRA_DEVTOOLS"
-
-// devToolsSetter is implemented by hosts whose inspector can be toggled. It
-// must be called before windows are created.
-type devToolsSetter interface {
-	SetDevTools(enabled bool)
-}
-
-// rejectReporter is implemented by hosts that drop some bridge messages
-// before they reach the app (macOS drops messages posted by subframes), so the
-// app can audit them like the messages it drops itself.
-type rejectReporter interface {
-	SetRejectHandler(fn func(windowID domain.WindowID, reason string))
-}
-
-// messageReporter is implemented by hosts that report the URL of the
-// document that sent each bridge message. The app then checks the sender on
-// every message instead of trusting the origin it last recorded for the
-// window.
-type messageReporter interface {
-	SetMessageHandler(fn func(windowID domain.WindowID, senderURL string, raw []byte) []byte)
-}
 
 // App is a runnable desktop application.
 type App struct {
@@ -191,15 +137,15 @@ func (a *App) Run(ctx context.Context) error {
 		_ = a.server.Close()
 	}()
 
-	if dt, ok := a.host.(devToolsSetter); ok {
+	if dt, ok := a.host.(platform.DevToolsSetter); ok {
 		dt.SetDevTools(a.opts.DevTools || os.Getenv(EnvDevTools) == "1")
 	}
 	a.host.SetInvokeHandler(a.handleInvoke)
-	if mr, ok := a.host.(messageReporter); ok {
+	if mr, ok := a.host.(platform.MessageReporter); ok {
 		mr.SetMessageHandler(a.handleMessage)
 	}
 	a.host.SetNavPolicy(a.allowNav)
-	if rr, ok := a.host.(rejectReporter); ok {
+	if rr, ok := a.host.(platform.RejectReporter); ok {
 		rr.SetRejectHandler(func(id domain.WindowID, reason string) {
 			a.audit(audit.Event{Kind: audit.KindBridgeReject, Window: string(id), Outcome: "denied", Detail: reason})
 		})

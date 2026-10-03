@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgrade apps before you publish manifests signed by this CLI or deploy policies saved by this release. An older runtime reads the new files, but cannot tell a future format from this one; from this release on, a runtime refuses formats newer than it knows with `ErrUnsupportedSchema`.
 - Add `"schema": "1"` to hand-written policy documents, and re-sign update manifests with this CLI (`vitra update-sign`). Unversioned manifests and policy documents are deprecated and stop being accepted before 1.0.
 - If you parse audit JSON lines strictly, allow the new leading `schema` field. If you write audit JSON from a custom sink, encode with `audit.MarshalEvent`.
+- Apps that pass `linux.New()`, `darwin.New()` or `windows.New()` to `app.Options.Host` need no change.
+- If you call host methods beyond the core through an `app.DesktopHost` value (for example `host.SetTray`, `host.TrySingleInstance`, `host.Eval`), keep the concrete host type (`*linux.Host`, …), declare your own interface that embeds `app.DesktopHost` and the `platform` capabilities you use, or type-assert (`host.(platform.Tray)`).
+- Custom host authors: implement `platform.DesktopHost` (12 methods) plus only the capabilities you support. Drop methods you only stubbed out; a missing capability now fails with `*platform.ErrUnsupported`. A host that shows menus, a tray or global shortcuts must also implement `SetActionHandler` (`platform.ActionReporter`). Add `var _ platform.X = (*YourHost)(nil)` for each interface you mean to implement, so a signature change fails to compile instead of silently dropping the capability.
+- If you construct `desktop.MenuService` or `desktop.TrayService` yourself, set `OnSet` and `OnClear`; a nil hook now fails with `ErrUnsupported`.
 
 ### Added
 - `schema` format version on signed update manifests (`updater.ManifestSchema`), covered by the signature: stripping, adding, or changing it invalidates the manifest. `SignManifest` and `BuildSignedManifest` always write it.
@@ -20,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `schema` format version on audit event JSON (`audit.EventSchema`), written by `JSONLSink` and `FileSink`. New `audit.MarshalEvent` and `audit.ParseEvent` encode and decode one line.
 - `updater.ErrUnsupportedSchema`, `policy.ErrUnsupportedSchema`, and `audit.ErrUnsupportedSchema` for a format version this runtime does not know. Match them with `errors.Is`.
 - The release pipeline can notarize the macOS `vitra` binaries and Authenticode-sign the Windows ones. It turns on once the signing certificates are added as repository secrets and is skipped until then; checksums, SBOMs, and the cosign signature cover the signed binaries. See *Code-signing certificates* in `CONTRIBUTING.md`.
+- Every host interface is exported and documented in package `platform`: the core `DesktopHost`, the optional `Clipboard`, `Dialogs`, `MultiFileOpener`, `Notifier`, `MenuBar`, `Tray`, `GlobalShortcuts`, `ActionReporter`, `DragDrop`, `WindowControls`, `URLOpener`, `PathOpener`, `SingleInstance`, `URLSchemeRegistrar`, `FileAssociationRegistrar`, `ScriptEvaluator` and `FileDropInjector`, and the hooks `DevToolsSetter`, `MessageReporter` and `RejectReporter` (previously unexported in `app`). See the new [Host interfaces](https://klarlabs-studio.github.io/vitra/reference/hosts) reference.
+
+### Changed
+- **Breaking:** `app.DesktopHost` is now an alias of `platform.DesktopHost`, the 12-method core `app.Run` needs, instead of a 40-method interface. Everything else is an optional `platform` interface the app detects on the host; an official command whose capability is missing fails with `*platform.ErrUnsupported` naming the feature.
+- **Breaking:** `desktop.MenuService` and `desktop.TrayService` with no `OnSet`/`OnClear` hook fail with `*platform.ErrUnsupported` instead of returning success without doing anything, like the other services.
+- `vitra register-scheme` and `vitra register-files` report a host without the capability as `*platform.ErrUnsupported`.
 
 ### Deprecated
 - Update manifests and policy documents without a `schema` field. They are read as schema 1 for now and stop being accepted before 1.0.

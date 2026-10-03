@@ -82,17 +82,6 @@ type DialogFileOptions struct {
 	Multiple bool
 }
 
-// MultiFileOpener is implemented by hosts whose open-file dialog can select
-// several files at once. It is optional so existing hosts keep satisfying
-// Host; a caller asking for multiple files from a host without it gets an
-// explicit ErrUnsupported, never a silent single selection.
-//
-// OpenFilesDialog returns every selected path, or nil when the user cancels.
-// Selecting a file grants nothing: reading it still needs an fs grant.
-type MultiFileOpener interface {
-	OpenFilesDialog(opts DialogFileOptions) ([]string, error)
-}
-
 // DecodePathList splits a buffer of NUL-terminated paths, the format native
 // hosts use to hand a multi-file selection to Go. NUL is the one byte no path
 // can contain on any supported OS (unlike newline, which Linux allows), so
@@ -178,8 +167,10 @@ type WindowSpec struct {
 	Height int
 }
 
-// Host is the Phase 0 native adapter port. Real OS adapters (darwin/windows/
-// linux) implement this; the null adapter documents unsupported semantics.
+// Host is the base native adapter port: the feature matrix and window
+// lifecycle. The desktop services take it to check features. DesktopHost
+// adds what running an app needs; see capabilities.go for the optional
+// interfaces.
 type Host interface {
 	OS() OS
 	Features() FeatureSet
