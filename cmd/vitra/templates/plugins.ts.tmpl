@@ -19,7 +19,7 @@ const demos: { label: string; run: () => Promise<string> }[] = [
       const { path } = await client.dataDir({});
       const file = path + "/hello.txt";
       await client.fsWrite({ path: file, data: "Saved at " + new Date().toLocaleTimeString() }, file);
-      return file + ": " + String(await client.fsRead(file, file));
+      return file + ": " + (await client.fsRead(file, file));
     },
   },
 [[- end]]
@@ -27,14 +27,14 @@ const demos: { label: string; run: () => Promise<string> }[] = [
   {
     label: "Open…",
     async run() {
-      const picked = (await client.dialogOpen({ title: "Pick a file" })) as string[] | null;
+      const picked = await client.dialogOpen({ title: "Pick a file" });
       return picked && picked.length ? "Picked " + picked[0] : "Cancelled";
     },
   },
   {
     label: "Save as…",
     async run() {
-      const path = (await client.dialogSave({ title: "Save as", defaultPath: "untitled.txt" })) as string;
+      const path = await client.dialogSave({ title: "Save as", defaultPath: "untitled.txt" });
       return path ? "Picked " + path + " (saving there needs fs.write on its folder)" : "Cancelled";
     },
   },
@@ -62,7 +62,7 @@ const demos: { label: string; run: () => Promise<string> }[] = [
   {
     label: "OS info",
     async run() {
-      const info = (await client.osInfo()) as { os: string; arch: string };
+      const info = await client.osInfo();
       return "Running on " + info.os + "/" + info.arch;
     },
   },

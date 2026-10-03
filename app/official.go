@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/desktop"
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/platform"
@@ -17,6 +18,11 @@ import (
 // capability-checked services in package desktop. With no arguments it uses
 // official.All(); pass constructors (official.Clipboard(), official.Dialog(),
 // ...) to take only some.
+//
+// Every command is bound as a typed command (vitra.Bind) with the input and
+// output types in package official: input is decoded strictly, so an unknown
+// field or a wrong type is a validation error, and Runtime.TypeScript
+// generates a typed client for them.
 //
 // It grants nothing. A window can use a command only if one of your grants
 // gives it the command's permission, and path-scoped permissions (fs.read,
@@ -67,16 +73,33 @@ func (a *App) UseOfficialPlugins(ctx context.Context, plugins ...plugin.Plugin) 
 	return nil
 }
 
-// callerFunc is a command executor that acts as the invoking window.
-type callerFunc = func(ctx context.Context, caller domain.Caller, input any) (any, error)
+// none is the input of a command that takes none.
+type none = struct{}
 
-func (a *App) bind(execs map[domain.CommandName]callerFunc) error {
-	var errs []error
-	for name, fn := range execs {
-		errs = append(errs, a.rt.BindExecutor(name, domain.CallerExecutorFunc(fn)))
-	}
-	return errors.Join(errs...)
+// binder binds official commands as typed commands and collects errors.
+type binder struct {
+	rt   *vitra.Runtime
+	errs []error
 }
+
+// on binds name to fn, which acts as the invoking window: it receives the
+// caller the gateway authorized, never one taken from the input.
+func on[In, Out any](b *binder, name domain.CommandName, fn func(ctx context.Context, caller domain.Caller, in In) (Out, error)) {
+	b.errs = append(b.errs, vitra.Bind(b.rt, name, func(ctx context.Context, inv domain.Invocation, in In) (Out, error) {
+		return fn(ctx, inv.Caller, in)
+	}))
+}
+
+// onVoid binds a command that returns nothing.
+func onVoid[In any](b *binder, name domain.CommandName, fn func(ctx context.Context, caller domain.Caller, in In) error) {
+	on(b, name, func(ctx context.Context, caller domain.Caller, in In) (vitra.Void, error) {
+		return vitra.Void{}, fn(ctx, caller, in)
+	})
+}
+
+func (b *binder) err() error { return errors.Join(b.errs...) }
+
+func (a *App) binder() *binder { return &binder{rt: a.rt} }
 
 func (a *App) officialBinders() map[domain.PluginID]func() error {
 	return map[domain.PluginID]func() error{
@@ -99,22 +122,18 @@ func (a *App) officialBinders() map[domain.PluginID]func() error {
 
 func (a *App) bindFS() error {
 	files := &desktop.FileService{Gateway: a.rt}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"fs.read": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			path, _ := input.(string)
-			b, err := files.Read(ctx, caller, path)
-			if err != nil {
-				return nil, err
-			}
-			return string(b), nil
-		},
-		"fs.write": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			m, _ := input.(map[string]any)
-			path, _ := m["path"].(string)
-			data, _ := m["data"].(string)
-			return nil, files.Write(ctx, caller, path, []byte(data))
-		},
+	b := a.binder()
+	on(b, "fs.read", func(ctx context.Context, caller domain.Caller, path string) (string, error) {
+		data, err := files.Read(ctx, caller, path)
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
 	})
+	onVoid(b, "fs.write", func(ctx context.Context, caller domain.Caller, in official.WriteFileInput) error {
+		return files.Write(ctx, caller, in.Path, []byte(in.Data))
+	})
+	return b.err()
 }
 
 // openFiles runs the host's open dialog. With opts.Multiple it needs a host
@@ -147,6 +166,15 @@ func openFiles(h DesktopHost, opts platform.DialogFileOptions) ([]string, error)
 	return []string{path}, nil
 }
 
+// dialogOptions converts dialog input for the host.
+func dialogOptions(in official.DialogOptions) platform.DialogFileOptions {
+	opts := platform.DialogFileOptions{Title: in.Title, DefaultPath: in.DefaultPath, Multiple: in.Multiple}
+	for _, f := range in.Filters {
+		opts.Filters = append(opts.Filters, platform.FileFilter{Name: f.Name, Extensions: f.Extensions})
+	}
+	return opts
+}
+
 func (a *App) bindDialog() error {
 	h := a.host
 	dialogs := &desktop.DialogService{
@@ -167,31 +195,20 @@ func (a *App) bindDialog() error {
 			return d.MessageDialog(title, message, kind)
 		}
 	}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"dialog.open": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			return dialogs.OpenFile(ctx, caller, desktop.ParseDialogFileOptions(input))
-		},
-		"dialog.save": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			return dialogs.SaveFile(ctx, caller, desktop.ParseDialogFileOptions(input))
-		},
-		"dialog.openDirectory": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			return dialogs.OpenDirectory(ctx, caller, desktop.ParseDialogFileOptions(input))
-		},
-		"dialog.message": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			title, message, kind := "", "", "info"
-			switch v := input.(type) {
-			case string:
-				message = v
-			case map[string]any:
-				title, _ = v["title"].(string)
-				message, _ = v["message"].(string)
-				if k, ok := v["kind"].(string); ok {
-					kind = k
-				}
-			}
-			return dialogs.Message(ctx, caller, title, message, kind)
-		},
+	b := a.binder()
+	on(b, "dialog.open", func(ctx context.Context, caller domain.Caller, in official.DialogOptions) ([]string, error) {
+		return dialogs.OpenFile(ctx, caller, dialogOptions(in))
 	})
+	on(b, "dialog.save", func(ctx context.Context, caller domain.Caller, in official.DialogOptions) (string, error) {
+		return dialogs.SaveFile(ctx, caller, dialogOptions(in))
+	})
+	on(b, "dialog.openDirectory", func(ctx context.Context, caller domain.Caller, in official.DialogOptions) (string, error) {
+		return dialogs.OpenDirectory(ctx, caller, dialogOptions(in))
+	})
+	on(b, "dialog.message", func(ctx context.Context, caller domain.Caller, in official.MessageDialogInput) (bool, error) {
+		return dialogs.Message(ctx, caller, in.Title, in.Message, in.Kind)
+	})
+	return b.err()
 }
 
 func (a *App) bindClipboard() error {
@@ -200,15 +217,12 @@ func (a *App) bindClipboard() error {
 		clips.OnRead = func(context.Context) (string, error) { return c.ClipboardGet() }
 		clips.OnWrite = func(_ context.Context, text string) error { return c.ClipboardSet(text) }
 	}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"clipboard.read": func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-			return clips.Read(ctx, caller)
-		},
-		"clipboard.write": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			text, _ := input.(string)
-			return nil, clips.Write(ctx, caller, text)
-		},
+	b := a.binder()
+	on(b, "clipboard.read", func(ctx context.Context, caller domain.Caller, _ none) (string, error) {
+		return clips.Read(ctx, caller)
 	})
+	onVoid(b, "clipboard.write", clips.Write)
+	return b.err()
 }
 
 func (a *App) bindBrowser() error {
@@ -216,21 +230,18 @@ func (a *App) bindBrowser() error {
 	if o, ok := a.host.(platform.URLOpener); ok {
 		browser.OnOpen = o.OpenURL
 	}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"browser.open": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			rawURL, _ := input.(string)
-			return nil, browser.OpenURL(ctx, caller, rawURL)
-		},
-	})
+	b := a.binder()
+	onVoid(b, "browser.open", browser.OpenURL)
+	return b.err()
 }
 
 func (a *App) bindOS() error {
 	osSvc := &desktop.OsService{Gateway: a.rt}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"os.info": func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-			return osSvc.Info(ctx, caller)
-		},
+	b := a.binder()
+	on(b, "os.info", func(ctx context.Context, caller domain.Caller, _ none) (desktop.OsInfo, error) {
+		return osSvc.Info(ctx, caller)
 	})
+	return b.err()
 }
 
 func (a *App) bindNotification() error {
@@ -238,19 +249,11 @@ func (a *App) bindNotification() error {
 	if n, ok := a.host.(platform.Notifier); ok {
 		notes.OnShow = func(_ context.Context, title, body string) error { return n.ShowNotification(title, body) }
 	}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"notifications.show": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			title, body := "", ""
-			switch v := input.(type) {
-			case string:
-				body = v
-			case map[string]any:
-				title, _ = v["title"].(string)
-				body, _ = v["body"].(string)
-			}
-			return nil, notes.Show(ctx, caller, title, body)
-		},
+	b := a.binder()
+	onVoid(b, "notifications.show", func(ctx context.Context, caller domain.Caller, in official.NotificationInput) error {
+		return notes.Show(ctx, caller, in.Title, in.Body)
 	})
+	return b.err()
 }
 
 func (a *App) bindPath() error {
@@ -258,12 +261,9 @@ func (a *App) bindPath() error {
 	if o, ok := a.host.(platform.PathOpener); ok {
 		paths.OnOpen = o.OpenPath
 	}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"path.open": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			path, _ := input.(string)
-			return nil, paths.Open(ctx, caller, path)
-		},
-	})
+	b := a.binder()
+	onVoid(b, "path.open", paths.Open)
+	return b.err()
 }
 
 func (a *App) bindWindow() error {
@@ -285,85 +285,60 @@ func (a *App) bindWindow() error {
 		w.OnFocus = func(_ context.Context, id domain.WindowID) error { return h.FocusWindow(id) }
 		w.OnBlur = func(_ context.Context, id domain.WindowID) error { return h.BlurWindow(id) }
 	}
-	byID := func(fn func(context.Context, domain.Caller, domain.WindowID) error) callerFunc {
-		return func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			id, err := desktop.ParseWindowID(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, fn(ctx, caller, id)
+	b := a.binder()
+	on(b, "window.create", func(ctx context.Context, caller domain.Caller, in official.WindowCreateInput) (official.WindowCreated, error) {
+		id, err := w.Create(ctx, caller, desktop.WindowCreateOptions{
+			ID: in.ID, Title: in.Title, Path: in.Path, Width: in.Width, Height: in.Height,
+		})
+		if err != nil {
+			return official.WindowCreated{}, err
 		}
-	}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"window.create": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			opts, err := desktop.ParseWindowCreateOptions(input)
-			if err != nil {
-				return nil, err
-			}
-			id, err := w.Create(ctx, caller, opts)
-			if err != nil {
-				return nil, err
-			}
-			return map[string]any{"id": string(id)}, nil
-		},
-		"window.chrome": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			id, chrome, err := desktop.ParseWindowChromeApply(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, w.Apply(ctx, caller, id, chrome)
-		},
-		"window.getChrome": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			id, err := desktop.ParseWindowID(input)
-			if err != nil {
-				return nil, err
-			}
-			return w.Read(ctx, caller, id)
-		},
-		"window.setAlwaysOnTop": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			id, onTop, err := desktop.ParseWindowAlwaysOnTop(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, w.SetAlwaysOnTop(ctx, caller, id, onTop)
-		},
-		"window.setTitle": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			id, title, err := desktop.ParseWindowSetTitle(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, w.SetTitle(ctx, caller, id, title)
-		},
-		"window.setSize": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			id, width, height, err := desktop.ParseWindowSetSize(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, w.SetSize(ctx, caller, id, width, height)
-		},
-		"window.setIcon": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			id, icon, err := desktop.ParseWindowSetIcon(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, w.SetIcon(ctx, caller, id, icon)
-		},
-		"window.close":        byID(w.Close),
-		"window.focus":        byID(w.Focus),
-		"window.blur":         byID(w.Blur),
-		"window.hide":         byID(w.Hide),
-		"window.show":         byID(w.Show),
-		"window.minimize":     byID(w.Minimize),
-		"window.maximize":     byID(w.Maximize),
-		"window.unmaximize":   byID(w.Unmaximize),
-		"window.fullscreen":   byID(w.Fullscreen),
-		"window.unfullscreen": byID(w.Unfullscreen),
-		"window.restore":      byID(w.Restore),
+		return official.WindowCreated{ID: id}, nil
 	})
+	onVoid(b, "window.chrome", func(ctx context.Context, caller domain.Caller, in official.WindowChromeInput) error {
+		return w.Apply(ctx, caller, in.ID, platform.WindowChrome{
+			Title: in.Title, Width: in.Width, Height: in.Height,
+			Maximized: in.Maximized, Fullscreen: in.Fullscreen, AlwaysOnTop: in.AlwaysOnTop,
+			Minimized: in.Minimized, Hidden: in.Hidden, IconPath: in.IconPath,
+		})
+	})
+	on(b, "window.getChrome", func(ctx context.Context, caller domain.Caller, in official.WindowRef) (platform.WindowChrome, error) {
+		return w.Read(ctx, caller, in.ID)
+	})
+	onVoid(b, "window.setAlwaysOnTop", func(ctx context.Context, caller domain.Caller, in official.WindowAlwaysOnTopInput) error {
+		return w.SetAlwaysOnTop(ctx, caller, in.ID, in.AlwaysOnTop)
+	})
+	onVoid(b, "window.setTitle", func(ctx context.Context, caller domain.Caller, in official.WindowTitleInput) error {
+		return w.SetTitle(ctx, caller, in.ID, in.Title)
+	})
+	onVoid(b, "window.setSize", func(ctx context.Context, caller domain.Caller, in official.WindowSizeInput) error {
+		return w.SetSize(ctx, caller, in.ID, in.Width, in.Height)
+	})
+	onVoid(b, "window.setIcon", func(ctx context.Context, caller domain.Caller, in official.WindowIconInput) error {
+		return w.SetIcon(ctx, caller, in.ID, in.IconPath)
+	})
+	for name, fn := range map[domain.CommandName]func(context.Context, domain.Caller, domain.WindowID) error{
+		"window.close":        w.Close,
+		"window.focus":        w.Focus,
+		"window.blur":         w.Blur,
+		"window.hide":         w.Hide,
+		"window.show":         w.Show,
+		"window.minimize":     w.Minimize,
+		"window.maximize":     w.Maximize,
+		"window.unmaximize":   w.Unmaximize,
+		"window.fullscreen":   w.Fullscreen,
+		"window.unfullscreen": w.Unfullscreen,
+		"window.restore":      w.Restore,
+	} {
+		onVoid(b, name, func(ctx context.Context, caller domain.Caller, in official.WindowRef) error {
+			return fn(ctx, caller, in.ID)
+		})
+	}
+	return b.err()
 }
 
 // nativeItems converts menu items for the host; items without a menu go in
-// an "App" menu.
+// defaultMenu.
 func nativeItems(items []desktop.MenuItem, defaultMenu string) []platform.MenuItem {
 	out := make([]platform.MenuItem, 0, len(items))
 	for _, it := range items {
@@ -372,6 +347,18 @@ func nativeItems(items []desktop.MenuItem, defaultMenu string) []platform.MenuIt
 			menu = defaultMenu
 		}
 		out = append(out, platform.MenuItem{Menu: menu, ID: it.ID, Label: it.Label, Shortcut: it.Shortcut})
+	}
+	return out
+}
+
+// menuItems converts menu input for the desktop services.
+func menuItems(items []official.MenuItem) []desktop.MenuItem {
+	if items == nil {
+		return nil
+	}
+	out := make([]desktop.MenuItem, 0, len(items))
+	for _, it := range items {
+		out = append(out, desktop.MenuItem{ID: it.ID, Label: it.Label, Menu: it.Menu, Shortcut: it.Shortcut})
 	}
 	return out
 }
@@ -385,18 +372,14 @@ func (a *App) bindMenu() error {
 		}
 		menus.OnClear = func(context.Context) error { return h.SetMenuBar(primary, nil) }
 	}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"menu.set": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			items, err := desktop.ParseMenuItems(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, menus.SetMenu(ctx, caller, items)
-		},
-		"menu.clear": func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-			return nil, menus.ClearMenu(ctx, caller)
-		},
+	b := a.binder()
+	onVoid(b, "menu.set", func(ctx context.Context, caller domain.Caller, in official.MenuInput) error {
+		return menus.SetMenu(ctx, caller, menuItems(in.Items))
 	})
+	onVoid(b, "menu.clear", func(ctx context.Context, caller domain.Caller, _ none) error {
+		return menus.ClearMenu(ctx, caller)
+	})
+	return b.err()
 }
 
 func (a *App) bindTray() error {
@@ -407,18 +390,14 @@ func (a *App) bindTray() error {
 		}
 		trays.OnClear = func(context.Context) error { h.ClearTray(); return nil }
 	}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"tray.set": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			tooltip, items, err := desktop.ParseTraySet(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, trays.SetTray(ctx, caller, tooltip, items)
-		},
-		"tray.clear": func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-			return nil, trays.ClearTray(ctx, caller)
-		},
+	b := a.binder()
+	onVoid(b, "tray.set", func(ctx context.Context, caller domain.Caller, in official.TrayInput) error {
+		return trays.SetTray(ctx, caller, in.Tooltip, menuItems(in.Items))
 	})
+	onVoid(b, "tray.clear", func(ctx context.Context, caller domain.Caller, _ none) error {
+		return trays.ClearTray(ctx, caller)
+	})
+	return b.err()
 }
 
 func (a *App) bindDragDrop() error {
@@ -426,15 +405,11 @@ func (a *App) bindDragDrop() error {
 	if h, ok := a.host.(platform.DragDrop); ok {
 		drops.OnEnable = func(_ context.Context, id domain.WindowID, on bool) error { return h.EnableDragDrop(id, on) }
 	}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"dragdrop.receive": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			id, on, err := desktop.ParseDragDropEnable(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, drops.Enable(ctx, caller, id, on)
-		},
+	b := a.binder()
+	onVoid(b, "dragdrop.receive", func(ctx context.Context, caller domain.Caller, in official.DragDropInput) error {
+		return drops.Enable(ctx, caller, in.ID, in.Enabled)
 	})
+	return b.err()
 }
 
 func (a *App) bindShortcut() error {
@@ -447,29 +422,21 @@ func (a *App) bindShortcut() error {
 			return h.UnregisterGlobalShortcut(accelerator)
 		}
 	}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"shortcut.register": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			acc, action, err := desktop.ParseShortcutRegister(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, shortcuts.Register(ctx, caller, acc, action)
-		},
-		"shortcut.unregister": func(ctx context.Context, caller domain.Caller, input any) (any, error) {
-			acc, err := desktop.ParseShortcutUnregister(input)
-			if err != nil {
-				return nil, err
-			}
-			return nil, shortcuts.Unregister(ctx, caller, acc)
-		},
+	b := a.binder()
+	onVoid(b, "shortcut.register", func(ctx context.Context, caller domain.Caller, in official.ShortcutInput) error {
+		return shortcuts.Register(ctx, caller, in.Accelerator, in.Action)
 	})
+	onVoid(b, "shortcut.unregister", func(ctx context.Context, caller domain.Caller, in official.ShortcutRef) error {
+		return shortcuts.Unregister(ctx, caller, in.Accelerator)
+	})
+	return b.err()
 }
 
 func (a *App) bindApp() error {
 	appSvc := &desktop.AppService{Gateway: a.rt, OnQuit: func(context.Context) error { a.Quit(); return nil }}
-	return a.bind(map[domain.CommandName]callerFunc{
-		"app.quit": func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-			return nil, appSvc.Quit(ctx, caller)
-		},
+	b := a.binder()
+	onVoid(b, "app.quit", func(ctx context.Context, caller domain.Caller, _ none) error {
+		return appSvc.Quit(ctx, caller)
 	})
+	return b.err()
 }

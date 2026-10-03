@@ -10,7 +10,7 @@ import (
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/app"
 	"go.klarlabs.de/vitra/domain"
-	"go.klarlabs.de/vitra/internal/bindings"
+	"go.klarlabs.de/vitra/plugin"
 	"go.klarlabs.de/vitra/plugin/official"
 )
 
@@ -67,12 +67,33 @@ func scaffoldTypeScriptClient(plugins []scaffoldPlugin) (string, error) {
 			return "", err
 		}
 	}
-	for _, p := range plugins {
-		if err := rt.RegisterPlugin(context.Background(), p.new()); err != nil {
+	if len(plugins) > 0 {
+		chosen := make([]plugin.Plugin, len(plugins))
+		for i, p := range plugins {
+			chosen[i] = p.new()
+		}
+		if err := bindOfficialTypes(rt, chosen...); err != nil {
 			return "", err
 		}
 	}
 	return rt.TypeScript(appID)
+}
+
+// typesOnlyHost is the host the CLI binds official plugins to when it only
+// needs their command types. It has no optional capabilities, and binding
+// calls no core host method, so the nil embedded host is never reached:
+// generating a client never runs a command.
+type typesOnlyHost struct{ app.DesktopHost }
+
+// bindOfficialTypes registers plugins on rt and binds their commands the
+// way app.UseOfficialPlugins does, so rt.TypeScript types them exactly as
+// in a running app.
+func bindOfficialTypes(rt *vitra.Runtime, plugins ...plugin.Plugin) error {
+	a, err := app.New(app.Options{AppID: rt.AppID(), Runtime: rt, Host: typesOnlyHost{}})
+	if err != nil {
+		return err
+	}
+	return a.UseOfficialPlugins(context.Background(), plugins...)
 }
 
 // generateFromApp runs the app in dir in code-generation mode (see
@@ -155,19 +176,14 @@ func runGenerate(args []string) error {
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
-	for _, p := range official.All() {
-		if err := rt.RegisterPlugin(ctx, p); err != nil {
-			return err
-		}
+	if err := bindOfficialTypes(rt, official.All()...); err != nil {
+		return err
 	}
-	var cmds []*domain.CommandDefinition
-	var events []domain.EventName
+	cmds := 0
 	for _, reg := range rt.Plugins().List() {
-		cmds = append(cmds, reg.Contribution.Commands...)
-		events = append(events, reg.Contribution.Events...)
+		cmds += len(reg.Contribution.Commands)
 	}
-	body, err := bindings.GenerateTypeScript(module, vitra.Version, bindings.Untyped(cmds...), events)
+	body, err := rt.TypeScript(module)
 	if err != nil {
 		return err
 	}
@@ -181,6 +197,6 @@ func runGenerate(args []string) error {
 	if err := os.WriteFile(outPath, []byte(body), 0o644); err != nil {
 		return err
 	}
-	fmt.Printf("wrote %s (%d commands)\n", outPath, len(cmds))
+	fmt.Printf("wrote %s (%d commands)\n", outPath, cmds)
 	return nil
 }

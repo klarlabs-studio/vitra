@@ -8,7 +8,6 @@ package desktop
 import (
 	"context"
 	"errors"
-	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -64,48 +63,6 @@ type MenuService struct {
 	OnClear func(ctx context.Context) error
 }
 
-// ParseMenuItems extracts menu entries from an invoke payload.
-// Accepts a bare array or { items: [...] }. Each entry needs id + label;
-// optional menu (top-level label) and shortcut are forwarded.
-func ParseMenuItems(input any) ([]MenuItem, error) {
-	var raw []any
-	switch v := input.(type) {
-	case nil:
-		return nil, nil
-	case []any:
-		raw = v
-	case map[string]any:
-		if items, ok := v["items"].([]any); ok {
-			raw = items
-		} else {
-			return nil, &domain.ErrValidation{Message: "menu items input must be an array or {items:[]}"}
-		}
-	default:
-		return nil, &domain.ErrValidation{Message: "menu items input must be an array or {items:[]}"}
-	}
-	out := make([]MenuItem, 0, len(raw))
-	for _, entry := range raw {
-		m, ok := entry.(map[string]any)
-		if !ok || m == nil {
-			return nil, &domain.ErrValidation{Message: "menu items must be objects"}
-		}
-		id, _ := m["id"].(string)
-		label, _ := m["label"].(string)
-		if id == "" || label == "" {
-			return nil, &domain.ErrValidation{Message: "menu item requires id and label"}
-		}
-		item := MenuItem{ID: id, Label: label}
-		if menu, ok := m["menu"].(string); ok {
-			item.Menu = menu
-		}
-		if shortcut, ok := m["shortcut"].(string); ok {
-			item.Shortcut = shortcut
-		}
-		out = append(out, item)
-	}
-	return out, nil
-}
-
 // SetMenu authorizes menu.set then applies items (or returns unsupported).
 func (s *MenuService) SetMenu(ctx context.Context, caller domain.Caller, items []MenuItem) error {
 	if err := authorize(s.Gateway, caller, PermMenuSet); err != nil {
@@ -140,27 +97,6 @@ type TrayService struct {
 	Host    platform.Host
 	OnSet   func(ctx context.Context, tooltip string, items []MenuItem) error
 	OnClear func(ctx context.Context) error
-}
-
-// ParseTraySet extracts tooltip + menu items from an invoke payload.
-// Accepts { tooltip?, items: [...] } or a bare items array.
-func ParseTraySet(input any) (string, []MenuItem, error) {
-	switch v := input.(type) {
-	case nil:
-		return "", nil, nil
-	case []any:
-		items, err := ParseMenuItems(v)
-		return "", items, err
-	case map[string]any:
-		tooltip, _ := v["tooltip"].(string)
-		if raw, ok := v["items"]; ok {
-			items, err := ParseMenuItems(raw)
-			return tooltip, items, err
-		}
-		return tooltip, nil, nil
-	default:
-		return "", nil, &domain.ErrValidation{Message: "tray.set input must be an array or {tooltip?, items:[]}"}
-	}
 }
 
 // SetTray authorizes tray.set then applies tray state.
@@ -199,56 +135,6 @@ type DialogService struct {
 	OnSave          func(ctx context.Context, opts platform.DialogFileOptions) (string, error)
 	OnOpenDirectory func(ctx context.Context, opts platform.DialogFileOptions) (string, error)
 	OnMessage       func(ctx context.Context, title, message, kind string) (bool, error)
-}
-
-// ParseDialogFileOptions extracts title/defaultPath/filters/multiple from an invoke payload.
-// Only a boolean true for "multiple" asks for a multi-file selection.
-// nil or unrecognized input yields zero options (legacy unfiltered dialogs).
-func ParseDialogFileOptions(input any) platform.DialogFileOptions {
-	var opts platform.DialogFileOptions
-	m, ok := input.(map[string]any)
-	if !ok || m == nil {
-		return opts
-	}
-	if t, ok := m["title"].(string); ok {
-		opts.Title = t
-	}
-	if d, ok := m["defaultPath"].(string); ok {
-		opts.DefaultPath = d
-	}
-	if multiple, ok := m["multiple"].(bool); ok {
-		opts.Multiple = multiple
-	}
-	rawFilters, ok := m["filters"]
-	if !ok {
-		return opts
-	}
-	list, ok := rawFilters.([]any)
-	if !ok {
-		return opts
-	}
-	for _, item := range list {
-		fm, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		f := platform.FileFilter{}
-		if n, ok := fm["name"].(string); ok {
-			f.Name = n
-		}
-		switch exts := fm["extensions"].(type) {
-		case []any:
-			for _, e := range exts {
-				if s, ok := e.(string); ok {
-					f.Extensions = append(f.Extensions, s)
-				}
-			}
-		case []string:
-			f.Extensions = append(f.Extensions, exts...)
-		}
-		opts.Filters = append(opts.Filters, f)
-	}
-	return opts
 }
 
 // OpenFile authorizes dialog.open.
@@ -363,47 +249,6 @@ type ShortcutService struct {
 	OnUnregister func(ctx context.Context, accelerator string) error
 }
 
-// ParseShortcutRegister extracts accelerator + action id from an invoke payload.
-// Accepts { accelerator, action|actionID|id }.
-func ParseShortcutRegister(input any) (accelerator, actionID string, err error) {
-	m, ok := input.(map[string]any)
-	if !ok || m == nil {
-		return "", "", &domain.ErrValidation{Message: "shortcut.register input must be an object"}
-	}
-	accelerator, _ = m["accelerator"].(string)
-	actionID, _ = m["action"].(string)
-	if actionID == "" {
-		actionID, _ = m["actionID"].(string)
-	}
-	if actionID == "" {
-		actionID, _ = m["id"].(string)
-	}
-	if accelerator == "" {
-		return "", "", &domain.ErrValidation{Message: "accelerator is required"}
-	}
-	if actionID == "" {
-		return "", "", &domain.ErrValidation{Message: "action id is required"}
-	}
-	return accelerator, actionID, nil
-}
-
-// ParseShortcutUnregister extracts an accelerator from an invoke payload.
-// Accepts a bare string or { accelerator }.
-func ParseShortcutUnregister(input any) (accelerator string, err error) {
-	switch v := input.(type) {
-	case string:
-		accelerator = v
-	case map[string]any:
-		accelerator, _ = v["accelerator"].(string)
-	default:
-		return "", &domain.ErrValidation{Message: "shortcut.unregister input must be a string or {accelerator}"}
-	}
-	if accelerator == "" {
-		return "", &domain.ErrValidation{Message: "accelerator is required"}
-	}
-	return accelerator, nil
-}
-
 // Register authorizes shortcut.register then binds accelerator → actionID.
 func (s *ShortcutService) Register(ctx context.Context, caller domain.Caller, accelerator, actionID string) error {
 	if accelerator == "" {
@@ -509,32 +354,6 @@ type DragDropService struct {
 	OnEnable func(ctx context.Context, window domain.WindowID, enabled bool) error
 }
 
-// ParseDragDropEnable extracts window id + enabled flag from an invoke payload.
-// Accepts a bool (window defaults to "main") or { id|window?, enabled? }.
-func ParseDragDropEnable(input any) (domain.WindowID, bool, error) {
-	switch v := input.(type) {
-	case bool:
-		return "main", v, nil
-	case map[string]any:
-		id, _ := v["id"].(string)
-		if id == "" {
-			id, _ = v["window"].(string)
-		}
-		if id == "" {
-			id = "main"
-		}
-		enabled := true
-		if e, ok := asBool(v["enabled"]); ok {
-			enabled = e
-		}
-		return domain.WindowID(id), enabled, nil
-	case nil:
-		return "main", true, nil
-	default:
-		return "", false, &domain.ErrValidation{Message: "dragdrop.receive input must be a bool or object"}
-	}
-}
-
 // Enable authorizes dragdrop.receive then toggles native drop targets.
 func (s *DragDropService) Enable(ctx context.Context, caller domain.Caller, window domain.WindowID, enabled bool) error {
 	if window == "" {
@@ -559,205 +378,6 @@ type WindowCreateOptions struct {
 	Path   string
 	Width  int
 	Height int
-}
-
-// ParseWindowCreateOptions extracts create options from an invoke payload.
-func ParseWindowCreateOptions(input any) (WindowCreateOptions, error) {
-	var opts WindowCreateOptions
-	switch v := input.(type) {
-	case string:
-		opts.ID = domain.WindowID(v)
-	case map[string]any:
-		if id, ok := v["id"].(string); ok {
-			opts.ID = domain.WindowID(id)
-		}
-		if t, ok := v["title"].(string); ok {
-			opts.Title = t
-		}
-		if p, ok := v["path"].(string); ok {
-			opts.Path = p
-		}
-		if w, ok := asPositiveInt(v["width"]); ok {
-			opts.Width = w
-		}
-		if h, ok := asPositiveInt(v["height"]); ok {
-			opts.Height = h
-		}
-	default:
-		if input != nil {
-			return opts, &domain.ErrValidation{Message: "window.create input must be a string id or object"}
-		}
-	}
-	if opts.ID == "" {
-		return opts, &domain.ErrValidation{Message: "window id is required"}
-	}
-	return opts, nil
-}
-
-// maxExactJSONInt is 2^53, the largest integer below which every JSON number
-// decodes to exactly the integer the page wrote (JavaScript's
-// Number.MAX_SAFE_INTEGER + 1).
-const maxExactJSONInt = 1 << 53
-
-// asPositiveInt accepts only positive integers the page sent exactly.
-// JSON numbers arrive as float64. Above 2^53 they may already be rounded,
-// and converting one outside the int range is implementation-specific
-// (amd64 wraps, arm64 saturates), so both are rejected before conversion.
-func asPositiveInt(v any) (int, bool) {
-	switch n := v.(type) {
-	case int:
-		return n, n > 0
-	case int64:
-		return int(n), n > 0 && int64(int(n)) == n
-	case float64:
-		if !(n >= 1 && n <= maxExactJSONInt && n <= float64(math.MaxInt)) || n != math.Trunc(n) {
-			return 0, false
-		}
-		return int(n), true
-	default:
-		return 0, false
-	}
-}
-
-// ParseWindowID extracts a window id from string or {id} payload.
-func ParseWindowID(input any) (domain.WindowID, error) {
-	switch v := input.(type) {
-	case string:
-		if v == "" {
-			return "", &domain.ErrValidation{Message: "window id is required"}
-		}
-		return domain.WindowID(v), nil
-	case map[string]any:
-		id, _ := v["id"].(string)
-		if id == "" {
-			return "", &domain.ErrValidation{Message: "window id is required"}
-		}
-		return domain.WindowID(id), nil
-	default:
-		return "", &domain.ErrValidation{Message: "window id is required"}
-	}
-}
-
-// ParseWindowAlwaysOnTop extracts window id + alwaysOnTop flag from an invoke payload.
-// Requires { id, alwaysOnTop: bool }.
-func ParseWindowAlwaysOnTop(input any) (domain.WindowID, bool, error) {
-	m, ok := input.(map[string]any)
-	if !ok || m == nil {
-		return "", false, &domain.ErrValidation{Message: "window.setAlwaysOnTop input must be an object"}
-	}
-	id, _ := m["id"].(string)
-	if id == "" {
-		return "", false, &domain.ErrValidation{Message: "window id is required"}
-	}
-	onTop, ok := asBool(m["alwaysOnTop"])
-	if !ok {
-		return "", false, &domain.ErrValidation{Message: "alwaysOnTop bool is required"}
-	}
-	return domain.WindowID(id), onTop, nil
-}
-
-// ParseWindowSetTitle extracts window id + title from an invoke payload.
-// Requires { id, title: string } (title may be empty).
-func ParseWindowSetTitle(input any) (domain.WindowID, string, error) {
-	m, ok := input.(map[string]any)
-	if !ok || m == nil {
-		return "", "", &domain.ErrValidation{Message: "window.setTitle input must be an object"}
-	}
-	id, _ := m["id"].(string)
-	if id == "" {
-		return "", "", &domain.ErrValidation{Message: "window id is required"}
-	}
-	title, ok := m["title"].(string)
-	if !ok {
-		return "", "", &domain.ErrValidation{Message: "title string is required"}
-	}
-	return domain.WindowID(id), title, nil
-}
-
-// ParseWindowSetSize extracts window id + width/height from an invoke payload.
-// Requires { id, width, height } with positive integers.
-func ParseWindowSetSize(input any) (domain.WindowID, int, int, error) {
-	m, ok := input.(map[string]any)
-	if !ok || m == nil {
-		return "", 0, 0, &domain.ErrValidation{Message: "window.setSize input must be an object"}
-	}
-	id, _ := m["id"].(string)
-	if id == "" {
-		return "", 0, 0, &domain.ErrValidation{Message: "window id is required"}
-	}
-	width, ok := asPositiveInt(m["width"])
-	if !ok {
-		return "", 0, 0, &domain.ErrValidation{Message: "width must be a positive integer"}
-	}
-	height, ok := asPositiveInt(m["height"])
-	if !ok {
-		return "", 0, 0, &domain.ErrValidation{Message: "height must be a positive integer"}
-	}
-	return domain.WindowID(id), width, height, nil
-}
-
-// ParseWindowSetIcon extracts window id + iconPath from an invoke payload.
-// Requires { id, iconPath: string } (iconPath may be empty to leave unchanged on hosts that treat empty as no-op).
-func ParseWindowSetIcon(input any) (domain.WindowID, string, error) {
-	m, ok := input.(map[string]any)
-	if !ok || m == nil {
-		return "", "", &domain.ErrValidation{Message: "window.setIcon input must be an object"}
-	}
-	id, _ := m["id"].(string)
-	if id == "" {
-		return "", "", &domain.ErrValidation{Message: "window id is required"}
-	}
-	iconPath, ok := m["iconPath"].(string)
-	if !ok {
-		return "", "", &domain.ErrValidation{Message: "iconPath string is required"}
-	}
-	return domain.WindowID(id), iconPath, nil
-}
-
-// ParseWindowChromeApply extracts window id + chrome from an invoke payload.
-func ParseWindowChromeApply(input any) (domain.WindowID, platform.WindowChrome, error) {
-	m, ok := input.(map[string]any)
-	if !ok || m == nil {
-		return "", platform.WindowChrome{}, &domain.ErrValidation{Message: "window.chrome input must be an object"}
-	}
-	id, _ := m["id"].(string)
-	if id == "" {
-		return "", platform.WindowChrome{}, &domain.ErrValidation{Message: "window id is required"}
-	}
-	var chrome platform.WindowChrome
-	if t, ok := m["title"].(string); ok {
-		chrome.Title = t
-	}
-	if w, ok := asPositiveInt(m["width"]); ok {
-		chrome.Width = w
-	}
-	if h, ok := asPositiveInt(m["height"]); ok {
-		chrome.Height = h
-	}
-	if v, ok := asBool(m["maximized"]); ok {
-		chrome.Maximized = v
-	}
-	if v, ok := asBool(m["fullscreen"]); ok {
-		chrome.Fullscreen = v
-	}
-	if v, ok := asBool(m["alwaysOnTop"]); ok {
-		chrome.AlwaysOnTop = v
-	}
-	if v, ok := asBool(m["minimized"]); ok {
-		chrome.Minimized = v
-	}
-	if v, ok := asBool(m["hidden"]); ok {
-		chrome.Hidden = v
-	}
-	if p, ok := m["iconPath"].(string); ok {
-		chrome.IconPath = p
-	}
-	return domain.WindowID(id), chrome, nil
-}
-
-func asBool(v any) (bool, bool) {
-	b, ok := v.(bool)
-	return b, ok
 }
 
 // WindowService applies native window presentation and lifecycle when permitted.
