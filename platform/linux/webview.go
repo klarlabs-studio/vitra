@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -43,6 +44,22 @@ type Host struct {
 	programName string   // WM_CLASS / StartupWMClass; empty → filepath.Base(os.Args[0])
 	jobs        sync.Map // uint64 -> func()
 	jobSeq      uint64
+
+	// Wayland global shortcuts via the GlobalShortcuts portal: the bound set,
+	// in registration order. portalMu serializes rebinding.
+	portalMu    sync.Mutex
+	portalBinds []portalBind
+	// forcePortal routes global shortcuts through the portal even on X11
+	// (tests run under xvfb against a fake portal).
+	forcePortal bool
+}
+
+// portalBind is one shortcut bound through the GlobalShortcuts portal. The
+// portal shortcut id is the action id, so Activated maps straight to it.
+type portalBind struct {
+	actionID    string
+	accelerator string
+	trigger     string
 }
 
 type nativeWindow struct{ ptr *C.VitraWin }
@@ -130,7 +147,7 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureMenuBar:          {Feature: platform.FeatureMenuBar, Available: true},
 		platform.FeatureTray:             {Feature: platform.FeatureTray, Available: true},
 		platform.FeatureSingleInstance:   {Feature: platform.FeatureSingleInstance, Available: true},
-		platform.FeatureGlobalShortcut:   linuxGlobalShortcutFeature(),
+		platform.FeatureGlobalShortcut:   h.globalShortcutFeature(),
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: true,
 			Detail: "argv + socket handoff + xdg URL-scheme registration",
@@ -695,20 +712,23 @@ func (h *Host) ClearTray() {
 	h.dispatch(func() { C.vitra_tray_clear() })
 }
 
-// RegisterGlobalShortcut binds an OS-wide accelerator on X11 (unsupported on Wayland).
+// RegisterGlobalShortcut binds an OS-wide accelerator: XGrabKey on X11, the
+// org.freedesktop.portal.GlobalShortcuts portal on Wayland. Through the
+// portal the accelerator is only the preferred trigger: the desktop may ask
+// the user to approve the binding or pick another key, and a refusal is
+// returned as an error. Without the portal it returns platform.ErrUnsupported.
 func (h *Host) RegisterGlobalShortcut(accelerator, actionID string) error {
 	if accelerator == "" || actionID == "" {
 		return &domain.ErrValidation{Message: "accelerator and action id are required"}
+	}
+	if h.shortcutsViaPortal() {
+		return h.portalRegister(accelerator, actionID)
 	}
 	errCh := make(chan error, 1)
 	h.dispatch(func() {
 		h.ensureInit()
 		if C.vitra_hotkey_supported() == 0 {
-			errCh <- &platform.ErrUnsupported{
-				Feature: platform.FeatureGlobalShortcut,
-				OS:      platform.OSLinux,
-				Detail:  "global shortcuts unsupported on Wayland; use MenuItem.Shortcut for in-window accelerators",
-			}
+			errCh <- errPortalShortcutsUnsupported()
 			return
 		}
 		ca := C.CString(accelerator)
@@ -724,20 +744,21 @@ func (h *Host) RegisterGlobalShortcut(accelerator, actionID string) error {
 	return <-errCh
 }
 
-// UnregisterGlobalShortcut removes a previously registered X11 accelerator.
+// UnregisterGlobalShortcut removes a previously registered accelerator. The
+// portal has no unbind, so on Wayland the remaining shortcuts are rebound on
+// a fresh portal session (the desktop may confirm them with the user again).
 func (h *Host) UnregisterGlobalShortcut(accelerator string) error {
 	if accelerator == "" {
 		return &domain.ErrValidation{Message: "accelerator is required"}
+	}
+	if h.shortcutsViaPortal() {
+		return h.portalUnregister(accelerator)
 	}
 	errCh := make(chan error, 1)
 	h.dispatch(func() {
 		h.ensureInit()
 		if C.vitra_hotkey_supported() == 0 {
-			errCh <- &platform.ErrUnsupported{
-				Feature: platform.FeatureGlobalShortcut,
-				OS:      platform.OSLinux,
-				Detail:  "global shortcuts unsupported on Wayland; use MenuItem.Shortcut for in-window accelerators",
-			}
+			errCh <- errPortalShortcutsUnsupported()
 			return
 		}
 		ca := C.CString(accelerator)
@@ -751,12 +772,128 @@ func (h *Host) UnregisterGlobalShortcut(accelerator string) error {
 	return <-errCh
 }
 
-// linuxGlobalShortcutFeature reports X11-only OS-wide hotkeys. Wayland stays unsupported.
-func linuxGlobalShortcutFeature() platform.Support {
-	if waylandSession() {
+// shortcutsViaPortal reports whether global shortcuts go through the portal:
+// in a Wayland session, or whenever GDK is not on an X11 display.
+func (h *Host) shortcutsViaPortal() bool {
+	if h.forcePortal || waylandSession() {
+		return true
+	}
+	ch := make(chan bool, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		ch <- C.vitra_hotkey_supported() == 0
+	})
+	return <-ch
+}
+
+func errPortalShortcutsUnsupported() error {
+	return &platform.ErrUnsupported{
+		Feature: platform.FeatureGlobalShortcut,
+		OS:      platform.OSLinux,
+		Detail: "global shortcuts on Wayland need the org.freedesktop.portal.GlobalShortcuts portal " +
+			"(e.g. GNOME 48+, KDE Plasma 6), which is not running; use MenuItem.Shortcut for in-window accelerators",
+	}
+}
+
+func (h *Host) portalRegister(accelerator, actionID string) error {
+	if C.vitra_gs_portal_version() == 0 {
+		return errPortalShortcutsUnsupported()
+	}
+	trigger, err := portalTrigger(accelerator)
+	if err != nil {
+		return &domain.ErrValidation{Message: err.Error()}
+	}
+	h.portalMu.Lock()
+	defer h.portalMu.Unlock()
+	// One portal shortcut per action id (its portal id), and one action per
+	// accelerator as on X11: a new registration replaces either.
+	next := make([]portalBind, 0, len(h.portalBinds)+1)
+	for _, b := range h.portalBinds {
+		if b.actionID != actionID && b.accelerator != accelerator {
+			next = append(next, b)
+		}
+	}
+	next = append(next, portalBind{actionID: actionID, accelerator: accelerator, trigger: trigger})
+	if err := portalBindAll(next); err != nil {
+		return err
+	}
+	h.portalBinds = next
+	return nil
+}
+
+func (h *Host) portalUnregister(accelerator string) error {
+	h.portalMu.Lock()
+	defer h.portalMu.Unlock()
+	next := make([]portalBind, 0, len(h.portalBinds))
+	for _, b := range h.portalBinds {
+		if b.accelerator != accelerator {
+			next = append(next, b)
+		}
+	}
+	if len(next) == len(h.portalBinds) {
+		return errors.New("global shortcut not found")
+	}
+	if len(next) == 0 {
+		C.vitra_gs_portal_close()
+	} else if err := portalBindAll(next); err != nil {
+		return err
+	}
+	h.portalBinds = next
+	return nil
+}
+
+// portalBindAll replaces the portal session's shortcuts with binds. It blocks
+// until the portal (and possibly the user) answers, so it never runs on the
+// GTK thread.
+func portalBindAll(binds []portalBind) error {
+	n := len(binds)
+	ids := make([]*C.char, n)
+	triggers := make([]*C.char, n)
+	for i, b := range binds {
+		ids[i] = C.CString(b.actionID)
+		triggers[i] = C.CString(b.trigger)
+	}
+	defer func() {
+		for i := range binds {
+			C.free(unsafe.Pointer(ids[i]))
+			C.free(unsafe.Pointer(triggers[i]))
+		}
+	}()
+	var idp, trp **C.char
+	if n > 0 {
+		idp, trp = &ids[0], &triggers[0]
+	}
+	var cerr *C.char
+	code := C.vitra_gs_portal_bind(idp, trp, C.int(n), &cerr)
+	msg := ""
+	if cerr != nil {
+		msg = C.GoString(cerr)
+		C.g_free(C.gpointer(cerr))
+	}
+	switch code {
+	case 0:
+		return nil
+	case 1:
+		return fmt.Errorf("global shortcut not granted: the user cancelled or refused it (%s)", msg)
+	default:
+		return fmt.Errorf("global shortcuts portal: %s", msg)
+	}
+}
+
+// globalShortcutFeature reports OS-wide hotkeys: XGrabKey on X11, and on
+// Wayland the GlobalShortcuts portal, available only while it is running.
+func (h *Host) globalShortcutFeature() platform.Support {
+	if h.forcePortal || waylandSession() {
+		if v := C.vitra_gs_portal_version(); v > 0 {
+			return platform.Support{
+				Feature: platform.FeatureGlobalShortcut, Available: true,
+				Detail: fmt.Sprintf("org.freedesktop.portal.GlobalShortcuts v%d on Wayland; "+
+					"the desktop may ask the user to approve each binding", int(v)),
+			}
+		}
 		return platform.Support{
 			Feature: platform.FeatureGlobalShortcut, Available: false,
-			Detail: "global shortcuts are not reliable on Wayland; use in-window menu accelerators (MenuItem.Shortcut)",
+			Detail: "Wayland without the org.freedesktop.portal.GlobalShortcuts portal; use in-window menu accelerators (MenuItem.Shortcut)",
 		}
 	}
 	if os.Getenv("DISPLAY") == "" {
@@ -767,7 +904,7 @@ func linuxGlobalShortcutFeature() platform.Support {
 	}
 	return platform.Support{
 		Feature: platform.FeatureGlobalShortcut, Available: true,
-		Detail: "XGrabKey OS-wide accelerators on X11 → SetActionHandler (Wayland unsupported)",
+		Detail: "XGrabKey OS-wide accelerators on X11 → SetActionHandler (Wayland: GlobalShortcuts portal)",
 	}
 }
 

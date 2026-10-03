@@ -187,6 +187,11 @@ rather than compared as URL strings.
 - **No inspector by default.** The WebView inspector is off unless
   `app.Options.DevTools` is set or `VITRA_DEVTOOLS=1` (which `vitra dev`
   sets).
+- **Wayland shortcuts need the user's consent.** On Wayland, global
+  shortcuts go through the `org.freedesktop.portal.GlobalShortcuts` portal,
+  so the desktop decides, and may ask the user, which keys an app gets; a
+  refusal is an error, never a silent fallback. Only `Activated` signals for
+  the portal session this process created become `shortcut.action` events.
 - **Openers never use a shell.** `browser.open` accepts http, https, and
   mailto, and launches them without a command interpreter (Windows uses
   `rundll32 url.dll,FileProtocolHandler`, not `cmd /c start`). Generated

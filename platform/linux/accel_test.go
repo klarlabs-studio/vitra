@@ -20,11 +20,9 @@ func TestNativeMenuAccelerator(t *testing.T) {
 	runtime.LockOSThread()
 
 	h := New()
-	if os.Getenv("WAYLAND_DISPLAY") != "" || strings.EqualFold(os.Getenv("XDG_SESSION_TYPE"), "wayland") {
-		if h.Features().Available(platform.FeatureGlobalShortcut) {
-			t.Fatal("Linux must not claim global shortcuts on Wayland")
-		}
-	} else if os.Getenv("DISPLAY") != "" && !h.Features().Available(platform.FeatureGlobalShortcut) {
+	// On Wayland the claim follows the GlobalShortcuts portal (portal_test.go).
+	wayland := os.Getenv("WAYLAND_DISPLAY") != "" || strings.EqualFold(os.Getenv("XDG_SESSION_TYPE"), "wayland")
+	if !wayland && !h.Features().Available(platform.FeatureGlobalShortcut) {
 		t.Fatal("X11 session should claim FeatureGlobalShortcut")
 	}
 	// Action handlers run off the UI thread, so wait for the delivery.
