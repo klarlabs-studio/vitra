@@ -71,6 +71,8 @@ type Runtime struct {
 	invoker       *application.InvocationService
 	typed         map[domain.CommandName]bindings.Command // guarded by typedMu
 	typedMu       sync.Mutex
+	observers     []Observer // guarded by observersMu
+	observersMu   sync.Mutex
 
 	registerGrant   *application.RegisterGrantUseCase
 	registerCommand *application.RegisterCommandUseCase
@@ -152,6 +154,7 @@ func (rt *Runtime) wire() {
 		Grants:    rt.grants,
 		Windows:   rt.windows,
 		Executors: rt.executors,
+		Observe:   rt.observe,
 	}
 	rt.registerGrant = &application.RegisterGrantUseCase{Grants: rt.grants}
 	rt.registerCommand = &application.RegisterCommandUseCase{Commands: rt.commands}
