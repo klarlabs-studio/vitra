@@ -124,7 +124,8 @@ func runUpdateApply(args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := json.Unmarshal(rawManifest, &m); err != nil {
+		m, err = updater.ParseManifest(rawManifest)
+		if err != nil {
 			return fmt.Errorf("manifest: %w", err)
 		}
 		artifact, err = os.ReadFile(artifactPath)
@@ -256,8 +257,8 @@ func runUpdateStage(args []string) error {
 	if err != nil {
 		return err
 	}
-	var m updater.Manifest
-	if err := json.Unmarshal(rawManifest, &m); err != nil {
+	m, err := updater.ParseManifest(rawManifest)
+	if err != nil {
 		return fmt.Errorf("manifest: %w", err)
 	}
 	artifact, err := os.ReadFile(artifactPath)
