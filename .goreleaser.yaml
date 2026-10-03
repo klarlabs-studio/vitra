@@ -2,6 +2,12 @@
 # .github/workflows/release.yml). The library itself is consumed as a Go
 # module; this publishes the CLI binaries with checksums, SBOMs, a keyless
 # cosign signature over the checksums, and SLSA provenance.
+#
+# OS code signing switches on by itself once the certificates exist as
+# repository secrets (see CONTRIBUTING.md, "Code-signing certificates").
+# Without them both steps are skipped and the release is built exactly as
+# before. Both run straight after the build, so archives, checksums, SBOMs,
+# and the cosign signature all cover the signed binaries.
 version: 2
 
 project_name: vitra
@@ -22,6 +28,29 @@ builds:
       - -s -w
     # Reproducible: file times come from the commit, not the build machine.
     mod_timestamp: "{{ .CommitTimestamp }}"
+    hooks:
+      post:
+        # Authenticode-signs windows binaries in place when WINDOWS_SIGN_PFX
+        # is set; a no-op for other targets or without the secret.
+        - cmd: ./scripts/sign-windows.sh "{{ .Path }}" "{{ .Os }}"
+          output: true
+
+# Signs the darwin binaries with the Developer ID certificate and notarizes
+# them with Apple (quill, so it runs on the Linux runner). Bare Mach-O
+# binaries cannot be stapled; Gatekeeper checks the ticket online.
+notarize:
+  macos:
+    - enabled: '{{ isEnvSet "MACOS_SIGN_P12" }}'
+      ids: [vitra]
+      sign:
+        certificate: "{{ .Env.MACOS_SIGN_P12 }}"
+        password: "{{ .Env.MACOS_SIGN_PASSWORD }}"
+      notarize:
+        issuer_id: "{{ .Env.MACOS_NOTARY_ISSUER_ID }}"
+        key_id: "{{ .Env.MACOS_NOTARY_KEY_ID }}"
+        key: "{{ .Env.MACOS_NOTARY_KEY }}"
+        wait: true
+        timeout: 20m
 
 archives:
   - formats: [tar.gz]
