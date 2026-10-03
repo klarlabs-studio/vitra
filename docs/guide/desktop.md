@@ -98,8 +98,13 @@ Command handlers never use this caller. They act as the window that called them.
 
 Every host reports its features (`host.Features()`). Anything unavailable returns `platform.ErrUnsupported` with a reason instead of silently doing nothing. Notable cases:
 
-- **Linux:** global shortcuts work on X11; on Wayland use in-window menu shortcuts.
+- **Linux:** global shortcuts work on X11 (`XGrabKey`). On Wayland they go through the `org.freedesktop.portal.GlobalShortcuts` portal (GNOME 48+, KDE Plasma 6, other desktops whose `xdg-desktop-portal` backend implements it). `Features()` reports the shortcut feature available only while that portal is running; without it `shortcut.register` returns `ErrUnsupported`, so fall back to in-window menu shortcuts (`MenuItem.Shortcut`). Through the portal:
+  - The accelerator is the *preferred* key. The desktop may show a consent dialog, and the user can approve, change the key, or refuse. A refusal or cancel is returned as an error from `shortcut.register`.
+  - Each action id is one portal shortcut, so registering a second accelerator for the same action replaces the first.
+  - The portal cannot unbind a single shortcut. `shortcut.unregister` rebinds the remaining shortcuts on a new portal session, which the desktop may confirm with the user again.
+  - Desktops attribute shortcuts to an app id. An unsandboxed app with a reverse-DNS program name (`host.SetProgramName("com.example.Notes")`, matching its `.desktop` file) registers it with the portal, so the user's choices are remembered between runs. Flatpak apps get their id from the sandbox.
 - **macOS:** notifications need an app bundle with a bundle identifier. An unbundled binary (`go run`, `vitra dev`) gets `ErrUnsupported`; package the app with `vitra package --format app-dir`.
 - **Windows:** requires the WebView2 runtime.
+- **Linux tray:** when a `org.kde.StatusNotifierWatcher` is on the session bus, the tray is a StatusNotifierItem with a `com.canonical.dbusmenu` menu, spoken directly over D-Bus with no extra library. KDE Plasma, GNOME with the AppIndicator extension (on by default in Ubuntu, Fedora needs it installed), XFCE, Cinnamon, MATE, LXQt, Budgie, and panels such as waybar show it, on X11 and Wayland. Without a watcher, Vitra falls back to the legacy XEmbed `GtkStatusIcon`, which only X11 panels with a system tray show; stock GNOME without the extension shows no tray at all. `Features()` says which protocol is in use. Either way, menu clicks emit `tray.action` with the item's ID and a left click on the icon emits `tray.action` with `tray.activate`. Menus are flat lists, labels are shown literally, and the icon is the generic `application-x-executable`.
 
 A custom host implements only the capabilities it supports; a command whose capability is missing fails with `ErrUnsupported`. See [Host interfaces](/reference/hosts).

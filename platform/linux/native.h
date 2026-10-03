@@ -64,6 +64,11 @@ void vitra_tray_clear_menu(void);
 void vitra_tray_add_menu_item(const char *item_id, const char *item_label);
 void vitra_tray_clear(void);
 
+/* StatusNotifierItem tray (org.kde.StatusNotifierWatcher + dbusmenu). */
+int vitra_sni_available(void);
+int vitra_sni_set(const char *tooltip, const char *const *ids, const char *const *labels, int n);
+void vitra_sni_clear(void);
+
 void vitra_win_set_drag_drop(VitraWin *w, int enabled);
 void vitra_win_flush(void);
 void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden, const char *icon_path);
@@ -74,5 +79,10 @@ void vitra_win_blur(VitraWin *w);
 int vitra_hotkey_supported(void);
 int vitra_register_hotkey(const char *accelerator, const char *action_id);
 int vitra_unregister_hotkey(const char *accelerator);
+
+/* Wayland global shortcuts (org.freedesktop.portal.GlobalShortcuts). */
+int vitra_gs_portal_version(void);
+int vitra_gs_portal_bind(const char *const *ids, const char *const *triggers, int n, char **err_out);
+void vitra_gs_portal_close(void);
 
 #endif

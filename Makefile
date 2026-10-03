@@ -33,11 +33,15 @@ e2e-notes:
 notes:
 	CGO_ENABLED=1 $(GO) run -tags vitra_native ./example/notes
 
+# Native host tests, one process each (GTK is bound to one thread). The D-Bus
+# tests run fake services on a private session bus: needs dbus + python3-gi.
 test-native:
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeWindowChrome
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeMenuAccelerator
+	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run 'TestTray'
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeGlobalShortcut
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeProgramName
+	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run 'TestPortal'
 
 vet:
 	$(GO) vet ./...

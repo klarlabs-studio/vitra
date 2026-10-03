@@ -187,10 +187,19 @@ rather than compared as URL strings.
 - **No inspector by default.** The WebView inspector is off unless
   `app.Options.DevTools` is set or `VITRA_DEVTOOLS=1` (which `vitra dev`
   sets).
+- **Wayland shortcuts need the user's consent.** On Wayland, global
+  shortcuts go through the `org.freedesktop.portal.GlobalShortcuts` portal,
+  so the desktop decides, and may ask the user, which keys an app gets; a
+  refusal is an error, never a silent fallback. Only `Activated` signals for
+  the portal session this process created become `shortcut.action` events.
 - **Openers never use a shell.** `browser.open` accepts http, https, and
   mailto, and launches them without a command interpreter (Windows uses
   `rundll32 url.dll,FileProtocolHandler`, not `cmd /c start`). Generated
   `.reg` values escape quotes and drop newlines.
+- **Tray menus name no actions over D-Bus.** The Linux StatusNotifierItem
+  menu exposes numeric dbusmenu ids. A click is mapped back to the action ID
+  the app set, so another process on the session bus can at most "click"
+  an item the app put there. Unknown ids are rejected and fire nothing.
 - **Updates.** A manifest must carry a valid ed25519 signature, match the
   artifact's SHA-256, be for the installed app and channel, and have a
   strictly newer SemVer version, and not be past its signed `expires_at`
