@@ -4,6 +4,7 @@ package linux
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"go.klarlabs.de/vitra/domain"
@@ -88,4 +89,53 @@ func TestStubHost_ReportsNativeRequirement(t *testing.T) {
 	}
 	h.Quit()
 	mustErr(h.Run())
+}
+
+// The stub fails like the macOS and Windows stubs: an explicit
+// ErrUnsupported naming the feature, so callers can tell what is missing.
+func TestStubHost_ReturnsErrUnsupportedPerFeature(t *testing.T) {
+	h := New()
+	ctx := context.Background()
+	second := func(_ any, err error) error { return err }
+	cases := []struct {
+		name    string
+		err     error
+		feature platform.Feature
+	}{
+		{"CreateWindow", h.CreateWindow(ctx, platform.WindowSpec{ID: "main"}), platform.FeatureWindowCreate},
+		{"Open", h.Open(platform.WindowSpec{ID: "main"}, "about:blank", ""), platform.FeatureWindowCreate},
+		{"CloseWindow", h.CloseWindow(ctx, "main"), platform.FeatureWindowCreate},
+		{"Run", h.Run(), platform.FeatureWindowCreate},
+		{"NavigateWindow", h.NavigateWindow(ctx, "main", domain.OriginPackagedLocal), platform.FeatureWindowNavigate},
+		{"PostMessage", h.PostMessage(ctx, "main", []byte("{}")), platform.FeatureWebViewMessage},
+		{"Eval", h.Eval("main", "1"), platform.FeatureWebViewMessage},
+		{"ClipboardGet", second(h.ClipboardGet()), platform.FeatureClipboard},
+		{"ClipboardSet", h.ClipboardSet("x"), platform.FeatureClipboard},
+		{"OpenFileDialog", second(h.OpenFileDialog(platform.DialogFileOptions{})), platform.FeatureDialogOpen},
+		{"OpenFilesDialog", second(h.OpenFilesDialog(platform.DialogFileOptions{Multiple: true})), platform.FeatureDialogOpen},
+		{"SaveFileDialog", second(h.SaveFileDialog(platform.DialogFileOptions{})), platform.FeatureDialogSave},
+		{"OpenDirectoryDialog", second(h.OpenDirectoryDialog(platform.DialogFileOptions{})), platform.FeatureDialogOpenDirectory},
+		{"MessageDialog", second(h.MessageDialog("info", "t", "m")), platform.FeatureDialogMessage},
+		{"ShowNotification", h.ShowNotification("t", "b"), platform.FeatureNotificationShow},
+		{"SetMenuBar", h.SetMenuBar("main", nil), platform.FeatureMenuBar},
+		{"ActivateMenuAccel", second(h.ActivateMenuAccel("main", "Ctrl+Q")), platform.FeatureMenuBar},
+		{"SetTray", h.SetTray("tip", nil), platform.FeatureTray},
+		{"RegisterGlobalShortcut", h.RegisterGlobalShortcut("id", "Ctrl+K"), platform.FeatureGlobalShortcut},
+		{"UnregisterGlobalShortcut", h.UnregisterGlobalShortcut("id"), platform.FeatureGlobalShortcut},
+		{"EnableDragDrop", h.EnableDragDrop("main", true), platform.FeatureDragDrop},
+		{"ApplyWindowChrome", h.ApplyWindowChrome("main", platform.WindowChrome{}), platform.FeatureWindowChrome},
+		{"ReadWindowChrome", second(h.ReadWindowChrome("main")), platform.FeatureWindowChrome},
+		{"FocusWindow", h.FocusWindow("main"), platform.FeatureWindowChrome},
+		{"BlurWindow", h.BlurWindow("main"), platform.FeatureWindowChrome},
+	}
+	for _, c := range cases {
+		var unsupp *platform.ErrUnsupported
+		if !errors.As(c.err, &unsupp) {
+			t.Errorf("%s: want *platform.ErrUnsupported, got %v", c.name, c.err)
+			continue
+		}
+		if unsupp.Feature != c.feature || unsupp.OS != platform.OSLinux {
+			t.Errorf("%s: got feature %s on %s, want %s on linux", c.name, unsupp.Feature, unsupp.OS, c.feature)
+		}
+	}
 }
