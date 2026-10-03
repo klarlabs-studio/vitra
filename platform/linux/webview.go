@@ -39,6 +39,8 @@ type Host struct {
 	onAction    func(id string)
 	onDrop      func(windowID domain.WindowID, paths []string)
 	onDestroy   func(windowID domain.WindowID)
+	trayMu      sync.Mutex
+	trayBackend trayBackend
 	looping     bool
 	inited      bool
 	programName string   // WM_CLASS / StartupWMClass; empty → filepath.Base(os.Args[0])
@@ -145,7 +147,7 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureNotificationShow: {Feature: platform.FeatureNotificationShow, Available: true, Detail: "org.freedesktop.Notifications"},
 		platform.FeatureClipboard:        {Feature: platform.FeatureClipboard, Available: true},
 		platform.FeatureMenuBar:          {Feature: platform.FeatureMenuBar, Available: true},
-		platform.FeatureTray:             {Feature: platform.FeatureTray, Available: true},
+		platform.FeatureTray:             trayFeature(),
 		platform.FeatureSingleInstance:   {Feature: platform.FeatureSingleInstance, Available: true},
 		platform.FeatureGlobalShortcut:   h.globalShortcutFeature(),
 		platform.FeatureDeepLink: {
@@ -685,8 +687,78 @@ func (h *Host) ActivateMenuAccel(id domain.WindowID, shortcut string) (bool, err
 	return got.ok, got.err
 }
 
-// SetTray shows a status-icon tray entry with tooltip and optional context menu.
+// trayBackend is the tray implementation currently showing the icon.
+type trayBackend string
+
+const (
+	trayNone trayBackend = ""
+	traySNI  trayBackend = "sni" // StatusNotifierItem + dbusmenu over D-Bus
+	trayGTK  trayBackend = "gtk" // GtkStatusIcon (XEmbed) fallback
+)
+
+// trayFeature reports which tray protocol SetTray will use.
+func trayFeature() platform.Support {
+	if C.vitra_sni_available() != 0 {
+		return platform.Support{
+			Feature: platform.FeatureTray, Available: true,
+			Detail: "StatusNotifierItem + dbusmenu via org.kde.StatusNotifierWatcher " +
+				"(KDE Plasma, GNOME with the AppIndicator extension, XFCE, Cinnamon, MATE, LXQt, …)",
+		}
+	}
+	return platform.Support{
+		Feature: platform.FeatureTray, Available: true,
+		Detail: "GtkStatusIcon (XEmbed system tray): no StatusNotifierWatcher on the session bus; " +
+			"stock GNOME and Wayland-only panels show nothing",
+	}
+}
+
+// SetTray shows a tray icon with a tooltip and an optional context menu. It
+// uses StatusNotifierItem when a StatusNotifierWatcher is on the session bus
+// and falls back to GtkStatusIcon otherwise. Left click emits
+// "tray.activate"; menu items emit their ID.
 func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
+	h.trayMu.Lock()
+	defer h.trayMu.Unlock()
+	if setTraySNI(tooltip, items) {
+		if h.trayBackend == trayGTK {
+			h.dispatch(func() { C.vitra_tray_clear() })
+		}
+		h.trayBackend = traySNI
+		return nil
+	}
+	if h.trayBackend == traySNI {
+		C.vitra_sni_clear() // the watcher went away
+	}
+	h.trayBackend = trayGTK
+	return h.setTrayGTK(tooltip, items)
+}
+
+// setTraySNI shows the tray through StatusNotifierItem; false when no
+// StatusNotifierWatcher takes the item.
+func setTraySNI(tooltip string, items []platform.MenuItem) bool {
+	n := len(items)
+	ids := make([]*C.char, n)
+	labels := make([]*C.char, n)
+	for i, it := range items {
+		ids[i] = C.CString(it.ID)
+		labels[i] = C.CString(it.Label)
+	}
+	defer func() {
+		for i := range items {
+			C.free(unsafe.Pointer(ids[i]))
+			C.free(unsafe.Pointer(labels[i]))
+		}
+	}()
+	var idp, lp **C.char
+	if n > 0 {
+		idp, lp = &ids[0], &labels[0]
+	}
+	ct := C.CString(tooltip)
+	defer C.free(unsafe.Pointer(ct))
+	return C.vitra_sni_set(ct, idp, lp, C.int(n)) != 0
+}
+
+func (h *Host) setTrayGTK(tooltip string, items []platform.MenuItem) error {
 	done := make(chan struct{}, 1)
 	h.dispatch(func() {
 		h.ensureInit()
@@ -709,7 +781,15 @@ func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
 
 // ClearTray hides the tray icon.
 func (h *Host) ClearTray() {
-	h.dispatch(func() { C.vitra_tray_clear() })
+	h.trayMu.Lock()
+	defer h.trayMu.Unlock()
+	switch h.trayBackend {
+	case traySNI:
+		C.vitra_sni_clear()
+	case trayGTK:
+		h.dispatch(func() { C.vitra_tray_clear() })
+	}
+	h.trayBackend = trayNone
 }
 
 // RegisterGlobalShortcut binds an OS-wide accelerator: XGrabKey on X11, the

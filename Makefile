@@ -38,6 +38,7 @@ notes:
 test-native:
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeWindowChrome
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeMenuAccelerator
+	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run 'TestTray'
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeGlobalShortcut
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run TestNativeProgramName
 	CGO_ENABLED=1 xvfb-run -a $(GO) test -tags vitra_native -count=1 ./platform/linux/ -run 'TestPortal'

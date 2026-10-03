@@ -198,7 +198,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Distribution (Phase 4) | Specs + Linux stage/`.deb`/`.rpm`/`.snap`/`.flatpak`/AppDir/AppImage + Windows `win-dir`/`wix`/`nsis-dir`/`msi`/`nsis` + Darwin `app-dir`/`dmg` + signed update apply |
 | Isolation / enterprise (Phase 5) | Contracts + Runtime policy/audit/workers + SIEM JSONL/CEF exporters + MDM JSON policy docs |
 | **Competitive Linux WebView host** | **Done** (`-tags vitra_native`) |
-| Linux menu bar + tray menus | **Done** |
+| Linux menu bar + tray menus | **Done** (tray: StatusNotifierItem + dbusmenu over D-Bus when a StatusNotifierWatcher runs: KDE, GNOME with the AppIndicator extension, most other panels, X11 and Wayland; `GtkStatusIcon` fallback otherwise) |
 | Invoke E2E (`make e2e`) | **Done** (also in CI: Native Linux E2E) |
 | Host→frontend events | **Done** (`vitra.on` / `App.Emit`) |
 | Multi-window App API | **Done** (`OpenWindow` / `CloseWindow`; quit on last native destroy) |
