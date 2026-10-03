@@ -38,7 +38,19 @@ type WindowOptions struct {
 	Width  int
 	Height int
 	Path   string // URL path served from Assets, default "/"
+	// Kind is WindowKindNormal (the zero value) or WindowKindPanel: a tray
+	// panel, opened hidden, that TraySpec.Panel shows under the tray icon.
+	Kind WindowKind
 }
+
+// WindowKind is the kind of native window WindowOptions asks for.
+type WindowKind = platform.WindowKind
+
+// The window kinds WindowOptions accepts.
+const (
+	WindowKindNormal = platform.WindowKindNormal
+	WindowKindPanel  = platform.WindowKindPanel
+)
 
 // Options configures App.
 type Options struct {
@@ -89,8 +101,10 @@ type App struct {
 	// page events (see OnAction, OnTrayClick).
 	actions    fanout[string]
 	trayClicks fanout[platform.TrayClick]
-	// tray is whether SetTray last showed a tray (under mu).
-	tray bool
+	// tray is whether SetTray last showed a tray, and trayPanel the panel
+	// its clicks toggle (under mu).
+	tray      bool
+	trayPanel domain.WindowID
 }
 
 // New constructs an App. Host must be a native desktop host (e.g. linux.New()).
@@ -141,6 +155,10 @@ func (o Options) accessory() bool { return o.Presentation == PresentationAccesso
 // headless reports an accessory app that opens no window at Run.
 func (o Options) headless() bool { return o.accessory() && o.Window.ID == "" }
 
+// hiddenAtStart reports an app that shows no window at Run: none, or a
+// panel, which opens hidden.
+func (o Options) hiddenAtStart() bool { return o.headless() || o.Window.Kind == WindowKindPanel }
+
 // Runtime returns the secure kernel.
 func (a *App) Runtime() *vitra.Runtime { return a.rt }
 
@@ -158,8 +176,8 @@ func (a *App) Run(ctx context.Context) error {
 	if a.opts.Assets == nil {
 		return errors.New("frontend assets are required")
 	}
-	if a.opts.headless() && !a.trayShown() {
-		return errors.New("an accessory app without a window needs a tray: call SetTray before Run")
+	if a.opts.hiddenAtStart() && !a.trayShown() {
+		return errors.New("an app that shows no window at start needs a tray: call SetTray before Run")
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -225,6 +243,9 @@ func (a *App) OpenWindow(ctx context.Context, opts WindowOptions) error {
 	if opts.Height <= 0 {
 		opts.Height = 640
 	}
+	if err := a.checkWindowKind(opts.Kind); err != nil {
+		return err
+	}
 
 	a.mu.Lock()
 	if _, exists := a.windows[opts.ID]; exists {
@@ -243,6 +264,7 @@ func (a *App) OpenWindow(ctx context.Context, opts WindowOptions) error {
 		Origin: domain.OriginPackagedLocal,
 		Width:  opts.Width,
 		Height: opts.Height,
+		Kind:   opts.Kind,
 	}
 	token, err := newSenderToken()
 	if err != nil {

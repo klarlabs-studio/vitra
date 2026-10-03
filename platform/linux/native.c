@@ -128,12 +128,40 @@ static GtkWidget *new_menu_widget(const char *item_id, const char *item_label, i
 	return item;
 }
 
-VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload) {
+/* A tray click that took the panel's focus arrives this long after the panel
+ * hid itself; it means "close", not "open again" (microseconds). */
+#define VITRA_PANEL_REOPEN_GUARD_US 300000
+/* Gap between the tray icon and the panel, in pixels. */
+#define VITRA_PANEL_GAP 4
+
+static gboolean on_panel_focus_out(GtkWidget *widget, GdkEvent *event, gpointer user_data) {
+	(void)event;
+	VitraWin *w = user_data;
+	if (gtk_widget_get_visible(widget)) {
+		w->hidden_at = g_get_monotonic_time();
+		gtk_widget_hide(widget);
+	}
+	return FALSE;
+}
+
+VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload, int panel) {
 	VitraWin *w = g_new0(VitraWin, 1);
 	w->id = g_strdup(id);
+	w->panel = panel ? 1 : 0;
 	w->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(w->window), title);
 	gtk_window_set_default_size(GTK_WINDOW(w->window), width, height);
+	if (panel) {
+		GtkWindow *win = GTK_WINDOW(w->window);
+		gtk_window_set_decorated(win, FALSE);
+		gtk_window_set_resizable(win, FALSE);
+		gtk_widget_set_size_request(w->window, width, height);
+		gtk_window_set_keep_above(win, TRUE);
+		gtk_window_set_skip_taskbar_hint(win, TRUE);
+		gtk_window_set_skip_pager_hint(win, TRUE);
+		gtk_window_set_type_hint(win, GDK_WINDOW_TYPE_HINT_POPUP_MENU);
+		g_signal_connect(w->window, "focus-out-event", G_CALLBACK(on_panel_focus_out), w);
+	}
 
 	w->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_container_add(GTK_CONTAINER(w->window), w->vbox);
@@ -165,8 +193,86 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 	if (uri && uri[0] != '\0') {
 		webkit_web_view_load_uri(w->view, uri);
 	}
-	gtk_widget_show_all(w->window);
+	if (panel) {
+		gtk_widget_set_no_show_all(w->menubar, TRUE);
+		gtk_widget_show_all(w->vbox); /* the panel itself opens hidden */
+	} else {
+		gtk_widget_show_all(w->window);
+	}
 	return w;
+}
+
+int vitra_panel_show(VitraWin *w, int x, int y, int aw, int ah, int has_anchor) {
+	if (!w || !w->panel || !w->window) {
+		return 0;
+	}
+	GdkDisplay *display = gdk_display_get_default();
+	GdkMonitor *monitor = NULL;
+	if (has_anchor) {
+		monitor = gdk_display_get_monitor_at_point(display, x + aw / 2, y + ah / 2);
+	}
+	if (!monitor) {
+		monitor = gdk_display_get_primary_monitor(display);
+	}
+	if (!monitor) {
+		monitor = gdk_display_get_monitor(display, 0);
+	}
+	int pw = 0, ph = 0;
+	gtk_window_get_default_size(GTK_WINDOW(w->window), &pw, &ph);
+	GdkRectangle work = {0, 0, pw, ph};
+	GdkRectangle geo = work;
+	if (monitor) {
+		gdk_monitor_get_workarea(monitor, &work);
+		gdk_monitor_get_geometry(monitor, &geo);
+	}
+	int px, py;
+	if (has_anchor) {
+		px = x + aw / 2 - pw / 2;
+		if (y + ah / 2 < geo.y + geo.height / 2) {
+			py = y + ah + VITRA_PANEL_GAP;
+		} else {
+			py = y - ph - VITRA_PANEL_GAP; /* icon at the bottom: open upward */
+		}
+	} else {
+		px = work.x + (work.width - pw) / 2;
+		py = work.y + (work.height - ph) / 2;
+	}
+	px = MAX(work.x, MIN(px, work.x + work.width - pw));
+	py = MAX(work.y, MIN(py, work.y + work.height - ph));
+	/* Wayland compositors ignore this and place the panel themselves. */
+	gtk_window_move(GTK_WINDOW(w->window), px, py);
+	gtk_widget_show(w->window);
+	gtk_window_present(GTK_WINDOW(w->window));
+	return 1;
+}
+
+int vitra_panel_hide(VitraWin *w) {
+	if (!w || !w->panel || !w->window) {
+		return 0;
+	}
+	gtk_widget_hide(w->window);
+	return 1;
+}
+
+int vitra_panel_shown(VitraWin *w) {
+	if (!w || !w->panel || !w->window) {
+		return -1;
+	}
+	if (gtk_widget_get_visible(w->window)) {
+		return 1;
+	}
+	return w->hidden_at > 0 && g_get_monotonic_time() - w->hidden_at < VITRA_PANEL_REOPEN_GUARD_US;
+}
+
+void vitra_win_frame(VitraWin *w, int *x, int *y, int *fw, int *fh) {
+	gtk_window_get_position(GTK_WINDOW(w->window), x, y);
+	gtk_window_get_size(GTK_WINDOW(w->window), fw, fh);
+}
+
+void vitra_panel_blur(VitraWin *w) {
+	if (w && w->panel && w->window) {
+		on_panel_focus_out(w->window, NULL, w);
+	}
 }
 
 void vitra_win_navigate(VitraWin *w, const char *uri) {

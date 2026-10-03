@@ -325,14 +325,16 @@ func (in *MenuInput) UnmarshalJSON(data []byte) error {
 // name a file outside them. Template marks the icon as a macOS template
 // image, which the system tints to match the menu bar. ClickActivates
 // makes a left click on the icon emit tray.click; the menu then opens on a
-// right click.
+// right click. Panel names a panel window the left click shows under the
+// icon and hides again (it implies ClickActivates).
 type TrayInput struct {
-	Tooltip        string     `json:"tooltip,omitempty"`
-	Title          string     `json:"title,omitempty"`
-	Icon           string     `json:"icon,omitempty"`
-	Template       bool       `json:"template,omitempty"`
-	ClickActivates bool       `json:"clickActivates,omitempty"`
-	Items          []MenuItem `json:"items,omitempty"`
+	Tooltip        string          `json:"tooltip,omitempty"`
+	Title          string          `json:"title,omitempty"`
+	Icon           string          `json:"icon,omitempty"`
+	Template       bool            `json:"template,omitempty"`
+	ClickActivates bool            `json:"clickActivates,omitempty"`
+	Panel          domain.WindowID `json:"panel,omitempty"`
+	Items          []MenuItem      `json:"items,omitempty"`
 }
 
 // UnmarshalJSON accepts {tooltip?, items?}, a bare items array, or null.
@@ -351,7 +353,7 @@ func (in *TrayInput) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	default:
-		return &domain.ErrValidation{Message: "tray.set input must be an array or {tooltip?, title?, icon?, template?, clickActivates?, items?}"}
+		return &domain.ErrValidation{Message: "tray.set input must be an array or {tooltip?, title?, icon?, template?, clickActivates?, panel?, items?}"}
 	}
 	if in.Icon != "" {
 		icon, err := assetPath(in.Icon)

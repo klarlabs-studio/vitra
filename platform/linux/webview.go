@@ -184,6 +184,7 @@ func (h *Host) Features() platform.FeatureSet {
 			Detail: "GtkStatusIcon geometry, or the click position a StatusNotifierItem panel reports " +
 				"(some Wayland panels report none)",
 		},
+		platform.FeatureWindowPanel: panelFeature(),
 		platform.FeatureTrayIcon: {
 			Feature: platform.FeatureTrayIcon, Available: true,
 			Detail: "PNG as StatusNotifierItem IconPixmap or GtkStatusIcon pixbuf",
@@ -425,7 +426,7 @@ func (h *Host) Open(spec platform.WindowSpec, uri, preload string) error {
 		defer C.free(unsafe.Pointer(ctitle))
 		defer C.free(unsafe.Pointer(curi))
 		defer C.free(unsafe.Pointer(cjs))
-		ptr := C.vitra_win_new(cid, ctitle, C.int(spec.Width), C.int(spec.Height), curi, cjs)
+		ptr := C.vitra_win_new(cid, ctitle, C.int(spec.Width), C.int(spec.Height), curi, cjs, cflag(spec.Kind == platform.WindowKindPanel))
 		if h.accessory {
 			C.vitra_win_set_skip_taskbar(ptr, 1)
 		}
@@ -858,6 +859,97 @@ func cflag(b bool) C.int {
 		return 1
 	}
 	return 0
+}
+
+// ShowPanel places a panel window under the anchor (centered without one),
+// keeps it in the anchor monitor's work area, and shows it. On Wayland the
+// compositor places it.
+func (h *Host) ShowPanel(id domain.WindowID, anchor platform.Rect, hasAnchor bool) error {
+	return h.onPanel(id, func(w *C.VitraWin) C.int {
+		return C.vitra_panel_show(w, C.int(anchor.X), C.int(anchor.Y), C.int(anchor.Width), C.int(anchor.Height), cflag(hasAnchor))
+	})
+}
+
+// HidePanel hides a panel window.
+func (h *Host) HidePanel(id domain.WindowID) error {
+	return h.onPanel(id, func(w *C.VitraWin) C.int { return C.vitra_panel_hide(w) })
+}
+
+// PanelShown reports whether a panel is shown, or hid itself on losing
+// focus a moment ago.
+func (h *Host) PanelShown(id domain.WindowID) (bool, error) {
+	var shown bool
+	err := h.onPanel(id, func(w *C.VitraWin) C.int {
+		r := C.vitra_panel_shown(w)
+		shown = r == 1
+		if r < 0 {
+			return 0
+		}
+		return 1
+	})
+	return shown, err
+}
+
+// onPanel runs fn on the UI thread with the panel window id; fn returns 0
+// when the window is not a panel.
+func (h *Host) onPanel(id domain.WindowID, fn func(*C.VitraWin) C.int) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		w, ok := h.windows[id]
+		h.mu.Unlock()
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		if fn(w.ptr) == 0 {
+			errCh <- &domain.ErrValidation{Message: "window " + string(id) + " is not a panel"}
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
+}
+
+// windowFrame returns a window's position and size (tests).
+func (h *Host) windowFrame(id domain.WindowID) platform.Rect {
+	ch := make(chan platform.Rect, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		w := h.windows[id]
+		h.mu.Unlock()
+		var x, y, fw, fh C.int
+		C.vitra_win_frame(w.ptr, &x, &y, &fw, &fh)
+		ch <- platform.Rect{X: int(x), Y: int(y), Width: int(fw), Height: int(fh)}
+	})
+	return <-ch
+}
+
+// blurPanel makes a panel lose focus as a click elsewhere would (tests).
+func (h *Host) blurPanel(id domain.WindowID) {
+	done := make(chan struct{})
+	h.dispatch(func() {
+		h.mu.Lock()
+		w := h.windows[id]
+		h.mu.Unlock()
+		C.vitra_panel_blur(w.ptr)
+		close(done)
+	})
+	<-done
+}
+
+// panelFeature reports how panels are placed in this session.
+func panelFeature() platform.Support {
+	if waylandSession() {
+		return platform.Support{
+			Feature: platform.FeatureWindowPanel, Available: true,
+			Detail: "undecorated window kept above; Wayland compositors place it themselves (usually centered)",
+		}
+	}
+	return platform.Support{
+		Feature: platform.FeatureWindowPanel, Available: true,
+		Detail: "undecorated window kept above, placed under the tray icon in the monitor's work area",
+	}
 }
 
 // SetTrayClickHandler registers fn for left clicks on a tray whose spec

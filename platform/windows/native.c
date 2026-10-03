@@ -54,7 +54,15 @@ struct VitraWin {
 	UINT next_cmd;
 	int drop_enabled;
 	VitraWV2 *wv2;
+	int panel;              /* a tray panel (WindowKindPanel) */
+	ULONGLONG hidden_at;    /* GetTickCount64 when the panel hid on deactivation */
 };
+
+/* A tray click that took the panel's focus arrives this long after the panel
+ * hid itself; it means "close", not "open again" (milliseconds). */
+#define VITRA_PANEL_REOPEN_GUARD_MS 300
+/* Gap between the tray icon and the panel, in pixels. */
+#define VITRA_PANEL_GAP 4
 
 static const char *kClassName = "VitraWinClass";
 static const char *kTrayClassName = "VitraTrayClass";
@@ -415,6 +423,12 @@ static LRESULT CALLBACK vitra_wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 	case WM_CLOSE:
 		DestroyWindow(hwnd);
 		return 0;
+	case WM_ACTIVATE:
+		if (w && w->panel && LOWORD(wParam) == WA_INACTIVE && IsWindowVisible(hwnd)) {
+			w->hidden_at = GetTickCount64();
+			ShowWindow(hwnd, SW_HIDE);
+		}
+		return DefWindowProc(hwnd, msg, wParam, lParam);
 	default:
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
@@ -600,7 +614,7 @@ unsigned long vitra_current_thread_id(void) {
 	return (unsigned long)GetCurrentThreadId();
 }
 
-VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload) {
+VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload, int panel) {
 	(void)preload;
 	vitra_win32_init(NULL);
 	VitraWin *w = (VitraWin *)calloc(1, sizeof(VitraWin));
@@ -616,11 +630,23 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 	int hpx = height > 0 ? height : 768;
 	w->req_width = wpx;
 	w->req_height = hpx;
-	w->hwnd = CreateWindowExA(
-		0, kClassName, title ? title : "",
-		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-		CW_USEDEFAULT, CW_USEDEFAULT, wpx, hpx,
-		NULL, NULL, GetModuleHandle(NULL), NULL);
+	w->panel = panel ? 1 : 0;
+	if (panel) {
+		/* A borderless, topmost tool window (no taskbar button), opened
+		 * hidden: vitra_panel_show places and shows it. */
+		w->hwnd = CreateWindowExA(
+			WS_EX_TOOLWINDOW | WS_EX_TOPMOST, kClassName, title ? title : "",
+			WS_POPUP | WS_BORDER,
+			0, 0, wpx, hpx,
+			NULL, NULL, GetModuleHandle(NULL), NULL);
+		w->hidden = 1;
+	} else {
+		w->hwnd = CreateWindowExA(
+			0, kClassName, title ? title : "",
+			WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+			CW_USEDEFAULT, CW_USEDEFAULT, wpx, hpx,
+			NULL, NULL, GetModuleHandle(NULL), NULL);
+	}
 	if (!w->hwnd) {
 		free(w->pending_uri);
 		free(w->id);
@@ -628,14 +654,87 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 		return NULL;
 	}
 	SetWindowLongPtr(w->hwnd, GWLP_USERDATA, (LONG_PTR)w);
-	ShowWindow(w->hwnd, SW_SHOW);
-	UpdateWindow(w->hwnd);
+	if (!panel) {
+		ShowWindow(w->hwnd, SW_SHOW);
+		UpdateWindow(w->hwnd);
+	}
 	w->wv2 = vitra_wv2_attach(w->hwnd, w->id, uri, preload);
 	if (!w->wv2 && w->pending_uri) {
 		/* Shell-only fallback: still consult nav policy without a WebView. */
 		(void)goVitraNav(w->id, w->pending_uri);
 	}
 	return w;
+}
+
+int vitra_panel_show(VitraWin *w, int x, int y, int aw, int ah, int has_anchor) {
+	if (!w || !w->panel || !w->hwnd) {
+		return 0;
+	}
+	RECT wr;
+	GetWindowRect(w->hwnd, &wr);
+	int pw = wr.right - wr.left;
+	int ph = wr.bottom - wr.top;
+	HMONITOR mon;
+	if (has_anchor) {
+		RECT ar = {x, y, x + aw, y + ah};
+		mon = MonitorFromRect(&ar, MONITOR_DEFAULTTONEAREST);
+	} else {
+		POINT origin = {0, 0};
+		mon = MonitorFromPoint(origin, MONITOR_DEFAULTTOPRIMARY);
+	}
+	MONITORINFO mi;
+	memset(&mi, 0, sizeof(mi));
+	mi.cbSize = sizeof(mi);
+	GetMonitorInfoA(mon, &mi);
+	RECT work = mi.rcWork;
+	RECT geo = mi.rcMonitor;
+	int px, py;
+	if (has_anchor) {
+		px = x + aw / 2 - pw / 2;
+		if (y + ah / 2 < (geo.top + geo.bottom) / 2) {
+			py = y + ah + VITRA_PANEL_GAP;
+		} else {
+			py = y - ph - VITRA_PANEL_GAP; /* taskbar at the bottom: open upward */
+		}
+	} else {
+		px = work.left + (work.right - work.left - pw) / 2;
+		py = work.top + (work.bottom - work.top - ph) / 2;
+	}
+	if (px > work.right - pw) {
+		px = work.right - pw;
+	}
+	if (px < work.left) {
+		px = work.left;
+	}
+	if (py > work.bottom - ph) {
+		py = work.bottom - ph;
+	}
+	if (py < work.top) {
+		py = work.top;
+	}
+	SetWindowPos(w->hwnd, HWND_TOPMOST, px, py, pw, ph, SWP_SHOWWINDOW);
+	SetForegroundWindow(w->hwnd);
+	w->hidden = 0;
+	return 1;
+}
+
+int vitra_panel_hide(VitraWin *w) {
+	if (!w || !w->panel || !w->hwnd) {
+		return 0;
+	}
+	ShowWindow(w->hwnd, SW_HIDE);
+	w->hidden = 1;
+	return 1;
+}
+
+int vitra_panel_shown(VitraWin *w) {
+	if (!w || !w->panel || !w->hwnd) {
+		return -1;
+	}
+	if (IsWindowVisible(w->hwnd)) {
+		return 1;
+	}
+	return w->hidden_at > 0 && GetTickCount64() - w->hidden_at < VITRA_PANEL_REOPEN_GUARD_MS;
 }
 
 void vitra_win_navigate(VitraWin *w, const char *uri) {

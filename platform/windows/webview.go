@@ -192,6 +192,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureTrayAnchor, Available: true,
 			Detail: "Shell_NotifyIconGetRect, in screen pixels",
 		},
+		platform.FeatureWindowPanel: {
+			Feature: platform.FeatureWindowPanel, Available: true,
+			Detail: "borderless topmost tool window placed by the notification icon, in the monitor's work area",
+		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,
 			Detail: "exclusive lock file; available without native WebView",
@@ -434,7 +438,11 @@ func (h *Host) Open(spec platform.WindowSpec, uri, preload string) error {
 		defer C.free(unsafe.Pointer(ctitle))
 		defer C.free(unsafe.Pointer(curi))
 		defer C.free(unsafe.Pointer(cjs))
-		ptr := C.vitra_win_new(cid, ctitle, C.int(spec.Width), C.int(spec.Height), curi, cjs)
+		var panel C.int
+		if spec.Kind == platform.WindowKindPanel {
+			panel = 1
+		}
+		ptr := C.vitra_win_new(cid, ctitle, C.int(spec.Width), C.int(spec.Height), curi, cjs, panel)
 		if ptr == nil {
 			errCh <- errors.New("failed to create Win32 window")
 			return
@@ -759,6 +767,59 @@ func (h *Host) SetTray(spec platform.TraySpec) error {
 	})
 	<-done
 	return nil
+}
+
+// ShowPanel places a panel window under the anchor (centered without one),
+// keeps it in the anchor monitor's work area, and shows it.
+func (h *Host) ShowPanel(id domain.WindowID, anchor platform.Rect, hasAnchor bool) error {
+	var has C.int
+	if hasAnchor {
+		has = 1
+	}
+	return h.onPanel(id, func(w *C.VitraWin) C.int {
+		return C.vitra_panel_show(w, C.int(anchor.X), C.int(anchor.Y), C.int(anchor.Width), C.int(anchor.Height), has)
+	})
+}
+
+// HidePanel hides a panel window.
+func (h *Host) HidePanel(id domain.WindowID) error {
+	return h.onPanel(id, func(w *C.VitraWin) C.int { return C.vitra_panel_hide(w) })
+}
+
+// PanelShown reports whether a panel is shown, or hid itself on losing
+// focus a moment ago.
+func (h *Host) PanelShown(id domain.WindowID) (bool, error) {
+	var shown bool
+	err := h.onPanel(id, func(w *C.VitraWin) C.int {
+		r := C.vitra_panel_shown(w)
+		shown = r == 1
+		if r < 0 {
+			return 0
+		}
+		return 1
+	})
+	return shown, err
+}
+
+// onPanel runs fn on the UI thread with the panel window id; fn returns 0
+// when the window is not a panel.
+func (h *Host) onPanel(id domain.WindowID, fn func(*C.VitraWin) C.int) error {
+	errCh := make(chan error, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		w, ok := h.windows[id]
+		h.mu.Unlock()
+		if !ok {
+			errCh <- &domain.ErrNotFound{Entity: "window", ID: string(id)}
+			return
+		}
+		if fn(w.ptr) == 0 {
+			errCh <- &domain.ErrValidation{Message: "window " + string(id) + " is not a panel"}
+			return
+		}
+		errCh <- nil
+	})
+	return <-errCh
 }
 
 // SetTrayClickHandler registers fn for left clicks on a tray whose spec

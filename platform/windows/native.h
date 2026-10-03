@@ -32,7 +32,15 @@ void vitra_idle_post(unsigned long long id);
 unsigned long vitra_current_thread_id(void);
 void vitra_set_devtools(int enabled);
 
-VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload);
+/* panel: a tray panel (borderless topmost tool window, opened hidden, hidden
+ * when deactivated) instead of a regular window. */
+VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload, int panel);
+/* vitra_panel_show places a panel under the anchor (centered on the primary
+ * monitor when has_anchor is 0) and shows it. Returns 0 when w is no panel. */
+int vitra_panel_show(VitraWin *w, int x, int y, int aw, int ah, int has_anchor);
+int vitra_panel_hide(VitraWin *w);
+/* 1 while shown or hidden on deactivation a moment ago, 0, or -1 for no panel. */
+int vitra_panel_shown(VitraWin *w);
 void vitra_win_navigate(VitraWin *w, const char *uri);
 int vitra_win_eval(VitraWin *w, const char *js);
 void vitra_win_close(VitraWin *w);

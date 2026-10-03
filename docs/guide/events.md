@@ -39,7 +39,7 @@ vitra.Register(rt, vitra.Command[struct{}, []audit.Event]{
 
 ## Built-in events
 
-Some [official plugins](/reference/plugins) emit events: `menu.action`, `tray.action`, `tray.click` (primary window only), `shortcut.action`, `dragdrop.drop`, `deeplink.open`, and `fs.changed`. Subscribe a window to the ones it should see.
+Some [official plugins](/reference/plugins) emit events: `menu.action`, `tray.action`, `tray.click` (primary window and tray panel only), `shortcut.action`, `dragdrop.drop`, `deeplink.open`, and `fs.changed`. Subscribe a window to the ones it should see.
 
 ## Payloads
 
