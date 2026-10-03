@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Breaking:** the Linux stub host (built without `-tags vitra_native`) now fails with `*platform.ErrUnsupported` naming the missing feature, like the macOS and Windows stubs, instead of a plain error. Code that matched the old message text should use `errors.As` instead.
+
 ## [0.8.0] - 2026-10-02
 
 Deny rules that hold across folder aliases and Unicode spellings, iframes

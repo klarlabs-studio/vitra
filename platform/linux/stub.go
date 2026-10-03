@@ -10,7 +10,6 @@ package linux
 
 import (
 	"context"
-	"errors"
 
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/platform"
@@ -133,8 +132,8 @@ func (h *Host) SetDestroyHandler(fn func(domain.WindowID)) {
 	h.onDestroy = fn
 }
 
-// EnableDragDrop returns an error: it needs the native host.
-func (h *Host) EnableDragDrop(domain.WindowID, bool) error { return h.err() }
+// EnableDragDrop returns ErrUnsupported: it needs the native host.
+func (h *Host) EnableDragDrop(domain.WindowID, bool) error { return h.err(platform.FeatureDragDrop) }
 
 // InjectFileDrop passes paths to the drag-drop handler, as a native drop would.
 func (h *Host) InjectFileDrop(id domain.WindowID, paths []string) {
@@ -143,98 +142,122 @@ func (h *Host) InjectFileDrop(id domain.WindowID, paths []string) {
 	}
 }
 
-// ActivateMenuAccel returns an error: it needs the native host.
+// ActivateMenuAccel returns ErrUnsupported: it needs the native host.
 func (h *Host) ActivateMenuAccel(domain.WindowID, string) (bool, error) {
-	return false, h.err()
+	return false, h.err(platform.FeatureMenuBar)
 }
 
-// ApplyWindowChrome returns an error: it needs the native host.
-func (h *Host) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error { return h.err() }
+// ApplyWindowChrome returns ErrUnsupported: it needs the native host.
+func (h *Host) ApplyWindowChrome(domain.WindowID, platform.WindowChrome) error {
+	return h.err(platform.FeatureWindowChrome)
+}
 
-// ReadWindowChrome returns an error: it needs the native host.
+// ReadWindowChrome returns ErrUnsupported: it needs the native host.
 func (h *Host) ReadWindowChrome(domain.WindowID) (platform.WindowChrome, error) {
-	return platform.WindowChrome{}, h.err()
+	return platform.WindowChrome{}, h.err(platform.FeatureWindowChrome)
 }
 
-// FocusWindow returns an error: it needs the native host.
-func (h *Host) FocusWindow(domain.WindowID) error { return h.err() }
+// FocusWindow returns ErrUnsupported: it needs the native host.
+func (h *Host) FocusWindow(domain.WindowID) error { return h.err(platform.FeatureWindowChrome) }
 
-// BlurWindow returns an error: it needs the native host.
-func (h *Host) BlurWindow(domain.WindowID) error { return h.err() }
+// BlurWindow returns ErrUnsupported: it needs the native host.
+func (h *Host) BlurWindow(domain.WindowID) error { return h.err(platform.FeatureWindowChrome) }
 
-// CreateWindow returns an error: it needs the native host.
+// CreateWindow returns ErrUnsupported: it needs the native host.
 func (h *Host) CreateWindow(context.Context, platform.WindowSpec) error {
-	return h.err()
+	return h.err(platform.FeatureWindowCreate)
 }
 
-// Open returns an error: it needs the native host.
-func (h *Host) Open(platform.WindowSpec, string, string) error { return h.err() }
+// Open returns ErrUnsupported: it needs the native host.
+func (h *Host) Open(platform.WindowSpec, string, string) error {
+	return h.err(platform.FeatureWindowCreate)
+}
 
-// NavigateWindow returns an error: it needs the native host.
+// NavigateWindow returns ErrUnsupported: it needs the native host.
 func (h *Host) NavigateWindow(context.Context, domain.WindowID, domain.Origin) error {
-	return h.err()
+	return h.err(platform.FeatureWindowNavigate)
 }
 
-// PostMessage returns an error: it needs the native host.
-func (h *Host) PostMessage(context.Context, domain.WindowID, []byte) error { return h.err() }
+// PostMessage returns ErrUnsupported: it needs the native host.
+func (h *Host) PostMessage(context.Context, domain.WindowID, []byte) error {
+	return h.err(platform.FeatureWebViewMessage)
+}
 
-// Eval returns an error: it needs the native host.
-func (h *Host) Eval(domain.WindowID, string) error { return h.err() }
+// Eval returns ErrUnsupported: it needs the native host.
+func (h *Host) Eval(domain.WindowID, string) error { return h.err(platform.FeatureWebViewMessage) }
 
-// CloseWindow returns an error: it needs the native host.
-func (h *Host) CloseWindow(context.Context, domain.WindowID) error { return h.err() }
+// CloseWindow returns ErrUnsupported: it needs the native host.
+func (h *Host) CloseWindow(context.Context, domain.WindowID) error {
+	return h.err(platform.FeatureWindowCreate)
+}
 
-// ClipboardGet returns an error: it needs the native host.
-func (h *Host) ClipboardGet() (string, error) { return "", h.err() }
+// ClipboardGet returns ErrUnsupported: it needs the native host.
+func (h *Host) ClipboardGet() (string, error) { return "", h.err(platform.FeatureClipboard) }
 
-// ClipboardSet returns an error: it needs the native host.
-func (h *Host) ClipboardSet(string) error { return h.err() }
+// ClipboardSet returns ErrUnsupported: it needs the native host.
+func (h *Host) ClipboardSet(string) error { return h.err(platform.FeatureClipboard) }
 
-// OpenFileDialog returns an error: it needs the native host.
-func (h *Host) OpenFileDialog(platform.DialogFileOptions) (string, error) { return "", h.err() }
+// OpenFileDialog returns ErrUnsupported: it needs the native host.
+func (h *Host) OpenFileDialog(platform.DialogFileOptions) (string, error) {
+	return "", h.err(platform.FeatureDialogOpen)
+}
 
 // The stub keeps the native host's method set; it still fails explicitly.
 var _ platform.MultiFileOpener = (*Host)(nil)
 
-// OpenFilesDialog returns an error: it needs the native host.
-func (h *Host) OpenFilesDialog(platform.DialogFileOptions) ([]string, error) { return nil, h.err() }
-
-// SaveFileDialog returns an error: it needs the native host.
-func (h *Host) SaveFileDialog(platform.DialogFileOptions) (string, error) { return "", h.err() }
-
-// OpenDirectoryDialog returns an error: it needs the native host.
-func (h *Host) OpenDirectoryDialog(platform.DialogFileOptions) (string, error) {
-	return "", h.err()
+// OpenFilesDialog returns ErrUnsupported: it needs the native host.
+func (h *Host) OpenFilesDialog(platform.DialogFileOptions) ([]string, error) {
+	return nil, h.err(platform.FeatureDialogOpen)
 }
 
-// MessageDialog returns an error: it needs the native host.
-func (h *Host) MessageDialog(string, string, string) (bool, error) { return false, h.err() }
+// SaveFileDialog returns ErrUnsupported: it needs the native host.
+func (h *Host) SaveFileDialog(platform.DialogFileOptions) (string, error) {
+	return "", h.err(platform.FeatureDialogSave)
+}
 
-// ShowNotification returns an error: it needs the native host.
-func (h *Host) ShowNotification(string, string) error { return h.err() }
+// OpenDirectoryDialog returns ErrUnsupported: it needs the native host.
+func (h *Host) OpenDirectoryDialog(platform.DialogFileOptions) (string, error) {
+	return "", h.err(platform.FeatureDialogOpenDirectory)
+}
 
-// SetMenuBar returns an error: it needs the native host.
-func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error { return h.err() }
+// MessageDialog returns ErrUnsupported: it needs the native host.
+func (h *Host) MessageDialog(string, string, string) (bool, error) {
+	return false, h.err(platform.FeatureDialogMessage)
+}
 
-// SetTray returns an error: it needs the native host.
-func (h *Host) SetTray(string, []platform.MenuItem) error { return h.err() }
+// ShowNotification returns ErrUnsupported: it needs the native host.
+func (h *Host) ShowNotification(string, string) error { return h.err(platform.FeatureNotificationShow) }
+
+// SetMenuBar returns ErrUnsupported: it needs the native host.
+func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error {
+	return h.err(platform.FeatureMenuBar)
+}
+
+// SetTray returns ErrUnsupported: it needs the native host.
+func (h *Host) SetTray(string, []platform.MenuItem) error { return h.err(platform.FeatureTray) }
 
 // ClearTray does nothing without the native host.
 func (h *Host) ClearTray() {}
 
-// RegisterGlobalShortcut returns an error: it needs the native host.
-func (h *Host) RegisterGlobalShortcut(string, string) error { return h.err() }
+// RegisterGlobalShortcut returns ErrUnsupported: it needs the native host.
+func (h *Host) RegisterGlobalShortcut(string, string) error {
+	return h.err(platform.FeatureGlobalShortcut)
+}
 
-// UnregisterGlobalShortcut returns an error: it needs the native host.
-func (h *Host) UnregisterGlobalShortcut(string) error { return h.err() }
+// UnregisterGlobalShortcut returns ErrUnsupported: it needs the native host.
+func (h *Host) UnregisterGlobalShortcut(string) error { return h.err(platform.FeatureGlobalShortcut) }
 
-// Run returns an error: it needs the native host.
-func (h *Host) Run() error { return h.err() }
+// Run returns ErrUnsupported: it needs the native host.
+func (h *Host) Run() error { return h.err(platform.FeatureWindowCreate) }
 
 // Quit does nothing without the native host.
 func (h *Host) Quit() {}
-func (h *Host) err() error {
-	return errors.New("linux webview host requires CGO_ENABLED=1 -tags vitra_native and webkit2gtk-4.1")
+func (h *Host) err(f platform.Feature) error {
+	return &platform.ErrUnsupported{
+		Feature: f,
+		OS:      platform.OSLinux,
+		Detail:  "requires CGO_ENABLED=1 -tags vitra_native and webkit2gtk-4.1 (WebKitGTK DesktopHost)",
+	}
 }
 
 // MenuItem matches the portable chrome menu entry.
