@@ -38,14 +38,29 @@ func (a *App) SetTray(spec TraySpec) error {
 	if err := checkMenuItems(spec.Items); err != nil {
 		return err
 	}
-	return h.SetTray(spec)
+	if err := h.SetTray(spec); err != nil {
+		return err
+	}
+	a.mu.Lock()
+	a.tray = true
+	a.mu.Unlock()
+	return nil
 }
 
 // ClearTray removes the tray icon. It does nothing on hosts without a tray.
 func (a *App) ClearTray() {
 	if h, err := a.trayHost(); err == nil {
 		h.ClearTray()
+		a.mu.Lock()
+		a.tray = false
+		a.mu.Unlock()
 	}
+}
+
+func (a *App) trayShown() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.tray
 }
 
 func (a *App) trayHost() (platform.Tray, error) {

@@ -16,6 +16,7 @@ var (
 	_ platform.Notifier                 = (*Host)(nil)
 	_ platform.MenuBar                  = (*Host)(nil)
 	_ platform.Tray                     = (*Host)(nil)
+	_ platform.PresentationSetter       = (*Host)(nil)
 	_ platform.GlobalShortcuts          = (*Host)(nil)
 	_ platform.DragDrop                 = (*Host)(nil)
 	_ platform.WindowControls           = (*Host)(nil)

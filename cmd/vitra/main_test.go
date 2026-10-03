@@ -823,6 +823,28 @@ func TestRun_PackageDarwinApp(t *testing.T) {
 	}
 }
 
+// --accessory packages a menu bar app: no Dock icon from launch.
+func TestRun_PackageDarwinAppAccessory(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "vitra-app")
+	if err := os.WriteFile(bin, []byte("mach-o"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "dist-app")
+	capture(t, func() {
+		if err := run([]string{"package", "--format", "app-dir", "--out", out, "--bin", bin, "--app-id", "com.vitra.bar", "--name", "Bar", "--version", "0.1.0", "--accessory"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	raw, err := os.ReadFile(filepath.Join(out, "Bar.app", "Contents", "Info.plist"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "<key>LSUIElement</key>") {
+		t.Fatalf("Info.plist without LSUIElement:\n%s", raw)
+	}
+}
+
 func TestRun_PackageWiX(t *testing.T) {
 	tmp := t.TempDir()
 	bin := filepath.Join(tmp, "vitra-app")

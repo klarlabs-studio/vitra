@@ -33,6 +33,7 @@ const (
 	FeatureTray                Feature = "tray"
 	FeatureTrayTitle           Feature = "tray.title"
 	FeatureTrayIcon            Feature = "tray.icon"
+	FeaturePresentation        Feature = "app.presentation"
 	FeatureDialogOpen          Feature = "dialog.open"
 	FeatureDialogSave          Feature = "dialog.save"
 	FeatureDialogMessage       Feature = "dialog.message"

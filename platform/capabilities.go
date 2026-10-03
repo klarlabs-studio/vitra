@@ -183,6 +183,25 @@ type SingleInstance interface {
 	ForwardToPrimary(appID string, urls []string) (ok bool, err error)
 }
 
+// Presentation is how the app appears in the OS shell.
+type Presentation string
+
+const (
+	// PresentationRegular is a normal app: a Dock icon on macOS and a
+	// taskbar entry for each window elsewhere.
+	PresentationRegular Presentation = "regular"
+	// PresentationAccessory is a menu bar or tray app: no Dock icon on
+	// macOS, and no taskbar or pager entries for its windows elsewhere.
+	PresentationAccessory Presentation = "accessory"
+)
+
+// PresentationSetter switches the app between a regular and an accessory
+// presentation (FeaturePresentation). It applies to windows already open
+// and to every window opened later.
+type PresentationSetter interface {
+	SetPresentation(p Presentation) error
+}
+
 // URLSchemeRegistrar registers the app as the handler of a URL scheme
 // (FeatureDeepLink).
 type URLSchemeRegistrar interface {

@@ -211,6 +211,12 @@ func (h *Host) SetTray(platform.TraySpec) error {
 	return h.err(platform.FeatureTray)
 }
 
+// SetPresentation returns ErrUnsupported (FeaturePresentation): it needs
+// the native host.
+func (h *Host) SetPresentation(platform.Presentation) error {
+	return h.err(platform.FeaturePresentation)
+}
+
 // ClearTray does nothing without the native host.
 func (h *Host) ClearTray() {}
 

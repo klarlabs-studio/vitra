@@ -67,6 +67,34 @@ func New() *Host {
 	return h
 }
 
+// SetPresentation switches the app's activation policy: an accessory app
+// has no Dock icon and no app menu bar, as menu bar apps do.
+func (h *Host) SetPresentation(p platform.Presentation) error {
+	var accessory C.int
+	switch p {
+	case platform.PresentationRegular:
+	case platform.PresentationAccessory:
+		accessory = 1
+	default:
+		return &domain.ErrValidation{Message: "unknown presentation " + string(p)}
+	}
+	done := make(chan struct{})
+	h.dispatch(func() {
+		h.ensureInit()
+		C.vitra_app_set_accessory(accessory)
+		close(done)
+	})
+	<-done
+	return nil
+}
+
+// isAccessory reports the activation policy AppKit holds (tests).
+func (h *Host) isAccessory() bool {
+	ch := make(chan bool, 1)
+	h.dispatch(func() { ch <- C.vitra_app_is_accessory() != 0 })
+	return <-ch
+}
+
 // SetProgramName sets NSProcessInfo processName for dock identity. Must be
 // called before the first window/event-loop call. Empty keeps the default.
 func (h *Host) SetProgramName(name string) {
@@ -159,6 +187,10 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureTrayIcon: {
 			Feature: platform.FeatureTrayIcon, Available: true,
 			Detail: "PNG scaled to 18pt; TraySpec.Template makes it a template image",
+		},
+		platform.FeaturePresentation: {
+			Feature: platform.FeaturePresentation, Available: true,
+			Detail: "NSApplicationActivationPolicyAccessory: no Dock icon or app menu",
 		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,

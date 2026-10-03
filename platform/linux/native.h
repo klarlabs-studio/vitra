@@ -47,6 +47,11 @@ void vitra_win_eval(VitraWin *w, const char *js);
 void vitra_win_close(VitraWin *w);
 void vitra_win_free(VitraWin *w);
 void vitra_win_clear_menu(VitraWin *w);
+/* vitra_win_set_skip_taskbar keeps the window out of taskbars and pagers
+ * (accessory apps). */
+void vitra_win_set_skip_taskbar(VitraWin *w, int skip);
+int vitra_win_skips_taskbar(VitraWin *w);
+
 /* Menu item flags (vitra_win_add_menu_item, vitra_tray_add_menu_item, vitra_sni_set). */
 enum {
 	VITRA_MENU_SEPARATOR = 1,

@@ -1,6 +1,7 @@
 package packaging
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -308,5 +309,29 @@ func TestStageDarwinApp_EscapesPlist(t *testing.T) {
 	body := string(raw)
 	if !strings.Contains(body, "App &amp; &quot;Demo&quot;") {
 		t.Fatalf("escape failed:\n%s", body)
+	}
+}
+
+// A menu bar app is an LSUIElement: no Dock icon from launch.
+func TestStageDarwinApp_Accessory(t *testing.T) {
+	tmp := t.TempDir()
+	bin := filepath.Join(tmp, "app.bin")
+	if err := os.WriteFile(bin, []byte("mach-o-fake"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, accessory := range []bool{false, true} {
+		spec := Spec{AppID: "com.vitra.bar", Version: "1.0.0", Name: "Bar", Targets: []Target{TargetDarwinApp}, Accessory: accessory}
+		art, err := StageDarwinApp(spec, bin, filepath.Join(tmp, fmt.Sprint(accessory)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := os.ReadFile(filepath.Join(art.Path, "Contents", "Info.plist"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		has := strings.Contains(string(raw), "<key>LSUIElement</key>\n\t<true/>")
+		if has != accessory {
+			t.Fatalf("accessory=%v: LSUIElement present=%v\n%s", accessory, has, raw)
+		}
 	}
 }

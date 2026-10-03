@@ -115,6 +115,15 @@ application.OnAction(func(id string) {
 })
 ```
 
+A menu bar app usually has no Dock icon and no main window. Set `Presentation: app.PresentationAccessory` and leave `Window.ID` empty; call `SetTray` before `Run`, since an app with neither a window nor a tray could not be seen or quit. Closing an accessory app's last window does not quit it. On macOS it runs without a Dock icon or app menu; on Linux and Windows its windows get no taskbar entry. Package it with `vitra package --accessory` so macOS shows no Dock icon from launch either.
+
+```go
+application, err := app.New(app.Options{
+    AppID: "com.example.usage", Assets: assets, Host: host,
+    Presentation: app.PresentationAccessory, // no Window: tray only
+})
+```
+
 `Title` is text next to the icon: in the macOS menu bar and as the Linux StatusNotifierItem label. Windows and the Linux `GtkStatusIcon` fallback show no text there, so they add the title to the tooltip; check `Features()[platform.FeatureTrayTitle]` to tell. `Template` marks a macOS template image (black with transparency), which the system tints to match the menu bar.
 
 ## Platform support
