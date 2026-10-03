@@ -76,6 +76,9 @@ func StageDarwinApp(spec Spec, binaryPath, outDir string) (Artifact, error) {
 		}
 		iconExtra = fmt.Sprintf("\t<key>CFBundleIconFile</key>\n\t<string>%s</string>\n", xmlEscapeText(iconRef))
 	}
+	if spec.Accessory {
+		iconExtra += "\t<key>LSUIElement</key>\n\t<true/>\n"
+	}
 
 	plist := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

@@ -55,6 +55,7 @@ type Host struct {
 	onAction    func(id string)
 	onDrop      func(windowID domain.WindowID, paths []string)
 	onDestroy   func(windowID domain.WindowID)
+	accessory   bool // windows get no taskbar button (under mu)
 	looping     bool
 	inited      bool
 	programName string
@@ -181,6 +182,10 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureTrayIcon: {
 			Feature: platform.FeatureTrayIcon, Available: true,
 			Detail: "PNG via CreateIconFromResourceEx at the small icon size",
+		},
+		platform.FeaturePresentation: {
+			Feature: platform.FeaturePresentation, Available: true,
+			Detail: "accessory windows are owned by a hidden window, so they get no taskbar button",
 		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,
@@ -428,6 +433,9 @@ func (h *Host) Open(spec platform.WindowSpec, uri, preload string) error {
 		if ptr == nil {
 			errCh <- errors.New("failed to create Win32 window")
 			return
+		}
+		if h.accessory {
+			C.vitra_win_set_skip_taskbar(ptr, 1)
 		}
 		h.windows[spec.ID] = &nativeWindow{ptr: ptr}
 		h.origins[spec.ID] = spec.Origin
@@ -688,6 +696,32 @@ func (h *Host) ActivateMenuAccel(id domain.WindowID, shortcut string) (bool, err
 	})
 	got := <-ch
 	return got.ok, got.err
+}
+
+// SetPresentation keeps an accessory app's windows off the taskbar, now and
+// for windows opened later.
+func (h *Host) SetPresentation(p platform.Presentation) error {
+	var skip C.int
+	switch p {
+	case platform.PresentationRegular:
+	case platform.PresentationAccessory:
+		skip = 1
+	default:
+		return &domain.ErrValidation{Message: "unknown presentation " + string(p)}
+	}
+	done := make(chan struct{})
+	h.dispatch(func() {
+		h.ensureInit()
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		h.accessory = skip != 0
+		for _, w := range h.windows {
+			C.vitra_win_set_skip_taskbar(w.ptr, skip)
+		}
+		close(done)
+	})
+	<-done
+	return nil
 }
 
 // SetTray shows a notification-area tray entry: icon, tooltip and context

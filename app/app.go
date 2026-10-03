@@ -48,11 +48,27 @@ type Options struct {
 	Host    DesktopHost
 	Runtime *vitra.Runtime
 	Window  WindowOptions
+	// Presentation is how the app appears in the OS shell. The zero value
+	// is PresentationRegular. PresentationAccessory makes a menu bar or tray
+	// app: no Dock icon on macOS, no taskbar entries for its windows, and
+	// closing the last window does not quit it. An accessory app may leave
+	// Window.ID empty to open no window at Run; it must then show a tray
+	// (SetTray) before Run, or it could not be seen or quit.
+	Presentation Presentation
 	// DevTools enables the WebView inspector. Leave it off in shipped apps:
 	// anyone with the inspector can run script with the page's bridge
 	// access. `vitra dev` turns it on through EnvDevTools.
 	DevTools bool
 }
+
+// Presentation is how the app appears in the OS shell.
+type Presentation = platform.Presentation
+
+// The presentations Options.Presentation accepts.
+const (
+	PresentationRegular   = platform.PresentationRegular
+	PresentationAccessory = platform.PresentationAccessory
+)
 
 // EnvDevTools, when set to "1", enables the WebView inspector regardless of
 // Options.DevTools. `vitra dev` sets it.
@@ -71,6 +87,8 @@ type App struct {
 	tokens map[domain.WindowID]string
 	// actions is the native activation fan-out (see OnAction).
 	actions actionFanout
+	// tray is whether SetTray last showed a tray (under mu).
+	tray bool
 }
 
 // New constructs an App. Host must be a native desktop host (e.g. linux.New()).
@@ -89,7 +107,14 @@ func New(opts Options) (*App, error) {
 			return nil, err
 		}
 	}
-	if opts.Window.ID == "" {
+	switch opts.Presentation {
+	case "":
+		opts.Presentation = PresentationRegular
+	case PresentationRegular, PresentationAccessory:
+	default:
+		return nil, &domain.ErrValidation{Message: fmt.Sprintf("unknown presentation %q", opts.Presentation)}
+	}
+	if opts.Window.ID == "" && !opts.accessory() {
 		opts.Window.ID = "main"
 	}
 	if opts.Window.Title == "" {
@@ -109,6 +134,11 @@ func New(opts Options) (*App, error) {
 	}, nil
 }
 
+func (o Options) accessory() bool { return o.Presentation == PresentationAccessory }
+
+// headless reports an accessory app that opens no window at Run.
+func (o Options) headless() bool { return o.accessory() && o.Window.ID == "" }
+
 // Runtime returns the secure kernel.
 func (a *App) Runtime() *vitra.Runtime { return a.rt }
 
@@ -125,6 +155,9 @@ func (a *App) Run(ctx context.Context) error {
 	}
 	if a.opts.Assets == nil {
 		return errors.New("frontend assets are required")
+	}
+	if a.opts.headless() && !a.trayShown() {
+		return errors.New("an accessory app without a window needs a tray: call SetTray before Run")
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -154,6 +187,12 @@ func (a *App) Run(ctx context.Context) error {
 	}
 	a.host.SetDestroyHandler(a.onNativeDestroy)
 
+	if err := a.applyPresentation(); err != nil {
+		return err
+	}
+	if a.opts.headless() {
+		return a.host.Run()
+	}
 	if err := a.OpenWindow(ctx, a.opts.Window); err != nil {
 		return err
 	}
@@ -227,7 +266,8 @@ func (a *App) OpenWindow(ctx context.Context, opts WindowOptions) error {
 	return nil
 }
 
-// CloseWindow closes a window. Closing the last open window quits the app.
+// CloseWindow closes a window. Closing the last open window quits the app,
+// unless it is an accessory (menu bar) app.
 func (a *App) CloseWindow(ctx context.Context, id domain.WindowID) error {
 	if id == "" {
 		return &domain.ErrValidation{Message: "window id is required"}
@@ -244,7 +284,7 @@ func (a *App) CloseWindow(ctx context.Context, id domain.WindowID) error {
 
 	hostErr := a.host.CloseWindow(ctx, id)
 	rtErr := a.rt.CloseWindow(ctx, id)
-	if remaining == 0 {
+	if remaining == 0 && !a.opts.accessory() {
 		a.host.Quit()
 	}
 	if hostErr != nil {
@@ -269,7 +309,7 @@ func (a *App) onNativeDestroy(id domain.WindowID) {
 		return
 	}
 	_ = a.rt.CloseWindow(context.Background(), id)
-	if remaining == 0 {
+	if remaining == 0 && !a.opts.accessory() {
 		a.host.Quit()
 	}
 }

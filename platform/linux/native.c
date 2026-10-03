@@ -84,6 +84,21 @@ static void on_action(GtkMenuItem *item, gpointer user_data) {
 	goVitraAction((char *)user_data);
 }
 
+void vitra_win_set_skip_taskbar(VitraWin *w, int skip) {
+	if (!w || !w->window) {
+		return;
+	}
+	gtk_window_set_skip_taskbar_hint(GTK_WINDOW(w->window), skip ? TRUE : FALSE);
+	gtk_window_set_skip_pager_hint(GTK_WINDOW(w->window), skip ? TRUE : FALSE);
+}
+
+int vitra_win_skips_taskbar(VitraWin *w) {
+	if (!w || !w->window) {
+		return 0;
+	}
+	return gtk_window_get_skip_taskbar_hint(GTK_WINDOW(w->window)) && gtk_window_get_skip_pager_hint(GTK_WINDOW(w->window));
+}
+
 /* GTK toggles a check item when it is activated. The app owns the checked
  * state (it sets the menu again), so put it back before reporting. */
 static void on_check_action(GtkMenuItem *item, gpointer user_data) {

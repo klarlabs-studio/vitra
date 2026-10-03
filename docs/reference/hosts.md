@@ -43,6 +43,7 @@ These are for your own Go code, not official commands:
 | Interface | Methods | For |
 |---|---|---|
 | `SingleInstance` | `TrySingleInstance`, `StartDeepLinkBridge`, `ForwardToPrimary` | One running instance; handing deep links to it |
+| `PresentationSetter` | `SetPresentation` | `app.Options.Presentation` (menu bar apps) |
 | `URLSchemeRegistrar` | `RegisterURLScheme` | `vitra register-scheme` |
 | `FileAssociationRegistrar` | `RegisterFileAssociations` | `vitra register-files` |
 | `ScriptEvaluator` | `Eval` | Tests and automation. Script run this way has the page's bridge access |

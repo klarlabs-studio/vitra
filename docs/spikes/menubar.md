@@ -59,18 +59,18 @@ Each milestone is one PR and adds its own tests, docs and CHANGELOG entry.
   fake host records the `TraySpec`, and native unit tests cover PNG → pixmap
   conversion.
 
-### M2 — Accessory presentation (`feat(app)`)
+### M2 — Accessory presentation (`feat(app)`) — delivered
 
 - `app.Options.Presentation`: `PresentationRegular` (default) or
   `PresentationAccessory`.
 - New `platform.Presentation` interface with Feature `app.presentation`:
   - darwin: `NSApplicationActivationPolicyAccessory`
-  - Windows: `WS_EX_TOOLWINDOW` on app windows
+  - Windows: app windows owned by a hidden window (no taskbar button, normal caption)
   - Linux: `gtk_window_set_skip_taskbar_hint` and `skip_pager`
 - Accessory mode with no main window: `Options.Window` becomes optional when
   `Presentation == Accessory`. Tray actions keep the app alive, and `Quit`
   comes from a tray item.
-- Packaging: `spec.UIElement bool` → `LSUIElement` in the darwin Info.plist.
+- Packaging: `Spec.Accessory` (`vitra package --accessory`) → `LSUIElement` in the darwin Info.plist.
 - Tests: option validation (an accessory app with no window and no tray is an
   error at `Run`), and that the packaging plist contains the key.
 

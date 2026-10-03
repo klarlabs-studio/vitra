@@ -202,6 +202,14 @@ void vitra_app_init(const char *prgname) {
 	}
 }
 
+void vitra_app_set_accessory(int accessory) {
+	[NSApp setActivationPolicy:accessory ? NSApplicationActivationPolicyAccessory : NSApplicationActivationPolicyRegular];
+}
+
+int vitra_app_is_accessory(void) {
+	return NSApp.activationPolicy == NSApplicationActivationPolicyAccessory ? 1 : 0;
+}
+
 const char *vitra_get_program_name(void) {
 	return g_program_name;
 }

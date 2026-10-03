@@ -69,6 +69,9 @@ type Spec struct {
 	// ARP LegalCopyright / ARPCOPYRIGHT, and Darwin Info.plist NSHumanReadableCopyright.
 	// Empty defaults to DefaultLicense.
 	License string
+	// Accessory marks a menu bar app: Darwin Info.plist LSUIElement, so
+	// macOS shows no Dock icon from launch (match app.PresentationAccessory).
+	Accessory bool
 }
 
 // DefaultMaintainer is used when Spec.Maintainer is empty for .deb packages.

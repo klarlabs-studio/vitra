@@ -1448,6 +1448,41 @@ void vitra_tray_clear(void) {
 	}
 }
 
+/* Windows owned by another window get no taskbar button. g_owner_hwnd is a
+ * hidden window that owns an accessory app's windows. */
+static HWND g_owner_hwnd = NULL;
+
+static HWND taskbar_owner(void) {
+	if (!g_owner_hwnd) {
+		g_owner_hwnd = CreateWindowExA(WS_EX_TOOLWINDOW, "STATIC", "", WS_POPUP, 0, 0, 0, 0,
+			NULL, NULL, GetModuleHandle(NULL), NULL);
+	}
+	return g_owner_hwnd;
+}
+
+void vitra_win_set_skip_taskbar(VitraWin *w, int skip) {
+	if (!w || !w->hwnd) {
+		return;
+	}
+	HWND owner = skip ? taskbar_owner() : NULL;
+	if (GetWindow(w->hwnd, GW_OWNER) == owner) {
+		return;
+	}
+	/* The taskbar reads ownership when a window is shown: re-show it. */
+	BOOL visible = IsWindowVisible(w->hwnd);
+	if (visible) {
+		ShowWindow(w->hwnd, SW_HIDE);
+	}
+	SetWindowLongPtrA(w->hwnd, GWLP_HWNDPARENT, (LONG_PTR)owner);
+	if (visible) {
+		ShowWindow(w->hwnd, SW_SHOWNA);
+	}
+}
+
+int vitra_win_skips_taskbar(VitraWin *w) {
+	return w && w->hwnd && g_owner_hwnd && GetWindow(w->hwnd, GW_OWNER) == g_owner_hwnd;
+}
+
 void vitra_win_set_drag_drop(VitraWin *w, int enabled) {
 	if (!w || !w->hwnd) {
 		return;

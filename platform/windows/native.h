@@ -43,6 +43,11 @@ void vitra_win_focus(VitraWin *w);
 void vitra_win_blur(VitraWin *w);
 
 void vitra_win_clear_menu(VitraWin *w);
+/* vitra_win_set_skip_taskbar keeps the window off the taskbar (accessory
+ * apps): it is owned by a hidden window, which keeps its normal caption. */
+void vitra_win_set_skip_taskbar(VitraWin *w, int skip);
+int vitra_win_skips_taskbar(VitraWin *w);
+
 /* Menu item flags (vitra_win_add_menu_item, vitra_tray_add_menu_item). */
 enum {
 	VITRA_MENU_SEPARATOR = 1,

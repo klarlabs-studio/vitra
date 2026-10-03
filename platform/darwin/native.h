@@ -28,6 +28,10 @@ typedef struct {
 
 void vitra_app_init(const char *prgname);
 const char *vitra_get_program_name(void);
+/* vitra_app_set_accessory switches between a regular app (Dock icon) and an
+ * accessory one (no Dock icon, no app menu). */
+void vitra_app_set_accessory(int accessory);
+int vitra_app_is_accessory(void);
 void vitra_app_run(void);
 void vitra_app_quit(void);
 /* Queue Go job id for goVitraIdle on the UI thread. */

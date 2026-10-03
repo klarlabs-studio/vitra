@@ -51,10 +51,11 @@ func runPackage(args []string) error {
 	sign := false
 	signExecute := false
 	signFollowUps := false
+	accessory := false
 	publish := false
 	publishExecute := false
 	signingIdentity := ""
-	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--keywords list] [--license spdx] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]"
+	usage := "usage: vitra package --out <dir> [--format dir|deb|rpm-dir|rpm|snap-dir|snap|flatpak-dir|flatpak|appdir|appimage|win-dir|wix|nsis-dir|msi|nsis|app-dir|dmg] [--bin path] [--app-id id] [--name name] [--version ver] [--icon path] [--maintainer name] [--description text] [--homepage url] [--categories list] [--keywords list] [--license spdx] [--accessory] [--sign [--sign-execute] [--sign-follow-ups] --signing-identity ref] [--publish [--publish-execute]]"
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--out":
@@ -129,6 +130,8 @@ func runPackage(args []string) error {
 				return fmt.Errorf("--license requires an SPDX id or LicenseRef-*")
 			}
 			license = args[i]
+		case "--accessory":
+			accessory = true
 		case "--sign":
 			sign = true
 		case "--sign-execute":
@@ -210,6 +213,7 @@ func runPackage(args []string) error {
 		Description:        description,
 		Homepage:           homepage,
 		License:            license,
+		Accessory:          accessory,
 		Sign:               sign,
 		SigningIdentityRef: signingIdentity,
 	}

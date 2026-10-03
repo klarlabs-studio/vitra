@@ -24,7 +24,7 @@ vitra package --out dist/ --format deb --app-id com.example.notes --name Notes -
 
 The `*-dir` formats need no extra tools, so you can inspect or customize the project before building it yourself.
 
-Metadata flags: `--bin`, `--app-id`, `--name`, `--version`, `--icon`, `--maintainer`, `--description`, `--homepage`, `--categories`, `--keywords`, `--license` (SPDX).
+Metadata flags: `--bin`, `--app-id`, `--name`, `--version`, `--icon`, `--maintainer`, `--description`, `--homepage`, `--categories`, `--keywords`, `--license` (SPDX), and `--accessory`, which marks a menu bar app (`LSUIElement` in the macOS `Info.plist`, so it starts without a Dock icon; pair it with `app.PresentationAccessory`).
 
 ## Signing
 

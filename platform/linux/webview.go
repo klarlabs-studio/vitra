@@ -50,6 +50,7 @@ type Host struct {
 	onDestroy   func(windowID domain.WindowID)
 	trayMu      sync.Mutex
 	trayBackend trayBackend
+	accessory   bool // windows skip the taskbar and pager (under mu)
 	looping     bool
 	inited      bool
 	programName string   // WM_CLASS / StartupWMClass; empty → filepath.Base(os.Args[0])
@@ -173,6 +174,10 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureMenuBar:          {Feature: platform.FeatureMenuBar, Available: true},
 		platform.FeatureTray:             trayFeature(),
 		platform.FeatureTrayTitle:        trayTitleFeature(),
+		platform.FeaturePresentation: {
+			Feature: platform.FeaturePresentation, Available: true,
+			Detail: "accessory windows skip the taskbar and pager",
+		},
 		platform.FeatureTrayIcon: {
 			Feature: platform.FeatureTrayIcon, Available: true,
 			Detail: "PNG as StatusNotifierItem IconPixmap or GtkStatusIcon pixbuf",
@@ -415,6 +420,9 @@ func (h *Host) Open(spec platform.WindowSpec, uri, preload string) error {
 		defer C.free(unsafe.Pointer(curi))
 		defer C.free(unsafe.Pointer(cjs))
 		ptr := C.vitra_win_new(cid, ctitle, C.int(spec.Width), C.int(spec.Height), curi, cjs)
+		if h.accessory {
+			C.vitra_win_set_skip_taskbar(ptr, 1)
+		}
 		h.windows[spec.ID] = &nativeWindow{ptr: ptr}
 		h.origins[spec.ID] = spec.Origin
 		errCh <- nil
@@ -706,6 +714,44 @@ func (h *Host) ActivateMenuAccel(id domain.WindowID, shortcut string) (bool, err
 	})
 	got := <-ch
 	return got.ok, got.err
+}
+
+// SetPresentation keeps an accessory app's windows out of taskbars and
+// pagers, now and for windows opened later. Linux has no Dock icon to hide.
+func (h *Host) SetPresentation(p platform.Presentation) error {
+	var skip C.int
+	switch p {
+	case platform.PresentationRegular:
+	case platform.PresentationAccessory:
+		skip = 1
+	default:
+		return &domain.ErrValidation{Message: "unknown presentation " + string(p)}
+	}
+	done := make(chan struct{})
+	h.dispatch(func() {
+		h.ensureInit()
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		h.accessory = skip != 0
+		for _, w := range h.windows {
+			C.vitra_win_set_skip_taskbar(w.ptr, skip)
+		}
+		close(done)
+	})
+	<-done
+	return nil
+}
+
+// skipsTaskbar reports whether a window is kept out of taskbars (tests).
+func (h *Host) skipsTaskbar(id domain.WindowID) bool {
+	ch := make(chan bool, 1)
+	h.dispatch(func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		w, ok := h.windows[id]
+		ch <- ok && C.vitra_win_skips_taskbar(w.ptr) != 0
+	})
+	return <-ch
 }
 
 // trayBackend is the tray implementation currently showing the icon.
