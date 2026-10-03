@@ -36,6 +36,7 @@ const (
 	FeatureTrayAnchor          Feature = "tray.anchor"
 	FeatureWindowPanel         Feature = "window.panel"
 	FeaturePresentation        Feature = "app.presentation"
+	FeatureLoginItem           Feature = "app.login_item"
 	FeatureDialogOpen          Feature = "dialog.open"
 	FeatureDialogSave          Feature = "dialog.save"
 	FeatureDialogMessage       Feature = "dialog.message"

@@ -89,6 +89,13 @@ char *vitra_save_dialog(const char *title, const char *default_path, const char 
 char *vitra_open_directory_dialog(const char *title, const char *default_path);
 int vitra_message_dialog(const char *title, const char *message, int confirm);
 int vitra_has_bundle_id(void);
+/* Login items through SMAppService.mainAppService (macOS 13+).
+ * vitra_login_item_status: -1 unavailable, else the SMAppServiceStatus
+ * (0 not registered, 1 enabled, 2 requires approval, 3 not found). */
+int vitra_login_item_status(void);
+/* vitra_login_item_set registers or unregisters the app; returns NULL, or a
+ * malloc'd error message the caller frees. */
+char *vitra_login_item_set(int enabled);
 int vitra_show_notification(const char *title, const char *body);
 
 int vitra_register_hotkey(const char *accelerator, const char *action_id);

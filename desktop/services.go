@@ -39,6 +39,7 @@ const (
 	PermNotificationShow    domain.PermissionName = "notifications.show"
 	PermPathOpen            domain.PermissionName = "path.open"
 	PermAppQuit             domain.PermissionName = "app.quit"
+	PermAppLoginItem        domain.PermissionName = "app.login_item"
 )
 
 // Gateway evaluates desktop permissions for a caller.
@@ -308,6 +309,34 @@ func (s *ShortcutService) Unregister(ctx context.Context, caller domain.Caller, 
 type AppService struct {
 	Gateway Gateway
 	OnQuit  func(ctx context.Context) error
+	// OnLoginItem and OnSetLoginItem read and change whether the app starts
+	// at login; nil fails with ErrUnsupported.
+	OnLoginItem    func(ctx context.Context) (bool, error)
+	OnSetLoginItem func(ctx context.Context, enabled bool) error
+}
+
+// LoginItem authorizes app.login_item then reports whether the app starts
+// at login.
+func (s *AppService) LoginItem(ctx context.Context, caller domain.Caller) (bool, error) {
+	if err := authorize(s.Gateway, caller, PermAppLoginItem); err != nil {
+		return false, err
+	}
+	if s.OnLoginItem == nil {
+		return false, &platform.ErrUnsupported{Feature: platform.FeatureLoginItem, Detail: "no login item adapter bound"}
+	}
+	return s.OnLoginItem(ctx)
+}
+
+// SetLoginItem authorizes app.login_item then makes the app start at login,
+// or stops it.
+func (s *AppService) SetLoginItem(ctx context.Context, caller domain.Caller, enabled bool) error {
+	if err := authorize(s.Gateway, caller, PermAppLoginItem); err != nil {
+		return err
+	}
+	if s.OnSetLoginItem == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureLoginItem, Detail: "no login item adapter bound"}
+	}
+	return s.OnSetLoginItem(ctx, enabled)
 }
 
 // Quit authorizes app.quit then requests application shutdown.

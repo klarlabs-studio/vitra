@@ -76,6 +76,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureTray, Available: false,
 			Detail: "requires native linux host",
 		},
+		platform.FeatureLoginItem: {
+			Feature: platform.FeatureLoginItem, Available: true,
+			Detail: "XDG autostart entry; available without native WebView",
+		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,
 			Detail: "flock-based; available without native WebView",

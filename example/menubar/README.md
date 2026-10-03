@@ -13,7 +13,9 @@ CGO_ENABLED=1 go run -tags vitra_native ./example/menubar -path /Volumes/Data
 - The icon is drawn at run time: a ring with the used share filled in, as a
   macOS template image.
 - A left click shows or hides the panel; the menu (right click) has
-  **Show Details**, **Refresh**, and **Quit**.
+  **Show Details**, **Refresh**, **Launch at Login** (checked while it is
+  on), and **Quit**. On macOS, launch at login needs the packaged app
+  (`vitra package --format app-dir --accessory`).
 - The status refreshes every 30 seconds and the panel follows it live.
 
 The panel's grant names exactly two permissions:

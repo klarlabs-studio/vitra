@@ -189,6 +189,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureTrayIcon, Available: true,
 			Detail: "PNG as StatusNotifierItem IconPixmap or GtkStatusIcon pixbuf",
 		},
+		platform.FeatureLoginItem: {
+			Feature: platform.FeatureLoginItem, Available: true,
+			Detail: "XDG autostart entry; available without native WebView",
+		},
 		platform.FeatureSingleInstance: {Feature: platform.FeatureSingleInstance, Available: true},
 		platform.FeatureGlobalShortcut: h.globalShortcutFeature(),
 		platform.FeatureDeepLink: {

@@ -17,6 +17,7 @@ var (
 	_ platform.MenuBar                  = (*Host)(nil)
 	_ platform.Tray                     = (*Host)(nil)
 	_ platform.PresentationSetter       = (*Host)(nil)
+	_ platform.LoginItems               = (*Host)(nil)
 	_ platform.TrayClickReporter        = (*Host)(nil)
 	_ platform.TrayAnchorer             = (*Host)(nil)
 	_ platform.Panels                   = (*Host)(nil)

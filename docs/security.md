@@ -201,6 +201,9 @@ rather than compared as URL strings.
   the app set, so another process on the session bus can at most "click"
   an item the app put there. Unknown ids are rejected and fire nothing, and
   so are separators and disabled items.
+- **Launch at login is a grant.** `app.setLoginItem` needs the
+  `app.login_item` permission and registers only the running executable (or,
+  on macOS, the app bundle), never a path the page names.
 - **Tray icons come from the app.** `tray.set` names its icon by a path
   inside the app's assets and the host reads it from there, so a page cannot
   make the tray read an arbitrary file. Paths with `..`, `.`, empty

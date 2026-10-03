@@ -57,6 +57,7 @@ var doctorFeatures = []platform.Feature{
 	platform.FeatureTrayAnchor,
 	platform.FeatureWindowPanel,
 	platform.FeaturePresentation,
+	platform.FeatureLoginItem,
 	platform.FeatureSingleInstance,
 	platform.FeatureGlobalShortcut,
 	platform.FeatureDeepLink,
