@@ -13,7 +13,7 @@
 | `vitra.path` | `official.Path()` | `path.open` (path-scoped) | `path.open` | |
 | `vitra.window` | `official.Window()` | `window.create`, `window.close`, `window.chrome` | `window.create`, `window.close`; with `window.chrome`: `window.chrome`, `window.getChrome`, `window.focus`, `window.blur`, `window.hide`, `window.show`, `window.minimize`, `window.maximize`, `window.unmaximize`, `window.fullscreen`, `window.unfullscreen`, `window.setAlwaysOnTop`, `window.restore`, `window.setTitle`, `window.setSize`, `window.setIcon` | |
 | `vitra.menu` | `official.Menu()` | `menu.set` | `menu.set`, `menu.clear` | `menu.action` |
-| `vitra.tray` | `official.Tray()` | `tray.set` | `tray.set`, `tray.clear` | `tray.action` |
+| `vitra.tray` | `official.Tray()` | `tray.set` | `tray.set`, `tray.clear` | `tray.action`, `tray.click` |
 | `vitra.dragdrop` | `official.DragDrop()` | `dragdrop.receive` | `dragdrop.receive` | `dragdrop.drop` |
 | `vitra.shortcut` | `official.Shortcut()` | `shortcut.register` | `shortcut.register`, `shortcut.unregister` | `shortcut.action` |
 | `vitra.app` | `official.App()` | `app.quit` | `app.quit` | |
@@ -49,13 +49,13 @@ The permission constants live in `desktop` (`desktop.PermFSRead`, `desktop.PermC
 | `window.setIcon` | `WindowIconInput` `{id, iconPath}` | `Void` |
 | `window.close`, `window.focus`, `window.blur`, `window.hide`, `window.show`, `window.minimize`, `window.maximize`, `window.unmaximize`, `window.fullscreen`, `window.unfullscreen`, `window.restore` | `WindowRef` `{id}` | `Void` |
 | `menu.set` | `MenuInput` `{items: [MenuItem]}`; `MenuItem` is `{id, label, menu?, shortcut?, disabled?, checked?}` or a separator `{separator: true, menu?}` | `Void` |
-| `tray.set` | `TrayInput` `{tooltip?, title?, icon?, template?, items?}` | `Void` |
+| `tray.set` | `TrayInput` `{tooltip?, title?, icon?, template?, clickActivates?, items?}` | `Void` |
 | `menu.clear`, `tray.clear`, `app.quit` | none | `Void` |
 | `dragdrop.receive` | `DragDropInput` `{id?, enabled?}` (window `"main"`, enabled `true` by default) | `Void` |
 | `shortcut.register` | `ShortcutInput` `{accelerator, action}` | `Void` |
 | `shortcut.unregister` | `ShortcutRef` `{accelerator}` | `Void` |
 
-The tray `icon` is the path of a PNG (at most 256 KiB) inside the app's assets, as the page would request it (`"/icons/tray.png"` or `"icons/tray.png"`). Paths with `..`, `.`, empty segments, backslashes or a drive letter are rejected, so the page can never point the tray at a file outside the app. `title` is text next to the icon where the platform has it (the `tray.title` feature); elsewhere it is shown in the tooltip. A menu separator takes no `id`, `label`, `shortcut`, `disabled` or `checked`; every other item needs `id` and `label`. Disabled items never fire, and a checked item stays checked until the menu is set again.
+The tray `icon` is the path of a PNG (at most 256 KiB) inside the app's assets, as the page would request it (`"/icons/tray.png"` or `"icons/tray.png"`). Paths with `..`, `.`, empty segments, backslashes or a drive letter are rejected, so the page can never point the tray at a file outside the app. `title` is text next to the icon where the platform has it (the `tray.title` feature); elsewhere it is shown in the tooltip. A menu separator takes no `id`, `label`, `shortcut`, `disabled` or `checked`; every other item needs `id` and `label`. Disabled items never fire, and a checked item stays checked until the menu is set again. With `clickActivates`, a left click on the icon emits `tray.click` (`{"anchor": {x, y, width, height}}`, or `{"anchor": null}` when the host cannot tell where the icon is) and the menu opens on a right click; `tray.click` reaches the primary window only.
 
 Window sizes must be whole numbers no larger than 2^53 (`window.setSize`: positive; `window.create` and `window.chrome`: `0` or absent leaves the size alone). Anything else is rejected, never rounded or ignored.
 

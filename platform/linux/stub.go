@@ -242,6 +242,15 @@ func (h *Host) SetPresentation(platform.Presentation) error {
 	return h.err(platform.FeaturePresentation)
 }
 
+// SetTrayClickHandler does nothing without the native host.
+func (h *Host) SetTrayClickHandler(func(platform.TrayClick)) {}
+
+// TrayAnchor returns ErrUnsupported (FeatureTrayAnchor): it needs the
+// native host.
+func (h *Host) TrayAnchor() (platform.Rect, error) {
+	return platform.Rect{}, h.err(platform.FeatureTrayAnchor)
+}
+
 // ClearTray does nothing without the native host.
 func (h *Host) ClearTray() {}
 

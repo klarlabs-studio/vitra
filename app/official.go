@@ -31,7 +31,8 @@ import (
 //
 // It also forwards native activations to the page: menu, tray, and shortcut
 // activations are emitted as menu.action, tray.action, and shortcut.action
-// ({"id": ...}), and file drops as dragdrop.drop ({"window", "paths"}).
+// ({"id": ...}), primary tray clicks as tray.click ({"anchor"}, to the
+// primary window only), and file drops as dragdrop.drop ({"window", "paths"}).
 // Windows receive them once subscribed (Runtime.SubscribeEvent); Go code
 // sees them through OnAction. This replaces any action or drop handler set
 // on the host before.
@@ -58,7 +59,7 @@ func (a *App) UseOfficialPlugins(ctx context.Context, plugins ...plugin.Plugin) 
 			return fmt.Errorf("bind %s: %w", p.Manifest().ID, err)
 		}
 	}
-	a.actions.emitEvents(a)
+	a.emitNativeEvents()
 	if dd, ok := a.host.(platform.DragDrop); ok {
 		dd.SetDragDropHandler(func(window domain.WindowID, paths []string) {
 			_ = a.Emit(context.Background(), "dragdrop.drop", map[string]any{"window": string(window), "paths": paths})
@@ -388,14 +389,17 @@ func (a *App) bindTray() error {
 		trays.OnSet = func(_ context.Context, spec desktop.TraySpec) error {
 			return h.SetTray(platform.TraySpec{
 				Tooltip: spec.Tooltip, Title: spec.Title, Icon: spec.Icon, Template: spec.Template,
-				Items: nativeItems(spec.Items, ""),
+				Items: nativeItems(spec.Items, ""), ClickActivates: spec.ClickActivates,
 			})
 		}
 		trays.OnClear = func(context.Context) error { h.ClearTray(); return nil }
 	}
 	b := a.binder()
 	onVoid(b, "tray.set", func(ctx context.Context, caller domain.Caller, in official.TrayInput) error {
-		spec := desktop.TraySpec{Tooltip: in.Tooltip, Title: in.Title, Template: in.Template, Items: menuItems(in.Items)}
+		spec := desktop.TraySpec{
+			Tooltip: in.Tooltip, Title: in.Title, Template: in.Template, Items: menuItems(in.Items),
+			ClickActivates: in.ClickActivates,
+		}
 		if in.Icon != "" {
 			// The pipeline has authorized tray.set before this runs, so a
 			// window without the grant cannot probe which assets exist.

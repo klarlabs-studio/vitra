@@ -10,6 +10,7 @@ JSON lines. Commands are read from stdin, one per line:
   click LABEL     send dbusmenu Event(id, "clicked") for the item labelled LABEL
   clickid ID      send Event(ID, "clicked") for a raw id
   activate        call Activate(0, 0) on the item (left click)
+  activateat X Y  call Activate(X, Y) on the item
   props           re-read the item's properties
 
 Exits when stdin closes.
@@ -163,6 +164,10 @@ def on_stdin(fd, _cond):
             menu_event(state["layout"][arg])
         elif cmd == "clickid":
             menu_event(int(arg))
+        elif cmd == "activateat":
+            x, y = (int(v) for v in arg.split())
+            call(state["item"], ITEM_PATH, ITEM_IFACE, "Activate", GLib.Variant("(ii)", (x, y)), None)
+            log(called="Activate", x=x, y=y)
         elif cmd == "activate":
             call(state["item"], ITEM_PATH, ITEM_IFACE, "Activate", GLib.Variant("(ii)", (0, 0)), None)
             log(called="Activate")

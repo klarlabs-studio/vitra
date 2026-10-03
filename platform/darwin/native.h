@@ -52,7 +52,14 @@ void vitra_win_clear_menu(VitraWin *w);
 void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut, int flags);
 int vitra_win_activate_accel(VitraWin *w, const char *shortcut);
 
-void vitra_tray_set(const char *tooltip, const char *title, const void *icon, int icon_len, int template_icon);
+/* click_activates: a left click calls goVitraTrayClick and the menu opens on
+ * a right (or control-) click, instead of on any click. */
+void vitra_tray_set(const char *tooltip, const char *title, const void *icon, int icon_len, int template_icon, int click_activates);
+/* vitra_tray_anchor stores the status item's rectangle in top-left screen
+ * points; returns 0 when no item is shown or placed yet. */
+int vitra_tray_anchor(int *x, int *y, int *w, int *h);
+/* vitra_tray_click runs a left click on the status item (tests). */
+void vitra_tray_click(void);
 void vitra_tray_clear_menu(void);
 void vitra_tray_add_menu_item(const char *item_id, const char *item_label, int flags);
 /* vitra_tray_state describes the status item for tests: "title\nimage\ntemplate\n"

@@ -131,6 +131,19 @@ type Tray interface {
 	ClearTray()
 }
 
+// TrayClickReporter reports primary clicks on a tray whose TraySpec sets
+// ClickActivates (FeatureTray).
+type TrayClickReporter interface {
+	SetTrayClickHandler(fn func(TrayClick))
+}
+
+// TrayAnchorer tells where the tray icon is on screen (FeatureTrayAnchor),
+// for placing a panel under it. It fails with ErrUnsupported when the host
+// cannot tell, as on Wayland panels that report no position.
+type TrayAnchorer interface {
+	TrayAnchor() (Rect, error)
+}
+
 // GlobalShortcuts registers system-wide hotkeys (FeatureGlobalShortcut).
 // Activations are reported through ActionReporter with the registered
 // action ID.

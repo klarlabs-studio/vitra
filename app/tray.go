@@ -123,63 +123,137 @@ func checkMenuItems(items []platform.MenuItem) error {
 }
 
 // OnAction registers fn for native activations (menu items, tray items and
-// global shortcuts), by action ID. Handlers run on a host thread: hand long
-// work to a goroutine.
+// global shortcuts), by action ID. Handlers run off the UI thread.
 func (a *App) OnAction(fn func(id string)) {
-	a.actions.add(a, fn)
+	a.actions.onEach(fn)
+	a.installActions()
 }
 
-// actionFanout installs the single host action handler and delivers each
-// activation to the Go handlers and, once enabled, as page events.
-type actionFanout struct {
+// OnTrayClick registers fn for primary clicks on a tray whose spec sets
+// ClickActivates. Handlers run off the UI thread.
+func (a *App) OnTrayClick(fn func(platform.TrayClick)) {
+	a.trayClicks.onEach(fn)
+	a.installTrayClicks()
+}
+
+// TrayAnchor returns the tray icon's screen rectangle, for placing a window
+// under it. It fails with *platform.ErrUnsupported when the host cannot
+// tell.
+func (a *App) TrayAnchor() (platform.Rect, error) {
+	if err := platform.Require(a.host, platform.FeatureTrayAnchor); err != nil {
+		return platform.Rect{}, err
+	}
+	h, ok := a.host.(platform.TrayAnchorer)
+	if !ok {
+		return platform.Rect{}, &platform.ErrUnsupported{Feature: platform.FeatureTrayAnchor, OS: a.host.OS(), Detail: "host cannot locate the tray icon"}
+	}
+	return h.TrayAnchor()
+}
+
+func (a *App) installActions() {
+	a.actions.install(func(deliver func(string)) {
+		if ar, ok := a.host.(platform.ActionReporter); ok {
+			ar.SetActionHandler(deliver)
+		}
+	})
+}
+
+func (a *App) installTrayClicks() {
+	a.trayClicks.install(func(deliver func(platform.TrayClick)) {
+		if tr, ok := a.host.(platform.TrayClickReporter); ok {
+			tr.SetTrayClickHandler(deliver)
+		}
+	})
+}
+
+// emitNativeEvents forwards native activations to the page: menu, tray and
+// shortcut activations as menu.action, tray.action and shortcut.action, and
+// tray clicks as tray.click to the windows that may react to them.
+func (a *App) emitNativeEvents() {
+	a.actions.setEmit(func(id string) {
+		payload := map[string]any{"id": id}
+		for _, ev := range []domain.EventName{"menu.action", "tray.action", "shortcut.action"} {
+			_ = a.Emit(context.Background(), ev, payload)
+		}
+	})
+	a.installActions()
+	a.trayClicks.setEmit(func(c platform.TrayClick) {
+		_ = a.emitTo(context.Background(), "tray.click", trayClickPayload(c), a.trayClickWindows())
+	})
+	a.installTrayClicks()
+}
+
+// trayClickEvent is the tray.click payload. Anchor is null when the host
+// could not tell where the icon is.
+type trayClickEvent struct {
+	Anchor *trayRect `json:"anchor"`
+}
+
+type trayRect struct {
+	X      int `json:"x"`
+	Y      int `json:"y"`
+	Width  int `json:"width"`
+	Height int `json:"height"`
+}
+
+func trayClickPayload(c platform.TrayClick) trayClickEvent {
+	if !c.HasAnchor {
+		return trayClickEvent{}
+	}
+	return trayClickEvent{Anchor: &trayRect{X: c.Anchor.X, Y: c.Anchor.Y, Width: c.Anchor.Width, Height: c.Anchor.Height}}
+}
+
+// trayClickWindows are the windows tray.click reaches: the primary window.
+// Other windows have no business reacting to the tray.
+func (a *App) trayClickWindows() map[domain.WindowID]bool {
+	allowed := map[domain.WindowID]bool{}
+	if a.opts.Window.ID != "" {
+		allowed[a.opts.Window.ID] = true
+	}
+	return allowed
+}
+
+// fanout delivers each native activation of type T to the Go handlers and,
+// once set, to the page through emit. The host handler is installed once.
+type fanout[T any] struct {
 	mu        sync.Mutex
 	installed bool
-	events    bool
-	handlers  []func(string)
+	emit      func(T)
+	handlers  []func(T)
 }
 
-func (f *actionFanout) add(a *App, fn func(string)) {
+func (f *fanout[T]) onEach(fn func(T)) {
 	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.handlers = append(f.handlers, fn)
-	f.mu.Unlock()
-	f.install(a)
 }
 
-// emitEvents forwards activations to the page as menu.action, tray.action
-// and shortcut.action events.
-func (f *actionFanout) emitEvents(a *App) {
+func (f *fanout[T]) setEmit(fn func(T)) {
 	f.mu.Lock()
-	f.events = true
-	f.mu.Unlock()
-	f.install(a)
+	defer f.mu.Unlock()
+	f.emit = fn
 }
 
-func (f *actionFanout) install(a *App) {
-	ar, ok := a.host.(platform.ActionReporter)
-	if !ok {
-		return
-	}
+// install calls hook with the delivery function the first time only.
+func (f *fanout[T]) install(hook func(deliver func(T))) {
 	f.mu.Lock()
 	done := f.installed
 	f.installed = true
 	f.mu.Unlock()
 	if !done {
-		ar.SetActionHandler(func(id string) { f.deliver(a, id) })
+		hook(f.deliver)
 	}
 }
 
-func (f *actionFanout) deliver(a *App, id string) {
+func (f *fanout[T]) deliver(v T) {
 	f.mu.Lock()
-	events := f.events
-	handlers := append([]func(string){}, f.handlers...)
+	emit := f.emit
+	handlers := append([]func(T){}, f.handlers...)
 	f.mu.Unlock()
-	if events {
-		payload := map[string]any{"id": id}
-		for _, ev := range []domain.EventName{"menu.action", "tray.action", "shortcut.action"} {
-			_ = a.Emit(context.Background(), ev, payload)
-		}
+	if emit != nil {
+		emit(v)
 	}
 	for _, fn := range handlers {
-		fn(id)
+		fn(v)
 	}
 }

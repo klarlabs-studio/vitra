@@ -188,3 +188,83 @@ func TestAppOnAction(t *testing.T) {
 		t.Fatalf("action %q", id)
 	}
 }
+
+// clickHost is a tray host that reports tray clicks and knows where its icon
+// is.
+type clickHost struct {
+	*trayHost
+	click func(platform.TrayClick)
+}
+
+func (h *clickHost) Features() platform.FeatureSet {
+	fs := h.trayHost.Features()
+	fs[platform.FeatureTrayAnchor] = platform.Support{Feature: platform.FeatureTrayAnchor, Available: true}
+	return fs
+}
+
+func (h *clickHost) SetTrayClickHandler(fn func(platform.TrayClick)) { h.click = fn }
+
+func (h *clickHost) TrayAnchor() (platform.Rect, error) {
+	return platform.Rect{X: 900, Y: 0, Width: 24, Height: 22}, nil
+}
+
+// A primary tray click reaches Go handlers, and the page as tray.click on the
+// primary window only: other windows cannot react to the tray.
+func TestTrayClick_DeliveredToGoAndPrimaryWindow(t *testing.T) {
+	host := &clickHost{trayHost: &trayHost{pluginHost: newPluginHost()}}
+	rt, a := runPluginAppOn(t, host, host.ran)
+	grantAll(t, rt)
+	got := make(chan platform.TrayClick, 1)
+	a.OnTrayClick(func(c platform.TrayClick) { got <- c })
+	if err := a.OpenWindow(context.Background(), app.WindowOptions{ID: "aux"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range []domain.WindowID{"main", "aux"} {
+		if _, err := rt.SubscribeEvent(domain.SubscriptionID("click-"+string(w)), "tray.click", w); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := call(t, rt, "tray.set", map[string]any{"title": "x", "clickActivates": true}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if !host.lastTray(t).ClickActivates {
+		t.Fatal("clickActivates did not reach the host")
+	}
+	if host.click == nil {
+		t.Fatal("tray click handler not installed")
+	}
+	anchor := platform.Rect{X: 900, Y: 0, Width: 24, Height: 22}
+	host.click(platform.TrayClick{Anchor: anchor, HasAnchor: true})
+	if c := <-got; c.Anchor != anchor {
+		t.Fatalf("Go handler got %+v", c)
+	}
+	var mainGot, auxGot bool
+	for _, m := range host.posted {
+		if !bytes.Contains(m.Message, []byte(`"tray.click"`)) {
+			continue
+		}
+		switch m.Window {
+		case "main":
+			mainGot = true
+			if !bytes.Contains(m.Message, []byte(`"anchor":{"x":900,"y":0,"width":24,"height":22}`)) {
+				t.Errorf("tray.click payload %s", m.Message)
+			}
+		case "aux":
+			auxGot = true
+		}
+	}
+	if !mainGot || auxGot {
+		t.Fatalf("tray.click delivered to main=%v aux=%v", mainGot, auxGot)
+	}
+	if r, err := a.TrayAnchor(); err != nil || r != anchor {
+		t.Fatalf("TrayAnchor = %+v, %v", r, err)
+	}
+}
+
+func TestTrayAnchor_UnsupportedHost(t *testing.T) {
+	_, _, a := runTrayApp(t, fstest.MapFS{})
+	var unsupp *platform.ErrUnsupported
+	if _, err := a.TrayAnchor(); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureTrayAnchor {
+		t.Fatalf("TrayAnchor on a host without it: %v", err)
+	}
+}

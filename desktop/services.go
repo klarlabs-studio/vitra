@@ -96,13 +96,15 @@ func (s *MenuService) ClearMenu(ctx context.Context, caller domain.Caller) error
 
 // TraySpec is the tray state TrayService applies: the tooltip, the status
 // shown next to the icon (Title), a PNG icon (nil keeps the default; Template
-// marks a macOS template image) and the tray menu.
+// marks a macOS template image), the tray menu, and whether a primary click
+// is reported as a click (ClickActivates) instead of opening the menu.
 type TraySpec struct {
-	Tooltip  string
-	Title    string
-	Icon     []byte
-	Template bool
-	Items    []MenuItem
+	Tooltip        string
+	Title          string
+	Icon           []byte
+	Template       bool
+	Items          []MenuItem
+	ClickActivates bool
 }
 
 // TrayService manages tray icons/menus.

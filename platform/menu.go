@@ -31,6 +31,27 @@ type TraySpec struct {
 	Template bool
 	// Items is the tray menu.
 	Items []MenuItem
+	// ClickActivates makes a primary (left) click on the icon a TrayClick,
+	// reported through TrayClickReporter, and opens the menu on a secondary
+	// (right) click instead. Without it a click opens the menu on macOS and
+	// reports the "tray.activate" action on Linux and Windows.
+	ClickActivates bool
+}
+
+// Rect is a screen rectangle in the host's window coordinates: origin at the
+// top-left of the primary display, in the units the host positions windows
+// in. Pass it back to the same host; it is not portable between hosts.
+type Rect struct {
+	X, Y, Width, Height int
+}
+
+// TrayClick is a primary click on the tray icon (TraySpec.ClickActivates).
+type TrayClick struct {
+	// Anchor is the icon's rectangle when the host knows it. Some Linux
+	// panels report only the click position (a zero-size Anchor) or nothing.
+	Anchor Rect
+	// HasAnchor is false when the host could not tell where the icon is.
+	HasAnchor bool
 }
 
 // TooltipWithTitle is the tooltip of a tray that cannot show text next to

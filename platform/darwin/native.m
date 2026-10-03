@@ -23,6 +23,7 @@ extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
 extern void goVitraAction(char *);
 extern void goVitraDrop(char *, char *);
+extern void goVitraTrayClick(int, int, int, int, int);
 
 @interface VitraWinDelegate : NSObject <WKScriptMessageHandler, WKNavigationDelegate, NSWindowDelegate> {
 	char *windowID;
@@ -32,9 +33,26 @@ extern void goVitraDrop(char *, char *);
 
 @interface VitraMenuTarget : NSObject
 - (void)onAction:(id)sender;
+- (void)onTrayClick:(id)sender;
 @end
 
+static void vitra_tray_show_menu(void);
+
 @implementation VitraMenuTarget
+- (void)onTrayClick:(id)sender {
+	(void)sender;
+	NSEvent *ev = NSApp.currentEvent;
+	BOOL secondary = ev && (ev.type == NSEventTypeRightMouseUp || ev.type == NSEventTypeRightMouseDown ||
+				(ev.modifierFlags & NSEventModifierFlagControl));
+	if (secondary) {
+		vitra_tray_show_menu();
+		return;
+	}
+	int x = 0, y = 0, w = 0, h = 0;
+	int has = vitra_tray_anchor(&x, &y, &w, &h);
+	goVitraTrayClick(x, y, w, h, has);
+}
+
 - (void)onAction:(id)sender {
 	NSMenuItem *item = (NSMenuItem *)sender;
 	NSString *actionID = item.representedObject;
@@ -636,6 +654,10 @@ int vitra_win_activate_accel(VitraWin *w, const char *shortcut) {
 
 static NSStatusItem *g_tray = nil;
 static VitraMenuTarget *g_tray_target = nil;
+/* g_tray_menu is the tray menu. It is the status item's menu (opened on any
+ * click) unless g_tray_click_activates, when a right click opens it. */
+static NSMenu *g_tray_menu = nil;
+static int g_tray_click_activates = 0;
 
 /* Menu bar icons are 18pt tall; wider images keep their aspect ratio. */
 static const CGFloat kVitraTrayIconHeight = 18.0;
@@ -655,7 +677,17 @@ static NSImage *tray_image(const void *icon, int icon_len, int template_icon) {
 	return img;
 }
 
-void vitra_tray_set(const char *tooltip, const char *title, const void *icon, int icon_len, int template_icon) {
+static void vitra_tray_show_menu(void) {
+	if (!g_tray || !g_tray_menu) {
+		return;
+	}
+	/* Attach the menu for one click: performClick tracks it modally. */
+	g_tray.menu = g_tray_menu;
+	[g_tray.button performClick:nil];
+	g_tray.menu = nil;
+}
+
+void vitra_tray_set(const char *tooltip, const char *title, const void *icon, int icon_len, int template_icon, int click_activates) {
 	if (!g_tray_target) {
 		g_tray_target = [[VitraMenuTarget alloc] init];
 	}
@@ -672,13 +704,59 @@ void vitra_tray_set(const char *tooltip, const char *title, const void *icon, in
 	g_tray.button.imagePosition = text.length > 0 ? NSImageLeading : NSImageOnly;
 	g_tray.button.title = text;
 	g_tray.button.toolTip = tooltip ? [NSString stringWithUTF8String:tooltip] : @"";
+	g_tray_click_activates = click_activates;
+	if (click_activates) {
+		g_tray.menu = nil;
+		g_tray.button.target = g_tray_target;
+		g_tray.button.action = @selector(onTrayClick:);
+		[g_tray.button sendActionOn:NSEventMaskLeftMouseUp | NSEventMaskRightMouseUp];
+	} else {
+		g_tray.button.target = nil;
+		g_tray.button.action = NULL;
+		g_tray.menu = g_tray_menu;
+	}
 	g_tray.visible = YES;
+}
+
+int vitra_tray_anchor(int *x, int *y, int *w, int *h) {
+	NSWindow *win = g_tray ? g_tray.button.window : nil;
+	NSArray<NSScreen *> *screens = [NSScreen screens];
+	if (!win || screens.count == 0) {
+		return 0;
+	}
+	NSRect r = win.frame;
+	/* Until the menu bar places it, the item sits off screen. */
+	int placed = 0;
+	for (NSScreen *screen in screens) {
+		if (NSWidth(r) > 0 && NSHeight(r) > 0 && NSContainsRect(screen.frame, r)) {
+			placed = 1;
+			break;
+		}
+	}
+	if (!placed) {
+		return 0;
+	}
+	/* Cocoa screens grow upward from the primary screen's bottom-left. */
+	CGFloat top = NSMaxY(screens[0].frame);
+	*x = (int)NSMinX(r);
+	*y = (int)(top - NSMaxY(r));
+	*w = (int)NSWidth(r);
+	*h = (int)NSHeight(r);
+	return 1;
+}
+
+void vitra_tray_click(void) {
+	if (g_tray && g_tray_click_activates) {
+		[g_tray_target onTrayClick:g_tray.button];
+	}
 }
 
 void vitra_tray_clear_menu(void) {
 	if (g_tray) {
 		g_tray.menu = nil;
 	}
+	[g_tray_menu release];
+	g_tray_menu = nil;
 }
 
 void vitra_tray_add_menu_item(const char *item_id, const char *item_label, int flags) {
@@ -687,21 +765,20 @@ void vitra_tray_add_menu_item(const char *item_id, const char *item_label, int f
 		return;
 	}
 	if (!g_tray) {
-		vitra_tray_set("", "", NULL, 0, 0);
+		vitra_tray_set("", "", NULL, 0, 0, 0);
 	}
 	if (!g_tray_target) {
 		g_tray_target = [[VitraMenuTarget alloc] init];
 	}
-	NSMenu *menu = g_tray.menu;
-	if (!menu) {
-		menu = [[NSMenu alloc] initWithTitle:@"Tray"];
-		menu.autoenablesItems = NO;
-		g_tray.menu = menu;
-		[menu release];
-		menu = g_tray.menu;
+	if (!g_tray_menu) {
+		g_tray_menu = [[NSMenu alloc] initWithTitle:@"Tray"];
+		g_tray_menu.autoenablesItems = NO;
+	}
+	if (!g_tray_click_activates) {
+		g_tray.menu = g_tray_menu;
 	}
 	NSMenuItem *item = new_menu_item(g_tray_target, item_id, item_label, @"", flags);
-	[menu addItem:item];
+	[g_tray_menu addItem:item];
 	[item release];
 }
 
@@ -712,7 +789,7 @@ char *vitra_tray_state(void) {
 	NSImage *img = g_tray.button.image;
 	NSMutableString *out = [NSMutableString stringWithFormat:@"%@\n%d\n%d\n",
 		g_tray.button.title ?: @"", img != nil, img != nil && img.template];
-	for (NSMenuItem *item in g_tray.menu.itemArray) {
+	for (NSMenuItem *item in g_tray_menu.itemArray) {
 		if (item.separatorItem) {
 			[out appendString:@"-\n"];
 			continue;

@@ -20,7 +20,7 @@ func (trayPlugin) Manifest() plugin.Manifest {
 		ID:          TrayID,
 		Name:        "Tray",
 		Version:     plugin.SemVer{Major: 1},
-		Description: "Set or clear the system tray icon/menu and receive tray actions",
+		Description: "Set or clear the system tray icon/menu and receive tray actions and clicks",
 		Permissions: []domain.PermissionName{"tray.set"},
 		MinKernel:   plugin.SemVer{Major: 0, Minor: 3},
 	}
@@ -39,6 +39,6 @@ func (trayPlugin) Contribute() (plugin.Contribution, error) {
 	clear.WithPlugin(TrayID)
 	return plugin.Contribution{
 		Commands: []*domain.CommandDefinition{set, clear},
-		Events:   []domain.EventName{"tray.action"},
+		Events:   []domain.EventName{"tray.action", "tray.click"},
 	}, nil
 }

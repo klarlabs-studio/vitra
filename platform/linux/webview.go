@@ -46,6 +46,7 @@ type Host struct {
 	onMessage   func(domain.WindowID, string, []byte) []byte
 	onNav       func(domain.WindowID, string) bool
 	onAction    func(id string)
+	onTrayClick func(platform.TrayClick)
 	onDrop      func(windowID domain.WindowID, paths []string)
 	onDestroy   func(windowID domain.WindowID)
 	trayMu      sync.Mutex
@@ -177,6 +178,11 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeaturePresentation: {
 			Feature: platform.FeaturePresentation, Available: true,
 			Detail: "accessory windows skip the taskbar and pager",
+		},
+		platform.FeatureTrayAnchor: {
+			Feature: platform.FeatureTrayAnchor, Available: true,
+			Detail: "GtkStatusIcon geometry, or the click position a StatusNotifierItem panel reports " +
+				"(some Wayland panels report none)",
 		},
 		platform.FeatureTrayIcon: {
 			Feature: platform.FeatureTrayIcon, Available: true,
@@ -846,6 +852,71 @@ func argb32(img *image.NRGBA) []byte {
 	return out
 }
 
+// cflag is a C boolean.
+func cflag(b bool) C.int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// SetTrayClickHandler registers fn for left clicks on a tray whose spec
+// sets ClickActivates.
+func (h *Host) SetTrayClickHandler(fn func(platform.TrayClick)) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.onTrayClick = fn
+}
+
+// TrayAnchor returns where the tray icon is: the GtkStatusIcon's rectangle,
+// or the position of the last click a StatusNotifierItem panel reported (a
+// zero-size rectangle). Panels that report no position, as some Wayland
+// ones, give ErrUnsupported.
+func (h *Host) TrayAnchor() (platform.Rect, error) {
+	h.trayMu.Lock()
+	backend := h.trayBackend
+	h.trayMu.Unlock()
+	var x, y, w, hgt C.int
+	ok := false
+	switch backend {
+	case traySNI:
+		ok = C.vitra_sni_anchor(&x, &y) != 0
+	case trayGTK:
+		done := make(chan struct{})
+		h.dispatch(func() {
+			ok = C.vitra_tray_anchor(&x, &y, &w, &hgt) != 0
+			close(done)
+		})
+		<-done
+	}
+	if !ok {
+		return platform.Rect{}, &platform.ErrUnsupported{Feature: platform.FeatureTrayAnchor, OS: platform.OSLinux,
+			Detail: "the tray panel has not reported where the icon is"}
+	}
+	return platform.Rect{X: int(x), Y: int(y), Width: int(w), Height: int(hgt)}, nil
+}
+
+//export goVitraTrayClick
+func goVitraTrayClick(x, y, w, hgt, has C.int) {
+	activeMu.Lock()
+	h := active
+	activeMu.Unlock()
+	if h == nil {
+		return
+	}
+	h.mu.Lock()
+	fn := h.onTrayClick
+	h.mu.Unlock()
+	if fn == nil {
+		return
+	}
+	click := platform.TrayClick{HasAnchor: has != 0}
+	if click.HasAnchor {
+		click.Anchor = platform.Rect{X: int(x), Y: int(y), Width: int(w), Height: int(hgt)}
+	}
+	go fn(click)
+}
+
 // menuFlags packs a menu item's separator, disabled and checked states.
 func menuFlags(it platform.MenuItem) C.int {
 	var f C.int
@@ -896,7 +967,7 @@ func setTraySNI(spec platform.TraySpec, icon *image.NRGBA) bool {
 		defer C.free(argb)
 		pix, w, hgt = (*C.uchar)(argb), C.int(icon.Rect.Dx()), C.int(icon.Rect.Dy())
 	}
-	return C.vitra_sni_set(ct, ctitle, pix, w, hgt, idp, lp, fp, C.int(n)) != 0
+	return C.vitra_sni_set(ct, ctitle, pix, w, hgt, idp, lp, fp, C.int(n), cflag(spec.ClickActivates)) != 0
 }
 
 func (h *Host) setTrayGTK(spec platform.TraySpec, icon *image.NRGBA) error {
@@ -914,7 +985,7 @@ func (h *Host) setTrayGTK(spec platform.TraySpec, icon *image.NRGBA) error {
 			defer C.free(rgba)
 			pix, w, hgt = (*C.uchar)(rgba), C.int(icon.Rect.Dx()), C.int(icon.Rect.Dy())
 		}
-		C.vitra_tray_set(ct, ctitle, pix, w, hgt)
+		C.vitra_tray_set(ct, ctitle, pix, w, hgt, cflag(spec.ClickActivates))
 		C.vitra_tray_clear_menu()
 		for _, it := range spec.Items {
 			cid := C.CString(it.ID)

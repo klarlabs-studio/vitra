@@ -66,6 +66,7 @@ export interface TrayInput {
   title?: string;
   icon?: string;
   template?: boolean;
+  clickActivates?: boolean;
   items?: MenuItem[] | null;
 }
 
@@ -275,6 +276,8 @@ export interface VitraEvents {
   onShortcutAction(handler: VitraEventHandler): () => void;
   /** Subscribe to `tray.action` via vitra.on; returns an unsubscribe function. */
   onTrayAction(handler: VitraEventHandler): () => void;
+  /** Subscribe to `tray.click` via vitra.on; returns an unsubscribe function. */
+  onTrayClick(handler: VitraEventHandler): () => void;
 }
 
 export function createEvents(on: VitraSubscriber): VitraEvents {
@@ -285,5 +288,6 @@ export function createEvents(on: VitraSubscriber): VitraEvents {
     onMenuAction: (handler) => on("menu.action", handler),
     onShortcutAction: (handler) => on("shortcut.action", handler),
     onTrayAction: (handler) => on("tray.action", handler),
+    onTrayClick: (handler) => on("tray.click", handler),
   };
 }

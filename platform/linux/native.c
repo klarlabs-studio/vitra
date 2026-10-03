@@ -20,6 +20,7 @@ extern void goVitraMessage(char *, char *, char *);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
 extern void goVitraAction(char *);
+extern void goVitraTrayClick(int, int, int, int, int);
 extern void goVitraDrop(char *, char *);
 
 static GtkStatusIcon *g_tray = NULL;
@@ -684,10 +685,30 @@ int vitra_show_notification(const char *title, const char *body) {
  * without warning every build about it. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+static int g_tray_click_activates = 0;
+
+int vitra_tray_anchor(int *x, int *y, int *w, int *h) {
+	GdkRectangle area;
+	if (!g_tray || !gtk_status_icon_get_visible(g_tray) || !gtk_status_icon_get_geometry(g_tray, NULL, &area, NULL)) {
+		return 0;
+	}
+	*x = area.x;
+	*y = area.y;
+	*w = area.width;
+	*h = area.height;
+	return 1;
+}
+
 static void on_tray_activate(GtkStatusIcon *icon, gpointer user_data) {
 	(void)icon;
 	(void)user_data;
-	goVitraAction("tray.activate");
+	if (!g_tray_click_activates) {
+		goVitraAction("tray.activate");
+		return;
+	}
+	int x = 0, y = 0, w = 0, h = 0;
+	int has = vitra_tray_anchor(&x, &y, &w, &h);
+	goVitraTrayClick(x, y, w, h, has);
 }
 
 static void on_tray_popup(GtkStatusIcon *icon, guint button, guint32 activate_time, gpointer user_data) {
@@ -702,7 +723,8 @@ static void on_tray_popup(GtkStatusIcon *icon, guint button, guint32 activate_ti
 /* vitra_tray_set shows the GtkStatusIcon. rgba is width x height
  * non-premultiplied RGBA pixels, or NULL for the default icon. The status
  * icon has no text: title is its accessible title only. */
-void vitra_tray_set(const char *tooltip, const char *title, const unsigned char *rgba, int width, int height) {
+void vitra_tray_set(const char *tooltip, const char *title, const unsigned char *rgba, int width, int height, int click_activates) {
+	g_tray_click_activates = click_activates;
 	if (!g_tray) {
 		g_tray = gtk_status_icon_new_from_icon_name("application-x-executable");
 		g_signal_connect(g_tray, "activate", G_CALLBACK(on_tray_activate), NULL);
@@ -861,6 +883,10 @@ static GVariant *g_sni_pixmap = NULL; /* a(iiay) IconPixmap; empty for the defau
 static GPtrArray *g_sni_ids = NULL;    /* menu action ids; dbusmenu id = index + 1 */
 static GPtrArray *g_sni_labels = NULL; /* menu labels, parallel to g_sni_ids */
 static GArray *g_sni_flags = NULL;     /* VITRA_MENU_* flags, parallel to g_sni_ids */
+static int g_sni_click_activates = 0;  /* Activate is a tray click, not "tray.activate" */
+static int g_sni_has_point = 0;        /* g_sni_x/y hold the last Activate position */
+static int g_sni_x = 0;
+static int g_sni_y = 0;
 static guint32 g_sni_revision = 1;
 static guint g_sni_seq = 0;
 
@@ -1122,7 +1148,23 @@ static void sni_method_call(GDBusConnection *conn, const gchar *sender, const gc
 		return;
 	}
 	if (g_strcmp0(method, "Activate") == 0) {
-		goVitraAction("tray.activate");
+		gint32 x = 0, y = 0;
+		g_variant_get(params, "(ii)", &x, &y);
+		/* Panels that cannot tell where the icon is (some Wayland ones) send 0,0. */
+		int has = x != 0 || y != 0;
+		g_mutex_lock(&g_sni_mu);
+		int clicks = g_sni_click_activates;
+		if (has) {
+			g_sni_has_point = 1;
+			g_sni_x = x;
+			g_sni_y = y;
+		}
+		g_mutex_unlock(&g_sni_mu);
+		if (clicks) {
+			goVitraTrayClick(x, y, 0, 0, has);
+		} else {
+			goVitraAction("tray.activate");
+		}
 	}
 	/* ContextMenu: the host shows our Menu itself. SecondaryActivate, Scroll:
 	 * no Vitra event. */
@@ -1302,7 +1344,7 @@ static GVariant *vitra_sni_pixmap_new(const unsigned char *argb, int width, int 
  * StatusNotifierWatcher, 0 when there is none (the caller falls back to
  * GtkStatusIcon). Safe from any thread. */
 int vitra_sni_set(const char *tooltip, const char *title, const unsigned char *argb, int width, int height,
-	const char *const *ids, const char *const *labels, const int *flags, int n) {
+	const char *const *ids, const char *const *labels, const int *flags, int n, int click_activates) {
 	GDBusConnection *conn = sni_bus();
 	if (!conn || !vitra_sni_available() || !sni_ensure_exported(conn)) {
 		return 0;
@@ -1334,6 +1376,7 @@ int vitra_sni_set(const char *tooltip, const char *title, const unsigned char *a
 		g_variant_unref(g_sni_pixmap);
 	}
 	g_sni_pixmap = pixmap;
+	g_sni_click_activates = click_activates;
 	char *label = g_strdup(g_sni_title);
 	guint32 rev = ++g_sni_revision;
 	int was_active = g_sni_active;
@@ -1388,6 +1431,15 @@ int vitra_sni_set(const char *tooltip, const char *title, const unsigned char *a
 	g_variant_unref(reg);
 	g_free(name);
 	return 1;
+}
+
+int vitra_sni_anchor(int *x, int *y) {
+	g_mutex_lock(&g_sni_mu);
+	int has = g_sni_active && g_sni_has_point;
+	*x = g_sni_x;
+	*y = g_sni_y;
+	g_mutex_unlock(&g_sni_mu);
+	return has;
 }
 
 /* vitra_sni_clear removes the item: releasing its bus name makes the
