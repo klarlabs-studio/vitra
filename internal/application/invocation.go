@@ -82,17 +82,19 @@ func (s *InvocationService) Invoke(ctx context.Context, req domain.InvocationReq
 		decision = s.Overlay(cmd.Permission(), decision)
 	}
 	if !decision.Allowed {
-		return &domain.InvocationResult{
-			Command:    req.Command,
-			Decision:   decision,
-			Authorized: false,
-		}, &domain.ErrDenied{
+		denied := &domain.ErrDenied{
 			Permission: cmd.Permission(),
 			Window:     req.Caller.Window,
 			Origin:     req.Caller.Origin,
 			Code:       decision.Code,
 			Reason:     decision.Reason,
 		}
+		result := &domain.InvocationResult{
+			Command:    req.Command,
+			Decision:   decision,
+			Authorized: false,
+		}
+		return result, denied
 	}
 
 	exec, ok := s.Executors.Get(req.Command)
