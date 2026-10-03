@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - The release pipeline can notarize the macOS `vitra` binaries and Authenticode-sign the Windows ones. It turns on once the signing certificates are added as repository secrets and is skipped until then; checksums, SBOMs, and the cosign signature cover the signed binaries. See *Code-signing certificates* in `CONTRIBUTING.md`.
 
+### Fixed
+- macOS: a host call made from another goroutine before `Run` started the loop (for example opening a dialog or a window from a startup goroutine) ran AppKit code off the main thread, and AppKit aborted the process. Such calls are now queued and run on the main thread once the loop starts.
+
 ## [0.9.0] - 2026-10-03
 
 Consistent errors from every stub host, and a complete Go reference on
