@@ -10,6 +10,10 @@ on:
     # No paths-ignore: branch protection requires this workflow's status
     # checks. Docs-only PRs must still report them.
 
+# Read-only by default; the shared CI job below asks for what it needs.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
