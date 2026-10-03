@@ -227,6 +227,10 @@ void vitra_app_quit(void) {
 	});
 }
 
+int vitra_is_main_thread(void) {
+	return [NSThread isMainThread] ? 1 : 0;
+}
+
 void vitra_idle_add(unsigned long long id) {
 	dispatch_async(dispatch_get_main_queue(), ^{
 		goVitraIdle(id);
