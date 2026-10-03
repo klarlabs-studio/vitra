@@ -101,3 +101,5 @@ Every host reports its features (`host.Features()`). Anything unavailable return
   - Desktops attribute shortcuts to an app id. An unsandboxed app with a reverse-DNS program name (`host.SetProgramName("com.example.Notes")`, matching its `.desktop` file) registers it with the portal, so the user's choices are remembered between runs. Flatpak apps get their id from the sandbox.
 - **macOS:** notifications need an app bundle with a bundle identifier. An unbundled binary (`go run`, `vitra dev`) gets `ErrUnsupported`; package the app with `vitra package --format app-dir`.
 - **Windows:** requires the WebView2 runtime.
+
+A custom host implements only the capabilities it supports; a command whose capability is missing fails with `ErrUnsupported`. See [Host interfaces](/reference/hosts).

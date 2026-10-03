@@ -2,7 +2,6 @@ package audit
 
 import (
 	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -99,7 +98,7 @@ func (s *FileSink) Append(e Event) error {
 	if e.At.IsZero() {
 		e.At = time.Now().UTC()
 	}
-	b, err := json.Marshal(e)
+	b, err := MarshalEvent(e)
 	if err != nil {
 		return err
 	}
@@ -203,7 +202,7 @@ func (s *FileSink) writeDropMarker() {
 	if n == 0 {
 		return
 	}
-	b, err := json.Marshal(Event{
+	b, err := MarshalEvent(Event{
 		At:       time.Now().UTC(),
 		Kind:     KindAuditDropped,
 		Outcome:  "error",
@@ -311,7 +310,8 @@ func renameIfExists(from, to string) error {
 }
 
 // readEvents appends the audit events in path to out, skipping lines that
-// do not decode. A missing file contributes nothing.
+// do not decode or have a schema this release does not know. A missing file
+// contributes nothing.
 func readEvents(path string, out []Event) []Event {
 	f, err := os.Open(path)
 	if err != nil {
@@ -321,8 +321,7 @@ func readEvents(path string, out []Event) []Event {
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
 	for sc.Scan() {
-		var e Event
-		if json.Unmarshal(sc.Bytes(), &e) == nil && e.Kind != "" {
+		if e, err := ParseEvent(sc.Bytes()); err == nil && e.Kind != "" {
 			out = append(out, e)
 		}
 	}

@@ -111,3 +111,7 @@ func (h *Host) Messages() []PostedMessage {
 func (h *Host) DialogOpen(_ context.Context) error {
 	return platform.Require(h, platform.FeatureDialogOpen)
 }
+
+// The null host implements only the base port: it records windows and
+// messages but cannot run an app.
+var _ platform.Host = (*Host)(nil)
