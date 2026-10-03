@@ -6,7 +6,7 @@ Vitra follows [Semantic Versioning](https://semver.org). This page says what tha
 
 - **Patch releases** (`0.7.0` → `0.7.1`) never break code or behaviour, except to close a security hole. Those changes are listed under *Security* in the [changelog](https://github.com/klarlabs-studio/vitra/blob/main/CHANGELOG.md).
 - **Minor releases** (`0.7` → `0.8`) may break things. Every breaking change is marked in the changelog, and each release has an *Upgrading* section with what to change.
-- Pin a minor version (`go get go.klarlabs.de/vitra@v0.9`) if you need stability now.
+- Pin a minor version (`go get go.klarlabs.de/vitra@v0.10`) if you need stability now.
 
 ## From 1.0
 
