@@ -115,16 +115,18 @@ Each milestone is one PR and adds its own tests, docs and CHANGELOG entry.
   identity of the panel's invokes is stamped by the host, and navigation
   inside the panel doesn't carry authority.
 
-### M5 — Example, docs, e2e (`docs` / `test`)
+### M5 — Example, docs, e2e (`docs` / `test`) — delivered
 
-- `example/menubar`: an accessory app with a live title (for example, free
-  disk space for `$HOME`, using real data from `syscall.Statfs` and polled by
-  a Go ticker). It has an HTML panel with meters, a menu with
-  Refresh/Settings/Quit, and a `fs.read`-scoped settings window.
+- `example/menubar`: an accessory app with a live title (free disk space,
+  from `statfs` / `GetDiskFreeSpaceExW`, polled by a Go ticker), a usage
+  icon drawn at run time, an HTML panel, and a menu with Show Details /
+  Refresh / Quit.
 - `docs/guide/menubar.md`, `docs/reference/hosts.md` feature-matrix rows for
   `tray.status`, `app.presentation`, `tray.anchor`, `window.panel`.
-- Extend `make e2e` (Linux/xvfb): set the tray via SNI, call `Activate` over
-  D-Bus, and assert the panel is shown and receives an invoke round-trip.
+- `TestMenubarE2E` (`make e2e-menubar`, and in CI on macOS and Windows): the
+  hidden panel follows the usage, its clipboard read is refused, the panel is
+  shown from Go and closes itself. Tray clicks over D-Bus are covered by the
+  Linux host tests (`TestTraySNIClickActivates`).
 
 ## Platform matrix (target)
 

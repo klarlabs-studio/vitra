@@ -34,6 +34,14 @@ The **Try to break it** panel runs real attacks through the real bridge:
 
 Worth reading: `notes.go` (grants and typed commands), `liveaudit.go` (an audit sink that streams to the window), and `notes_test.go` (every attack as a test).
 
+## Menu bar
+
+```bash
+make menubar   # or: CGO_ENABLED=1 go run -tags vitra_native ./example/menubar
+```
+
+A menu bar (tray) app with no Dock icon or taskbar entry: the free space on a disk next to the tray icon, and the details in an HTML panel that drops down when you click it. The panel may read the usage and close itself; its attempt to read the clipboard is refused. See [Menu bar apps](/guide/menubar).
+
 ## Competitive
 
 ```bash

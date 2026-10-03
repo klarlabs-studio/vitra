@@ -34,6 +34,7 @@ export default defineConfig({
           { text: "The frontend", link: "/guide/frontend" },
           { text: "Events", link: "/guide/events" },
           { text: "Desktop features", link: "/guide/desktop" },
+          { text: "Menu bar apps", link: "/guide/menubar" },
         ],
       },
       {
