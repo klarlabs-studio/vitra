@@ -46,7 +46,10 @@ header p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: no
 .free { margin: 4px 0 0; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
 .free .muted { font-size: 14px; font-weight: 400; }
 .meter { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; }
-.fill { height: 100%; width: 0; background: var(--fill); transition: width 0.3s ease; }
+.fill { height: 100%; width: 0; background: var(--fill); }
+/* Animate updates only: the first value must not depend on an animation
+   running, since the panel loads hidden. */
+.meter.ready .fill { transition: width 0.3s ease; }
 .fill.full { background: var(--full); }
 #used { margin: 0; }
 .security { border-top: 1px solid var(--border); padding-top: 8px; }

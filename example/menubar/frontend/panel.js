@@ -25,7 +25,11 @@
     var fill = document.getElementById("fill");
     fill.style.width = u.usedPercent + "%";
     fill.className = "fill" + (u.usedPercent >= 90 ? " full" : "");
-    document.getElementById("meter").setAttribute("aria-valuenow", String(u.usedPercent));
+    var meter = document.getElementById("meter");
+    meter.setAttribute("aria-valuenow", String(u.usedPercent));
+    if (!meter.classList.contains("ready")) {
+      requestAnimationFrame(function () { meter.classList.add("ready"); });
+    }
   }
 
   function verdict(id, allowed, detail) {
