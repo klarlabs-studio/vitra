@@ -184,12 +184,12 @@ func run() error {
 	trays := &desktop.TrayService{
 		Gateway: rt,
 		Host:    host,
-		OnSet: func(ctx context.Context, tooltip string, items []desktop.MenuItem) error {
-			native := make([]platform.MenuItem, 0, len(items))
-			for _, it := range items {
-				native = append(native, platform.MenuItem{ID: it.ID, Label: it.Label})
+		OnSet: func(ctx context.Context, spec desktop.TraySpec) error {
+			native := make([]platform.MenuItem, 0, len(spec.Items))
+			for _, it := range spec.Items {
+				native = append(native, platform.MenuItem{ID: it.ID, Label: it.Label, Separator: it.Separator})
 			}
-			return host.SetTray(tooltip, native)
+			return host.SetTray(platform.TraySpec{Tooltip: spec.Tooltip, Title: spec.Title, Items: native})
 		},
 		OnClear: func(ctx context.Context) error {
 			host.ClearTray()
@@ -356,9 +356,13 @@ func run() error {
 			{Menu: "File", ID: "app.quit", Label: "Quit", Shortcut: "Ctrl+Q"},
 			{Menu: "Help", ID: "help.about", Label: "About Vitra"},
 		})
-		_ = trays.SetTray(context.Background(), hostCaller, "Vitra competitive demo", []desktop.MenuItem{
-			{ID: "help.about", Label: "About Vitra"},
-			{ID: "tray.quit", Label: "Quit"},
+		_ = trays.SetTray(context.Background(), hostCaller, desktop.TraySpec{
+			Tooltip: "Vitra competitive demo",
+			Items: []desktop.MenuItem{
+				{ID: "help.about", Label: "About Vitra"},
+				{Separator: true},
+				{ID: "tray.quit", Label: "Quit"},
+			},
 		})
 		if err := shortcuts.Register(context.Background(), hostCaller, "Ctrl+Shift+Q", "app.quit"); err != nil {
 			fmt.Fprintf(os.Stderr, "global shortcut: %v\n", err)

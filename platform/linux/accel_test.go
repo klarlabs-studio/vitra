@@ -89,4 +89,20 @@ func TestNativeMenuAccelerator(t *testing.T) {
 		t.Fatal("expected GTK-form accelerator")
 	}
 	expect("help.about")
+
+	// Disabled items never fire; a checked item fires and stays checked.
+	if err := h.SetMenuBar("main", []platform.MenuItem{
+		{Menu: "File", ID: "file.save", Label: "Save", Shortcut: "Ctrl+S", Disabled: true},
+		{Menu: "File", Separator: true},
+		{Menu: "File", ID: "view.pin", Label: "Pin", Shortcut: "Ctrl+P", Checked: true},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if ok, _ := h.ActivateMenuAccel("main", "Ctrl+S"); ok {
+		t.Fatal("disabled item's accelerator fired")
+	}
+	if ok, _ := h.ActivateMenuAccel("main", "Ctrl+P"); !ok {
+		t.Fatal("expected checked item's accelerator")
+	}
+	expect("view.pin")
 }

@@ -199,7 +199,13 @@ rather than compared as URL strings.
 - **Tray menus name no actions over D-Bus.** The Linux StatusNotifierItem
   menu exposes numeric dbusmenu ids. A click is mapped back to the action ID
   the app set, so another process on the session bus can at most "click"
-  an item the app put there. Unknown ids are rejected and fire nothing.
+  an item the app put there. Unknown ids are rejected and fire nothing, and
+  so are separators and disabled items.
+- **Tray icons come from the app.** `tray.set` names its icon by a path
+  inside the app's assets and the host reads it from there, so a page cannot
+  make the tray read an arbitrary file. Paths with `..`, `.`, empty
+  segments, backslashes or drive letters are rejected; the file must be a
+  PNG of at most 256 KiB.
 - **Updates.** A manifest must carry a valid ed25519 signature, match the
   artifact's SHA-256, be for the installed app and channel, and have a
   strictly newer SemVer version, and not be past its signed `expires_at`
@@ -219,7 +225,7 @@ rather than compared as URL strings.
 |---|---|
 | New windows have no authority (1) | `internal/application`: `TestGateway_NewWindowHasNoPrivileges` |
 | Navigation drops authority (2) | `internal/application`: `TestGateway_NavigationDropsAuthority`; `app`: `TestApp_RunInvokeAndNavPolicy` (exact-origin nav, userinfo and adjacent-port bypasses) |
-| Frontend input not trusted (3) | `vitra`: `TestRegister_RejectsMalformedInput`, `TestRegister_BindsInputResourcePathToAuthorizedPath`; `vitra`: `TestBind_TypesAPluginCommand`; `plugin/official`: `TestInputs_RejectUnknownFieldsWrongTypesAndMissingValues`, `TestWindowSizes_RejectInexactOrOutOfRangeNumbers`, `FuzzMenuInput`, `FuzzTrayInput`, `FuzzDialogOptions`, `FuzzShortcutInput`, `FuzzShortcutRef`, `FuzzDragDropInput`, `FuzzWindowCreateInput`, `FuzzWindowRef`, `FuzzWindowAlwaysOnTopInput`, `FuzzWindowTitleInput`, `FuzzWindowSizeInput`, `FuzzWindowIconInput`, `FuzzWindowChromeInput`, `FuzzMessageDialogInput`, `FuzzNotificationInput`; `app`: `TestUseOfficialPlugins_DecodesInputStrictly` |
+| Frontend input not trusted (3) | `vitra`: `TestRegister_RejectsMalformedInput`, `TestRegister_BindsInputResourcePathToAuthorizedPath`; `vitra`: `TestBind_TypesAPluginCommand`; `plugin/official`: `TestInputs_RejectUnknownFieldsWrongTypesAndMissingValues`, `TestWindowSizes_RejectInexactOrOutOfRangeNumbers`, `TestInputs_TrayIconMustStayInAssets`, `FuzzMenuInput`, `FuzzTrayInput`, `FuzzDialogOptions`, `FuzzShortcutInput`, `FuzzShortcutRef`, `FuzzDragDropInput`, `FuzzWindowCreateInput`, `FuzzWindowRef`, `FuzzWindowAlwaysOnTopInput`, `FuzzWindowTitleInput`, `FuzzWindowSizeInput`, `FuzzWindowIconInput`, `FuzzWindowChromeInput`, `FuzzMessageDialogInput`, `FuzzNotificationInput`; `app`: `TestUseOfficialPlugins_DecodesInputStrictly`, `TestTraySet_RejectsBadIcons`, `TestTraySet_NeedsGrant` |
 | Host-stamped identity (4) | `internal/ipc`: `TestBridge_DiscardsSpoofedCallerIdentity`, `FuzzBridge_DecodeInvoke`; `internal/application`: `TestInvocationService_RejectsSpoofedOrigin`, `TestCallerExecutorFunc_ReceivesInvokingWindow`; `domain`: `TestCallerExecutorFunc_ActsAsInvocationCaller`, `TestCallerExecutorFunc_FailsClosedWithoutInvocation` |
 | Plugins cannot widen each other (6) | `plugin`: `TestRegistry_RejectsPermissionCollision` |
 | No shell by default (7) | `platform/windows`: `TestOpenURL_NeverInvokesShell`, `TestRegEscape` |

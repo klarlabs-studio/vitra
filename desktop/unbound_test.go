@@ -28,7 +28,7 @@ func TestUnboundHooks_FailUnsupported(t *testing.T) {
 	}{
 		{"menu.set", menus.SetMenu(ctx, caller, items), platform.FeatureMenuBar},
 		{"menu.clear", menus.ClearMenu(ctx, caller), platform.FeatureMenuBar},
-		{"tray.set", trays.SetTray(ctx, caller, "tip", items), platform.FeatureTray},
+		{"tray.set", trays.SetTray(ctx, caller, desktop.TraySpec{Tooltip: "tip", Items: items}), platform.FeatureTray},
 		{"tray.clear", trays.ClearTray(ctx, caller), platform.FeatureTray},
 	} {
 		var un *platform.ErrUnsupported

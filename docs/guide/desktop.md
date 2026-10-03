@@ -94,6 +94,29 @@ menus.SetMenu(ctx, hostCaller, []desktop.MenuItem{
 
 Command handlers never use this caller. They act as the window that called them.
 
+A menu bar or tray app usually drives the tray from Go, for example from a poller that refreshes the status. `App.SetTray` needs no grant (it is your code, not the page's), and `App.OnAction` hands item clicks to Go:
+
+```go
+//go:embed icons/tray.png
+var trayIcon []byte
+
+err := application.SetTray(app.TraySpec{
+    Title: "42%", Tooltip: "Usage this week", Icon: trayIcon, Template: true,
+    Items: []platform.MenuItem{
+        {ID: "refresh", Label: "Refresh"},
+        {Separator: true},
+        {ID: "quit", Label: "Quit"},
+    },
+})
+application.OnAction(func(id string) {
+    if id == "quit" {
+        application.Quit()
+    }
+})
+```
+
+`Title` is text next to the icon: in the macOS menu bar and as the Linux StatusNotifierItem label. Windows and the Linux `GtkStatusIcon` fallback show no text there, so they add the title to the tooltip; check `Features()[platform.FeatureTrayTitle]` to tell. `Template` marks a macOS template image (black with transparency), which the system tints to match the menu bar.
+
 ## Platform support
 
 Every host reports its features (`host.Features()`). Anything unavailable returns `platform.ErrUnsupported` with a reason instead of silently doing nothing. Notable cases:
@@ -105,6 +128,6 @@ Every host reports its features (`host.Features()`). Anything unavailable return
   - Desktops attribute shortcuts to an app id. An unsandboxed app with a reverse-DNS program name (`host.SetProgramName("com.example.Notes")`, matching its `.desktop` file) registers it with the portal, so the user's choices are remembered between runs. Flatpak apps get their id from the sandbox.
 - **macOS:** notifications need an app bundle with a bundle identifier. An unbundled binary (`go run`, `vitra dev`) gets `ErrUnsupported`; package the app with `vitra package --format app-dir`.
 - **Windows:** requires the WebView2 runtime.
-- **Linux tray:** when a `org.kde.StatusNotifierWatcher` is on the session bus, the tray is a StatusNotifierItem with a `com.canonical.dbusmenu` menu, spoken directly over D-Bus with no extra library. KDE Plasma, GNOME with the AppIndicator extension (on by default in Ubuntu, Fedora needs it installed), XFCE, Cinnamon, MATE, LXQt, Budgie, and panels such as waybar show it, on X11 and Wayland. Without a watcher, Vitra falls back to the legacy XEmbed `GtkStatusIcon`, which only X11 panels with a system tray show; stock GNOME without the extension shows no tray at all. `Features()` says which protocol is in use. Either way, menu clicks emit `tray.action` with the item's ID and a left click on the icon emits `tray.action` with `tray.activate`. Menus are flat lists, labels are shown literally, and the icon is the generic `application-x-executable`.
+- **Linux tray:** when a `org.kde.StatusNotifierWatcher` is on the session bus, the tray is a StatusNotifierItem with a `com.canonical.dbusmenu` menu, spoken directly over D-Bus with no extra library. KDE Plasma, GNOME with the AppIndicator extension (on by default in Ubuntu, Fedora needs it installed), XFCE, Cinnamon, MATE, LXQt, Budgie, and panels such as waybar show it, on X11 and Wayland. Without a watcher, Vitra falls back to the legacy XEmbed `GtkStatusIcon`, which only X11 panels with a system tray show; stock GNOME without the extension shows no tray at all. `Features()` says which protocol is in use. Either way, menu clicks emit `tray.action` with the item's ID and a left click on the icon emits `tray.action` with `tray.activate`. Menus are flat lists and labels are shown literally. The icon is the app's PNG when it sets one, otherwise the generic `application-x-executable`. The title is the item's `XAyatanaLabel`, which GNOME's AppIndicator extension and Ubuntu show next to the icon; KDE Plasma shows it on hover.
 
 A custom host implements only the capabilities it supports; a command whose capability is missing fails with `ErrUnsupported`. See [Host interfaces](/reference/hosts).

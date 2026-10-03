@@ -7,6 +7,13 @@ extern "C" {
 
 typedef struct VitraWin VitraWin;
 
+/* Menu item flags (vitra_win_add_menu_item, vitra_tray_add_menu_item). */
+enum {
+	VITRA_MENU_SEPARATOR = 1,
+	VITRA_MENU_DISABLED = 2,
+	VITRA_MENU_CHECKED = 4,
+};
+
 typedef struct {
 	char *title;
 	int width;
@@ -38,12 +45,16 @@ VitraChrome vitra_win_chrome(VitraWin *w);
 void vitra_win_focus(VitraWin *w);
 void vitra_win_blur(VitraWin *w);
 void vitra_win_clear_menu(VitraWin *w);
-void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut);
+void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut, int flags);
 int vitra_win_activate_accel(VitraWin *w, const char *shortcut);
 
-void vitra_tray_set(const char *tooltip);
+void vitra_tray_set(const char *tooltip, const char *title, const void *icon, int icon_len, int template_icon);
 void vitra_tray_clear_menu(void);
-void vitra_tray_add_menu_item(const char *item_id, const char *item_label);
+void vitra_tray_add_menu_item(const char *item_id, const char *item_label, int flags);
+/* vitra_tray_state describes the status item for tests: "title\nimage\ntemplate\n"
+ * then one line per menu item ("-" for a separator, else "label\tflags").
+ * The caller frees it. */
+char *vitra_tray_state(void);
 void vitra_tray_clear(void);
 
 void vitra_win_set_drag_drop(VitraWin *w, int enabled);

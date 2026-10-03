@@ -31,6 +31,8 @@ const (
 	FeatureWebViewMessage      Feature = "webview.message"
 	FeatureMenuBar             Feature = "menu.bar"
 	FeatureTray                Feature = "tray"
+	FeatureTrayTitle           Feature = "tray.title"
+	FeatureTrayIcon            Feature = "tray.icon"
 	FeatureDialogOpen          Feature = "dialog.open"
 	FeatureDialogSave          Feature = "dialog.save"
 	FeatureDialogMessage       Feature = "dialog.message"

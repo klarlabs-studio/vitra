@@ -70,6 +70,7 @@ static HWND g_tray_hwnd = NULL;
 static NOTIFYICONDATAA g_nid;
 static int g_tray_added = 0;
 static HMENU g_tray_menu = NULL;
+static HICON g_tray_icon = NULL; /* app icon from PNG; NULL uses IDI_APPLICATION */
 static ActionEntry g_tray_actions[VITRA_MAX_ACTIONS];
 static int g_tray_n_actions = 0;
 static UINT g_tray_next_cmd = VITRA_TRAY_CMD_BASE;
@@ -262,6 +263,18 @@ static void dispatch_hotkey(UINT id) {
 			return;
 		}
 	}
+}
+
+/* menu_item_flags maps VITRA_MENU_* flags to AppendMenu flags. */
+static UINT menu_item_flags(int flags) {
+	if (flags & VITRA_MENU_SEPARATOR) {
+		return MF_SEPARATOR;
+	}
+	return MF_STRING | ((flags & VITRA_MENU_DISABLED) ? MF_GRAYED : 0) | ((flags & VITRA_MENU_CHECKED) ? MF_CHECKED : 0);
+}
+
+static HICON tray_icon(void) {
+	return g_tray_icon ? g_tray_icon : LoadIcon(NULL, IDI_APPLICATION);
 }
 
 static HMENU find_or_create_popup(HMENU menubar, const char *menu_label) {
@@ -646,8 +659,9 @@ void vitra_win_clear_menu(VitraWin *w) {
 	w->next_cmd = VITRA_CMD_BASE;
 }
 
-void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut) {
-	if (!w || !w->hwnd || !menu_label || !item_id || !item_label) {
+void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut, int flags) {
+	int separator = (flags & VITRA_MENU_SEPARATOR) != 0;
+	if (!w || !w->hwnd || !menu_label || (!separator && (!item_id || !item_label))) {
 		return;
 	}
 	if (w->n_actions >= VITRA_MAX_ACTIONS) {
@@ -661,12 +675,18 @@ void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *it
 	if (!popup) {
 		return;
 	}
+	if (separator) {
+		AppendMenuA(popup, MF_SEPARATOR, 0, NULL);
+		DrawMenuBar(w->hwnd);
+		return;
+	}
 	UINT cmd = w->next_cmd++;
-	AppendMenuA(popup, MF_STRING, cmd, item_label);
+	AppendMenuA(popup, menu_item_flags(flags), cmd, item_label);
 	w->actions[w->n_actions].id = cmd;
 	w->actions[w->n_actions].action = _strdup(item_id);
 	w->n_actions++;
-	if (shortcut && shortcut[0] != '\0' && w->n_accels < VITRA_MAX_ACTIONS) {
+	/* A disabled item gets no accelerator: it must never fire. */
+	if (!(flags & VITRA_MENU_DISABLED) && shortcut && shortcut[0] != '\0' && w->n_accels < VITRA_MAX_ACTIONS) {
 		ACCEL a;
 		if (parse_shortcut(shortcut, &a)) {
 			a.cmd = (WORD)cmd;
@@ -1323,7 +1343,7 @@ int vitra_show_notification(const char *title, const char *body) {
 	nid.uID = 1;
 	nid.uFlags = NIF_INFO | NIF_ICON | NIF_MESSAGE;
 	nid.uCallbackMessage = WM_TRAYICON;
-	nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	nid.hIcon = tray_icon();
 	nid.dwInfoFlags = NIIF_INFO;
 	if (title) {
 		strncpy(nid.szInfoTitle, title, sizeof(nid.szInfoTitle) - 1);
@@ -1348,10 +1368,18 @@ int vitra_show_notification(const char *title, const char *body) {
 	return 1;
 }
 
-void vitra_tray_set(const char *tooltip) {
+/* vitra_tray_set shows the notification-area icon: png (Vista+ icons may
+ * hold PNG data) or the default application icon when png is NULL. The
+ * notification area has no text: the caller folds the title into tooltip. */
+void vitra_tray_set(const char *tooltip, const void *png, int png_len) {
 	ensure_tray_window();
 	if (!g_tray_hwnd) {
 		return;
+	}
+	HICON icon = NULL;
+	if (png && png_len > 0) {
+		icon = CreateIconFromResourceEx((PBYTE)png, (DWORD)png_len, TRUE, 0x00030000,
+			GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
 	}
 	memset(&g_nid, 0, sizeof(g_nid));
 	g_nid.cbSize = sizeof(g_nid);
@@ -1359,7 +1387,7 @@ void vitra_tray_set(const char *tooltip) {
 	g_nid.uID = 1;
 	g_nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
 	g_nid.uCallbackMessage = WM_TRAYICON;
-	g_nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	g_nid.hIcon = icon ? icon : LoadIcon(NULL, IDI_APPLICATION);
 	if (tooltip) {
 		strncpy(g_nid.szTip, tooltip, sizeof(g_nid.szTip) - 1);
 	} else {
@@ -1372,6 +1400,11 @@ void vitra_tray_set(const char *tooltip) {
 	} else {
 		Shell_NotifyIconA(NIM_MODIFY, &g_nid);
 	}
+	/* The shell copies the icon: the previous one can go now. */
+	if (g_tray_icon) {
+		DestroyIcon(g_tray_icon);
+	}
+	g_tray_icon = icon;
 }
 
 void vitra_tray_clear_menu(void) {
@@ -1384,15 +1417,20 @@ void vitra_tray_clear_menu(void) {
 	g_tray_next_cmd = VITRA_TRAY_CMD_BASE;
 }
 
-void vitra_tray_add_menu_item(const char *item_id, const char *item_label) {
-	if (!item_id || !item_label || g_tray_n_actions >= VITRA_MAX_ACTIONS) {
+void vitra_tray_add_menu_item(const char *item_id, const char *item_label, int flags) {
+	int separator = (flags & VITRA_MENU_SEPARATOR) != 0;
+	if ((!separator && (!item_id || !item_label)) || g_tray_n_actions >= VITRA_MAX_ACTIONS) {
 		return;
 	}
 	if (!g_tray_menu) {
 		g_tray_menu = CreatePopupMenu();
 	}
+	if (separator) {
+		AppendMenuA(g_tray_menu, MF_SEPARATOR, 0, NULL);
+		return;
+	}
 	UINT cmd = g_tray_next_cmd++;
-	AppendMenuA(g_tray_menu, MF_STRING, cmd, item_label);
+	AppendMenuA(g_tray_menu, menu_item_flags(flags), cmd, item_label);
 	g_tray_actions[g_tray_n_actions].id = cmd;
 	g_tray_actions[g_tray_n_actions].action = _strdup(item_id);
 	g_tray_n_actions++;
@@ -1403,6 +1441,10 @@ void vitra_tray_clear(void) {
 	if (g_tray_added) {
 		Shell_NotifyIconA(NIM_DELETE, &g_nid);
 		g_tray_added = 0;
+	}
+	if (g_tray_icon) {
+		DestroyIcon(g_tray_icon);
+		g_tray_icon = NULL;
 	}
 }
 

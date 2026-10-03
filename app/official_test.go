@@ -353,7 +353,7 @@ func TestUseOfficialPlugins_DecodesInputStrictly(t *testing.T) {
 		{"window.setSize", map[string]any{"id": "main", "width": 640.5, "height": 480.0}, ""},
 		{"window.chrome", map[string]any{"id": "main", "maximized": "yes"}, ""},
 		{"menu.set", []any{map[string]any{"id": "a", "label": "A", "onClick": "x"}}, ""},
-		{"tray.set", map[string]any{"tooltip": "t", "icon": "x"}, ""},
+		{"tray.set", map[string]any{"tooltip": "t", "badge": "x"}, ""},
 		{"dragdrop.receive", map[string]any{"id": "main", "enabled": "yes"}, ""},
 		{"shortcut.register", map[string]any{"accelerator": "Ctrl+K", "action": "a", "global": true}, ""},
 		{"app.quit", map[string]any{"force": true}, ""},

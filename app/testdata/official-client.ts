@@ -24,10 +24,13 @@ export interface MenuInput {
 }
 
 export interface MenuItem {
-  id: string;
-  label: string;
+  id?: string;
+  label?: string;
   menu?: string;
   shortcut?: string;
+  separator?: boolean;
+  disabled?: boolean;
+  checked?: boolean;
 }
 
 export interface MessageDialogInput {
@@ -60,6 +63,9 @@ export interface ShortcutRef {
 
 export interface TrayInput {
   tooltip?: string;
+  title?: string;
+  icon?: string;
+  template?: boolean;
   items?: MenuItem[] | null;
 }
 

@@ -2,6 +2,8 @@ package official
 
 import (
 	"bytes"
+	"io/fs"
+	"strings"
 
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/internal/strictjson"
@@ -269,13 +271,18 @@ func (in *WindowIconInput) UnmarshalJSON(data []byte) error {
 }
 
 // MenuItem is one entry of an application or tray menu. ID and Label are
-// required. Menu names the top-level menu it goes in (for example "File");
-// application menu items without one go in an "App" menu.
+// required unless Separator is set, in which case only Menu may be. Menu
+// names the top-level menu it goes in (for example "File"); application menu
+// items without one go in an "App" menu. Disabled items are shown greyed out
+// and never fire; Checked shows a checkmark.
 type MenuItem struct {
-	ID       string `json:"id"`
-	Label    string `json:"label"`
-	Menu     string `json:"menu,omitempty"`
-	Shortcut string `json:"shortcut,omitempty"`
+	ID        string `json:"id,omitempty"`
+	Label     string `json:"label,omitempty"`
+	Menu      string `json:"menu,omitempty"`
+	Shortcut  string `json:"shortcut,omitempty"`
+	Separator bool   `json:"separator,omitempty"`
+	Disabled  bool   `json:"disabled,omitempty"`
+	Checked   bool   `json:"checked,omitempty"`
 }
 
 // MenuInput is the input of menu.set.
@@ -311,11 +318,18 @@ func (in *MenuInput) UnmarshalJSON(data []byte) error {
 	return validateMenuItems(in.Items)
 }
 
-// TrayInput is the input of tray.set: an optional tooltip and the tray
-// menu.
+// TrayInput is the input of tray.set: an optional tooltip, the status shown
+// in the menu bar or tray, and the tray menu. Title is text shown next to
+// the icon where the platform supports it. Icon is the path of a PNG inside
+// the app's assets (a leading "/" is allowed, as in page URLs); it can never
+// name a file outside them. Template marks the icon as a macOS template
+// image, which the system tints to match the menu bar.
 type TrayInput struct {
-	Tooltip string     `json:"tooltip,omitempty"`
-	Items   []MenuItem `json:"items,omitempty"`
+	Tooltip  string     `json:"tooltip,omitempty"`
+	Title    string     `json:"title,omitempty"`
+	Icon     string     `json:"icon,omitempty"`
+	Template bool       `json:"template,omitempty"`
+	Items    []MenuItem `json:"items,omitempty"`
 }
 
 // UnmarshalJSON accepts {tooltip?, items?}, a bare items array, or null.
@@ -334,9 +348,27 @@ func (in *TrayInput) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	default:
-		return &domain.ErrValidation{Message: "tray.set input must be an array or {tooltip?, items:[]}"}
+		return &domain.ErrValidation{Message: "tray.set input must be an array or {tooltip?, title?, icon?, template?, items?}"}
+	}
+	if in.Icon != "" {
+		icon, err := assetPath(in.Icon)
+		if err != nil {
+			return err
+		}
+		in.Icon = icon
 	}
 	return validateMenuItems(in.Items)
+}
+
+// assetPath validates p as a file path inside the app's assets and returns
+// it in io/fs form. One leading "/" is allowed; "..", ".", empty elements,
+// backslashes and drive letters are not.
+func assetPath(p string) (string, error) {
+	name := strings.TrimPrefix(p, "/")
+	if !fs.ValidPath(name) || name == "." || strings.ContainsAny(name, `\:`) {
+		return "", &domain.ErrValidation{Message: "icon must be a file path inside the app's assets"}
+	}
+	return name, nil
 }
 
 // DragDropInput is the input of dragdrop.receive. ID defaults to "main" and
@@ -486,6 +518,12 @@ func optionalSizes(width, height int) error {
 
 func validateMenuItems(items []MenuItem) error {
 	for _, it := range items {
+		if it.Separator {
+			if it.ID != "" || it.Label != "" || it.Shortcut != "" || it.Disabled || it.Checked {
+				return &domain.ErrValidation{Message: "a menu separator takes no id, label, shortcut, disabled or checked"}
+			}
+			continue
+		}
 		if it.ID == "" || it.Label == "" {
 			return &domain.ErrValidation{Message: "menu item requires id and label"}
 		}

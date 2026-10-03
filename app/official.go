@@ -32,8 +32,9 @@ import (
 // It also forwards native activations to the page: menu, tray, and shortcut
 // activations are emitted as menu.action, tray.action, and shortcut.action
 // ({"id": ...}), and file drops as dragdrop.drop ({"window", "paths"}).
-// Windows receive them once subscribed (Runtime.SubscribeEvent). This
-// replaces any action or drop handler set on the host before.
+// Windows receive them once subscribed (Runtime.SubscribeEvent); Go code
+// sees them through OnAction. This replaces any action or drop handler set
+// on the host before.
 //
 // Menus apply to the primary window. Deep links need an app-specific URL
 // scheme, so the deeplink plugin's event is left for the app to emit.
@@ -57,14 +58,7 @@ func (a *App) UseOfficialPlugins(ctx context.Context, plugins ...plugin.Plugin) 
 			return fmt.Errorf("bind %s: %w", p.Manifest().ID, err)
 		}
 	}
-	if ar, ok := a.host.(platform.ActionReporter); ok {
-		ar.SetActionHandler(func(id string) {
-			payload := map[string]any{"id": id}
-			for _, ev := range []domain.EventName{"menu.action", "tray.action", "shortcut.action"} {
-				_ = a.Emit(context.Background(), ev, payload)
-			}
-		})
-	}
+	a.actions.emitEvents(a)
 	if dd, ok := a.host.(platform.DragDrop); ok {
 		dd.SetDragDropHandler(func(window domain.WindowID, paths []string) {
 			_ = a.Emit(context.Background(), "dragdrop.drop", map[string]any{"window": string(window), "paths": paths})
@@ -346,7 +340,10 @@ func nativeItems(items []desktop.MenuItem, defaultMenu string) []platform.MenuIt
 		if menu == "" {
 			menu = defaultMenu
 		}
-		out = append(out, platform.MenuItem{Menu: menu, ID: it.ID, Label: it.Label, Shortcut: it.Shortcut})
+		out = append(out, platform.MenuItem{
+			Menu: menu, ID: it.ID, Label: it.Label, Shortcut: it.Shortcut,
+			Separator: it.Separator, Disabled: it.Disabled, Checked: it.Checked,
+		})
 	}
 	return out
 }
@@ -358,7 +355,10 @@ func menuItems(items []official.MenuItem) []desktop.MenuItem {
 	}
 	out := make([]desktop.MenuItem, 0, len(items))
 	for _, it := range items {
-		out = append(out, desktop.MenuItem{ID: it.ID, Label: it.Label, Menu: it.Menu, Shortcut: it.Shortcut})
+		out = append(out, desktop.MenuItem{
+			ID: it.ID, Label: it.Label, Menu: it.Menu, Shortcut: it.Shortcut,
+			Separator: it.Separator, Disabled: it.Disabled, Checked: it.Checked,
+		})
 	}
 	return out
 }
@@ -385,14 +385,27 @@ func (a *App) bindMenu() error {
 func (a *App) bindTray() error {
 	trays := &desktop.TrayService{Gateway: a.rt, Host: a.host}
 	if h, ok := a.host.(platform.Tray); ok {
-		trays.OnSet = func(_ context.Context, tooltip string, items []desktop.MenuItem) error {
-			return h.SetTray(tooltip, nativeItems(items, ""))
+		trays.OnSet = func(_ context.Context, spec desktop.TraySpec) error {
+			return h.SetTray(platform.TraySpec{
+				Tooltip: spec.Tooltip, Title: spec.Title, Icon: spec.Icon, Template: spec.Template,
+				Items: nativeItems(spec.Items, ""),
+			})
 		}
 		trays.OnClear = func(context.Context) error { h.ClearTray(); return nil }
 	}
 	b := a.binder()
 	onVoid(b, "tray.set", func(ctx context.Context, caller domain.Caller, in official.TrayInput) error {
-		return trays.SetTray(ctx, caller, in.Tooltip, menuItems(in.Items))
+		spec := desktop.TraySpec{Tooltip: in.Tooltip, Title: in.Title, Template: in.Template, Items: menuItems(in.Items)}
+		if in.Icon != "" {
+			// The pipeline has authorized tray.set before this runs, so a
+			// window without the grant cannot probe which assets exist.
+			icon, err := a.trayIcon(in.Icon)
+			if err != nil {
+				return err
+			}
+			spec.Icon = icon
+		}
+		return trays.SetTray(ctx, caller, spec)
 	})
 	onVoid(b, "tray.clear", func(ctx context.Context, caller domain.Caller, _ none) error {
 		return trays.ClearTray(ctx, caller)

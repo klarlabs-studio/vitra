@@ -11,10 +11,14 @@ package linux
 import "C"
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/draw"
+	"image/png"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -168,8 +172,13 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureClipboard:        {Feature: platform.FeatureClipboard, Available: true},
 		platform.FeatureMenuBar:          {Feature: platform.FeatureMenuBar, Available: true},
 		platform.FeatureTray:             trayFeature(),
-		platform.FeatureSingleInstance:   {Feature: platform.FeatureSingleInstance, Available: true},
-		platform.FeatureGlobalShortcut:   h.globalShortcutFeature(),
+		platform.FeatureTrayTitle:        trayTitleFeature(),
+		platform.FeatureTrayIcon: {
+			Feature: platform.FeatureTrayIcon, Available: true,
+			Detail: "PNG as StatusNotifierItem IconPixmap or GtkStatusIcon pixbuf",
+		},
+		platform.FeatureSingleInstance: {Feature: platform.FeatureSingleInstance, Available: true},
+		platform.FeatureGlobalShortcut: h.globalShortcutFeature(),
 		platform.FeatureDeepLink: {
 			Feature: platform.FeatureDeepLink, Available: true,
 			Detail: "argv + socket handoff + xdg URL-scheme registration",
@@ -665,7 +674,7 @@ func (h *Host) SetMenuBar(id domain.WindowID, items []platform.MenuItem) error {
 			cid := C.CString(it.ID)
 			clabel := C.CString(it.Label)
 			cshort := C.CString(it.Shortcut)
-			C.vitra_win_add_menu_item(w.ptr, cmenu, cid, clabel, cshort)
+			C.vitra_win_add_menu_item(w.ptr, cmenu, cid, clabel, cshort, menuFlags(it))
 			C.free(unsafe.Pointer(cmenu))
 			C.free(unsafe.Pointer(cid))
 			C.free(unsafe.Pointer(clabel))
@@ -724,14 +733,35 @@ func trayFeature() platform.Support {
 	}
 }
 
-// SetTray shows a tray icon with a tooltip and an optional context menu. It
-// uses StatusNotifierItem when a StatusNotifierWatcher is on the session bus
-// and falls back to GtkStatusIcon otherwise. Left click emits
-// "tray.activate"; menu items emit their ID.
-func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
+// trayTitleFeature reports whether the tray can show TraySpec.Title as text.
+func trayTitleFeature() platform.Support {
+	if C.vitra_sni_available() != 0 {
+		return platform.Support{
+			Feature: platform.FeatureTrayTitle, Available: true,
+			Detail: "StatusNotifierItem XAyatanaLabel next to the icon (GNOME AppIndicator, Ubuntu, …); " +
+				"panels without labels, such as KDE Plasma, show the title on hover",
+		}
+	}
+	return platform.Support{
+		Feature: platform.FeatureTrayTitle, Available: false,
+		Detail: "GtkStatusIcon has no text: the title is shown in the tooltip",
+	}
+}
+
+// SetTray shows a tray icon with a tooltip, status and an optional context
+// menu. It uses StatusNotifierItem when a StatusNotifierWatcher is on the
+// session bus (the title is the item's label, shown next to the icon where
+// the panel supports it) and falls back to GtkStatusIcon otherwise (no text:
+// the title joins the tooltip). Left click emits "tray.activate"; menu items
+// emit their ID.
+func (h *Host) SetTray(spec platform.TraySpec) error {
+	icon, err := decodeTrayIcon(spec.Icon)
+	if err != nil {
+		return err
+	}
 	h.trayMu.Lock()
 	defer h.trayMu.Unlock()
-	if setTraySNI(tooltip, items) {
+	if setTraySNI(spec, icon) {
 		if h.trayBackend == trayGTK {
 			h.dispatch(func() { C.vitra_tray_clear() })
 		}
@@ -742,18 +772,61 @@ func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
 		C.vitra_sni_clear() // the watcher went away
 	}
 	h.trayBackend = trayGTK
-	return h.setTrayGTK(tooltip, items)
+	return h.setTrayGTK(spec, icon)
+}
+
+// decodeTrayIcon decodes a PNG tray icon; nil data gives a nil image.
+func decodeTrayIcon(data []byte) (*image.NRGBA, error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
+	img, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, &domain.ErrValidation{Message: "tray icon must be a PNG image"}
+	}
+	b := img.Bounds()
+	out := image.NewNRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+	draw.Draw(out, out.Bounds(), img, b.Min, draw.Src)
+	return out, nil
+}
+
+// argb32 converts pixels to the ARGB32, network byte order layout of
+// StatusNotifierItem's IconPixmap.
+func argb32(img *image.NRGBA) []byte {
+	out := make([]byte, len(img.Pix))
+	for i := 0; i+3 < len(img.Pix); i += 4 {
+		out[i], out[i+1], out[i+2], out[i+3] = img.Pix[i+3], img.Pix[i], img.Pix[i+1], img.Pix[i+2]
+	}
+	return out
+}
+
+// menuFlags packs a menu item's separator, disabled and checked states.
+func menuFlags(it platform.MenuItem) C.int {
+	var f C.int
+	if it.Separator {
+		f |= C.VITRA_MENU_SEPARATOR
+	}
+	if it.Disabled {
+		f |= C.VITRA_MENU_DISABLED
+	}
+	if it.Checked {
+		f |= C.VITRA_MENU_CHECKED
+	}
+	return f
 }
 
 // setTraySNI shows the tray through StatusNotifierItem; false when no
 // StatusNotifierWatcher takes the item.
-func setTraySNI(tooltip string, items []platform.MenuItem) bool {
+func setTraySNI(spec platform.TraySpec, icon *image.NRGBA) bool {
+	items := spec.Items
 	n := len(items)
 	ids := make([]*C.char, n)
 	labels := make([]*C.char, n)
+	flags := make([]C.int, n)
 	for i, it := range items {
 		ids[i] = C.CString(it.ID)
 		labels[i] = C.CString(it.Label)
+		flags[i] = menuFlags(it)
 	}
 	defer func() {
 		for i := range items {
@@ -762,26 +835,45 @@ func setTraySNI(tooltip string, items []platform.MenuItem) bool {
 		}
 	}()
 	var idp, lp **C.char
+	var fp *C.int
 	if n > 0 {
-		idp, lp = &ids[0], &labels[0]
+		idp, lp, fp = &ids[0], &labels[0], &flags[0]
 	}
-	ct := C.CString(tooltip)
+	ct := C.CString(spec.Tooltip)
 	defer C.free(unsafe.Pointer(ct))
-	return C.vitra_sni_set(ct, idp, lp, C.int(n)) != 0
+	ctitle := C.CString(spec.Title)
+	defer C.free(unsafe.Pointer(ctitle))
+	var pix *C.uchar
+	var w, hgt C.int
+	if icon != nil {
+		argb := C.CBytes(argb32(icon))
+		defer C.free(argb)
+		pix, w, hgt = (*C.uchar)(argb), C.int(icon.Rect.Dx()), C.int(icon.Rect.Dy())
+	}
+	return C.vitra_sni_set(ct, ctitle, pix, w, hgt, idp, lp, fp, C.int(n)) != 0
 }
 
-func (h *Host) setTrayGTK(tooltip string, items []platform.MenuItem) error {
+func (h *Host) setTrayGTK(spec platform.TraySpec, icon *image.NRGBA) error {
 	done := make(chan struct{}, 1)
 	h.dispatch(func() {
 		h.ensureInit()
-		ct := C.CString(tooltip)
+		ct := C.CString(spec.TooltipWithTitle())
 		defer C.free(unsafe.Pointer(ct))
-		C.vitra_tray_set(ct)
+		ctitle := C.CString(spec.Title)
+		defer C.free(unsafe.Pointer(ctitle))
+		var pix *C.uchar
+		var w, hgt C.int
+		if icon != nil {
+			rgba := C.CBytes(icon.Pix)
+			defer C.free(rgba)
+			pix, w, hgt = (*C.uchar)(rgba), C.int(icon.Rect.Dx()), C.int(icon.Rect.Dy())
+		}
+		C.vitra_tray_set(ct, ctitle, pix, w, hgt)
 		C.vitra_tray_clear_menu()
-		for _, it := range items {
+		for _, it := range spec.Items {
 			cid := C.CString(it.ID)
 			clabel := C.CString(it.Label)
-			C.vitra_tray_add_menu_item(cid, clabel)
+			C.vitra_tray_add_menu_item(cid, clabel, menuFlags(it))
 			C.free(unsafe.Pointer(cid))
 			C.free(unsafe.Pointer(clabel))
 		}

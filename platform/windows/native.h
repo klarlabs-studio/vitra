@@ -43,7 +43,14 @@ void vitra_win_focus(VitraWin *w);
 void vitra_win_blur(VitraWin *w);
 
 void vitra_win_clear_menu(VitraWin *w);
-void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut);
+/* Menu item flags (vitra_win_add_menu_item, vitra_tray_add_menu_item). */
+enum {
+	VITRA_MENU_SEPARATOR = 1,
+	VITRA_MENU_DISABLED = 2,
+	VITRA_MENU_CHECKED = 4,
+};
+
+void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut, int flags);
 int vitra_win_activate_accel(VitraWin *w, const char *shortcut);
 
 char *vitra_open_dialog(const char *title, const char *default_path, const char *filters);
@@ -53,9 +60,9 @@ char *vitra_open_directory_dialog(const char *title, const char *default_path);
 int vitra_message_dialog(const char *title, const char *message, int confirm);
 int vitra_show_notification(const char *title, const char *body);
 
-void vitra_tray_set(const char *tooltip);
+void vitra_tray_set(const char *tooltip, const void *png, int png_len);
 void vitra_tray_clear_menu(void);
-void vitra_tray_add_menu_item(const char *item_id, const char *item_label);
+void vitra_tray_add_menu_item(const char *item_id, const char *item_label, int flags);
 void vitra_tray_clear(void);
 
 void vitra_win_set_drag_drop(VitraWin *w, int enabled);
