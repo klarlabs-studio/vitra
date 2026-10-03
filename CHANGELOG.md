@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Upgrading
+- Update manifests, policy documents, and audit event JSON now carry a format version, `"schema": "1"`. Existing files keep working: a manifest or policy document without `schema` is read as schema 1, and manifests signed by 0.9 still verify.
+- Upgrade apps before you publish manifests signed by this CLI or deploy policies saved by this release. An older runtime reads the new files, but cannot tell a future format from this one; from this release on, a runtime refuses formats newer than it knows with `ErrUnsupportedSchema`.
+- Add `"schema": "1"` to hand-written policy documents, and re-sign update manifests with this CLI (`vitra update-sign`). Unversioned manifests and policy documents are deprecated and stop being accepted before 1.0.
+- If you parse audit JSON lines strictly, allow the new leading `schema` field. If you write audit JSON from a custom sink, encode with `audit.MarshalEvent`.
+
+### Added
+- `schema` format version on signed update manifests (`updater.ManifestSchema`), covered by the signature: stripping, adding, or changing it invalidates the manifest. `SignManifest` and `BuildSignedManifest` always write it.
+- `updater.ParseManifest`, which decodes a manifest and checks its schema. `Fetcher.FetchManifest`, `vitra update-apply`, and `vitra update-stage` use it.
+- `schema` format version on policy documents (`policy.DocumentSchema`). `Document.Encode` and `Save` always write it; `ParseDocument` checks it before any other field.
+- `schema` format version on audit event JSON (`audit.EventSchema`), written by `JSONLSink` and `FileSink`. New `audit.MarshalEvent` and `audit.ParseEvent` encode and decode one line.
+- `updater.ErrUnsupportedSchema`, `policy.ErrUnsupportedSchema`, and `audit.ErrUnsupportedSchema` for a format version this runtime does not know. Match them with `errors.Is`.
+- The release pipeline can notarize the macOS `vitra` binaries and Authenticode-sign the Windows ones. It turns on once the signing certificates are added as repository secrets and is skipped until then; checksums, SBOMs, and the cosign signature cover the signed binaries. See *Code-signing certificates* in `CONTRIBUTING.md`.
+
+### Deprecated
+- Update manifests and policy documents without a `schema` field. They are read as schema 1 for now and stop being accepted before 1.0.
+
+### Fixed
+- macOS: a host call made from another goroutine before `Run` started the loop (for example opening a dialog or a window from a startup goroutine) ran AppKit code off the main thread, and AppKit aborted the process. Such calls are now queued and run on the main thread once the loop starts.
+
 ## [0.9.0] - 2026-10-03
 
 Consistent errors from every stub host, and a complete Go reference on

@@ -377,6 +377,29 @@ func TestRun_UpdateStage(t *testing.T) {
 	if err := run([]string{"update-stage"}); err == nil {
 		t.Fatal("expected usage error")
 	}
+
+	// A manifest from a newer format is refused by stage and apply alike.
+	future := bytes.Replace(body, []byte(`"schema":"1"`), []byte(`"schema":"2"`), 1)
+	if bytes.Equal(future, body) {
+		t.Fatalf("manifest has no schema: %s", body)
+	}
+	futurePath := filepath.Join(dir, "future.json")
+	if err := os.WriteFile(futurePath, future, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err = run([]string{"update-stage", "--out", outDir, "--manifest", futurePath, "--artifact", artifactPath})
+	if !errors.Is(err, updater.ErrUnsupportedSchema) {
+		t.Fatalf("update-stage: want ErrUnsupportedSchema, got %v", err)
+	}
+	err = run([]string{
+		"update-apply", "--manifest", futurePath, "--artifact", artifactPath,
+		"--app-id", m.AppID, "--current-version", "1.0.0",
+		"--pubkey", hex.EncodeToString(make([]byte, ed25519.PublicKeySize)),
+		"--dest", filepath.Join(dir, "dest.bin"),
+	})
+	if !errors.Is(err, updater.ErrUnsupportedSchema) {
+		t.Fatalf("update-apply: want ErrUnsupportedSchema, got %v", err)
+	}
 }
 
 func TestRun_UpdateKeygenAndSign(t *testing.T) {
@@ -420,6 +443,9 @@ func TestRun_UpdateKeygenAndSign(t *testing.T) {
 	raw, err := os.ReadFile(manifestPath)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"schema": "1"`) {
+		t.Fatalf("signed manifest has no schema:\n%s", raw)
 	}
 	var m updater.Manifest
 	if err := json.Unmarshal(raw, &m); err != nil {

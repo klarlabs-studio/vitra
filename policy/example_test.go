@@ -13,7 +13,7 @@ import (
 // An administrator's policy can take a permission away from an app that
 // grants it. Policy only ever tightens.
 func ExampleEngine() {
-	doc, err := policy.ParseDocument(strings.NewReader(`{"deny_permissions": ["clipboard.read"]}`))
+	doc, err := policy.ParseDocument(strings.NewReader(`{"schema": "1", "deny_permissions": ["clipboard.read"]}`))
 	if err != nil {
 		panic(err)
 	}

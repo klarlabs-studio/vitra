@@ -28,7 +28,7 @@ func lineEvent(i int) audit.Event {
 
 func lineLen(t *testing.T, e audit.Event) int64 {
 	t.Helper()
-	b, err := json.Marshal(e)
+	b, err := audit.MarshalEvent(e)
 	if err != nil {
 		t.Fatal(err)
 	}
