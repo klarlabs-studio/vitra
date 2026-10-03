@@ -6,7 +6,7 @@ Vitra verifies updates with ed25519 signatures. It does not host anything: you u
 
 An update is installed only if **all** of these hold:
 
-1. The manifest's signature is valid for your public key.
+1. The manifest's format version (`schema`) is one this runtime reads, and its signature is valid for your public key.
 2. The artifact's SHA-256 matches the manifest.
 3. The manifest is for **this app** and **this channel**.
 4. Its version is **strictly newer** (SemVer 2.0) than the installed one, so old signed releases cannot be replayed.
@@ -31,6 +31,30 @@ vitra update-stage --out public/updates --manifest manifest.json --artifact dist
 ```
 
 `--privkey` takes `env:NAME`, `file:path`, or `secret:…`; bare hex is rejected so keys don't end up in shell history. Re-sign before a manifest expires if you have no newer release.
+
+## The manifest format
+
+`update-sign` writes a manifest like this:
+
+```json
+{
+  "schema": "1",
+  "app_id": "com.example.notes",
+  "version": "1.3.0",
+  "channel": "stable",
+  "artifact": "notes.tar.gz",
+  "sha256": "…",
+  "created_at": "2026-10-03T12:00:00Z",
+  "expires_at": "2026-11-02T12:00:00Z",
+  "signature": "…"
+}
+```
+
+`schema` is the format version (`updater.ManifestSchema`). It is signed with the rest, so it cannot be changed or removed without breaking the signature.
+
+- A runtime reads every schema written by an earlier release of the same major version. A newer or unknown schema is refused with `updater.ErrUnsupportedSchema` instead of being half-understood. Ship the runtime update before you sign with a newer CLI that writes a new schema.
+- A manifest without `schema` was signed by Vitra 0.9 or earlier. It is read as schema `"1"` and its signature still verifies. **Deprecated:** support for unversioned manifests is removed before 1.0. Re-sign with a current CLI; the default 90-day expiry retires old manifests anyway.
+- Decode manifests you load yourself with `updater.ParseManifest`, which checks the schema. `FetchManifest` does this for you.
 
 ## Checking and installing from the app
 

@@ -28,6 +28,9 @@ func StageChannel(outDir string, m Manifest, artifact []byte) (ChannelStage, err
 	if strings.TrimSpace(outDir) == "" {
 		return ChannelStage{}, errors.New("output directory is required")
 	}
+	if err := checkManifestSchema(m.Schema); err != nil {
+		return ChannelStage{}, err
+	}
 	if m.Signature == "" {
 		return ChannelStage{}, errors.New("manifest signature is required")
 	}

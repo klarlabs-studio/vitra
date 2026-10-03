@@ -2,7 +2,6 @@ package updater
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -175,7 +174,9 @@ func validateRelativeArtifact(artifact string) error {
 	return nil
 }
 
-// FetchManifest downloads and decodes the channel manifest.json (unsigned decode only).
+// FetchManifest downloads and decodes the channel manifest.json (unsigned
+// decode only; see ParseManifest). A manifest of an unknown schema fails
+// with ErrUnsupportedSchema.
 func (f *Fetcher) FetchManifest(ctx context.Context, src ChannelSource) (Manifest, error) {
 	manifestURL, err := src.ManifestURL()
 	if err != nil {
@@ -185,9 +186,9 @@ func (f *Fetcher) FetchManifest(ctx context.Context, src ChannelSource) (Manifes
 	if err != nil {
 		return Manifest{}, err
 	}
-	var m Manifest
-	if err := json.Unmarshal(body, &m); err != nil {
-		return Manifest{}, fmt.Errorf("decode manifest: %w", err)
+	m, err := ParseManifest(body)
+	if err != nil {
+		return Manifest{}, err
 	}
 	if m.AppID == "" {
 		m.AppID = strings.TrimSpace(src.AppID)
