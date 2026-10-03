@@ -130,6 +130,8 @@ err = application.SetTray(app.TraySpec{Title: "42%", Icon: trayIcon, Template: t
 
 The panel is an ordinary window to the security model: it can call nothing until a grant names it, its calls are attributed to it, and navigating it moves no authority. Wayland compositors decide where windows go, so there the panel is usually centered.
 
+[Menu bar apps](/guide/menubar) puts these pieces together step by step.
+
 A menu bar app usually has no Dock icon and no main window. Set `Presentation: app.PresentationAccessory` and leave `Window.ID` empty; call `SetTray` before `Run`, since an app with neither a window nor a tray could not be seen or quit. Closing an accessory app's last window does not quit it. On macOS it runs without a Dock icon or app menu; on Linux and Windows its windows get no taskbar entry. Package it with `vitra package --accessory` so macOS shows no Dock icon from launch either.
 
 ```go

@@ -151,6 +151,12 @@ jobs:
         # The same test as the Linux job, in WKWebView / WebView2.
         run: go test -tags vitra_native -count=1 -timeout 5m -run TestNotesE2E -v ./example/notes
 
+      - name: Menu bar demo E2E (tray panel, refused clipboard read)
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        run: go test -tags vitra_native -count=1 -timeout 5m -run TestMenubarE2E -v ./example/menubar
+
   # Competitive Linux WebView host — not covered by the shared go-ci bar (CGO + GTK).
   native:
     name: Native Linux E2E
@@ -193,3 +199,6 @@ jobs:
 
       - name: Notes demo E2E (real UI, every attack refused)
         run: make e2e-notes
+
+      - name: Menu bar demo E2E (tray panel, refused clipboard read)
+        run: make e2e-menubar

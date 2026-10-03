@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Disk Usage</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Disk Usage</h1>
+    <p id="path" class="muted">…</p>
+  </header>
+  <p class="free"><span id="free">…</span> <span class="muted">free</span></p>
+  <div class="meter" role="meter" aria-label="Disk used" aria-valuemin="0" aria-valuemax="100" id="meter">
+    <div class="fill" id="fill"></div>
+  </div>
+  <p class="muted" id="used">…</p>
+  <section class="security" aria-label="Security">
+    <h2>What this panel may do</h2>
+    <p>Read the disk usage: <span id="grant-usage" class="pending">checking</span></p>
+    <p>Read your clipboard: <span id="grant-clipboard" class="pending">checking</span></p>
+  </section>
+  <footer>
+    <button id="refresh" type="button">Refresh</button>
+    <button id="close" type="button" class="secondary">Close</button>
+  </footer>
+</main>
+<script src="panel.js"></script>
+</body>
+</html>

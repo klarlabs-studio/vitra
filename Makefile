@@ -1,4 +1,4 @@
-.PHONY: build build-native test test-native vet fmt fmt-check lint cover security check install-hooks demo e2e e2e-notes notes
+.PHONY: build build-native test test-native vet fmt fmt-check lint cover security check install-hooks demo e2e e2e-notes e2e-menubar notes menubar
 
 GO       := go
 LINT     := golangci-lint
@@ -32,6 +32,14 @@ e2e-notes:
 
 notes:
 	CGO_ENABLED=1 $(GO) run -tags vitra_native ./example/notes
+
+# Menu bar demo in the native WebView: the panel follows the usage, its
+# clipboard read is refused, and it shows, hides, and closes itself.
+e2e-menubar:
+	CGO_ENABLED=1 timeout 120 xvfb-run -a $(GO) test -tags vitra_native -count=1 -run TestMenubarE2E -v ./example/menubar/
+
+menubar:
+	CGO_ENABLED=1 $(GO) run -tags vitra_native ./example/menubar
 
 # Native host tests, one process each (GTK is bound to one thread). The D-Bus
 # tests run fake services on a private session bus: needs dbus + python3-gi.
