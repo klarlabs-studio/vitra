@@ -29,7 +29,20 @@ import (
 	"go.klarlabs.de/vitra/platform"
 )
 
-func init() { runtime.LockOSThread() }
+// init keeps the main goroutine on the main thread and remembers that thread.
+func init() {
+	runtime.LockOSThread()
+	mainThread = currentThread()
+}
+
+// mainThread is the id of the process's main thread, the UI thread: it owns
+// the host's Win32 windows and Run is documented to run on it. Before Run,
+// only calls from this thread run inline; calls from any other thread are
+// held until Run starts the loop.
+var mainThread uint32
+
+// currentThread returns the calling OS thread's id.
+func currentThread() uint32 { return uint32(C.vitra_current_thread_id()) }
 
 // Host is a Win32 desktop host scaffold.
 type Host struct {
@@ -47,6 +60,7 @@ type Host struct {
 	programName string
 	jobs        sync.Map
 	jobSeq      uint64
+	pending     []uint64 // jobs from other threads before Run, in order
 }
 
 type nativeWindow struct{ ptr *C.VitraWin }
@@ -745,8 +759,17 @@ func (h *Host) UnregisterGlobalShortcut(accelerator string) error {
 // Run runs the Win32 message loop (blocking). Must be called from the main OS thread.
 func (h *Host) Run() error {
 	h.ensureInit()
+	// The job window must exist before looping is set: from then on, calls
+	// from other threads are posted to it.
+	C.vitra_win32_bind_ui_thread()
 	h.mu.Lock()
 	h.looping = true
+	pending := h.pending
+	h.pending = nil
+	// Posted under the lock, so they run ahead of anything queued from now on.
+	for _, id := range pending {
+		C.vitra_idle_post(C.ulonglong(id))
+	}
 	h.mu.Unlock()
 	C.vitra_win32_main()
 	return nil
@@ -765,10 +788,23 @@ func (h *Host) err(f platform.Feature) error {
 	}
 }
 
-// dispatch runs fn on the UI thread: queued while the loop runs, inline
-// before it starts.
+// dispatch runs fn on the UI thread. It is queued while the loop runs, and
+// also before the loop starts when the caller is not the UI thread: Win32
+// windows belong to the thread that creates them, and only the UI thread's
+// message loop pumps them. Such a call is held until Run posts it to that
+// loop. Only a call that is already on the UI thread before Run runs inline.
 func (h *Host) dispatch(fn func()) {
-	if !h.enqueue(fn) {
+	h.mu.Lock()
+	switch {
+	case h.looping:
+		id := h.addJobLocked(fn)
+		h.mu.Unlock()
+		C.vitra_idle_add(C.ulonglong(id))
+	case currentThread() != mainThread:
+		h.pending = append(h.pending, h.addJobLocked(fn))
+		h.mu.Unlock()
+	default:
+		h.mu.Unlock()
 		fn()
 	}
 }
@@ -781,12 +817,18 @@ func (h *Host) enqueue(fn func()) bool {
 		h.mu.Unlock()
 		return false
 	}
-	h.jobSeq++
-	id := h.jobSeq
+	id := h.addJobLocked(fn)
 	h.mu.Unlock()
-	h.jobs.Store(id, fn)
 	C.vitra_idle_add(C.ulonglong(id))
 	return true
+}
+
+// addJobLocked stores fn under a new job id. h.mu must be held.
+func (h *Host) addJobLocked(fn func()) uint64 {
+	h.jobSeq++
+	id := h.jobSeq
+	h.jobs.Store(id, fn)
+	return id
 }
 
 //export goVitraIdle

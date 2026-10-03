@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - macOS: a host call made from another goroutine before `Run` started the loop (for example opening a dialog or a window from a startup goroutine) ran AppKit code off the main thread, and AppKit aborted the process. Such calls are now queued and run on the main thread once the loop starts.
+- Linux and Windows: the same call before `Run` ran inline on whatever thread made it. On Linux that drove GTK, which is not thread-safe, from the wrong thread; on Windows a window created there belonged to that thread and `Run`'s message loop never pumped it. Before `Run`, a call now runs inline only on the main thread, where `Run` must be called; from any other thread it is queued and runs on the main thread once the loop starts.
 
 ## [0.9.0] - 2026-10-03
 

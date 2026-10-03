@@ -505,10 +505,14 @@ static void ensure_idle_window(void) {
 		HWND_MESSAGE, NULL, GetModuleHandle(NULL), NULL);
 }
 
-void vitra_win32_main(void) {
-	MSG msg;
+void vitra_win32_bind_ui_thread(void) {
 	g_ui_thread = GetCurrentThreadId();
 	ensure_idle_window();
+}
+
+void vitra_win32_main(void) {
+	MSG msg;
+	vitra_win32_bind_ui_thread();
 	g_quit = 0;
 	while (!g_quit && GetMessage(&msg, NULL, 0, 0) > 0) {
 		VitraWin *w = NULL;
@@ -538,6 +542,16 @@ void vitra_idle_add(unsigned long long id) {
 		return;
 	}
 	PostMessage(g_idle_hwnd, VITRA_WM_IDLE, 0, (LPARAM)id);
+}
+
+void vitra_idle_post(unsigned long long id) {
+	/* A job queued before the loop started: the UI thread's message loop
+	 * runs it once Run pumps messages. */
+	PostMessage(g_idle_hwnd, VITRA_WM_IDLE, 0, (LPARAM)id);
+}
+
+unsigned long vitra_current_thread_id(void) {
+	return (unsigned long)GetCurrentThreadId();
 }
 
 VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload) {

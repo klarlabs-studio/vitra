@@ -5,7 +5,6 @@ package linux
 import (
 	"context"
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -17,9 +16,8 @@ func TestNativeMenuAccelerator(t *testing.T) {
 	if os.Getenv("DISPLAY") == "" {
 		t.Skip("DISPLAY is required for GTK menu accelerators")
 	}
-	runtime.LockOSThread()
 
-	h := New()
+	h := newHostOnThisThread()
 	// On Wayland the claim follows the GlobalShortcuts portal (portal_test.go).
 	wayland := os.Getenv("WAYLAND_DISPLAY") != "" || strings.EqualFold(os.Getenv("XDG_SESSION_TYPE"), "wayland")
 	if !wayland && !h.Features().Available(platform.FeatureGlobalShortcut) {
