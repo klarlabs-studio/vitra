@@ -12,8 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgrade apps before you publish manifests signed by this CLI or deploy policies saved by this release. An older runtime reads the new files, but cannot tell a future format from this one; from this release on, a runtime refuses formats newer than it knows with `ErrUnsupportedSchema`.
 - Add `"schema": "1"` to hand-written policy documents, and re-sign update manifests with this CLI (`vitra update-sign`). Unversioned manifests and policy documents are deprecated and stop being accepted before 1.0.
 - If you parse audit JSON lines strictly, allow the new leading `schema` field. If you write audit JSON from a custom sink, encode with `audit.MarshalEvent`.
+- The official commands decode their input strictly. A page that sends an unknown field (`{"id": "main", "force": true}`), a wrong type (`"multiple": "true"`, `"width": "640"`), a non-integer or negative window size, or a menu item with `children` now gets a validation error (code `error`) where the extra data used to be ignored. Send only the fields listed in the [plugin reference](https://klarlabs-studio.github.io/vitra/reference/plugins#inputs-and-outputs). Command names, permissions, the documented shorthands (a bare window id, a bare menu array, ...), and outputs are unchanged; commands that return nothing still return `null`.
+- Regenerate your TypeScript client (`vitra generate typescript --app .`). Official commands are now typed instead of `unknown`, so casts such as `(await client.dialogOpen(opts)) as string[] | null` can go, and TypeScript now reports calls that pass the wrong shape.
+- `desktop.ParseMenuItems`, `ParseTraySet`, `ParseDialogFileOptions`, `ParseShortcutRegister`, `ParseShortcutUnregister`, `ParseDragDropEnable`, `ParseWindowCreateOptions`, `ParseWindowID`, `ParseWindowAlwaysOnTop`, `ParseWindowSetTitle`, `ParseWindowSetSize`, `ParseWindowSetIcon`, and `ParseWindowChromeApply` are removed. If you bound official commands by hand with them, bind with `vitra.Bind` and the matching input type from `plugin/official` instead (for example `vitra.Bind(rt, "window.setSize", func(ctx context.Context, inv domain.Invocation, in official.WindowSizeInput) (vitra.Void, error) { ... })`), passing `inv.Caller` to the `desktop` service as before.
+- If you called official commands through `Runtime.Invoke` in Go, `window.create` now returns `official.WindowCreated` instead of `map[string]any` (same JSON).
 
 ### Added
+- `vitra.Bind` attaches a typed handler to a command a plugin contributed, keeping its name, description, and permission: input is decoded strictly and `Runtime.TypeScript` types it, as for `vitra.Register`.
+- `vitra.Void`, the output type of a command that returns nothing. The page receives `null`; the generated client types the call as `Promise<void>`.
+- Input and output types for every official command in `plugin/official` (`WriteFileInput`, `DialogOptions`, `FileFilter`, `MessageDialogInput`, `NotificationInput`, `WindowRef`, `WindowCreateInput`, `WindowCreated`, `WindowChromeInput`, `WindowAlwaysOnTopInput`, `WindowTitleInput`, `WindowSizeInput`, `WindowIconInput`, `MenuInput`, `MenuItem`, `TrayInput`, `DragDropInput`, `ShortcutInput`, `ShortcutRef`), with fuzz tests.
+- The generated client marks an input optional when all its fields are optional (`dialogOpen(input?: DialogOptions)`).
 - `schema` format version on signed update manifests (`updater.ManifestSchema`), covered by the signature: stripping, adding, or changing it invalidates the manifest. `SignManifest` and `BuildSignedManifest` always write it.
 - `updater.ParseManifest`, which decodes a manifest and checks its schema. `Fetcher.FetchManifest`, `vitra update-apply`, and `vitra update-stage` use it.
 - `schema` format version on policy documents (`policy.DocumentSchema`). `Document.Encode` and `Save` always write it; `ParseDocument` checks it before any other field.
@@ -21,8 +29,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `updater.ErrUnsupportedSchema`, `policy.ErrUnsupportedSchema`, and `audit.ErrUnsupportedSchema` for a format version this runtime does not know. Match them with `errors.Is`.
 - The release pipeline can notarize the macOS `vitra` binaries and Authenticode-sign the Windows ones. It turns on once the signing certificates are added as repository secrets and is skipped until then; checksums, SBOMs, and the cosign signature cover the signed binaries. See *Code-signing certificates* in `CONTRIBUTING.md`.
 
+### Changed
+- **Breaking:** `app.UseOfficialPlugins` binds every official command as a typed command. Input is decoded strictly: unknown fields, wrong types, and invalid window sizes are rejected instead of ignored. Shorthand payloads and every security check (grants, path scopes, deny rules, caller identity, TOCTOU-safe file access) are unchanged. Part of [#292](https://github.com/klarlabs-studio/vitra/issues/292).
+- **Breaking:** `window.create` and `window.chrome` reject a width or height that is negative, fractional, or above 2^53 instead of silently using the default size.
+- `vitra generate typescript` (with or without `--app`) and the clients `vitra new` writes now type every official command instead of `unknown`.
+
 ### Deprecated
 - Update manifests and policy documents without a `schema` field. They are read as schema 1 for now and stop being accepted before 1.0.
+
+### Removed
+- **Breaking:** the `desktop.Parse*` input parsers. Their validation moved into the official input types in `plugin/official`, behind the typed commands.
 
 ### Fixed
 - macOS: a host call made from another goroutine before `Run` started the loop (for example opening a dialog or a window from a startup goroutine) ran AppKit code off the main thread, and AppKit aborted the process. Such calls are now queued and run on the main thread once the loop starts.

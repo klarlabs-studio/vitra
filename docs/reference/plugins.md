@@ -23,6 +23,42 @@
 
 The permission constants live in `desktop` (`desktop.PermFSRead`, `desktop.PermClipboardWrite`, …).
 
+## Inputs and outputs
+
+`UseOfficialPlugins` binds every command as a typed command (`vitra.Bind`) with the types below, from `plugin/official`. Input is decoded strictly: an unknown field, a wrong type, or a missing required value fails with a validation error (denial code `error`) before the host is touched. The generated client uses these types; commands with output `vitra.Void` send `null` and are typed `Promise<void>`.
+
+| Command | Input | Output |
+|---|---|---|
+| `fs.read` | path `string` | `string` |
+| `fs.write` | `WriteFileInput` `{path, data}` | `Void` |
+| `dialog.open` | `DialogOptions` `{title?, defaultPath?, filters?, multiple?}` or `null` | `[]string` (`null` when cancelled) |
+| `dialog.save`, `dialog.openDirectory` | `DialogOptions` or `null` | `string` |
+| `dialog.message` | `MessageDialogInput` `{title?, message, kind?}` | `bool` |
+| `clipboard.read` | none | `string` |
+| `clipboard.write` | text `string` | `Void` |
+| `browser.open` | URL `string` | `Void` |
+| `os.info` | none | `desktop.OsInfo` |
+| `notifications.show` | `NotificationInput` `{title?, body}` | `Void` |
+| `path.open` | path `string` | `Void` |
+| `window.create` | `WindowCreateInput` `{id, title?, path?, width?, height?}` | `WindowCreated` `{id}` |
+| `window.chrome` | `WindowChromeInput` `{id, title?, width?, height?, maximized?, fullscreen?, alwaysOnTop?, minimized?, hidden?, iconPath?}` | `Void` |
+| `window.getChrome` | `WindowRef` `{id}` | `platform.WindowChrome` |
+| `window.setAlwaysOnTop` | `WindowAlwaysOnTopInput` `{id, alwaysOnTop}` | `Void` |
+| `window.setTitle` | `WindowTitleInput` `{id, title}` | `Void` |
+| `window.setSize` | `WindowSizeInput` `{id, width, height}` | `Void` |
+| `window.setIcon` | `WindowIconInput` `{id, iconPath}` | `Void` |
+| `window.close`, `window.focus`, `window.blur`, `window.hide`, `window.show`, `window.minimize`, `window.maximize`, `window.unmaximize`, `window.fullscreen`, `window.unfullscreen`, `window.restore` | `WindowRef` `{id}` | `Void` |
+| `menu.set` | `MenuInput` `{items: [MenuItem]}`; `MenuItem` is `{id, label, menu?, shortcut?}` | `Void` |
+| `tray.set` | `TrayInput` `{tooltip?, items?}` | `Void` |
+| `menu.clear`, `tray.clear`, `app.quit` | none | `Void` |
+| `dragdrop.receive` | `DragDropInput` `{id?, enabled?}` (window `"main"`, enabled `true` by default) | `Void` |
+| `shortcut.register` | `ShortcutInput` `{accelerator, action}` | `Void` |
+| `shortcut.unregister` | `ShortcutRef` `{accelerator}` | `Void` |
+
+Window sizes must be whole numbers no larger than 2^53 (`window.setSize`: positive; `window.create` and `window.chrome`: `0` or absent leaves the size alone). Anything else is rejected, never rounded or ignored.
+
+The client uses the object form of each input. `window.vitra.invoke` also accepts the older shorthands: a bare id string for `WindowRef` and `window.create`, a bare string for the `dialog.message` message, the `notifications.show` body, and the `shortcut.unregister` accelerator, a bare item array for `menu.set` and `tray.set`, a bare boolean for `dragdrop.receive`, `window` as an alias of `id` in `dragdrop.receive`, and `actionID` or `id` as aliases of `action` in `shortcut.register`.
+
 ## Writing a plugin
 
 A plugin implements `plugin.Plugin`:
@@ -34,4 +70,4 @@ type Plugin interface {
 }
 ```
 
-`rt.RegisterPlugin` checks the kernel version and refuses a plugin that declares a permission another plugin already owns. Bind executors for its commands with `rt.BindExecutor`, and grant its permissions like any other.
+`rt.RegisterPlugin` checks the kernel version and refuses a plugin that declares a permission another plugin already owns. Bind typed handlers to its commands with `vitra.Bind` (or untyped executors with `rt.BindExecutor`), and grant its permissions like any other. See [Typing a plugin's commands](/guide/commands#typing-a-plugin-s-commands).
