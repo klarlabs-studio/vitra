@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The release pipeline can notarize the macOS `vitra` binaries and Authenticode-sign the Windows ones. It turns on once the signing certificates are added as repository secrets and is skipped until then; checksums, SBOMs, and the cosign signature cover the signed binaries. See *Code-signing certificates* in `CONTRIBUTING.md`.
+
 ## [0.9.0] - 2026-10-03
 
 Consistent errors from every stub host, and a complete Go reference on
