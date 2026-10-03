@@ -16,7 +16,7 @@ Vitra follows [Semantic Versioning](https://semver.org). This page says what tha
 |---|---|
 | Exported Go API of `vitra`, `app`, `domain`, `desktop`, `platform` and its OS packages, `plugin`, `plugin/official`, `audit`, `policy`, `updater`, `worker` | No breaking change within 1.x |
 | Command names, permission names, event names, and denial codes | Stable within 1.x |
-| Wire formats: the IPC envelope, signed update manifests, policy documents, audit event JSON | Versioned; a 1.x runtime reads every format version written by an earlier 1.x |
+| Wire formats: the IPC envelope (`protocol`), signed update manifests, policy documents, audit event JSON (`schema`) | Versioned; a 1.x runtime reads every format version written by an earlier 1.x, and refuses a newer one with a typed error (`ErrUnsupportedSchema`) |
 | The page API: `window.vitra.invoke` and `window.vitra.on` | Stable within 1.x |
 | Generated TypeScript clients | Regenerating with a newer 1.x CLI never changes existing method signatures |
 | CLI commands and flags, and `--json` output | Stable within 1.x |
@@ -50,5 +50,5 @@ These are the API questions to settle while breaking changes are still cheap. Pr
 3. **A smaller host interface.** *Done.* The core, `platform.DesktopHost` (`app.DesktopHost` is an alias), has the 12 methods `app.Run` needs. Clipboard, dialogs, menus, tray and the rest are small optional interfaces; a command whose capability the host lacks fails with `ErrUnsupported`.
 4. **The `desktop` input parsers.** Ten `desktop.Parse*` functions are exported only for binding the official commands. Once (1) lands, unexport them or move them behind the typed commands.
 5. **The `domain` surface.** `domain` exports 72 identifiers, including pipeline internals such as the invocation service. Keep what apps use (grants, path scopes, callers, denials, typed invocations) and move the rest to `internal/`.
-6. **Versioned wire formats.** Add a schema version to signed update manifests and policy documents, as the IPC envelope already has (`protocol: "1"`), so formats can evolve within 1.x.
-7. **Signed releases.** Notarize the macOS CLI binaries and sign the Windows ones, so downloads do not trigger OS warnings. This needs the project's Apple Developer ID and a Windows code-signing certificate.
+6. **Versioned wire formats.** *Done.* Signed update manifests, policy documents, and audit event JSON carry `"schema": "1"`, as the IPC envelope carries `"protocol": "1"`, so formats can evolve within 1.x. The manifest's schema is covered by its signature. Manifests and policy documents without the field (0.9 and earlier) are read as schema 1 until 1.0. See [signed updates](/guide/updates#the-manifest-format) and [audit and policy](/guide/audit-policy#enterprise-policy).
+7. **Signed releases.** Notarize the macOS CLI binaries and sign the Windows ones, so downloads do not trigger OS warnings. The release pipeline is ready and turns signing on once the certificates are added as repository secrets; only the project's Apple Developer ID certificate, App Store Connect API key, and a Windows code-signing certificate are missing. See [Code-signing certificates](https://github.com/klarlabs-studio/vitra/blob/main/CONTRIBUTING.md#code-signing-certificates).

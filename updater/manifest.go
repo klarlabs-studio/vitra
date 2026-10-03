@@ -26,7 +26,15 @@ const (
 )
 
 // Manifest is a signed update description.
+//
+// Its JSON form is versioned by Schema, which the signature covers. Read
+// manifests with ParseManifest, which rejects schemas this runtime does not
+// know; VerifyManifest and PlanInstall reject them too.
 type Manifest struct {
+	// Schema is the manifest format version (ManifestSchema when written by
+	// this release). Empty means a manifest signed before versioning existed,
+	// read as schema "1"; see ManifestSchema.
+	Schema    string    `json:"schema,omitempty"`
 	AppID     string    `json:"app_id"`
 	Version   string    `json:"version"`
 	Channel   Channel   `json:"channel"`
@@ -41,6 +49,10 @@ type Manifest struct {
 
 // canonicalPayload is the signed bytes (signature field excluded).
 type canonicalPayload struct {
+	// omitempty keeps manifests signed before versioning existed (no
+	// schema field) verifiable. A schema 1 manifest signs "schema":"1", so
+	// stripping or adding the field breaks the signature.
+	Schema    string    `json:"schema,omitempty"`
 	AppID     string    `json:"app_id"`
 	Version   string    `json:"version"`
 	Channel   Channel   `json:"channel"`
@@ -53,8 +65,12 @@ type canonicalPayload struct {
 }
 
 func (m Manifest) payloadBytes() ([]byte, error) {
+	if err := checkManifestSchema(m.Schema); err != nil {
+		return nil, err
+	}
 	p := canonicalPayload{
-		AppID: m.AppID, Version: m.Version, Channel: m.Channel,
+		Schema: m.Schema,
+		AppID:  m.AppID, Version: m.Version, Channel: m.Channel,
 		Artifact: m.Artifact, SHA256: m.SHA256, CreatedAt: m.CreatedAt.UTC(),
 	}
 	if !m.ExpiresAt.IsZero() {
@@ -93,6 +109,7 @@ func BuildSignedManifestTTL(appID, version string, channel Channel, artifactName
 	}
 	now := time.Now().UTC()
 	m := Manifest{
+		Schema:    ManifestSchema,
 		AppID:     appID,
 		Version:   version,
 		Channel:   channel,
@@ -104,10 +121,15 @@ func BuildSignedManifestTTL(appID, version string, channel Channel, artifactName
 	return SignManifest(m, priv)
 }
 
-// SignManifest signs a manifest with an ed25519 private key.
+// SignManifest signs a manifest with an ed25519 private key. A manifest
+// without a Schema is stamped with ManifestSchema first, so every manifest
+// signed by this release carries its format version under the signature.
 func SignManifest(m Manifest, priv ed25519.PrivateKey) (Manifest, error) {
 	if len(priv) != ed25519.PrivateKeySize {
 		return m, errors.New("invalid private key size")
+	}
+	if m.Schema == "" {
+		m.Schema = ManifestSchema
 	}
 	payload, err := m.payloadBytes()
 	if err != nil {
@@ -118,8 +140,12 @@ func SignManifest(m Manifest, priv ed25519.PrivateKey) (Manifest, error) {
 	return m, nil
 }
 
-// VerifyManifest checks authenticity of a manifest against a public key.
+// VerifyManifest checks authenticity of a manifest against a public key. A
+// manifest of an unknown schema fails with ErrUnsupportedSchema.
 func VerifyManifest(m Manifest, pub ed25519.PublicKey) error {
+	if err := checkManifestSchema(m.Schema); err != nil {
+		return err
+	}
 	if m.Signature == "" {
 		return fmt.Errorf("%w: manifest is unsigned", ErrBadSignature)
 	}

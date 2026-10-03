@@ -25,6 +25,7 @@ void vitra_app_run(void);
 void vitra_app_quit(void);
 /* Queue Go job id for goVitraIdle on the UI thread. */
 void vitra_idle_add(unsigned long long id);
+int vitra_is_main_thread(void);
 void vitra_set_devtools(int enabled);
 
 VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload);
