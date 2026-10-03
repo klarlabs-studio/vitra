@@ -768,28 +768,46 @@ func (h *Host) err(f platform.Feature) error {
 	}
 }
 
-// dispatch runs fn on the UI thread: queued while the loop runs, inline
-// before it starts.
+// dispatch runs fn on the main thread. It is queued while the loop runs,
+// and also before the loop starts when the caller is another goroutine: the
+// main queue drains once Run starts the loop. Only a call that is already
+// on the main thread before Run runs inline.
 func (h *Host) dispatch(fn func()) {
-	if !h.enqueue(fn) {
-		fn()
+	if h.enqueue(fn) {
+		return
 	}
+	if !isMainThread() {
+		h.post(fn)
+		return
+	}
+	fn()
 }
+
+// isMainThread reports whether the caller runs on the process's main thread,
+// the only thread AppKit may be used from.
+func isMainThread() bool { return C.vitra_is_main_thread() != 0 }
 
 // enqueue queues fn for the UI thread and reports whether the loop is running
 // to take it.
 func (h *Host) enqueue(fn func()) bool {
 	h.mu.Lock()
-	if !h.looping {
-		h.mu.Unlock()
+	looping := h.looping
+	h.mu.Unlock()
+	if !looping {
 		return false
 	}
+	h.post(fn)
+	return true
+}
+
+// post queues fn on the main queue, whether or not the loop runs yet.
+func (h *Host) post(fn func()) {
+	h.mu.Lock()
 	h.jobSeq++
 	id := h.jobSeq
 	h.mu.Unlock()
 	h.jobs.Store(id, fn)
 	C.vitra_idle_add(C.ulonglong(id))
-	return true
 }
 
 //export goVitraIdle
