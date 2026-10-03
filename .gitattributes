@@ -1,0 +1,3 @@
+# Golden files and fuzz corpora are compared byte for byte; keep them LF on
+# every platform (Windows checkouts would otherwise convert them to CRLF).
+**/testdata/** text eol=lf
