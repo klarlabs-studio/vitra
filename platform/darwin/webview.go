@@ -152,6 +152,14 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureTray, Available: true,
 			Detail: "NSStatusItem with context menu",
 		},
+		platform.FeatureTrayTitle: {
+			Feature: platform.FeatureTrayTitle, Available: true,
+			Detail: "NSStatusItem button title in the menu bar",
+		},
+		platform.FeatureTrayIcon: {
+			Feature: platform.FeatureTrayIcon, Available: true,
+			Detail: "PNG scaled to 18pt; TraySpec.Template makes it a template image",
+		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,
 			Detail: "flock-based; available without native WebView",
@@ -645,7 +653,7 @@ func (h *Host) SetMenuBar(id domain.WindowID, items []platform.MenuItem) error {
 			cid := C.CString(it.ID)
 			clabel := C.CString(it.Label)
 			cshort := C.CString(it.Shortcut)
-			C.vitra_win_add_menu_item(w.ptr, cmenu, cid, clabel, cshort)
+			C.vitra_win_add_menu_item(w.ptr, cmenu, cid, clabel, cshort, menuFlags(it))
 			C.free(unsafe.Pointer(cmenu))
 			C.free(unsafe.Pointer(cid))
 			C.free(unsafe.Pointer(clabel))
@@ -679,19 +687,31 @@ func (h *Host) ActivateMenuAccel(id domain.WindowID, shortcut string) (bool, err
 	return got.ok, got.err
 }
 
-// SetTray shows a status-item tray entry with tooltip and optional context menu.
-func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
+// SetTray shows the menu bar status item: title and icon (an 18pt-high
+// PNG, tinted by the system when Template is set), tooltip, and menu.
+func (h *Host) SetTray(spec platform.TraySpec) error {
 	done := make(chan struct{}, 1)
 	h.dispatch(func() {
 		h.ensureInit()
-		ct := C.CString(tooltip)
+		ct := C.CString(spec.Tooltip)
 		defer C.free(unsafe.Pointer(ct))
-		C.vitra_tray_set(ct)
+		ctitle := C.CString(spec.Title)
+		defer C.free(unsafe.Pointer(ctitle))
+		var icon unsafe.Pointer
+		if len(spec.Icon) > 0 {
+			icon = C.CBytes(spec.Icon)
+			defer C.free(icon)
+		}
+		template := C.int(0)
+		if spec.Template {
+			template = 1
+		}
+		C.vitra_tray_set(ct, ctitle, icon, C.int(len(spec.Icon)), template)
 		C.vitra_tray_clear_menu()
-		for _, it := range items {
+		for _, it := range spec.Items {
 			cid := C.CString(it.ID)
 			clabel := C.CString(it.Label)
-			C.vitra_tray_add_menu_item(cid, clabel)
+			C.vitra_tray_add_menu_item(cid, clabel, menuFlags(it))
 			C.free(unsafe.Pointer(cid))
 			C.free(unsafe.Pointer(clabel))
 		}
@@ -699,6 +719,32 @@ func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
 	})
 	<-done
 	return nil
+}
+
+// trayState reports the status item as AppKit holds it (tests).
+func (h *Host) trayState() string {
+	ch := make(chan string, 1)
+	h.dispatch(func() {
+		cs := C.vitra_tray_state()
+		defer C.free(unsafe.Pointer(cs))
+		ch <- C.GoString(cs)
+	})
+	return <-ch
+}
+
+// menuFlags packs a menu item's separator, disabled and checked states.
+func menuFlags(it platform.MenuItem) C.int {
+	var f C.int
+	if it.Separator {
+		f |= C.VITRA_MENU_SEPARATOR
+	}
+	if it.Disabled {
+		f |= C.VITRA_MENU_DISABLED
+	}
+	if it.Checked {
+		f |= C.VITRA_MENU_CHECKED
+	}
+	return f
 }
 
 // ClearTray hides the tray icon.

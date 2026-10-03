@@ -185,3 +185,64 @@ func TestWindowSizes_RejectInexactOrOutOfRangeNumbers(t *testing.T) {
 		rejects[official.WindowChromeInput](t, in)
 	}
 }
+
+// tray.set carries the menu bar status: title, an icon from the app's assets,
+// and menu items with separators, disabled and checked states.
+func TestInputs_TrayStatus(t *testing.T) {
+	got := decode[official.TrayInput](t, map[string]any{
+		"tooltip": "Usage", "title": "42%", "icon": "icons/tray.png", "template": true,
+		"items": []any{
+			map[string]any{"id": "refresh", "label": "Refresh", "disabled": true},
+			map[string]any{"separator": true},
+			map[string]any{"id": "pin", "label": "Pin", "checked": true},
+		},
+	})
+	want := official.TrayInput{
+		Tooltip: "Usage", Title: "42%", Icon: "icons/tray.png", Template: true,
+		Items: []official.MenuItem{
+			{ID: "refresh", Label: "Refresh", Disabled: true},
+			{Separator: true},
+			{ID: "pin", Label: "Pin", Checked: true},
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+	menu := decode[official.MenuInput](t, []any{
+		map[string]any{"id": "a", "label": "A", "menu": "File"},
+		map[string]any{"separator": true, "menu": "File"},
+	})
+	if !menu.Items[1].Separator || menu.Items[1].Menu != "File" {
+		t.Fatalf("menu separator: %+v", menu.Items)
+	}
+}
+
+// The tray icon names a file inside the app's assets; anything that could
+// reach outside them is rejected before the host sees it.
+func TestInputs_TrayIconMustStayInAssets(t *testing.T) {
+	for _, icon := range []string{
+		"../secret.png", "//etc/passwd", "icons/../../x.png", "icons/./tray.png",
+		`icons\tray.png`, "icons//tray.png", "icons/", "C:/x.png", "./tray.png",
+	} {
+		rejects[official.TrayInput](t, map[string]any{"icon": icon})
+	}
+	// A leading slash is the URL path the page already uses for assets.
+	if got := decode[official.TrayInput](t, map[string]any{"icon": "/icons/tray.png"}); got.Icon != "icons/tray.png" {
+		t.Fatalf("icon %q, want icons/tray.png", got.Icon)
+	}
+}
+
+func TestInputs_MenuSeparatorsCarryNothingElse(t *testing.T) {
+	for _, it := range []map[string]any{
+		{"separator": true, "id": "x"},
+		{"separator": true, "label": "X"},
+		{"separator": true, "shortcut": "Ctrl+X"},
+		{"separator": true, "checked": true},
+		{"separator": true, "disabled": true},
+		{"id": "x"},
+		{"label": "X"},
+	} {
+		rejects[official.TrayInput](t, []any{it})
+		rejects[official.MenuInput](t, []any{it})
+	}
+}

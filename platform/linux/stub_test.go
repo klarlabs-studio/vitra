@@ -57,7 +57,7 @@ func TestStubHost_ReportsNativeRequirement(t *testing.T) {
 	_, err = h.OpenDirectoryDialog(platform.DialogFileOptions{})
 	mustErr(err)
 	mustErr(h.SetMenuBar("main", []platform.MenuItem{{Menu: "File", ID: "quit", Label: "Quit"}}))
-	mustErr(h.SetTray("tip", []platform.MenuItem{{ID: "quit", Label: "Quit"}}))
+	mustErr(h.SetTray(platform.TraySpec{Tooltip: "tip", Items: []platform.MenuItem{{ID: "quit", Label: "Quit"}}}))
 	h.ClearTray()
 	if held, release, err := h.TrySingleInstance("vitra-stub-test"); err != nil || !held {
 		t.Fatalf("single-instance: held=%v err=%v", held, err)
@@ -119,7 +119,7 @@ func TestStubHost_ReturnsErrUnsupportedPerFeature(t *testing.T) {
 		{"ShowNotification", h.ShowNotification("t", "b"), platform.FeatureNotificationShow},
 		{"SetMenuBar", h.SetMenuBar("main", nil), platform.FeatureMenuBar},
 		{"ActivateMenuAccel", second(h.ActivateMenuAccel("main", "Ctrl+Q")), platform.FeatureMenuBar},
-		{"SetTray", h.SetTray("tip", nil), platform.FeatureTray},
+		{"SetTray", h.SetTray(platform.TraySpec{Tooltip: "tip"}), platform.FeatureTray},
 		{"RegisterGlobalShortcut", h.RegisterGlobalShortcut("id", "Ctrl+K"), platform.FeatureGlobalShortcut},
 		{"UnregisterGlobalShortcut", h.UnregisterGlobalShortcut("id"), platform.FeatureGlobalShortcut},
 		{"EnableDragDrop", h.EnableDragDrop("main", true), platform.FeatureDragDrop},

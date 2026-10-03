@@ -46,13 +46,16 @@ type Gateway interface {
 	Authorize(caller domain.Caller, permission domain.PermissionName, resourcePath string) domain.Decision
 }
 
-// MenuItem is a portable menu entry.
+// MenuItem is a portable menu entry. A Separator has no ID or Label.
 type MenuItem struct {
-	ID       string
-	Label    string
-	Shortcut string
-	Menu     string // optional top-level native menu label (e.g. "File")
-	Children []MenuItem
+	ID        string
+	Label     string
+	Shortcut  string
+	Menu      string // optional top-level native menu label (e.g. "File")
+	Separator bool
+	Disabled  bool
+	Checked   bool
+	Children  []MenuItem
 }
 
 // MenuService applies application menus when permitted and supported.
@@ -91,16 +94,27 @@ func (s *MenuService) ClearMenu(ctx context.Context, caller domain.Caller) error
 	return s.OnClear(ctx)
 }
 
+// TraySpec is the tray state TrayService applies: the tooltip, the status
+// shown next to the icon (Title), a PNG icon (nil keeps the default; Template
+// marks a macOS template image) and the tray menu.
+type TraySpec struct {
+	Tooltip  string
+	Title    string
+	Icon     []byte
+	Template bool
+	Items    []MenuItem
+}
+
 // TrayService manages tray icons/menus.
 type TrayService struct {
 	Gateway Gateway
 	Host    platform.Host
-	OnSet   func(ctx context.Context, tooltip string, items []MenuItem) error
+	OnSet   func(ctx context.Context, spec TraySpec) error
 	OnClear func(ctx context.Context) error
 }
 
 // SetTray authorizes tray.set then applies tray state.
-func (s *TrayService) SetTray(ctx context.Context, caller domain.Caller, tooltip string, items []MenuItem) error {
+func (s *TrayService) SetTray(ctx context.Context, caller domain.Caller, spec TraySpec) error {
 	if err := authorize(s.Gateway, caller, PermTraySet); err != nil {
 		return err
 	}
@@ -110,7 +124,7 @@ func (s *TrayService) SetTray(ctx context.Context, caller domain.Caller, tooltip
 	if s.OnSet == nil {
 		return &platform.ErrUnsupported{Feature: platform.FeatureTray, OS: s.Host.OS(), Detail: "no tray adapter bound"}
 	}
-	return s.OnSet(ctx, tooltip, items)
+	return s.OnSet(ctx, spec)
 }
 
 // ClearTray authorizes tray.set then clears the tray icon.

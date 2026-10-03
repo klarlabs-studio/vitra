@@ -174,6 +174,14 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureTray, Available: true,
 			Detail: "Shell_NotifyIcon tray with TrackPopupMenu context menu",
 		},
+		platform.FeatureTrayTitle: {
+			Feature: platform.FeatureTrayTitle, Available: false,
+			Detail: "the notification area shows icons only: the title is shown in the tooltip",
+		},
+		platform.FeatureTrayIcon: {
+			Feature: platform.FeatureTrayIcon, Available: true,
+			Detail: "PNG via CreateIconFromResourceEx at the small icon size",
+		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,
 			Detail: "exclusive lock file; available without native WebView",
@@ -656,7 +664,7 @@ func (h *Host) SetMenuBar(id domain.WindowID, items []platform.MenuItem) error {
 			cid := C.CString(it.ID)
 			clabel := C.CString(it.Label)
 			cshort := C.CString(it.Shortcut)
-			C.vitra_win_add_menu_item(w.ptr, cmenu, cid, clabel, cshort)
+			C.vitra_win_add_menu_item(w.ptr, cmenu, cid, clabel, cshort, menuFlags(it))
 			C.free(unsafe.Pointer(cmenu))
 			C.free(unsafe.Pointer(cid))
 			C.free(unsafe.Pointer(clabel))
@@ -690,19 +698,25 @@ func (h *Host) ActivateMenuAccel(id domain.WindowID, shortcut string) (bool, err
 	return got.ok, got.err
 }
 
-// SetTray shows a notification-area tray entry with tooltip and optional context menu.
-func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
+// SetTray shows a notification-area tray entry: icon, tooltip and context
+// menu. The notification area shows no text, so the title joins the tooltip.
+func (h *Host) SetTray(spec platform.TraySpec) error {
 	done := make(chan struct{}, 1)
 	h.dispatch(func() {
 		h.ensureInit()
-		ct := C.CString(tooltip)
+		ct := C.CString(spec.TooltipWithTitle())
 		defer C.free(unsafe.Pointer(ct))
-		C.vitra_tray_set(ct)
+		var icon unsafe.Pointer
+		if len(spec.Icon) > 0 {
+			icon = C.CBytes(spec.Icon)
+			defer C.free(icon)
+		}
+		C.vitra_tray_set(ct, icon, C.int(len(spec.Icon)))
 		C.vitra_tray_clear_menu()
-		for _, it := range items {
+		for _, it := range spec.Items {
 			cid := C.CString(it.ID)
 			clabel := C.CString(it.Label)
-			C.vitra_tray_add_menu_item(cid, clabel)
+			C.vitra_tray_add_menu_item(cid, clabel, menuFlags(it))
 			C.free(unsafe.Pointer(cid))
 			C.free(unsafe.Pointer(clabel))
 		}
@@ -710,6 +724,21 @@ func (h *Host) SetTray(tooltip string, items []platform.MenuItem) error {
 	})
 	<-done
 	return nil
+}
+
+// menuFlags packs a menu item's separator, disabled and checked states.
+func menuFlags(it platform.MenuItem) C.int {
+	var f C.int
+	if it.Separator {
+		f |= C.VITRA_MENU_SEPARATOR
+	}
+	if it.Disabled {
+		f |= C.VITRA_MENU_DISABLED
+	}
+	if it.Checked {
+		f |= C.VITRA_MENU_CHECKED
+	}
+	return f
 }
 
 // ClearTray hides the tray icon.

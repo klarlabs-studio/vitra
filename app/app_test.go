@@ -86,8 +86,8 @@ func (h *fakeHost) EnableDragDrop(domain.WindowID, bool) error         { return 
 func (h *fakeHost) SetMenuBar(domain.WindowID, []platform.MenuItem) error {
 	return nil
 }
-func (h *fakeHost) SetTray(string, []platform.MenuItem) error { return nil }
-func (h *fakeHost) ClearTray()                                {}
+func (h *fakeHost) SetTray(platform.TraySpec) error { return nil }
+func (h *fakeHost) ClearTray()                      {}
 func (h *fakeHost) TrySingleInstance(string) (bool, func(), error) {
 	return true, func() {}, nil
 }

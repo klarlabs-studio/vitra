@@ -69,6 +69,8 @@ type App struct {
 	windows map[domain.WindowID]WindowOptions
 	// tokens holds each window's bridge sender token (see bridge.Preload).
 	tokens map[domain.WindowID]string
+	// actions is the native activation fan-out (see OnAction).
+	actions actionFanout
 }
 
 // New constructs an App. Host must be a native desktop host (e.g. linux.New()).

@@ -35,7 +35,7 @@ The kernel invariants stay as they are (`docs/intent.md` §9):
 
 Each milestone is one PR and adds its own tests, docs and CHANGELOG entry.
 
-### M1 — Tray status: title, icon, richer items (`feat(tray)!`)
+### M1 — Tray status: title, icon, richer items (`feat(tray)!`) — delivered
 
 - `platform.TraySpec{Tooltip, Title, Icon []byte, Template bool, Items []MenuItem}`;
   `Tray.SetTray(TraySpec)` replaces `SetTray(tooltip, items)`. This is a

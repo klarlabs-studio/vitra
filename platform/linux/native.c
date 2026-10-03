@@ -84,6 +84,34 @@ static void on_action(GtkMenuItem *item, gpointer user_data) {
 	goVitraAction((char *)user_data);
 }
 
+/* GTK toggles a check item when it is activated. The app owns the checked
+ * state (it sets the menu again), so put it back before reporting. */
+static void on_check_action(GtkMenuItem *item, gpointer user_data) {
+	gboolean checked = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(item), "vitra-checked"));
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), checked);
+	goVitraAction((char *)user_data);
+}
+
+/* new_menu_widget builds a menu item (or a separator) with flags applied. */
+static GtkWidget *new_menu_widget(const char *item_id, const char *item_label, int flags) {
+	if (flags & VITRA_MENU_SEPARATOR) {
+		return gtk_separator_menu_item_new();
+	}
+	GtkWidget *item = NULL;
+	GCallback cb = G_CALLBACK(on_action);
+	if (flags & VITRA_MENU_CHECKED) {
+		item = gtk_check_menu_item_new_with_label(item_label);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
+		g_object_set_data(G_OBJECT(item), "vitra-checked", GINT_TO_POINTER(1));
+		cb = G_CALLBACK(on_check_action);
+	} else {
+		item = gtk_menu_item_new_with_label(item_label);
+	}
+	gtk_widget_set_sensitive(item, (flags & VITRA_MENU_DISABLED) ? FALSE : TRUE);
+	g_signal_connect_data(item, "activate", cb, g_strdup(item_id), (GClosureNotify)g_free, 0);
+	return item;
+}
+
 VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload) {
 	VitraWin *w = g_new0(VitraWin, 1);
 	w->id = g_strdup(id);
@@ -379,16 +407,15 @@ static GtkWidget *find_or_create_menu(GtkWidget *menubar, const char *menu_label
 	return top;
 }
 
-void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut) {
-	if (!w || !w->menubar || !menu_label || !item_id || !item_label) {
+void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut, int flags) {
+	int separator = (flags & VITRA_MENU_SEPARATOR) != 0;
+	if (!w || !w->menubar || !menu_label || (!separator && (!item_id || !item_label))) {
 		return;
 	}
 	GtkWidget *top = find_or_create_menu(w->menubar, menu_label);
 	GtkWidget *submenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(top));
-	GtkWidget *item = gtk_menu_item_new_with_label(item_label);
-	char *id_copy = g_strdup(item_id);
-	g_signal_connect_data(item, "activate", G_CALLBACK(on_action), id_copy, (GClosureNotify)g_free, 0);
-	if (shortcut && shortcut[0] != '\0' && w->accels) {
+	GtkWidget *item = new_menu_widget(item_id, item_label, flags);
+	if (!separator && shortcut && shortcut[0] != '\0' && w->accels) {
 		char *accel = normalize_accel(shortcut);
 		if (accel) {
 			guint key = 0;
@@ -657,12 +684,25 @@ static void on_tray_popup(GtkStatusIcon *icon, guint button, guint32 activate_ti
 	gtk_menu_popup(GTK_MENU(g_tray_menu), NULL, NULL, gtk_status_icon_position_menu, icon, button, activate_time);
 }
 
-void vitra_tray_set(const char *tooltip) {
+/* vitra_tray_set shows the GtkStatusIcon. rgba is width x height
+ * non-premultiplied RGBA pixels, or NULL for the default icon. The status
+ * icon has no text: title is its accessible title only. */
+void vitra_tray_set(const char *tooltip, const char *title, const unsigned char *rgba, int width, int height) {
 	if (!g_tray) {
 		g_tray = gtk_status_icon_new_from_icon_name("application-x-executable");
 		g_signal_connect(g_tray, "activate", G_CALLBACK(on_tray_activate), NULL);
 		g_signal_connect(g_tray, "popup-menu", G_CALLBACK(on_tray_popup), NULL);
 	}
+	if (rgba && width > 0 && height > 0) {
+		GBytes *pixels = g_bytes_new(rgba, (gsize)width * (gsize)height * 4);
+		GdkPixbuf *pb = gdk_pixbuf_new_from_bytes(pixels, GDK_COLORSPACE_RGB, TRUE, 8, width, height, width * 4);
+		gtk_status_icon_set_from_pixbuf(g_tray, pb);
+		g_object_unref(pb);
+		g_bytes_unref(pixels);
+	} else {
+		gtk_status_icon_set_from_icon_name(g_tray, "application-x-executable");
+	}
+	gtk_status_icon_set_title(g_tray, title ? title : "");
 	gtk_status_icon_set_visible(g_tray, TRUE);
 	if (tooltip) {
 		gtk_status_icon_set_tooltip_text(g_tray, tooltip);
@@ -676,16 +716,14 @@ void vitra_tray_clear_menu(void) {
 	}
 }
 
-void vitra_tray_add_menu_item(const char *item_id, const char *item_label) {
-	if (!item_id || !item_label) {
+void vitra_tray_add_menu_item(const char *item_id, const char *item_label, int flags) {
+	if (!(flags & VITRA_MENU_SEPARATOR) && (!item_id || !item_label)) {
 		return;
 	}
 	if (!g_tray_menu) {
 		g_tray_menu = gtk_menu_new();
 	}
-	GtkWidget *item = gtk_menu_item_new_with_label(item_label);
-	char *id_copy = g_strdup(item_id);
-	g_signal_connect_data(item, "activate", G_CALLBACK(on_action), id_copy, (GClosureNotify)g_free, 0);
+	GtkWidget *item = new_menu_widget(item_id, item_label, flags);
 	gtk_menu_shell_append(GTK_MENU_SHELL(g_tray_menu), item);
 	gtk_widget_show_all(item);
 }
@@ -743,6 +781,8 @@ static const char vitra_sni_xml[] =
 	"  <property name='ToolTip' type='(sa(iiay)ss)' access='read'/>"
 	"  <property name='ItemIsMenu' type='b' access='read'/>"
 	"  <property name='Menu' type='o' access='read'/>"
+	"  <property name='XAyatanaLabel' type='s' access='read'/>"
+	"  <property name='XAyatanaLabelGuide' type='s' access='read'/>"
 	"  <method name='ContextMenu'><arg name='x' type='i' direction='in'/><arg name='y' type='i' direction='in'/></method>"
 	"  <method name='Activate'><arg name='x' type='i' direction='in'/><arg name='y' type='i' direction='in'/></method>"
 	"  <method name='SecondaryActivate'><arg name='x' type='i' direction='in'/><arg name='y' type='i' direction='in'/></method>"
@@ -753,6 +793,7 @@ static const char vitra_sni_xml[] =
 	"  <signal name='NewOverlayIcon'/>"
 	"  <signal name='NewToolTip'/>"
 	"  <signal name='NewStatus'><arg name='status' type='s'/></signal>"
+	"  <signal name='XAyatanaNewLabel'><arg name='label' type='s'/><arg name='guide' type='s'/></signal>"
 	" </interface>"
 	" <interface name='com.canonical.dbusmenu'>"
 	"  <property name='Version' type='u' access='read'/>"
@@ -799,9 +840,12 @@ static int g_sni_ready = 0;       /* 1 objects exported, -1 failed (under g_sni_
 static int g_sni_active = 0;      /* item registered with the watcher */
 static int g_sni_watcher_lost = 0;
 static char *g_sni_name = NULL;   /* our org.kde.StatusNotifierItem-PID-N name */
-static char *g_sni_title = NULL;  /* tooltip text */
+static char *g_sni_tooltip = NULL; /* tooltip text */
+static char *g_sni_title = NULL;   /* status text next to the icon */
+static GVariant *g_sni_pixmap = NULL; /* a(iiay) IconPixmap; empty for the default icon */
 static GPtrArray *g_sni_ids = NULL;    /* menu action ids; dbusmenu id = index + 1 */
 static GPtrArray *g_sni_labels = NULL; /* menu labels, parallel to g_sni_ids */
+static GArray *g_sni_flags = NULL;     /* VITRA_MENU_* flags, parallel to g_sni_ids */
 static guint32 g_sni_revision = 1;
 static guint g_sni_seq = 0;
 
@@ -897,11 +941,24 @@ static GVariant *sni_item_props(gint32 id, const gchar *const *names) {
 		}
 		return g_variant_builder_end(&b);
 	}
-	if (sni_wants(names, "label")) {
+	int flags = g_array_index(g_sni_flags, int, id - 1);
+	if (flags & VITRA_MENU_SEPARATOR) {
+		if (sni_wants(names, "type")) {
+			g_variant_builder_add(&b, "{sv}", "type", g_variant_new_string("separator"));
+		}
+	} else if (sni_wants(names, "label")) {
 		g_variant_builder_add(&b, "{sv}", "label", sni_label(g_ptr_array_index(g_sni_labels, id - 1)));
 	}
 	if (sni_wants(names, "enabled")) {
-		g_variant_builder_add(&b, "{sv}", "enabled", g_variant_new_boolean(TRUE));
+		g_variant_builder_add(&b, "{sv}", "enabled", g_variant_new_boolean((flags & VITRA_MENU_DISABLED) ? FALSE : TRUE));
+	}
+	if (flags & VITRA_MENU_CHECKED) {
+		if (sni_wants(names, "toggle-type")) {
+			g_variant_builder_add(&b, "{sv}", "toggle-type", g_variant_new_string("checkmark"));
+		}
+		if (sni_wants(names, "toggle-state")) {
+			g_variant_builder_add(&b, "{sv}", "toggle-state", g_variant_new_int32(1));
+		}
 	}
 	if (sni_wants(names, "visible")) {
 		g_variant_builder_add(&b, "{sv}", "visible", g_variant_new_boolean(TRUE));
@@ -928,7 +985,9 @@ static int sni_event(gint32 id, const char *event_id) {
 		return 0;
 	}
 	char *action = NULL;
-	if (id > 0 && g_strcmp0(event_id, "clicked") == 0) {
+	/* Separators and disabled items never fire, whatever the panel sends. */
+	if (id > 0 && g_strcmp0(event_id, "clicked") == 0 &&
+		!(g_array_index(g_sni_flags, int, id - 1) & (VITRA_MENU_SEPARATOR | VITRA_MENU_DISABLED))) {
 		action = g_strdup(g_ptr_array_index(g_sni_ids, id - 1));
 	}
 	g_mutex_unlock(&g_sni_mu);
@@ -1081,7 +1140,11 @@ static GVariant *sni_get_property(GDBusConnection *conn, const gchar *sender, co
 		}
 		GVariant *v = NULL;
 		g_mutex_lock(&g_sni_mu);
-		const char *title = g_sni_title && g_sni_title[0] ? g_sni_title : app;
+		const char *tooltip = g_sni_tooltip && g_sni_tooltip[0] ? g_sni_tooltip : NULL;
+		const char *label = g_sni_title ? g_sni_title : "";
+		/* Title names the item; panels without labels show it on hover. */
+		const char *title = label[0] ? label : tooltip ? tooltip : app;
+		int has_pixmap = g_sni_pixmap && g_variant_n_children(g_sni_pixmap) > 0;
 		if (g_strcmp0(prop, "Category") == 0) {
 			v = g_variant_new_string("ApplicationStatus");
 		} else if (g_strcmp0(prop, "Id") == 0) {
@@ -1093,14 +1156,17 @@ static GVariant *sni_get_property(GDBusConnection *conn, const gchar *sender, co
 		} else if (g_strcmp0(prop, "WindowId") == 0) {
 			v = g_variant_new_int32(0);
 		} else if (g_strcmp0(prop, "IconName") == 0) {
-			v = g_variant_new_string(VITRA_SNI_ICON);
+			/* Hosts prefer IconName over IconPixmap: leave it empty for an app icon. */
+			v = g_variant_new_string(has_pixmap ? "" : VITRA_SNI_ICON);
 		} else if (g_strcmp0(prop, "IconPixmap") == 0) {
-			v = g_variant_new_array(G_VARIANT_TYPE("(iiay)"), NULL, 0);
+			v = has_pixmap ? g_variant_ref(g_sni_pixmap) : g_variant_new_array(G_VARIANT_TYPE("(iiay)"), NULL, 0);
+		} else if (g_strcmp0(prop, "XAyatanaLabel") == 0 || g_strcmp0(prop, "XAyatanaLabelGuide") == 0) {
+			v = g_variant_new_string(label);
 		} else if (g_strcmp0(prop, "OverlayIconName") == 0 || g_strcmp0(prop, "AttentionIconName") == 0) {
 			v = g_variant_new_string("");
 		} else if (g_strcmp0(prop, "ToolTip") == 0) {
 			v = g_variant_new("(s@a(iiay)ss)", VITRA_SNI_ICON, g_variant_new_array(G_VARIANT_TYPE("(iiay)"), NULL, 0),
-				title, "");
+				tooltip ? tooltip : title, "");
 		} else if (g_strcmp0(prop, "ItemIsMenu") == 0) {
 			v = g_variant_new_boolean(FALSE);
 		} else if (g_strcmp0(prop, "Menu") == 0) {
@@ -1202,30 +1268,58 @@ static void sni_emit(GDBusConnection *conn, const char *path, const char *iface,
 	g_dbus_connection_emit_signal(conn, NULL, path, iface, signal, args, NULL);
 }
 
-/* vitra_sni_set shows (or updates) the StatusNotifierItem with a tooltip and
- * a flat menu of ids[i] / labels[i]. Returns 1 when the item is registered
- * with a StatusNotifierWatcher, 0 when there is none (the caller falls back
- * to GtkStatusIcon). Safe from any thread. */
-int vitra_sni_set(const char *tooltip, const char *const *ids, const char *const *labels, int n) {
+/* vitra_sni_pixmap_new builds an IconPixmap value from width x height
+ * ARGB32 pixels in network byte order; NULL argb gives an empty array. */
+static GVariant *vitra_sni_pixmap_new(const unsigned char *argb, int width, int height) {
+	GVariantBuilder b;
+	g_variant_builder_init(&b, G_VARIANT_TYPE("a(iiay)"));
+	if (argb && width > 0 && height > 0) {
+		GVariant *data = g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE, argb, (gsize)width * (gsize)height * 4, 1);
+		g_variant_builder_add(&b, "(ii@ay)", width, height, data);
+	}
+	return g_variant_ref_sink(g_variant_builder_end(&b));
+}
+
+/* vitra_sni_set shows (or updates) the StatusNotifierItem: tooltip, the
+ * status title (also the XAyatanaLabel shown next to the icon), an ARGB32
+ * icon (NULL for the default) and a flat menu of ids[i] / labels[i] with
+ * VITRA_MENU_* flags[i]. Returns 1 when the item is registered with a
+ * StatusNotifierWatcher, 0 when there is none (the caller falls back to
+ * GtkStatusIcon). Safe from any thread. */
+int vitra_sni_set(const char *tooltip, const char *title, const unsigned char *argb, int width, int height,
+	const char *const *ids, const char *const *labels, const int *flags, int n) {
 	GDBusConnection *conn = sni_bus();
 	if (!conn || !vitra_sni_available() || !sni_ensure_exported(conn)) {
 		return 0;
 	}
 	GPtrArray *new_ids = g_ptr_array_new_with_free_func(g_free);
 	GPtrArray *new_labels = g_ptr_array_new_with_free_func(g_free);
+	GArray *new_flags = g_array_new(FALSE, TRUE, sizeof(int));
 	for (int i = 0; i < n; i++) {
 		g_ptr_array_add(new_ids, g_strdup(ids[i] ? ids[i] : ""));
 		g_ptr_array_add(new_labels, g_strdup(labels[i] ? labels[i] : ""));
+		int f = flags ? flags[i] : 0;
+		g_array_append_val(new_flags, f);
 	}
+	GVariant *pixmap = vitra_sni_pixmap_new(argb, width, height);
 	g_mutex_lock(&g_sni_mu);
 	if (g_sni_ids) {
 		g_ptr_array_unref(g_sni_ids);
 		g_ptr_array_unref(g_sni_labels);
+		g_array_unref(g_sni_flags);
 	}
 	g_sni_ids = new_ids;
 	g_sni_labels = new_labels;
+	g_sni_flags = new_flags;
+	g_free(g_sni_tooltip);
+	g_sni_tooltip = g_strdup(tooltip ? tooltip : "");
 	g_free(g_sni_title);
-	g_sni_title = g_strdup(tooltip ? tooltip : "");
+	g_sni_title = g_strdup(title ? title : "");
+	if (g_sni_pixmap) {
+		g_variant_unref(g_sni_pixmap);
+	}
+	g_sni_pixmap = pixmap;
+	char *label = g_strdup(g_sni_title);
 	guint32 rev = ++g_sni_revision;
 	int was_active = g_sni_active;
 	char *name = NULL;
@@ -1240,9 +1334,13 @@ int vitra_sni_set(const char *tooltip, const char *const *ids, const char *const
 	if (was_active) {
 		sni_emit(conn, VITRA_SNI_PATH, VITRA_SNI_IFACE, "NewTitle", NULL);
 		sni_emit(conn, VITRA_SNI_PATH, VITRA_SNI_IFACE, "NewToolTip", NULL);
+		sni_emit(conn, VITRA_SNI_PATH, VITRA_SNI_IFACE, "NewIcon", NULL);
+		sni_emit(conn, VITRA_SNI_PATH, VITRA_SNI_IFACE, "XAyatanaNewLabel", g_variant_new("(ss)", label, label));
 		sni_emit(conn, VITRA_SNI_MENU_PATH, VITRA_DBUSMENU_IFACE, "LayoutUpdated", g_variant_new("(ui)", rev, 0));
+		g_free(label);
 		return 1;
 	}
+	g_free(label);
 	/* 4 = DBUS_NAME_FLAG_DO_NOT_QUEUE; reply 1 = primary owner. */
 	guint32 owner = 0;
 	GVariant *ret = sni_call(conn, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",

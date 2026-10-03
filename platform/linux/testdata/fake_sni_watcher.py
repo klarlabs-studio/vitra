@@ -67,7 +67,11 @@ def read_props():
                  GLib.Variant("(s)", (ITEM_IFACE,)), "(a{sv})").unpack()[0]
     state["menu"] = props.get("Menu")
     tooltip = props.get("ToolTip")
+    pixmaps = props.get("IconPixmap", [])
     log(props={
+        "XAyatanaLabel": props.get("XAyatanaLabel"),
+        "IconPixmapSize": [pixmaps[0][0], pixmaps[0][1]] if pixmaps else None,
+        "IconPixmapData": list(pixmaps[0][2]) if pixmaps else None,
         "Id": props.get("Id"), "Title": props.get("Title"), "Status": props.get("Status"),
         "Category": props.get("Category"), "IconName": props.get("IconName"),
         "IconPixmap": len(props.get("IconPixmap", [])), "Menu": props.get("Menu"),
@@ -79,6 +83,8 @@ def read_props():
 def node_json(node):
     nid, props, children = node
     return {"id": nid, "label": props.get("label"), "enabled": props.get("enabled"),
+            "type": props.get("type"), "toggle-type": props.get("toggle-type"),
+            "toggle-state": props.get("toggle-state"),
             "visible": props.get("visible"), "children-display": props.get("children-display"),
             "children": [node_json(c) for c in children]}
 

@@ -207,7 +207,7 @@ func (h *Host) SetMenuBar(domain.WindowID, []platform.MenuItem) error {
 }
 
 // SetTray returns ErrUnsupported (FeatureTray): it needs the native host.
-func (h *Host) SetTray(string, []platform.MenuItem) error {
+func (h *Host) SetTray(platform.TraySpec) error {
 	return h.err(platform.FeatureTray)
 }
 

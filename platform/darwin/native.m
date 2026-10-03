@@ -539,8 +539,26 @@ void vitra_win_clear_menu(VitraWin *w) {
 	[main release];
 }
 
-void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut) {
-	if (!w || !menu_label || !item_id || !item_label) {
+/* new_menu_item builds an action item (or a separator) with flags applied.
+ * The menu holding it must have autoenablesItems off for Disabled to stick. */
+static NSMenuItem *new_menu_item(id target, const char *item_id, const char *item_label, NSString *key, int flags) {
+	if (flags & VITRA_MENU_SEPARATOR) {
+		return [[NSMenuItem separatorItem] retain];
+	}
+	NSMenuItem *item = [[NSMenuItem alloc]
+	    initWithTitle:[NSString stringWithUTF8String:item_label]
+		   action:@selector(onAction:)
+	    keyEquivalent:key];
+	item.target = target;
+	item.representedObject = [NSString stringWithUTF8String:item_id];
+	item.enabled = (flags & VITRA_MENU_DISABLED) ? NO : YES;
+	item.state = (flags & VITRA_MENU_CHECKED) ? NSControlStateValueOn : NSControlStateValueOff;
+	return item;
+}
+
+void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *item_id, const char *item_label, const char *shortcut, int flags) {
+	int separator = (flags & VITRA_MENU_SEPARATOR) != 0;
+	if (!w || !menu_label || (!separator && (!item_id || !item_label))) {
 		return;
 	}
 	NSMenu *main = [NSApp mainMenu];
@@ -551,16 +569,14 @@ void vitra_win_add_menu_item(VitraWin *w, const char *menu_label, const char *it
 		main = [NSApp mainMenu];
 	}
 	NSMenuItem *top = find_or_create_top(main, menu_label);
+	top.submenu.autoenablesItems = NO;
 	NSString *key = @"";
 	NSEventModifierFlags mods = 0;
 	parse_shortcut(shortcut, &key, &mods);
-	NSMenuItem *item = [[NSMenuItem alloc]
-	    initWithTitle:[NSString stringWithUTF8String:item_label]
-		   action:@selector(onAction:)
-	    keyEquivalent:key];
-	item.keyEquivalentModifierMask = mods;
-	item.target = w->menuTarget;
-	item.representedObject = [NSString stringWithUTF8String:item_id];
+	NSMenuItem *item = new_menu_item(w->menuTarget, item_id, item_label, key, flags);
+	if (!separator) {
+		item.keyEquivalentModifierMask = mods;
+	}
 	[top.submenu addItem:item];
 	[item release];
 }
@@ -610,14 +626,40 @@ int vitra_win_activate_accel(VitraWin *w, const char *shortcut) {
 static NSStatusItem *g_tray = nil;
 static VitraMenuTarget *g_tray_target = nil;
 
-void vitra_tray_set(const char *tooltip) {
+/* Menu bar icons are 18pt tall; wider images keep their aspect ratio. */
+static const CGFloat kVitraTrayIconHeight = 18.0;
+
+static NSImage *tray_image(const void *icon, int icon_len, int template_icon) {
+	if (!icon || icon_len <= 0) {
+		return nil;
+	}
+	NSData *data = [NSData dataWithBytes:icon length:(NSUInteger)icon_len];
+	NSImage *img = [[[NSImage alloc] initWithData:data] autorelease];
+	if (!img || img.size.height <= 0) {
+		return nil;
+	}
+	CGFloat scale = kVitraTrayIconHeight / img.size.height;
+	img.size = NSMakeSize(img.size.width * scale, kVitraTrayIconHeight);
+	img.template = template_icon ? YES : NO;
+	return img;
+}
+
+void vitra_tray_set(const char *tooltip, const char *title, const void *icon, int icon_len, int template_icon) {
 	if (!g_tray_target) {
 		g_tray_target = [[VitraMenuTarget alloc] init];
 	}
 	if (!g_tray) {
 		g_tray = [[[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength] retain];
-		g_tray.button.title = @"vitra";
 	}
+	NSImage *img = tray_image(icon, icon_len, template_icon);
+	NSString *text = title ? [NSString stringWithUTF8String:title] : @"";
+	if (!img && text.length == 0) {
+		/* Neither icon nor title: show the app name so the item is visible. */
+		text = [[NSProcessInfo processInfo] processName];
+	}
+	g_tray.button.image = img;
+	g_tray.button.imagePosition = text.length > 0 ? NSImageLeading : NSImageOnly;
+	g_tray.button.title = text;
 	g_tray.button.toolTip = tooltip ? [NSString stringWithUTF8String:tooltip] : @"";
 	g_tray.visible = YES;
 }
@@ -628,12 +670,13 @@ void vitra_tray_clear_menu(void) {
 	}
 }
 
-void vitra_tray_add_menu_item(const char *item_id, const char *item_label) {
-	if (!item_id || !item_label) {
+void vitra_tray_add_menu_item(const char *item_id, const char *item_label, int flags) {
+	int separator = (flags & VITRA_MENU_SEPARATOR) != 0;
+	if (!separator && (!item_id || !item_label)) {
 		return;
 	}
 	if (!g_tray) {
-		vitra_tray_set("");
+		vitra_tray_set("", "", NULL, 0, 0);
 	}
 	if (!g_tray_target) {
 		g_tray_target = [[VitraMenuTarget alloc] init];
@@ -641,18 +684,32 @@ void vitra_tray_add_menu_item(const char *item_id, const char *item_label) {
 	NSMenu *menu = g_tray.menu;
 	if (!menu) {
 		menu = [[NSMenu alloc] initWithTitle:@"Tray"];
+		menu.autoenablesItems = NO;
 		g_tray.menu = menu;
 		[menu release];
 		menu = g_tray.menu;
 	}
-	NSMenuItem *item = [[NSMenuItem alloc]
-	    initWithTitle:[NSString stringWithUTF8String:item_label]
-		   action:@selector(onAction:)
-	    keyEquivalent:@""];
-	item.target = g_tray_target;
-	item.representedObject = [NSString stringWithUTF8String:item_id];
+	NSMenuItem *item = new_menu_item(g_tray_target, item_id, item_label, @"", flags);
 	[menu addItem:item];
 	[item release];
+}
+
+char *vitra_tray_state(void) {
+	if (!g_tray) {
+		return strdup("");
+	}
+	NSImage *img = g_tray.button.image;
+	NSMutableString *out = [NSMutableString stringWithFormat:@"%@\n%d\n%d\n",
+		g_tray.button.title ?: @"", img != nil, img != nil && img.template];
+	for (NSMenuItem *item in g_tray.menu.itemArray) {
+		if (item.separatorItem) {
+			[out appendString:@"-\n"];
+			continue;
+		}
+		int flags = (item.enabled ? 0 : VITRA_MENU_DISABLED) | (item.state == NSControlStateValueOn ? VITRA_MENU_CHECKED : 0);
+		[out appendFormat:@"%@\t%d\n", item.title, flags];
+	}
+	return strdup(out.UTF8String);
 }
 
 void vitra_tray_clear(void) {

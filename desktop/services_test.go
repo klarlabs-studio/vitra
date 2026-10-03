@@ -106,16 +106,23 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	ctx := context.Background()
 
 	cleared := false
+	var applied desktop.TraySpec
 	trays := &desktop.TrayService{
 		Gateway: allowAll{}, Host: host,
-		OnSet: func(context.Context, string, []desktop.MenuItem) error { return nil },
+		OnSet: func(_ context.Context, spec desktop.TraySpec) error {
+			applied = spec
+			return nil
+		},
 		OnClear: func(context.Context) error {
 			cleared = true
 			return nil
 		},
 	}
-	if err := trays.SetTray(ctx, caller, "Vitra", nil); err != nil {
+	if err := trays.SetTray(ctx, caller, desktop.TraySpec{Tooltip: "Vitra", Title: "42%"}); err != nil {
 		t.Fatal(err)
+	}
+	if applied.Tooltip != "Vitra" || applied.Title != "42%" {
+		t.Fatalf("OnSet got %+v", applied)
 	}
 	if err := trays.ClearTray(ctx, caller); err != nil {
 		t.Fatal(err)

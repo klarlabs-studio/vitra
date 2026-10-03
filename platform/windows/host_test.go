@@ -46,7 +46,7 @@ func TestHost_ExplicitUnsupported(t *testing.T) {
 	if err := h.SetMenuBar("main", []platform.MenuItem{{Menu: "File", ID: "quit", Label: "Quit"}}); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureMenuBar {
 		t.Fatalf("menu: %v", err)
 	}
-	if err := h.SetTray("tip", nil); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureTray {
+	if err := h.SetTray(platform.TraySpec{Tooltip: "tip"}); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureTray {
 		t.Fatalf("tray: %v", err)
 	}
 	if err := h.EnableDragDrop("main", true); !errors.As(err, &unsupp) || unsupp.Feature != platform.FeatureDragDrop {

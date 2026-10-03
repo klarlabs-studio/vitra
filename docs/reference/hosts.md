@@ -30,7 +30,7 @@ The app checks for each of these with a type assertion when a command needs it. 
 | `MultiFileOpener` | `OpenFilesDialog` | `dialog.open` with `multiple: true` |
 | `Notifier` | `ShowNotification` | `notifications.show` |
 | `MenuBar` | `SetMenuBar`, plus `ActionReporter` | `menu.set`, `menu.clear` |
-| `Tray` | `SetTray`, `ClearTray`, plus `ActionReporter` | `tray.set`, `tray.clear` |
+| `Tray` | `SetTray(TraySpec)`, `ClearTray`, plus `ActionReporter` | `tray.set`, `tray.clear`, `App.SetTray` |
 | `GlobalShortcuts` | `RegisterGlobalShortcut`, `UnregisterGlobalShortcut`, plus `ActionReporter` | `shortcut.*` |
 | `ActionReporter` | `SetActionHandler` | `menu.action`, `tray.action`, `shortcut.action` events |
 | `DragDrop` | `EnableDragDrop`, `SetDragDropHandler` | `dragdrop.receive`, `dragdrop.drop` event |

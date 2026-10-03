@@ -127,7 +127,7 @@ type MenuBar interface {
 // reported through ActionReporter.
 type Tray interface {
 	ActionReporter
-	SetTray(tooltip string, items []MenuItem) error
+	SetTray(spec TraySpec) error
 	ClearTray()
 }
 
