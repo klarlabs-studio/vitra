@@ -1,13 +1,13 @@
 package audit
 
 import (
-	"encoding/json"
 	"io"
 	"sync"
 	"time"
 )
 
-// JSONLSink writes each event as one JSON object per line (NDJSON).
+// JSONLSink writes each event as one JSON object per line (NDJSON), in the
+// versioned form MarshalEvent produces.
 // Destinations are typically a file, stdout, or a pipe into a SIEM agent.
 // List retains an in-memory copy for local inspection.
 type JSONLSink struct {
@@ -32,8 +32,11 @@ func (s *JSONLSink) Append(e Event) error {
 		e.Metadata = cp
 	}
 	if s.W != nil {
-		enc := json.NewEncoder(s.W)
-		if err := enc.Encode(e); err != nil {
+		b, err := MarshalEvent(e)
+		if err != nil {
+			return err
+		}
+		if _, err := s.W.Write(append(b, '\n')); err != nil {
 			return err
 		}
 	}
