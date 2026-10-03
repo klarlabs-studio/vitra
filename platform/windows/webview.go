@@ -196,6 +196,10 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeatureWindowPanel, Available: true,
 			Detail: "borderless topmost tool window placed by the notification icon, in the monitor's work area",
 		},
+		platform.FeatureLoginItem: {
+			Feature: platform.FeatureLoginItem, Available: runtime.GOOS == "windows",
+			Detail: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run value; available without native WebView`,
+		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,
 			Detail: "exclusive lock file; available without native WebView",

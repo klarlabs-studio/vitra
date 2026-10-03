@@ -6,6 +6,7 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <UserNotifications/UserNotifications.h>
 #import <Carbon/Carbon.h>
+#import <ServiceManagement/ServiceManagement.h>
 #import <stdlib.h>
 #import <string.h>
 #import <ctype.h>
@@ -1349,4 +1350,29 @@ void vitra_clear_hotkeys(void) {
 	}
 	g_hotkey_n = 0;
 	g_hotkey_next = 1;
+}
+
+int vitra_login_item_status(void) {
+	if (@available(macOS 13.0, *)) {
+		return (int)SMAppService.mainAppService.status;
+	}
+	return -1;
+}
+
+char *vitra_login_item_set(int enabled) {
+	if (@available(macOS 13.0, *)) {
+		NSError *err = nil;
+		SMAppService *service = SMAppService.mainAppService;
+		BOOL ok = enabled ? [service registerAndReturnError:&err] : [service unregisterAndReturnError:&err];
+		if (!ok) {
+			/* Unregistering an item that is not registered is not an error. */
+			if (!enabled && service.status == SMAppServiceStatusNotRegistered) {
+				return NULL;
+			}
+			NSString *msg = err.localizedDescription ?: @"SMAppService failed";
+			return strdup(msg.UTF8String);
+		}
+		return NULL;
+	}
+	return strdup("login items need macOS 13 or later");
 }

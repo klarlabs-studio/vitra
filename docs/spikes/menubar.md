@@ -1,6 +1,6 @@
 # Menu Bar Apps — Plan
 
-Status: **planned**. Goal: build a CodexBar-style app with Vitra, meaning one
+Status: **delivered** (M1–M6). Goal: build a CodexBar-style app with Vitra, meaning one
 that runs only from the menu bar or tray, shows a live title or icon there, and
 opens a rich HTML panel under the icon when you click it.
 
@@ -145,14 +145,15 @@ Each milestone is one PR and adds its own tests, docs and CHANGELOG entry.
 - Native menus with embedded HTML/custom views. The panel covers this case.
 - Multiple tray icons per app.
 
-### M6 — Launch at login (`feat(desktop)`)
+### M6 — Launch at login (`feat(desktop)`) — delivered
 
 - `platform.LoginItem` interface, Feature `app.login_item`:
   - darwin: `SMAppService.mainApp` (macOS 13+)
   - Windows: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
   - Linux: XDG autostart `.desktop` in `$XDG_CONFIG_HOME/autostart`
-- Official commands `app.loginItem.get` / `app.loginItem.set`, gated by a new
-  `app.login_item` permission.
+- Official commands `app.loginItem` / `app.setLoginItem`, gated by a new
+  `app.login_item` permission; `App.LoginItemEnabled` / `App.SetLoginItem`
+  for Go. The example's menu has a checked "Launch at Login" item.
 
 ## Decisions
 

@@ -19,6 +19,10 @@ export interface FileFilter {
   extensions?: string[] | null;
 }
 
+export interface LoginItem {
+  enabled: boolean;
+}
+
 export interface MenuInput {
   items: MenuItem[] | null;
 }
@@ -143,8 +147,12 @@ export type VitraEventHandler = (payload: unknown) => void;
 export type VitraSubscriber = (event: string, handler: VitraEventHandler) => () => void;
 
 export interface VitraClient {
+  /** Report whether the app starts at login — requires permission `app.login_item` */
+  appLoginItem(input?: {}, resourcePath?: string): Promise<LoginItem>;
   /** Quit the application — requires permission `app.quit` */
   appQuit(input?: {}, resourcePath?: string): Promise<void>;
+  /** Start the app at login, or stop it — requires permission `app.login_item` */
+  appSetLoginItem(input: LoginItem, resourcePath?: string): Promise<void>;
   /** Open a URL in the system browser — requires permission `browser.open` */
   browserOpen(input: string, resourcePath?: string): Promise<void>;
   /** Read the system clipboard — requires permission `clipboard.read` */
@@ -223,7 +231,9 @@ export interface VitraClient {
 
 export function createClient(invoke: VitraInvoker): VitraClient {
   return {
+    appLoginItem: (input, resourcePath) => invoke("app.loginItem", input, resourcePath) as Promise<LoginItem>,
     appQuit: (input, resourcePath) => invoke("app.quit", input, resourcePath) as Promise<void>,
+    appSetLoginItem: (input, resourcePath) => invoke("app.setLoginItem", input, resourcePath) as Promise<void>,
     browserOpen: (input, resourcePath) => invoke("browser.open", input, resourcePath) as Promise<void>,
     clipboardRead: (input, resourcePath) => invoke("clipboard.read", input, resourcePath) as Promise<string>,
     clipboardWrite: (input, resourcePath) => invoke("clipboard.write", input, resourcePath) as Promise<void>,

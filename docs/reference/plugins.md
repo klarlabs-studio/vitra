@@ -16,7 +16,7 @@
 | `vitra.tray` | `official.Tray()` | `tray.set` | `tray.set`, `tray.clear` | `tray.action`, `tray.click` |
 | `vitra.dragdrop` | `official.DragDrop()` | `dragdrop.receive` | `dragdrop.receive` | `dragdrop.drop` |
 | `vitra.shortcut` | `official.Shortcut()` | `shortcut.register` | `shortcut.register`, `shortcut.unregister` | `shortcut.action` |
-| `vitra.app` | `official.App()` | `app.quit` | `app.quit` | |
+| `vitra.app` | `official.App()` | `app.quit`, `app.login_item` | `app.quit`, `app.loginItem`, `app.setLoginItem` | |
 | `vitra.deeplink` | `official.DeepLink()` | `deeplink.handle` | | `deeplink.open` |
 
 `dialog.open` takes `{"multiple": true}` to select several files and returns every selected path; a host that cannot select several files returns `platform.ErrUnsupported`. See [Picking files](/guide/desktop#picking-files).
@@ -51,6 +51,8 @@ The permission constants live in `desktop` (`desktop.PermFSRead`, `desktop.PermC
 | `menu.set` | `MenuInput` `{items: [MenuItem]}`; `MenuItem` is `{id, label, menu?, shortcut?, disabled?, checked?}` or a separator `{separator: true, menu?}` | `Void` |
 | `tray.set` | `TrayInput` `{tooltip?, title?, icon?, template?, clickActivates?, panel?, items?}` | `Void` |
 | `menu.clear`, `tray.clear`, `app.quit` | none | `Void` |
+| `app.loginItem` | none | `LoginItem` `{enabled}` |
+| `app.setLoginItem` | `LoginItem` `{enabled}` (required) | `Void` |
 | `dragdrop.receive` | `DragDropInput` `{id?, enabled?}` (window `"main"`, enabled `true` by default) | `Void` |
 | `shortcut.register` | `ShortcutInput` `{accelerator, action}` | `Void` |
 | `shortcut.unregister` | `ShortcutRef` `{accelerator}` | `Void` |

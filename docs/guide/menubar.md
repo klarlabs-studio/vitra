@@ -1,12 +1,13 @@
 # Menu bar apps
 
-A menu bar app (a tray app on Linux and Windows) lives in the menu bar instead of the Dock or taskbar. It shows a live status next to its icon and drops down a panel when you click it, as [CodexBar](https://github.com/steipete/CodexBar) does. Vitra builds one from three pieces:
+A menu bar app (a tray app on Linux and Windows) lives in the menu bar instead of the Dock or taskbar. It shows a live status next to its icon and drops down a panel when you click it, as [CodexBar](https://github.com/steipete/CodexBar) does. Vitra builds one from four pieces:
 
 | Piece | API | What it does |
 |---|---|---|
 | Accessory presentation | `app.Options.Presentation` | No Dock icon or taskbar entry; closing the last window does not quit |
 | Tray status | `App.SetTray`, `TraySpec` | Title and icon in the menu bar, plus a menu |
 | Tray panel | `WindowKindPanel`, `TraySpec.Panel` | An HTML window that drops down from the icon |
+| Launch at login | `App.SetLoginItem` | Start with the user's session |
 
 The runnable version is [`example/menubar`](https://github.com/klarlabs-studio/vitra/tree/main/example/menubar): free disk space in the menu bar, with the details in a panel.
 
@@ -76,6 +77,19 @@ Push updates to it with events (`App.Emit`), as the example's `usage.follow` com
 
 The panel hides itself when it loses focus. A second click on the icon hides it too, and Go can show or hide it at any time with `App.ShowTrayPanel` and `App.HideTrayPanel`, for example from a global shortcut. To let the page close its own panel, register a command that calls `HideTrayPanel`, as the example's `panel.close` does.
 
+## 4. Launch at login
+
+```go
+on, err := application.LoginItemEnabled()
+err = application.SetLoginItem(!on) // e.g. from a "Launch at Login" menu item
+```
+
+Show the state as a checked menu item, as the example does. The page can do the same through the official `app.loginItem` and `app.setLoginItem` commands, which need the `app.login_item` permission.
+
+- **macOS** registers the app bundle with `SMAppService` (macOS 13 or later). A bare binary, as `go run` builds, gets `ErrUnsupported`: package the app first. The user may have to approve the item in System Settings › General › Login Items; until then it counts as enabled.
+- **Windows** sets a value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` that starts the executable.
+- **Linux** writes an XDG autostart entry, `~/.config/autostart/<app id>.desktop`, which GNOME, KDE Plasma, XFCE and other desktops run at login.
+
 ## Platform support
 
 | | macOS | Windows | Linux (X11) | Linux (Wayland) |
@@ -85,7 +99,8 @@ The panel hides itself when it loses focus. A second click on the icon hides it 
 | No Dock or taskbar entry | Yes | Yes | Yes | Yes |
 | Icon position (`TrayAnchor`) | Yes | Yes | Yes | Only where the panel reports it |
 | Panel under the icon | Yes | Yes, above it for a bottom taskbar | Yes | Centered: the compositor places windows |
+| Launch at login | macOS 13+, packaged app | Yes | Yes (XDG autostart) | Yes (XDG autostart) |
 
-Check `host.Features()` for `tray.title`, `tray.icon`, `tray.anchor`, `window.panel` and `app.presentation`; each `Detail` says how the host does it.
+Check `host.Features()` for `tray.title`, `tray.icon`, `tray.anchor`, `window.panel`, `app.presentation` and `app.login_item`; each `Detail` says how the host does it.
 
 Linux shows tray icons through a StatusNotifierWatcher (KDE Plasma, GNOME with the AppIndicator extension, XFCE, and most other panels) and falls back to the XEmbed `GtkStatusIcon`. Stock GNOME without the extension shows no tray at all.

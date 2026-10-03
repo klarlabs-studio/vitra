@@ -6,7 +6,7 @@ package darwin
 
 /*
 #cgo CFLAGS: -x objective-c -fno-objc-arc
-#cgo LDFLAGS: -framework Cocoa -framework WebKit -framework Carbon -framework UniformTypeIdentifiers -framework UserNotifications
+#cgo LDFLAGS: -framework Cocoa -framework WebKit -framework Carbon -framework UniformTypeIdentifiers -framework UserNotifications -framework ServiceManagement
 #include "native.h"
 #include <stdlib.h>
 */
@@ -16,6 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -66,6 +67,53 @@ func New() *Host {
 	active = h
 	activeMu.Unlock()
 	return h
+}
+
+// loginItemFeature reports whether SMAppService can register this app: it
+// needs macOS 13 and an app bundle.
+func loginItemFeature() platform.Support {
+	switch {
+	case C.vitra_login_item_status() < 0:
+		return platform.Support{Feature: platform.FeatureLoginItem, Available: false, Detail: "SMAppService needs macOS 13 or later"}
+	case C.vitra_has_bundle_id() == 0:
+		return platform.Support{Feature: platform.FeatureLoginItem, Available: false,
+			Detail: "SMAppService registers app bundles: package the app (vitra package --format app-dir)"}
+	default:
+		return platform.Support{Feature: platform.FeatureLoginItem, Available: true,
+			Detail: "SMAppService.mainAppService; the user may have to approve it in System Settings > General > Login Items"}
+	}
+}
+
+// LoginItemEnabled reports whether the app bundle is registered to start at
+// login, including while it waits for the user's approval.
+func (h *Host) LoginItemEnabled(string) (bool, error) {
+	if f := loginItemFeature(); !f.Available {
+		return false, &platform.ErrUnsupported{Feature: platform.FeatureLoginItem, OS: platform.OSDarwin, Detail: f.Detail}
+	}
+	switch C.vitra_login_item_status() {
+	case 1, 2: // enabled, requires approval
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+
+// SetLoginItem registers the app bundle to start at login with
+// SMAppService, or unregisters it. execPath is not used: macOS starts the
+// bundle.
+func (h *Host) SetLoginItem(_, _ string, enabled bool) error {
+	if f := loginItemFeature(); !f.Available {
+		return &platform.ErrUnsupported{Feature: platform.FeatureLoginItem, OS: platform.OSDarwin, Detail: f.Detail}
+	}
+	var on C.int
+	if enabled {
+		on = 1
+	}
+	if msg := C.vitra_login_item_set(on); msg != nil {
+		defer C.free(unsafe.Pointer(msg))
+		return fmt.Errorf("login item: %s", C.GoString(msg))
+	}
+	return nil
 }
 
 // SetPresentation switches the app's activation policy: an accessory app
@@ -193,6 +241,7 @@ func (h *Host) Features() platform.FeatureSet {
 			Feature: platform.FeaturePresentation, Available: true,
 			Detail: "NSApplicationActivationPolicyAccessory: no Dock icon or app menu",
 		},
+		platform.FeatureLoginItem: loginItemFeature(),
 		platform.FeatureTrayAnchor: {
 			Feature: platform.FeatureTrayAnchor, Available: true,
 			Detail: "status item frame, in top-left screen points",

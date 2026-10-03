@@ -233,6 +233,16 @@ type PresentationSetter interface {
 	SetPresentation(p Presentation) error
 }
 
+// LoginItems starts the app with the user's session (FeatureLoginItem).
+type LoginItems interface {
+	// LoginItemEnabled reports whether the app starts at login.
+	LoginItemEnabled(appID string) (bool, error)
+	// SetLoginItem makes the app start at login, running execPath, or stops
+	// it. Hosts that register the app bundle itself (macOS) ignore
+	// execPath.
+	SetLoginItem(appID, execPath string, enabled bool) error
+}
+
 // URLSchemeRegistrar registers the app as the handler of a URL scheme
 // (FeatureDeepLink).
 type URLSchemeRegistrar interface {

@@ -240,6 +240,15 @@ func (h *Host) PanelShown(domain.WindowID) (bool, error) {
 	return false, h.err(platform.FeatureWindowPanel)
 }
 
+// LoginItemEnabled returns ErrUnsupported (FeatureLoginItem): it needs
+// the native host.
+func (h *Host) LoginItemEnabled(string) (bool, error) {
+	return false, h.err(platform.FeatureLoginItem)
+}
+
+// SetLoginItem returns ErrUnsupported (FeatureLoginItem).
+func (h *Host) SetLoginItem(string, string, bool) error { return h.err(platform.FeatureLoginItem) }
+
 // ClearTray does nothing without the native host.
 func (h *Host) ClearTray() {}
 

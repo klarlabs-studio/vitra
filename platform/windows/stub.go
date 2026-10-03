@@ -10,6 +10,7 @@ package windows
 
 import (
 	"context"
+	"runtime"
 
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/platform"
@@ -75,6 +76,10 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeatureNotificationShow: {
 			Feature: platform.FeatureNotificationShow, Available: false,
 			Detail: "requires native windows host",
+		},
+		platform.FeatureLoginItem: {
+			Feature: platform.FeatureLoginItem, Available: runtime.GOOS == "windows",
+			Detail: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run value; available without native WebView`,
 		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,

@@ -48,6 +48,7 @@ const (
 const (
 	actionRefresh = "refresh"
 	actionPanel   = "panel"
+	actionLogin   = "login"
 	actionQuit    = "quit"
 )
 
@@ -191,18 +192,28 @@ func (m *menubar) refresh() (Usage, error) {
 		Title: u.trayTitle(), Tooltip: u.tooltip(),
 		Icon: trayIcon(u.UsedPercent), Template: true,
 		Panel: panelWindow,
-		Items: []platform.MenuItem{
-			{ID: actionPanel, Label: "Show Details"},
-			{ID: actionRefresh, Label: "Refresh"},
-			{Separator: true},
-			{ID: actionQuit, Label: "Quit"},
-		},
+		Items: m.menu(),
 	})
 	if err != nil {
 		return Usage{}, err
 	}
 	_ = m.app.Emit(context.Background(), usageEvent, u)
 	return u, nil
+}
+
+// menu is the tray menu. "Launch at Login" is checked while the app starts
+// at login, and disabled where the host cannot register it (an unbundled
+// macOS binary, for example).
+func (m *menubar) menu() []platform.MenuItem {
+	login, err := m.app.LoginItemEnabled()
+	return []platform.MenuItem{
+		{ID: actionPanel, Label: "Show Details"},
+		{ID: actionRefresh, Label: "Refresh"},
+		{Separator: true},
+		{ID: actionLogin, Label: "Launch at Login", Checked: login, Disabled: err != nil},
+		{Separator: true},
+		{ID: actionQuit, Label: "Quit"},
+	}
 }
 
 // onAction handles the tray menu.
@@ -214,6 +225,17 @@ func (m *menubar) onAction(id string) {
 		}
 	case actionPanel:
 		_ = m.app.ShowTrayPanel()
+	case actionLogin:
+		on, err := m.app.LoginItemEnabled()
+		if err == nil {
+			err = m.app.SetLoginItem(!on)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "menubar: launch at login:", err)
+		}
+		if _, err := m.refresh(); err != nil { // show the new checkmark
+			fmt.Fprintln(os.Stderr, "menubar:", err)
+		}
 	case actionQuit:
 		m.app.Quit()
 	}

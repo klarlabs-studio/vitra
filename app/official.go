@@ -450,10 +450,22 @@ func (a *App) bindShortcut() error {
 }
 
 func (a *App) bindApp() error {
-	appSvc := &desktop.AppService{Gateway: a.rt, OnQuit: func(context.Context) error { a.Quit(); return nil }}
+	appSvc := &desktop.AppService{
+		Gateway:        a.rt,
+		OnQuit:         func(context.Context) error { a.Quit(); return nil },
+		OnLoginItem:    func(context.Context) (bool, error) { return a.LoginItemEnabled() },
+		OnSetLoginItem: func(_ context.Context, enabled bool) error { return a.SetLoginItem(enabled) },
+	}
 	b := a.binder()
 	onVoid(b, "app.quit", func(ctx context.Context, caller domain.Caller, _ none) error {
 		return appSvc.Quit(ctx, caller)
+	})
+	on(b, "app.loginItem", func(ctx context.Context, caller domain.Caller, _ none) (official.LoginItem, error) {
+		enabled, err := appSvc.LoginItem(ctx, caller)
+		return official.LoginItem{Enabled: enabled}, err
+	})
+	onVoid(b, "app.setLoginItem", func(ctx context.Context, caller domain.Caller, in official.LoginItem) error {
+		return appSvc.SetLoginItem(ctx, caller, in.Enabled)
 	})
 	return b.err()
 }

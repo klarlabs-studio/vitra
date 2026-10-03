@@ -376,6 +376,27 @@ func assetPath(p string) (string, error) {
 	return name, nil
 }
 
+// LoginItem is the input of app.setLoginItem and the output of
+// app.loginItem: whether the app starts with the user's session.
+type LoginItem struct {
+	Enabled bool `json:"enabled"`
+}
+
+// UnmarshalJSON accepts {enabled}; enabled is required.
+func (in *LoginItem) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Enabled *bool `json:"enabled"`
+	}
+	if err := decodeObject(data, "app.setLoginItem", &raw); err != nil {
+		return err
+	}
+	if raw.Enabled == nil {
+		return &domain.ErrValidation{Message: "app.setLoginItem requires enabled"}
+	}
+	in.Enabled = *raw.Enabled
+	return nil
+}
+
 // DragDropInput is the input of dragdrop.receive. ID defaults to "main" and
 // Enabled to true.
 type DragDropInput struct {
