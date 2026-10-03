@@ -93,6 +93,8 @@ Without `--app`, `vitra generate typescript` writes a client for the official pl
 
 ## Untyped commands
 
+Prefer typed commands. The untyped API is the escape hatch for input whose shape is only known at run time, and for adapting existing executors; it gets no strict decoding, no resource-path binding, and no TypeScript types.
+
 `Runtime.RegisterCommand` takes a `domain.CommandDefinition` and any `domain.CommandExecutor`. The input arrives as decoded JSON (`map[string]any`, `string`, `float64`, …). Use `domain.CallerExecutorFunc` to receive the calling window:
 
 ```go
