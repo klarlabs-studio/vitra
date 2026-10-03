@@ -132,14 +132,20 @@ func (h *Host) ensureInit() {
 	C.vitra_gtk_init(cname)
 }
 
-// ProgramName returns the GTK program name after init (empty before).
+// ProgramName returns the GTK program name, initializing GTK on the UI
+// thread first (see dispatch).
 func (h *Host) ProgramName() string {
-	h.ensureInit()
-	p := C.vitra_get_prgname()
-	if p == nil {
-		return ""
-	}
-	return C.GoString(p)
+	ch := make(chan string, 1)
+	h.dispatch(func() {
+		h.ensureInit()
+		p := C.vitra_get_prgname()
+		if p == nil {
+			ch <- ""
+			return
+		}
+		ch <- C.GoString(p)
+	})
+	return <-ch
 }
 
 // OS returns linux.
