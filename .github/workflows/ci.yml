@@ -162,7 +162,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Install WebKitGTK / GTK / xvfb
+      # dbus + python3-gi: private session bus and fake D-Bus services
+      # (portal / StatusNotifierWatcher) for the native host tests.
+      - name: Install WebKitGTK / GTK / xvfb / D-Bus
         run: |
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -170,7 +172,11 @@ jobs:
             libgtk-3-dev \
             pkg-config \
             xvfb \
-            build-essential
+            build-essential \
+            dbus \
+            dbus-x11 \
+            python3-gi \
+            gir1.2-glib-2.0
 
       - name: Build native packages
         run: make build-native

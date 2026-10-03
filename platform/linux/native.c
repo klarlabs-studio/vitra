@@ -636,10 +636,10 @@ int vitra_show_notification(const char *title, const char *body) {
 	return 1;
 }
 
-/* GTK3 has no tray API that is not deprecated: GtkStatusIcon is the only
- * built-in one, and its replacement (StatusNotifierItem via
- * libayatana-appindicator) is a separate library. Keep the tray on
- * GtkStatusIcon without warning every build about it. */
+/* GtkStatusIcon (XEmbed) is the fallback tray, used only when no
+ * StatusNotifierWatcher is on the session bus (see the StatusNotifierItem
+ * section below). GTK3 has no tray API that is not deprecated, so keep it
+ * without warning every build about it. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 static void on_tray_activate(GtkStatusIcon *icon, gpointer user_data) {
@@ -697,6 +697,611 @@ void vitra_tray_clear(void) {
 	}
 }
 #pragma GCC diagnostic pop
+
+/* ===================================================================== *
+ * Linux tray: StatusNotifierItem + com.canonical.dbusmenu over GDBus.
+ *
+ * KDE Plasma, GNOME with the AppIndicator extension, and most other current
+ * panels (XFCE, Cinnamon, MATE, LXQt, Budgie, waybar, …) show tray items
+ * through the StatusNotifierItem protocol rather than XEmbed, and on Wayland
+ * XEmbed does not exist. This is a plain-GDBus implementation (no
+ * libayatana-appindicator): it owns org.kde.StatusNotifierItem-PID-N,
+ * exports the item at /StatusNotifierItem and its menu at /MenuBar, and
+ * registers with org.kde.StatusNotifierWatcher. Without a watcher, the
+ * caller (webview.go) falls back to GtkStatusIcon above.
+ *
+ * Both objects are served on a dedicated thread with its own main context,
+ * so the tray answers the panel even while the GTK thread is busy. State is
+ * shared with the Go-facing setters under g_sni_mu. Menu clicks map the
+ * dbusmenu item id back to the action id the app set; a D-Bus peer can
+ * never name an action id itself.
+ * ===================================================================== */
+
+#include <unistd.h>
+
+#define VITRA_SNI_WATCHER "org.kde.StatusNotifierWatcher"
+#define VITRA_SNI_WATCHER_PATH "/StatusNotifierWatcher"
+#define VITRA_SNI_PATH "/StatusNotifierItem"
+#define VITRA_SNI_IFACE "org.kde.StatusNotifierItem"
+#define VITRA_SNI_MENU_PATH "/MenuBar"
+#define VITRA_DBUSMENU_IFACE "com.canonical.dbusmenu"
+#define VITRA_SNI_ICON "application-x-executable"
+#define VITRA_SNI_CALL_TIMEOUT_MS 5000
+
+static const char vitra_sni_xml[] =
+	"<node>"
+	" <interface name='org.kde.StatusNotifierItem'>"
+	"  <property name='Category' type='s' access='read'/>"
+	"  <property name='Id' type='s' access='read'/>"
+	"  <property name='Title' type='s' access='read'/>"
+	"  <property name='Status' type='s' access='read'/>"
+	"  <property name='WindowId' type='i' access='read'/>"
+	"  <property name='IconName' type='s' access='read'/>"
+	"  <property name='IconPixmap' type='a(iiay)' access='read'/>"
+	"  <property name='OverlayIconName' type='s' access='read'/>"
+	"  <property name='AttentionIconName' type='s' access='read'/>"
+	"  <property name='ToolTip' type='(sa(iiay)ss)' access='read'/>"
+	"  <property name='ItemIsMenu' type='b' access='read'/>"
+	"  <property name='Menu' type='o' access='read'/>"
+	"  <method name='ContextMenu'><arg name='x' type='i' direction='in'/><arg name='y' type='i' direction='in'/></method>"
+	"  <method name='Activate'><arg name='x' type='i' direction='in'/><arg name='y' type='i' direction='in'/></method>"
+	"  <method name='SecondaryActivate'><arg name='x' type='i' direction='in'/><arg name='y' type='i' direction='in'/></method>"
+	"  <method name='Scroll'><arg name='delta' type='i' direction='in'/><arg name='orientation' type='s' direction='in'/></method>"
+	"  <signal name='NewTitle'/>"
+	"  <signal name='NewIcon'/>"
+	"  <signal name='NewAttentionIcon'/>"
+	"  <signal name='NewOverlayIcon'/>"
+	"  <signal name='NewToolTip'/>"
+	"  <signal name='NewStatus'><arg name='status' type='s'/></signal>"
+	" </interface>"
+	" <interface name='com.canonical.dbusmenu'>"
+	"  <property name='Version' type='u' access='read'/>"
+	"  <property name='TextDirection' type='s' access='read'/>"
+	"  <property name='Status' type='s' access='read'/>"
+	"  <property name='IconThemePath' type='as' access='read'/>"
+	"  <method name='GetLayout'>"
+	"   <arg name='parentId' type='i' direction='in'/><arg name='recursionDepth' type='i' direction='in'/>"
+	"   <arg name='propertyNames' type='as' direction='in'/>"
+	"   <arg name='revision' type='u' direction='out'/><arg name='layout' type='(ia{sv}av)' direction='out'/>"
+	"  </method>"
+	"  <method name='GetGroupProperties'>"
+	"   <arg name='ids' type='ai' direction='in'/><arg name='propertyNames' type='as' direction='in'/>"
+	"   <arg name='properties' type='a(ia{sv})' direction='out'/>"
+	"  </method>"
+	"  <method name='GetProperty'>"
+	"   <arg name='id' type='i' direction='in'/><arg name='name' type='s' direction='in'/>"
+	"   <arg name='value' type='v' direction='out'/>"
+	"  </method>"
+	"  <method name='Event'>"
+	"   <arg name='id' type='i' direction='in'/><arg name='eventId' type='s' direction='in'/>"
+	"   <arg name='data' type='v' direction='in'/><arg name='timestamp' type='u' direction='in'/>"
+	"  </method>"
+	"  <method name='EventGroup'>"
+	"   <arg name='events' type='a(isvu)' direction='in'/><arg name='idErrors' type='ai' direction='out'/>"
+	"  </method>"
+	"  <method name='AboutToShow'>"
+	"   <arg name='id' type='i' direction='in'/><arg name='needUpdate' type='b' direction='out'/>"
+	"  </method>"
+	"  <method name='AboutToShowGroup'>"
+	"   <arg name='ids' type='ai' direction='in'/>"
+	"   <arg name='updatesNeeded' type='ai' direction='out'/><arg name='idErrors' type='ai' direction='out'/>"
+	"  </method>"
+	"  <signal name='ItemsPropertiesUpdated'><arg type='a(ia{sv})'/><arg type='a(ias)'/></signal>"
+	"  <signal name='LayoutUpdated'><arg name='revision' type='u'/><arg name='parent' type='i'/></signal>"
+	"  <signal name='ItemActivationRequested'><arg name='id' type='i'/><arg name='timestamp' type='u'/></signal>"
+	" </interface>"
+	"</node>";
+
+static GMutex g_sni_mu;
+static GCond g_sni_cond;
+static GThread *g_sni_thread = NULL;
+static int g_sni_ready = 0;       /* 1 objects exported, -1 failed (under g_sni_mu) */
+static int g_sni_active = 0;      /* item registered with the watcher */
+static int g_sni_watcher_lost = 0;
+static char *g_sni_name = NULL;   /* our org.kde.StatusNotifierItem-PID-N name */
+static char *g_sni_title = NULL;  /* tooltip text */
+static GPtrArray *g_sni_ids = NULL;    /* menu action ids; dbusmenu id = index + 1 */
+static GPtrArray *g_sni_labels = NULL; /* menu labels, parallel to g_sni_ids */
+static guint32 g_sni_revision = 1;
+static guint g_sni_seq = 0;
+
+static GDBusConnection *sni_bus(void) {
+	/* Process-wide shared connection: GIO keeps it alive; held, never freed. */
+	static GDBusConnection *conn = NULL;
+	if (conn && !g_dbus_connection_is_closed(conn)) {
+		return conn;
+	}
+	GError *err = NULL;
+	GDBusConnection *c = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &err);
+	if (!c) {
+		if (err) {
+			g_error_free(err);
+		}
+		return NULL;
+	}
+	conn = c;
+	return conn;
+}
+
+static GVariant *sni_call(GDBusConnection *conn, const char *dest, const char *path, const char *iface,
+	const char *method, GVariant *args, const GVariantType *reply) {
+	return g_dbus_connection_call_sync(conn, dest, path, iface, method, args, reply,
+		G_DBUS_CALL_FLAGS_NONE, VITRA_SNI_CALL_TIMEOUT_MS, NULL, NULL);
+}
+
+/* vitra_sni_available reports whether a StatusNotifierWatcher with a
+ * registered host (a panel that will display items) is on the session bus. */
+int vitra_sni_available(void) {
+	GDBusConnection *conn = sni_bus();
+	if (!conn) {
+		return 0;
+	}
+	GVariant *ret = sni_call(conn, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+		"NameHasOwner", g_variant_new("(s)", VITRA_SNI_WATCHER), G_VARIANT_TYPE("(b)"));
+	if (!ret) {
+		return 0;
+	}
+	gboolean owned = FALSE;
+	g_variant_get(ret, "(b)", &owned);
+	g_variant_unref(ret);
+	if (!owned) {
+		return 0;
+	}
+	/* A watcher with no host shows nothing; treat it as absent. Watchers
+	 * that do not expose the property are trusted. */
+	ret = sni_call(conn, VITRA_SNI_WATCHER, VITRA_SNI_WATCHER_PATH, "org.freedesktop.DBus.Properties", "Get",
+		g_variant_new("(ss)", VITRA_SNI_WATCHER, "IsStatusNotifierHostRegistered"), G_VARIANT_TYPE("(v)"));
+	if (!ret) {
+		return 1;
+	}
+	GVariant *v = NULL;
+	g_variant_get(ret, "(v)", &v);
+	int hosted = !(v && g_variant_is_of_type(v, G_VARIANT_TYPE_BOOLEAN) && !g_variant_get_boolean(v));
+	if (v) {
+		g_variant_unref(v);
+	}
+	g_variant_unref(ret);
+	return hosted;
+}
+
+/* dbusmenu labels treat '_' as a mnemonic marker; Vitra labels are literal. */
+static GVariant *sni_label(const char *label) {
+	GString *s = g_string_new(NULL);
+	for (const char *p = label ? label : ""; *p; p++) {
+		if (*p == '_') {
+			g_string_append_c(s, '_');
+		}
+		g_string_append_c(s, *p);
+	}
+	return g_variant_new_take_string(g_string_free(s, FALSE));
+}
+
+static int sni_wants(const gchar *const *names, const char *prop) {
+	if (!names || !names[0]) {
+		return 1;
+	}
+	return g_strv_contains(names, prop);
+}
+
+static int sni_valid_id(gint32 id) {
+	return id == 0 || (g_sni_ids && id > 0 && (guint)id <= g_sni_ids->len);
+}
+
+/* Callers hold g_sni_mu and pass a valid id. */
+static GVariant *sni_item_props(gint32 id, const gchar *const *names) {
+	GVariantBuilder b;
+	g_variant_builder_init(&b, G_VARIANT_TYPE_VARDICT);
+	if (id == 0) {
+		if (sni_wants(names, "children-display")) {
+			g_variant_builder_add(&b, "{sv}", "children-display", g_variant_new_string("submenu"));
+		}
+		return g_variant_builder_end(&b);
+	}
+	if (sni_wants(names, "label")) {
+		g_variant_builder_add(&b, "{sv}", "label", sni_label(g_ptr_array_index(g_sni_labels, id - 1)));
+	}
+	if (sni_wants(names, "enabled")) {
+		g_variant_builder_add(&b, "{sv}", "enabled", g_variant_new_boolean(TRUE));
+	}
+	if (sni_wants(names, "visible")) {
+		g_variant_builder_add(&b, "{sv}", "visible", g_variant_new_boolean(TRUE));
+	}
+	return g_variant_builder_end(&b);
+}
+
+static GVariant *sni_layout_node(gint32 id, gint32 depth, const gchar *const *names) {
+	GVariantBuilder children;
+	g_variant_builder_init(&children, G_VARIANT_TYPE("av"));
+	if (id == 0 && depth != 0 && g_sni_ids) {
+		for (guint i = 0; i < g_sni_ids->len; i++) {
+			g_variant_builder_add(&children, "v", sni_layout_node((gint32)i + 1, depth - 1, names));
+		}
+	}
+	return g_variant_new("(i@a{sv}av)", id, sni_item_props(id, names), &children);
+}
+
+/* sni_event handles one dbusmenu event; returns 0 for an unknown id. */
+static int sni_event(gint32 id, const char *event_id) {
+	g_mutex_lock(&g_sni_mu);
+	if (!sni_valid_id(id)) {
+		g_mutex_unlock(&g_sni_mu);
+		return 0;
+	}
+	char *action = NULL;
+	if (id > 0 && g_strcmp0(event_id, "clicked") == 0) {
+		action = g_strdup(g_ptr_array_index(g_sni_ids, id - 1));
+	}
+	g_mutex_unlock(&g_sni_mu);
+	if (action) {
+		goVitraAction(action);
+		g_free(action);
+	}
+	return 1;
+}
+
+static void sni_menu_call(GDBusMethodInvocation *inv, const gchar *method, GVariant *params) {
+	if (g_strcmp0(method, "GetLayout") == 0) {
+		gint32 parent = 0;
+		gint32 depth = -1;
+		const gchar **names = NULL;
+		g_variant_get(params, "(ii^a&s)", &parent, &depth, &names);
+		g_mutex_lock(&g_sni_mu);
+		if (!sni_valid_id(parent)) {
+			g_mutex_unlock(&g_sni_mu);
+			g_free(names);
+			g_dbus_method_invocation_return_dbus_error(inv, "org.freedesktop.DBus.Error.InvalidArgs", "unknown menu item");
+			return;
+		}
+		GVariant *node = sni_layout_node(parent, depth, names);
+		guint32 rev = g_sni_revision;
+		g_mutex_unlock(&g_sni_mu);
+		g_free(names);
+		g_dbus_method_invocation_return_value(inv, g_variant_new("(u@(ia{sv}av))", rev, node));
+	} else if (g_strcmp0(method, "GetGroupProperties") == 0) {
+		GVariant *ids = NULL;
+		const gchar **names = NULL;
+		g_variant_get(params, "(@ai^a&s)", &ids, &names);
+		GVariantBuilder out;
+		g_variant_builder_init(&out, G_VARIANT_TYPE("a(ia{sv})"));
+		g_mutex_lock(&g_sni_mu);
+		gsize n = g_variant_n_children(ids);
+		if (n == 0) {
+			guint count = g_sni_ids ? g_sni_ids->len : 0;
+			for (guint i = 0; i <= count; i++) {
+				g_variant_builder_add(&out, "(i@a{sv})", (gint32)i, sni_item_props((gint32)i, names));
+			}
+		}
+		for (gsize i = 0; i < n; i++) {
+			gint32 id = 0;
+			g_variant_get_child(ids, i, "i", &id);
+			if (sni_valid_id(id)) {
+				g_variant_builder_add(&out, "(i@a{sv})", id, sni_item_props(id, names));
+			}
+		}
+		g_mutex_unlock(&g_sni_mu);
+		g_variant_unref(ids);
+		g_free(names);
+		g_dbus_method_invocation_return_value(inv, g_variant_new("(a(ia{sv}))", &out));
+	} else if (g_strcmp0(method, "GetProperty") == 0) {
+		gint32 id = 0;
+		const gchar *name = NULL;
+		g_variant_get(params, "(i&s)", &id, &name);
+		const gchar *only[] = {name, NULL};
+		GVariant *value = NULL;
+		g_mutex_lock(&g_sni_mu);
+		if (sni_valid_id(id)) {
+			GVariant *props = sni_item_props(id, only);
+			value = g_variant_lookup_value(props, name, NULL);
+			g_variant_unref(g_variant_ref_sink(props));
+		}
+		g_mutex_unlock(&g_sni_mu);
+		if (!value) {
+			g_dbus_method_invocation_return_dbus_error(inv, "org.freedesktop.DBus.Error.InvalidArgs", "unknown menu item or property");
+			return;
+		}
+		g_dbus_method_invocation_return_value(inv, g_variant_new("(v)", value));
+		g_variant_unref(value);
+	} else if (g_strcmp0(method, "Event") == 0) {
+		gint32 id = 0;
+		const gchar *event_id = NULL;
+		g_variant_get(params, "(i&svu)", &id, &event_id, NULL, NULL);
+		if (!sni_event(id, event_id)) {
+			g_dbus_method_invocation_return_dbus_error(inv, "org.freedesktop.DBus.Error.InvalidArgs", "unknown menu item");
+			return;
+		}
+		g_dbus_method_invocation_return_value(inv, NULL);
+	} else if (g_strcmp0(method, "EventGroup") == 0) {
+		GVariantIter *it = NULL;
+		g_variant_get(params, "(a(isvu))", &it);
+		GVariantBuilder errs;
+		g_variant_builder_init(&errs, G_VARIANT_TYPE("ai"));
+		gint32 id = 0;
+		const gchar *event_id = NULL;
+		while (g_variant_iter_loop(it, "(i&svu)", &id, &event_id, NULL, NULL)) {
+			if (!sni_event(id, event_id)) {
+				g_variant_builder_add(&errs, "i", id);
+			}
+		}
+		g_variant_iter_free(it);
+		g_dbus_method_invocation_return_value(inv, g_variant_new("(ai)", &errs));
+	} else if (g_strcmp0(method, "AboutToShow") == 0) {
+		g_dbus_method_invocation_return_value(inv, g_variant_new("(b)", FALSE));
+	} else if (g_strcmp0(method, "AboutToShowGroup") == 0) {
+		GVariantBuilder none;
+		GVariantBuilder errs;
+		g_variant_builder_init(&none, G_VARIANT_TYPE("ai"));
+		g_variant_builder_init(&errs, G_VARIANT_TYPE("ai"));
+		g_dbus_method_invocation_return_value(inv, g_variant_new("(aiai)", &none, &errs));
+	} else {
+		g_dbus_method_invocation_return_dbus_error(inv, "org.freedesktop.DBus.Error.UnknownMethod", method);
+	}
+}
+
+static void sni_method_call(GDBusConnection *conn, const gchar *sender, const gchar *path, const gchar *iface,
+	const gchar *method, GVariant *params, GDBusMethodInvocation *inv, gpointer user_data) {
+	(void)conn;
+	(void)sender;
+	(void)path;
+	(void)user_data;
+	if (g_strcmp0(iface, VITRA_DBUSMENU_IFACE) == 0) {
+		sni_menu_call(inv, method, params);
+		return;
+	}
+	if (g_strcmp0(method, "Activate") == 0) {
+		goVitraAction("tray.activate");
+	}
+	/* ContextMenu: the host shows our Menu itself. SecondaryActivate, Scroll:
+	 * no Vitra event. */
+	g_dbus_method_invocation_return_value(inv, NULL);
+}
+
+static GVariant *sni_get_property(GDBusConnection *conn, const gchar *sender, const gchar *path,
+	const gchar *iface, const gchar *prop, GError **error, gpointer user_data) {
+	(void)conn;
+	(void)sender;
+	(void)path;
+	(void)user_data;
+	if (g_strcmp0(iface, VITRA_DBUSMENU_IFACE) == 0) {
+		if (g_strcmp0(prop, "Version") == 0) {
+			return g_variant_new_uint32(3);
+		}
+		if (g_strcmp0(prop, "TextDirection") == 0) {
+			return g_variant_new_string("ltr");
+		}
+		if (g_strcmp0(prop, "Status") == 0) {
+			return g_variant_new_string("normal");
+		}
+		if (g_strcmp0(prop, "IconThemePath") == 0) {
+			return g_variant_new_strv(NULL, 0);
+		}
+	} else {
+		const char *app = g_get_prgname();
+		if (!app || !app[0]) {
+			app = "vitra";
+		}
+		GVariant *v = NULL;
+		g_mutex_lock(&g_sni_mu);
+		const char *title = g_sni_title && g_sni_title[0] ? g_sni_title : app;
+		if (g_strcmp0(prop, "Category") == 0) {
+			v = g_variant_new_string("ApplicationStatus");
+		} else if (g_strcmp0(prop, "Id") == 0) {
+			v = g_variant_new_string(app);
+		} else if (g_strcmp0(prop, "Title") == 0) {
+			v = g_variant_new_string(title);
+		} else if (g_strcmp0(prop, "Status") == 0) {
+			v = g_variant_new_string(g_sni_active ? "Active" : "Passive");
+		} else if (g_strcmp0(prop, "WindowId") == 0) {
+			v = g_variant_new_int32(0);
+		} else if (g_strcmp0(prop, "IconName") == 0) {
+			v = g_variant_new_string(VITRA_SNI_ICON);
+		} else if (g_strcmp0(prop, "IconPixmap") == 0) {
+			v = g_variant_new_array(G_VARIANT_TYPE("(iiay)"), NULL, 0);
+		} else if (g_strcmp0(prop, "OverlayIconName") == 0 || g_strcmp0(prop, "AttentionIconName") == 0) {
+			v = g_variant_new_string("");
+		} else if (g_strcmp0(prop, "ToolTip") == 0) {
+			v = g_variant_new("(s@a(iiay)ss)", VITRA_SNI_ICON, g_variant_new_array(G_VARIANT_TYPE("(iiay)"), NULL, 0),
+				title, "");
+		} else if (g_strcmp0(prop, "ItemIsMenu") == 0) {
+			v = g_variant_new_boolean(FALSE);
+		} else if (g_strcmp0(prop, "Menu") == 0) {
+			v = g_variant_new_object_path(VITRA_SNI_MENU_PATH);
+		}
+		g_mutex_unlock(&g_sni_mu);
+		if (v) {
+			return v;
+		}
+	}
+	g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_PROPERTY, "unknown property %s", prop);
+	return NULL;
+}
+
+static const GDBusInterfaceVTable sni_vtable = {sni_method_call, sni_get_property, NULL, {0}};
+
+static void sni_register_with_watcher(GDBusConnection *conn, const char *name) {
+	GVariant *ret = sni_call(conn, VITRA_SNI_WATCHER, VITRA_SNI_WATCHER_PATH, VITRA_SNI_WATCHER,
+		"RegisterStatusNotifierItem", g_variant_new("(s)", name), NULL);
+	if (ret) {
+		g_variant_unref(ret);
+	}
+}
+
+/* A restarted panel (new watcher) forgets items: register again. */
+static void sni_watcher_appeared(GDBusConnection *conn, const gchar *name, const gchar *owner, gpointer user_data) {
+	(void)name;
+	(void)owner;
+	(void)user_data;
+	g_mutex_lock(&g_sni_mu);
+	char *item = g_sni_watcher_lost && g_sni_active ? g_strdup(g_sni_name) : NULL;
+	g_sni_watcher_lost = 0;
+	g_mutex_unlock(&g_sni_mu);
+	if (item) {
+		sni_register_with_watcher(conn, item);
+		g_free(item);
+	}
+}
+
+static void sni_watcher_vanished(GDBusConnection *conn, const gchar *name, gpointer user_data) {
+	(void)conn;
+	(void)name;
+	(void)user_data;
+	g_mutex_lock(&g_sni_mu);
+	g_sni_watcher_lost = 1;
+	g_mutex_unlock(&g_sni_mu);
+}
+
+static gpointer sni_thread_main(gpointer data) {
+	GDBusConnection *conn = G_DBUS_CONNECTION(data);
+	GMainContext *ctx = g_main_context_new();
+	g_main_context_push_thread_default(ctx);
+	int ok = 0;
+	GDBusNodeInfo *info = g_dbus_node_info_new_for_xml(vitra_sni_xml, NULL);
+	if (info) {
+		GDBusInterfaceInfo *item = g_dbus_node_info_lookup_interface(info, VITRA_SNI_IFACE);
+		GDBusInterfaceInfo *menu = g_dbus_node_info_lookup_interface(info, VITRA_DBUSMENU_IFACE);
+		ok = g_dbus_connection_register_object(conn, VITRA_SNI_PATH, item, &sni_vtable, NULL, NULL, NULL) != 0 &&
+			g_dbus_connection_register_object(conn, VITRA_SNI_MENU_PATH, menu, &sni_vtable, NULL, NULL, NULL) != 0;
+	}
+	if (ok) {
+		g_bus_watch_name_on_connection(conn, VITRA_SNI_WATCHER, G_BUS_NAME_WATCHER_FLAGS_NONE,
+			sni_watcher_appeared, sni_watcher_vanished, NULL, NULL);
+	}
+	g_mutex_lock(&g_sni_mu);
+	g_sni_ready = ok ? 1 : -1;
+	g_cond_broadcast(&g_sni_cond);
+	g_mutex_unlock(&g_sni_mu);
+	if (ok) {
+		GMainLoop *loop = g_main_loop_new(ctx, FALSE);
+		g_main_loop_run(loop); /* for the life of the process */
+		g_main_loop_unref(loop);
+	}
+	if (info) {
+		g_dbus_node_info_unref(info);
+	}
+	g_main_context_pop_thread_default(ctx);
+	g_main_context_unref(ctx);
+	g_object_unref(conn);
+	return NULL;
+}
+
+/* sni_ensure_exported starts the tray thread once and waits until the item
+ * and menu objects are exported. */
+static int sni_ensure_exported(GDBusConnection *conn) {
+	g_mutex_lock(&g_sni_mu);
+	if (!g_sni_thread) {
+		g_sni_thread = g_thread_new("vitra-tray", sni_thread_main, g_object_ref(conn));
+	}
+	while (g_sni_ready == 0) {
+		g_cond_wait(&g_sni_cond, &g_sni_mu);
+	}
+	int ok = g_sni_ready > 0;
+	g_mutex_unlock(&g_sni_mu);
+	return ok;
+}
+
+static void sni_emit(GDBusConnection *conn, const char *path, const char *iface, const char *signal, GVariant *args) {
+	g_dbus_connection_emit_signal(conn, NULL, path, iface, signal, args, NULL);
+}
+
+/* vitra_sni_set shows (or updates) the StatusNotifierItem with a tooltip and
+ * a flat menu of ids[i] / labels[i]. Returns 1 when the item is registered
+ * with a StatusNotifierWatcher, 0 when there is none (the caller falls back
+ * to GtkStatusIcon). Safe from any thread. */
+int vitra_sni_set(const char *tooltip, const char *const *ids, const char *const *labels, int n) {
+	GDBusConnection *conn = sni_bus();
+	if (!conn || !vitra_sni_available() || !sni_ensure_exported(conn)) {
+		return 0;
+	}
+	GPtrArray *new_ids = g_ptr_array_new_with_free_func(g_free);
+	GPtrArray *new_labels = g_ptr_array_new_with_free_func(g_free);
+	for (int i = 0; i < n; i++) {
+		g_ptr_array_add(new_ids, g_strdup(ids[i] ? ids[i] : ""));
+		g_ptr_array_add(new_labels, g_strdup(labels[i] ? labels[i] : ""));
+	}
+	g_mutex_lock(&g_sni_mu);
+	if (g_sni_ids) {
+		g_ptr_array_unref(g_sni_ids);
+		g_ptr_array_unref(g_sni_labels);
+	}
+	g_sni_ids = new_ids;
+	g_sni_labels = new_labels;
+	g_free(g_sni_title);
+	g_sni_title = g_strdup(tooltip ? tooltip : "");
+	guint32 rev = ++g_sni_revision;
+	int was_active = g_sni_active;
+	char *name = NULL;
+	if (!was_active) {
+		name = g_strdup_printf("org.kde.StatusNotifierItem-%d-%u", (int)getpid(), ++g_sni_seq);
+		g_sni_active = 1;
+		g_free(g_sni_name);
+		g_sni_name = g_strdup(name);
+	}
+	g_mutex_unlock(&g_sni_mu);
+
+	if (was_active) {
+		sni_emit(conn, VITRA_SNI_PATH, VITRA_SNI_IFACE, "NewTitle", NULL);
+		sni_emit(conn, VITRA_SNI_PATH, VITRA_SNI_IFACE, "NewToolTip", NULL);
+		sni_emit(conn, VITRA_SNI_MENU_PATH, VITRA_DBUSMENU_IFACE, "LayoutUpdated", g_variant_new("(ui)", rev, 0));
+		return 1;
+	}
+	/* 4 = DBUS_NAME_FLAG_DO_NOT_QUEUE; reply 1 = primary owner. */
+	guint32 owner = 0;
+	GVariant *ret = sni_call(conn, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+		"RequestName", g_variant_new("(su)", name, 4u), G_VARIANT_TYPE("(u)"));
+	if (ret) {
+		g_variant_get(ret, "(u)", &owner);
+		g_variant_unref(ret);
+	}
+	GVariant *reg = NULL;
+	if (owner == 1) {
+		reg = sni_call(conn, VITRA_SNI_WATCHER, VITRA_SNI_WATCHER_PATH, VITRA_SNI_WATCHER,
+			"RegisterStatusNotifierItem", g_variant_new("(s)", name), NULL);
+	}
+	if (!reg) {
+		g_mutex_lock(&g_sni_mu);
+		g_sni_active = 0;
+		g_free(g_sni_name);
+		g_sni_name = NULL;
+		g_mutex_unlock(&g_sni_mu);
+		if (owner == 1) {
+			GVariant *rel = sni_call(conn, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+				"ReleaseName", g_variant_new("(s)", name), NULL);
+			if (rel) {
+				g_variant_unref(rel);
+			}
+		}
+		g_free(name);
+		return 0;
+	}
+	g_variant_unref(reg);
+	g_free(name);
+	return 1;
+}
+
+/* vitra_sni_clear removes the item: releasing its bus name makes the
+ * watcher drop it. No-op when the item is not shown. */
+void vitra_sni_clear(void) {
+	GDBusConnection *conn = sni_bus();
+	g_mutex_lock(&g_sni_mu);
+	char *name = g_sni_active ? g_sni_name : NULL;
+	if (g_sni_active) {
+		g_sni_active = 0;
+		g_sni_name = NULL;
+	}
+	g_mutex_unlock(&g_sni_mu);
+	if (!name) {
+		return;
+	}
+	if (conn) {
+		sni_emit(conn, VITRA_SNI_PATH, VITRA_SNI_IFACE, "NewStatus", g_variant_new("(s)", "Passive"));
+		GVariant *rel = sni_call(conn, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+			"ReleaseName", g_variant_new("(s)", name), NULL);
+		if (rel) {
+			g_variant_unref(rel);
+		}
+	}
+	g_free(name);
+}
+/* ======================= end StatusNotifierItem tray ===================== */
 
 static void on_drag_data(GtkWidget *widget, GdkDragContext *ctx, gint x, gint y,
 	GtkSelectionData *data, guint info, guint time, gpointer user_data) {

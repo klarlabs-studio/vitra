@@ -191,6 +191,10 @@ rather than compared as URL strings.
   mailto, and launches them without a command interpreter (Windows uses
   `rundll32 url.dll,FileProtocolHandler`, not `cmd /c start`). Generated
   `.reg` values escape quotes and drop newlines.
+- **Tray menus name no actions over D-Bus.** The Linux StatusNotifierItem
+  menu exposes numeric dbusmenu ids. A click is mapped back to the action ID
+  the app set, so another process on the session bus can at most "click"
+  an item the app put there. Unknown ids are rejected and fire nothing.
 - **Updates.** A manifest must carry a valid ed25519 signature, match the
   artifact's SHA-256, be for the installed app and channel, and have a
   strictly newer SemVer version, and not be past its signed `expires_at`

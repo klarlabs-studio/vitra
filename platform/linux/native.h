@@ -64,6 +64,11 @@ void vitra_tray_clear_menu(void);
 void vitra_tray_add_menu_item(const char *item_id, const char *item_label);
 void vitra_tray_clear(void);
 
+/* StatusNotifierItem tray (org.kde.StatusNotifierWatcher + dbusmenu). */
+int vitra_sni_available(void);
+int vitra_sni_set(const char *tooltip, const char *const *ids, const char *const *labels, int n);
+void vitra_sni_clear(void);
+
 void vitra_win_set_drag_drop(VitraWin *w, int enabled);
 void vitra_win_flush(void);
 void vitra_win_apply_chrome(VitraWin *w, const char *title, int width, int height, int maximized, int fullscreen, int above, int minimized, int hidden, const char *icon_path);
