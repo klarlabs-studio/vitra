@@ -137,6 +137,43 @@ func TestGenerateTypeScript_TypedShapes(t *testing.T) {
 	}
 }
 
+type pickOptions struct {
+	Title   string   `json:"title,omitempty"`
+	Filters []string `json:"filters,omitzero"`
+	_       int      // unexported fields are not encoded, so they don't count
+}
+
+// An input whose fields are all optional may be left out: null decodes to
+// its zero value.
+func TestGenerateTypeScript_OptionalInputWhenEveryFieldIsOptional(t *testing.T) {
+	out := mustGenerate(t, []bindings.Command{
+		{Name: "pick", Permission: "p", Input: reflect.TypeOf(pickOptions{}), Output: reflect.TypeOf("")},
+		{Name: "graph.get", Permission: "p", Input: reflect.TypeOf(address{}), Output: reflect.TypeOf("")},
+	}, nil)
+	for _, want := range []string{
+		"pick(input?: PickOptions, resourcePath?: string): Promise<string>;",
+		"graphGet(input: Address, resourcePath?: string): Promise<string>;",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+}
+
+func TestGenerateTypeScript_VoidOutput(t *testing.T) {
+	out := mustGenerate(t, []bindings.Command{{
+		Name: "app.quit", Permission: "app.quit", Input: reflect.TypeOf(struct{}{}), Void: true,
+	}}, nil)
+	for _, want := range []string{
+		"appQuit(input?: {}, resourcePath?: string): Promise<void>;",
+		`appQuit: (input, resourcePath) => invoke("app.quit", input, resourcePath) as Promise<void>,`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q in:\n%s", want, out)
+		}
+	}
+}
+
 func TestGenerateTypeScript_RejectsMethodNameCollisions(t *testing.T) {
 	a, _ := domain.NewCommandDefinition("fs.read", "a", "fs.read")
 	b, _ := domain.NewCommandDefinition("fs_read", "b", "fs.read")

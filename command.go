@@ -1,15 +1,14 @@
 package vitra
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
 
 	"go.klarlabs.de/vitra/domain"
 	"go.klarlabs.de/vitra/internal/bindings"
+	"go.klarlabs.de/vitra/internal/strictjson"
 )
 
 // Command is a typed frontend-callable command.
@@ -22,14 +21,24 @@ import (
 // must equal that checked path, so a handler cannot be pointed at a
 // different resource than the one that was authorized.
 //
-// Out is encoded to the frontend as JSON. Register records In and Out so
-// Runtime.TypeScript can generate a typed client.
+// Out is encoded to the frontend as JSON; use [Void] for a command that
+// returns nothing. Register records In and Out so Runtime.TypeScript can
+// generate a typed client.
 type Command[In, Out any] struct {
 	Name        domain.CommandName
 	Description string
 	Permission  domain.PermissionName
 	Handler     func(ctx context.Context, inv domain.Invocation, in In) (Out, error)
 }
+
+// Void is the output type of a command that returns nothing. The frontend
+// receives null, and the generated client types the call as Promise<void>.
+type Void struct{}
+
+// MarshalJSON encodes Void as null.
+func (Void) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
+
+var voidType = reflect.TypeFor[Void]()
 
 // ResourcePather is implemented by command inputs that name the resource the
 // command acts on. See Command.
@@ -46,13 +55,43 @@ func Register[In, Out any](rt *Runtime, c Command[In, Out]) error {
 	if err != nil {
 		return err
 	}
-	handler := c.Handler
-	exec := domain.CommandExecutorFunc(func(ctx context.Context, name domain.CommandName, input any) (any, error) {
+	if err := rt.RegisterCommand(def, typedExecutor(def, c.Handler)); err != nil {
+		return err
+	}
+	rt.recordTyped(def, reflect.TypeFor[In](), reflect.TypeFor[Out]())
+	return nil
+}
+
+// Bind attaches a typed handler to a command that is already registered,
+// typically one a plugin contributed through Runtime.RegisterPlugin. It is
+// the typed counterpart of Runtime.BindExecutor: the command keeps the name,
+// description, and permission its plugin declared, its input is decoded
+// strictly into In as for [Command], and Runtime.TypeScript types it with In
+// and Out instead of unknown.
+func Bind[In, Out any](rt *Runtime, name domain.CommandName, handler func(ctx context.Context, inv domain.Invocation, in In) (Out, error)) error {
+	if handler == nil {
+		return &domain.ErrValidation{Message: "command handler is required"}
+	}
+	def, err := rt.commands.Get(name)
+	if err != nil {
+		return err
+	}
+	if err := rt.BindExecutor(name, typedExecutor(def, handler)); err != nil {
+		return err
+	}
+	rt.recordTyped(def, reflect.TypeFor[In](), reflect.TypeFor[Out]())
+	return nil
+}
+
+// typedExecutor wraps handler so it runs only for an authorized invocation,
+// on strictly decoded input bound to the authorized resource path.
+func typedExecutor[In, Out any](def *domain.CommandDefinition, handler func(context.Context, domain.Invocation, In) (Out, error)) domain.CommandExecutor {
+	return domain.CommandExecutorFunc(func(ctx context.Context, name domain.CommandName, input any) (any, error) {
 		inv, ok := domain.InvocationFrom(ctx)
 		if !ok {
 			return nil, domain.ErrNoInvocation
 		}
-		in, err := decodeInput[In](input)
+		in, err := strictjson.Decode[In](input)
 		if err != nil {
 			return nil, &domain.ErrValidation{Message: fmt.Sprintf("command %s input: %v", name, err)}
 		}
@@ -65,45 +104,38 @@ func Register[In, Out any](rt *Runtime, c Command[In, Out]) error {
 				Reason:     "input resource path differs from the authorized resource path",
 			}
 		}
-		return handler(ctx, inv, in)
+		out, err := handler(ctx, inv, in)
+		if _, void := any(out).(Void); void {
+			return nil, err
+		}
+		return out, err
 	})
-	if err := rt.RegisterCommand(def, exec); err != nil {
-		return err
+}
+
+// recordTyped remembers a command's input and output types for TypeScript.
+func (rt *Runtime) recordTyped(def *domain.CommandDefinition, in, out reflect.Type) {
+	cmd := bindings.Command{
+		Name:        def.Name(),
+		Description: def.Description(),
+		Permission:  def.Permission(),
+		Input:       in,
+		Output:      out,
+	}
+	if out == voidType {
+		cmd.Output, cmd.Void = nil, true
 	}
 	rt.typedMu.Lock()
 	defer rt.typedMu.Unlock()
 	if rt.typed == nil {
 		rt.typed = map[domain.CommandName]bindings.Command{}
 	}
-	rt.typed[def.Name()] = bindings.Command{
-		Name:        def.Name(),
-		Description: def.Description(),
-		Permission:  def.Permission(),
-		Input:       reflect.TypeFor[In](),
-		Output:      reflect.TypeFor[Out](),
-	}
-	return nil
-}
-
-// decodeInput converts the frontend's decoded JSON value into In, rejecting
-// unknown object fields and type mismatches.
-func decodeInput[In any](input any) (In, error) {
-	var in In
-	raw, err := json.Marshal(input)
-	if err != nil {
-		return in, err
-	}
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&in); err != nil {
-		return in, err
-	}
-	return in, nil
+	rt.typed[def.Name()] = cmd
 }
 
 // TypeScript returns a generated TypeScript client for every registered
-// command: commands registered with Register get typed inputs and outputs,
-// others are typed as unknown. Plugin events get subscription helpers.
+// command: commands registered with Register or bound with Bind get typed
+// inputs and outputs, others are typed as unknown. Plugin events get
+// subscription helpers.
 func (rt *Runtime) TypeScript(module string) (string, error) {
 	defs, err := rt.commands.List()
 	if err != nil {

@@ -17,13 +17,16 @@ import (
 
 // Command describes one frontend-callable command for code generation.
 // Input and Output are the Go types the command decodes and returns; nil
-// means the shape is unknown and is typed as `unknown`.
+// means the shape is unknown and is typed as `unknown`. Void marks a command
+// that returns nothing (null on the wire); it is typed as `void` and
+// Output is ignored.
 type Command struct {
 	Name        domain.CommandName
 	Description string
 	Permission  domain.PermissionName
 	Input       reflect.Type
 	Output      reflect.Type
+	Void        bool
 }
 
 // Untyped describes command definitions whose input and output types are
@@ -69,9 +72,11 @@ func GenerateTypeScript(moduleName, kernelVersion string, commands []Command, ev
 				return "", fmt.Errorf("command %s input: %w", c.Name, err)
 			}
 			m.in = ts
-			m.inOptional = isEmptyStruct(c.Input)
+			m.inOptional = isEmptyStruct(c.Input) || allFieldsOptional(c.Input)
 		}
-		if c.Output != nil {
+		if c.Void {
+			m.out = "void"
+		} else if c.Output != nil {
 			ts, err := types.tsType(c.Output)
 			if err != nil {
 				return "", fmt.Errorf("command %s output: %w", c.Name, err)
@@ -136,6 +141,41 @@ func GenerateTypeScript(moduleName, kernelVersion string, commands []Command, ev
 
 func isEmptyStruct(t reflect.Type) bool {
 	return t.Kind() == reflect.Struct && t.NumField() == 0
+}
+
+// allFieldsOptional reports whether t is a struct whose JSON fields are all
+// optional (omitempty or omitzero), so the input itself may be omitted.
+func allFieldsOptional(t reflect.Type) bool {
+	if t.Kind() != reflect.Struct {
+		return false
+	}
+	for i := range t.NumField() {
+		f := t.Field(i)
+		tag := f.Tag.Get("json")
+		if tag == "-" {
+			continue
+		}
+		name, opts, _ := strings.Cut(tag, ",")
+		if f.Anonymous && name == "" {
+			ft := f.Type
+			if ft.Kind() == reflect.Pointer {
+				ft = ft.Elem()
+			}
+			if ft.Kind() == reflect.Struct {
+				if !allFieldsOptional(ft) {
+					return false
+				}
+				continue
+			}
+		}
+		if !f.IsExported() {
+			continue
+		}
+		if !hasOpt(opts, "omitempty") && !hasOpt(opts, "omitzero") {
+			return false
+		}
+	}
+	return true
 }
 
 func uniqueSortedEvents(events []domain.EventName) []domain.EventName {
