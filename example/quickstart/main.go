@@ -1,32 +1,53 @@
-// Command quickstart demonstrates the Vitra Phase 1 secure runtime kernel:
-// open a window with no ambient privileges, register a narrow capability
-// grant, invoke an explicit command, then observe denial after navigation.
+// Command quickstart shows Vitra's secure runtime kernel without a window
+// toolkit: a window starts with no privileges, a narrow grant gives it one
+// permission on one folder, a typed command runs only within that grant,
+// and navigating the window away drops its authority.
+//
+//	go run ./example/quickstart
 package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/domain"
 )
 
-type openProject struct{}
+// OpenProject is the input of project.open. Its path is the resource the
+// gateway authorizes: ResourcePath binds the handler to the path that was
+// checked, so it cannot be pointed anywhere else.
+type OpenProject struct {
+	Path string `json:"path"`
+}
 
-func (openProject) Execute(_ context.Context, _ domain.CommandName, input any) (any, error) {
-	return map[string]any{"path": input, "status": "opened"}, nil
+// ResourcePath implements vitra.ResourcePather.
+func (in OpenProject) ResourcePath() string { return in.Path }
+
+// Opened is the output of project.open.
+type Opened struct {
+	Path   string `json:"path"`
+	Status string `json:"status"`
 }
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(os.Stdout); err != nil {
 		fmt.Fprintf(os.Stderr, "quickstart: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(w io.Writer) (err error) {
 	ctx := context.Background()
+	out := &printer{w: w}
+	defer func() {
+		if err == nil {
+			err = out.err
+		}
+	}()
 	rt, err := vitra.New(vitra.Config{AppID: "com.example.quickstart"})
 	if err != nil {
 		return err
@@ -35,8 +56,12 @@ func run() error {
 	if _, err := rt.OpenWindow(ctx, "main", domain.OriginPackagedLocal); err != nil {
 		return err
 	}
-	fmt.Println("1) opened window main at app://local (no privileges yet)")
-	fmt.Print(vitra.FormatInspect(rt.AppID(), mustSurface(rt, "main")))
+	out.printf("1) opened window main at app://local (no privileges yet)\n")
+	surface, err := rt.InspectCapabilities("main")
+	if err != nil {
+		return err
+	}
+	out.printf("%s", vitra.FormatInspect(rt.AppID(), surface))
 
 	grant, err := domain.NewCapabilityGrant(
 		"project-files",
@@ -57,53 +82,74 @@ func run() error {
 	if err := rt.RegisterGrant(grant); err != nil {
 		return err
 	}
-	cmd, err := domain.NewCommandDefinition("project.open", "Open a project path", "fs.read")
-	if err != nil {
-		return err
-	}
-	if err := rt.RegisterCommand(cmd, openProject{}); err != nil {
-		return err
-	}
-	fmt.Println("2) registered grant project-files + command project.open")
-
-	caller, err := rt.CallerFor("main")
-	if err != nil {
-		return err
-	}
-	res, err := rt.Invoke(ctx, domain.InvocationRequest{
-		Caller:       caller,
-		Command:      "project.open",
-		Input:        "/project/app",
-		ResourcePath: "/project/app",
+	// A command names its permission: the gateway checks it, with the
+	// grant's path scope, before the handler runs.
+	err = vitra.Register(rt, vitra.Command[OpenProject, Opened]{
+		Name:        "project.open",
+		Description: "Open a project path",
+		Permission:  "fs.read",
+		Handler: func(_ context.Context, _ domain.Invocation, in OpenProject) (Opened, error) {
+			return Opened{Path: in.Path, Status: "opened"}, nil
+		},
 	})
 	if err != nil {
 		return err
 	}
-	fmt.Printf("3) invoke authorized via grant %s → %v\n", res.Decision.Grant, res.Output)
+	out.printf("2) registered grant project-files + command project.open\n")
+
+	// open invokes project.open as the window, the way the bridge does for
+	// the page: the caller comes from the window, not from the input.
+	open := func(path string) (*domain.InvocationResult, error) {
+		caller, err := rt.CallerFor("main")
+		if err != nil {
+			return nil, err
+		}
+		return rt.Invoke(ctx, domain.InvocationRequest{
+			Caller:       caller,
+			Command:      "project.open",
+			Input:        map[string]any{"path": path},
+			ResourcePath: path,
+		})
+	}
+
+	res, err := open("/project/app")
+	if err != nil {
+		return err
+	}
+	out.printf("3) invoke authorized via grant %s → %+v\n", res.Decision.Grant, res.Output)
+
+	if err := expectDenied(open("/project/.secrets/token")); err != nil {
+		return err
+	}
+	out.printf("4) /project/.secrets/token is denied: deny patterns win over allow\n")
 
 	if err := rt.NavigateWindow(ctx, "main", "https://untrusted.example"); err != nil {
 		return err
 	}
-	caller, err = rt.CallerFor("main")
-	if err != nil {
+	if err := expectDenied(open("/project/app")); err != nil {
 		return err
 	}
-	_, err = rt.Invoke(ctx, domain.InvocationRequest{
-		Caller:       caller,
-		Command:      "project.open",
-		ResourcePath: "/project/app",
-	})
-	if err == nil {
-		return fmt.Errorf("expected denial after navigation")
-	}
-	fmt.Printf("4) after navigate to untrusted origin: %v\n", err)
+	out.printf("5) after navigating to an untrusted origin, the same call is denied: authority does not follow navigation\n")
 	return nil
 }
 
-func mustSurface(rt *vitra.Runtime, id domain.WindowID) domain.EffectiveSurface {
-	s, err := rt.InspectCapabilities(id)
-	if err != nil {
-		panic(err)
+// expectDenied returns nil when err is a capability denial.
+func expectDenied(_ *domain.InvocationResult, err error) error {
+	var denied *domain.ErrDenied
+	if !errors.As(err, &denied) {
+		return fmt.Errorf("expected a denial, got %v", err)
 	}
-	return s
+	return nil
+}
+
+// printer writes the walkthrough and keeps the first write error.
+type printer struct {
+	w   io.Writer
+	err error
+}
+
+func (p *printer) printf(format string, a ...any) {
+	if p.err == nil {
+		_, p.err = fmt.Fprintf(p.w, format, a...)
+	}
 }

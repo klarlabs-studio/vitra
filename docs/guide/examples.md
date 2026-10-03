@@ -57,4 +57,4 @@ A tour of every official plugin: dialogs, clipboard, window chrome, menus, the t
 go run ./example/quickstart
 ```
 
-The kernel with no window: register a grant and a command, invoke it, and watch navigation drop the window's authority. It runs anywhere, without cgo.
+The kernel with no window: register a grant and a typed command (`vitra.Register`), invoke it, see a deny pattern win over the grant's allow, and watch navigation drop the window's authority. It runs anywhere, without cgo.
