@@ -13,7 +13,7 @@ go install go.klarlabs.de/vitra/cmd/vitra@latest
 | `vitra new <dir> [--template vanilla\|vite\|react\|svelte\|vue] [--with <plugins>]` | Create a starter app. `--with` takes a comma-separated list of `fs`, `dialog`, `clipboard`, `notification`, `os`: those official plugins are registered with least-privilege grants and a demo call each; see [Start with desktop plugins](/guide/getting-started#start-with-desktop-plugins) |
 | `vitra dev [dir]` | Run the app with the native host and the inspector; restart when `.go`, `.html`, `.css`, or `.js` files change |
 | `vitra build [dir]` | Build the app binary with the native host |
-| `vitra generate typescript [--app dir] [--out path] [--module name]` | Write a TypeScript client. With `--app`, the client covers that app's own commands; without it, the official plugin commands |
+| `vitra generate typescript [--app dir] [--out path] [--module name]` | Write a TypeScript client. With `--app`, the client covers that app's own commands; without it, the official plugin commands, typed as `app.UseOfficialPlugins` binds them |
 | `vitra inspect capabilities` | Print the capability surface of a demo runtime |
 
 ### `vitra doctor --json`

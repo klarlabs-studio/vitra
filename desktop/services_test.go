@@ -91,22 +91,6 @@ func TestMenuService_GrantFeatureAndHook(t *testing.T) {
 	if !cleared {
 		t.Fatal("expected OnClear")
 	}
-	items, err := desktop.ParseMenuItems([]any{
-		map[string]any{"id": "app.quit", "label": "Quit", "menu": "File", "shortcut": "Ctrl+Q"},
-		map[string]any{"id": "help.about", "label": "About", "menu": "Help"},
-	})
-	if err != nil || len(items) != 2 || items[0].ID != "app.quit" || items[0].Menu != "File" || items[0].Shortcut != "Ctrl+Q" || items[1].Label != "About" {
-		t.Fatalf("parse: %+v err=%v", items, err)
-	}
-	wrapped, err := desktop.ParseMenuItems(map[string]any{"items": []any{
-		map[string]any{"id": "x", "label": "X"},
-	}})
-	if err != nil || len(wrapped) != 1 || wrapped[0].ID != "x" {
-		t.Fatalf("parse wrapped: %+v err=%v", wrapped, err)
-	}
-	if _, err := desktop.ParseMenuItems(map[string]any{"id": "x"}); err == nil {
-		t.Fatal("expected validation error")
-	}
 }
 
 func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
@@ -138,19 +122,6 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	}
 	if !cleared {
 		t.Fatal("expected OnClear")
-	}
-	tip, items, err := desktop.ParseTraySet(map[string]any{
-		"tooltip": "Demo",
-		"items": []any{
-			map[string]any{"id": "tray.quit", "label": "Quit"},
-		},
-	})
-	if err != nil || tip != "Demo" || len(items) != 1 || items[0].ID != "tray.quit" {
-		t.Fatalf("parse tray: tip=%q items=%+v err=%v", tip, items, err)
-	}
-	tip, items, err = desktop.ParseTraySet([]any{map[string]any{"id": "a", "label": "A"}})
-	if err != nil || tip != "" || len(items) != 1 || items[0].ID != "a" {
-		t.Fatalf("parse tray array: tip=%q items=%+v err=%v", tip, items, err)
 	}
 
 	dlg := &desktop.DialogService{
@@ -185,20 +156,6 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	}
 	if _, err := bare.SaveFile(ctx, caller, platform.DialogFileOptions{}); err == nil {
 		t.Fatal("expected missing save adapter")
-	}
-	parsed := desktop.ParseDialogFileOptions(map[string]any{
-		"title":       "T",
-		"defaultPath": "/home",
-		"filters": []any{
-			map[string]any{"name": "Docs", "extensions": []any{"pdf", "txt"}},
-		},
-	})
-	if parsed.Title != "T" || parsed.DefaultPath != "/home" || len(parsed.Filters) != 1 ||
-		parsed.Filters[0].Name != "Docs" || len(parsed.Filters[0].Extensions) != 2 {
-		t.Fatalf("parse: %+v", parsed)
-	}
-	if got := desktop.ParseDialogFileOptions(nil); got.Title != "" || len(got.Filters) != 0 {
-		t.Fatalf("nil parse: %+v", got)
 	}
 	dirHost := withFeatures(platform.OSLinux, platform.FeatureDialogOpenDirectory)
 	dirDlg := &desktop.DialogService{
@@ -282,28 +239,6 @@ func TestTrayDialogClipboardShortcutSingleInstance(t *testing.T) {
 	}
 	if err := sc.Unregister(ctx, caller, ""); err == nil {
 		t.Fatal("expected empty accelerator validation on unregister")
-	}
-	acc, act, err := desktop.ParseShortcutRegister(map[string]any{
-		"accelerator": "Ctrl+Shift+Q", "action": "app.quit",
-	})
-	if err != nil || acc != "Ctrl+Shift+Q" || act != "app.quit" {
-		t.Fatalf("parse: %s %s err=%v", acc, act, err)
-	}
-	_, _, err = desktop.ParseShortcutRegister(map[string]any{"accelerator": "Ctrl+A"})
-	if err == nil {
-		t.Fatal("expected missing action validation")
-	}
-	acc, err = desktop.ParseShortcutUnregister(map[string]any{"accelerator": "Ctrl+Shift+Q"})
-	if err != nil || acc != "Ctrl+Shift+Q" {
-		t.Fatalf("parse unregister object: %s err=%v", acc, err)
-	}
-	acc, err = desktop.ParseShortcutUnregister("Ctrl+B")
-	if err != nil || acc != "Ctrl+B" {
-		t.Fatalf("parse unregister string: %s err=%v", acc, err)
-	}
-	_, err = desktop.ParseShortcutUnregister(map[string]any{})
-	if err == nil {
-		t.Fatal("expected missing accelerator validation")
 	}
 
 	si := &desktop.SingleInstanceService{
@@ -418,14 +353,6 @@ func TestDragDropService_GrantFeatureAndHook(t *testing.T) {
 	missing := &desktop.DragDropService{Gateway: allowAll{}, Host: okHost}
 	if err := missing.Enable(ctx, caller, "main", true); err == nil {
 		t.Fatal("expected missing adapter")
-	}
-	win, enabled, err := desktop.ParseDragDropEnable(map[string]any{"window": "aux", "enabled": false})
-	if err != nil || win != "aux" || enabled {
-		t.Fatalf("parse: %s %v err=%v", win, enabled, err)
-	}
-	win, enabled, err = desktop.ParseDragDropEnable(true)
-	if err != nil || win != "main" || !enabled {
-		t.Fatalf("parse bool: %s %v err=%v", win, enabled, err)
 	}
 }
 
@@ -609,13 +536,6 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	if err := minmax.Restore(ctx, caller, "main"); err != nil || sized.Minimized || sized.Maximized || sized.Fullscreen {
 		t.Fatalf("restore: %+v err=%v", sized, err)
 	}
-	winID, onTop, parseErr := desktop.ParseWindowAlwaysOnTop(map[string]any{"id": "main", "alwaysOnTop": true})
-	if parseErr != nil || winID != "main" || !onTop {
-		t.Fatalf("ParseWindowAlwaysOnTop: id=%s onTop=%v err=%v", winID, onTop, parseErr)
-	}
-	if _, _, err := desktop.ParseWindowAlwaysOnTop(map[string]any{"id": "main"}); err == nil {
-		t.Fatal("expected alwaysOnTop required")
-	}
 	if err := minmax.Minimize(ctx, caller, ""); err == nil {
 		t.Fatal("expected empty window validation for minimize")
 	}
@@ -651,29 +571,8 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	if err := titleSize.SetSize(ctx, caller, "main", 0, 100); err == nil {
 		t.Fatal("expected setSize validation for non-positive width")
 	}
-	setTitleID, setTitle, parseTitleErr := desktop.ParseWindowSetTitle(map[string]any{"id": "main", "title": "Hi"})
-	if parseTitleErr != nil || setTitleID != "main" || setTitle != "Hi" {
-		t.Fatalf("ParseWindowSetTitle: id=%s title=%q err=%v", setTitleID, setTitle, parseTitleErr)
-	}
-	if _, _, err := desktop.ParseWindowSetTitle(map[string]any{"id": "main"}); err == nil {
-		t.Fatal("expected title required")
-	}
-	setSizeID, w, h, parseSizeErr := desktop.ParseWindowSetSize(map[string]any{"id": "main", "width": 640, "height": 480})
-	if parseSizeErr != nil || setSizeID != "main" || w != 640 || h != 480 {
-		t.Fatalf("ParseWindowSetSize: id=%s %dx%d err=%v", setSizeID, w, h, parseSizeErr)
-	}
-	if _, _, _, err := desktop.ParseWindowSetSize(map[string]any{"id": "main", "width": 640}); err == nil {
-		t.Fatal("expected height required")
-	}
 	if err := titleSize.SetIcon(ctx, caller, "main", "/tmp/app.png"); err != nil || titled.IconPath != "/tmp/app.png" {
 		t.Fatalf("setIcon: %+v err=%v", titled, err)
-	}
-	setIconID, iconPath, parseIconErr := desktop.ParseWindowSetIcon(map[string]any{"id": "main", "iconPath": "/icons/app.png"})
-	if parseIconErr != nil || setIconID != "main" || iconPath != "/icons/app.png" {
-		t.Fatalf("ParseWindowSetIcon: id=%s path=%q err=%v", setIconID, iconPath, parseIconErr)
-	}
-	if _, _, err := desktop.ParseWindowSetIcon(map[string]any{"id": "main"}); err == nil {
-		t.Fatal("expected iconPath required")
 	}
 
 	createHost := withFeatures(platform.OSLinux, platform.FeatureWindowCreate)
@@ -705,22 +604,6 @@ func TestWindowService_GrantFeatureAndHook(t *testing.T) {
 	bareLife := &desktop.WindowService{Gateway: allowAll{}, Host: createHost}
 	if _, err := bareLife.Create(ctx, caller, desktop.WindowCreateOptions{ID: "x"}); err == nil {
 		t.Fatal("expected missing create adapter")
-	}
-	opts, err := desktop.ParseWindowCreateOptions(map[string]any{
-		"id": "aux", "title": "T", "path": "/x", "width": 320.0, "height": 240.0,
-	})
-	if err != nil || opts.ID != "aux" || opts.Width != 320 || opts.Height != 240 {
-		t.Fatalf("parse create: %+v err=%v", opts, err)
-	}
-	wid, err := desktop.ParseWindowID("aux")
-	if err != nil || wid != "aux" {
-		t.Fatalf("parse id: %v %v", wid, err)
-	}
-	winID, parsedChrome, err := desktop.ParseWindowChromeApply(map[string]any{
-		"id": "main", "title": "Hi", "width": 640.0, "height": 480.0, "alwaysOnTop": true,
-	})
-	if err != nil || winID != "main" || parsedChrome.Title != "Hi" || parsedChrome.Width != 640 || !parsedChrome.AlwaysOnTop {
-		t.Fatalf("parse chrome: %s %+v err=%v", winID, parsedChrome, err)
 	}
 }
 
@@ -896,51 +779,5 @@ func TestPathService_GrantFeatureAndHook(t *testing.T) {
 	missing := &desktop.PathService{Gateway: allowAll{}, Host: okHost}
 	if err := missing.Open(ctx, caller, abs("/tmp/x")); err == nil {
 		t.Fatal("expected missing adapter")
-	}
-}
-
-// A size must be exactly the integer the page sent. Numbers above 2^53 are
-// not exact once decoded from JSON (2e16+1 arrives as 2e16), and numbers
-// beyond the int range would be saturated or wrapped by the float-to-int
-// conversion (which differs by CPU), so both are rejected.
-func TestParseWindowSizes_RejectInexactOrOutOfRangeNumbers(t *testing.T) {
-	_, w, _, err := desktop.ParseWindowSetSize(map[string]any{"id": "main", "width": float64(1 << 53), "height": 1.0})
-	if err != nil || w != 1<<53 {
-		t.Fatalf("2^53 must stay accepted: w=%d err=%v", w, err)
-	}
-	for _, n := range []float64{1<<53 + 2, 2.000000000000001e16, 1 << 63, 1 << 64, 1e19, 1e308} {
-		in := map[string]any{"id": "main", "width": n, "height": n}
-		if _, w, h, err := desktop.ParseWindowSetSize(in); err == nil {
-			t.Errorf("ParseWindowSetSize accepted %v as %dx%d", n, w, h)
-		}
-		if opts, err := desktop.ParseWindowCreateOptions(in); err != nil || opts.Width != 0 || opts.Height != 0 {
-			t.Errorf("ParseWindowCreateOptions(%v) = %+v, %v; want size ignored", n, opts, err)
-		}
-		if _, chrome, err := desktop.ParseWindowChromeApply(in); err != nil || chrome.Width != 0 || chrome.Height != 0 {
-			t.Errorf("ParseWindowChromeApply(%v) = %+v, %v; want size ignored", n, chrome, err)
-		}
-	}
-}
-
-func TestParseDialogFileOptions_Multiple(t *testing.T) {
-	for _, input := range []map[string]any{
-		{"multiple": true},
-		{"multiple": true, "filters": []any{map[string]any{"name": "Docs", "extensions": []any{"md"}}}},
-	} {
-		if got := desktop.ParseDialogFileOptions(input); !got.Multiple {
-			t.Errorf("ParseDialogFileOptions(%v).Multiple = false, want true", input)
-		}
-	}
-	// Only a JSON true opts in; anything else keeps the single-file dialog.
-	for _, input := range []any{
-		nil,
-		map[string]any{},
-		map[string]any{"multiple": false},
-		map[string]any{"multiple": "true"},
-		map[string]any{"multiple": 1.0},
-	} {
-		if got := desktop.ParseDialogFileOptions(input); got.Multiple {
-			t.Errorf("ParseDialogFileOptions(%v).Multiple = true, want false", input)
-		}
 	}
 }

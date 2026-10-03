@@ -27,6 +27,8 @@ This **grants nothing**. Every command still needs a grant for the calling windo
 
 It also forwards native activations: menu, tray, and shortcut activations become `menu.action`, `tray.action`, and `shortcut.action` events (`{"id": ...}`), and file drops become `dragdrop.drop` (`{"window", "paths"}`). [Subscribe](/guide/events) the windows that should receive them.
 
+Every official command is a [typed command](/guide/commands). Its input is decoded strictly into a type in `plugin/official` (`official.DialogOptions`, `official.WindowSizeInput`, …): an unknown field or a wrong type fails with a validation error before the host is touched, and the [generated client](/guide/commands#the-typescript-client) types each call. See the [plugin reference](/reference/plugins#inputs-and-outputs) for every input and output.
+
 ## Picking files
 
 `dialog.open` returns an array of paths, or `null` when the user cancels. It takes an optional object: `title`, `defaultPath`, `filters` (`[{"name": "Images", "extensions": ["png", "jpg"]}]`), and `multiple`:
@@ -39,13 +41,13 @@ const paths = await window.vitra.invoke("dialog.open", {
 });
 ```
 
-Without `multiple` (or with anything but `true`) the dialog selects one file, as before. With `multiple: true` the Linux, macOS, and Windows hosts let the user select several files and return all of them. A host that cannot do that returns `platform.ErrUnsupported`; it never quietly returns a single file. Custom hosts opt in by implementing `platform.MultiFileOpener`.
+Without `multiple` (or with `false`) the dialog selects one file, as before; a `multiple` that is not a boolean is rejected. With `multiple: true` the Linux, macOS, and Windows hosts let the user select several files and return all of them. A host that cannot do that returns `platform.ErrUnsupported`; it never quietly returns a single file. Custom hosts opt in by implementing `platform.MultiFileOpener`.
 
 Picking a file grants nothing. Reading it with `fs.read` still needs an `fs.read` grant whose path scope covers it.
 
 ## Binding by hand
 
-`UseOfficialPlugins` is a convenience over the pieces in `desktop`. To change how a command behaves, register the plugin yourself and bind its commands to a service:
+`UseOfficialPlugins` is a convenience over the pieces in `desktop`. To change how a command behaves, register the plugin yourself and bind its commands to a service with `vitra.Bind`, which gives a plugin's command a typed handler:
 
 ```go
 if err := rt.RegisterPlugin(ctx, official.Clipboard()); err != nil {
@@ -56,11 +58,13 @@ clips := &desktop.ClipboardService{
     OnRead:  func(context.Context) (string, error) { return host.ClipboardGet() },
     OnWrite: func(_ context.Context, s string) error { return host.ClipboardSet(s) },
 }
-rt.BindExecutor("clipboard.read", domain.CallerExecutorFunc(
-    func(ctx context.Context, caller domain.Caller, _ any) (any, error) {
-        return clips.Read(ctx, caller)
-    }))
+err := vitra.Bind(rt, "clipboard.read",
+    func(ctx context.Context, inv domain.Invocation, _ struct{}) (string, error) {
+        return clips.Read(ctx, inv.Caller)
+    })
 ```
+
+Pass `inv.Caller` to the service, never an identity from the input. For input, reuse the types in `plugin/official` so your binding decodes and validates exactly as the built-in one does. Use `vitra.Void` as the output of a command that returns nothing.
 
 Registering a plugin claims its permissions, so no other plugin can declare them.
 

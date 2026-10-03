@@ -31,7 +31,20 @@ err := vitra.Register(rt, vitra.Command[RenameRequest, RenameResult]{
 - **Input** is decoded strictly: unknown fields and type mismatches are rejected before your handler runs.
 - **Output** is sent back as JSON.
 
-Use `struct{}` for a command with no input.
+Use `struct{}` for a command with no input, and `vitra.Void` for one that returns nothing: the page receives `null`, and the client types the call as `Promise<void>`.
+
+### Typing a plugin's commands
+
+A plugin contributes command definitions without handlers. `vitra.Bind` attaches a typed handler to one, keeping the plugin's name, description, and permission, with the same strict decoding and client types as `vitra.Register`:
+
+```go
+err := vitra.Bind(rt, "notes.rename",
+    func(ctx context.Context, inv domain.Invocation, req RenameRequest) (RenameResult, error) {
+        ...
+    })
+```
+
+`app.UseOfficialPlugins` binds every [official command](/reference/plugins#inputs-and-outputs) this way.
 
 ### Binding the input to the authorized path
 
@@ -74,7 +87,9 @@ const client = createClient(window.vitra.invoke);
 await client.notesRename({ path, newName }, path);
 ```
 
-Types follow `encoding/json`: `json` tags, `omitempty` makes a field optional, pointers and slices may be `null`.
+Types follow `encoding/json`: `json` tags, `omitempty` makes a field optional, pointers and slices may be `null`. An input whose fields are all optional may be left out.
+
+Without `--app`, `vitra generate typescript` writes a client for the official plugins only, typed as `app.UseOfficialPlugins` binds them. Commands registered with `Runtime.RegisterCommand` or bound with `Runtime.BindExecutor` are typed `unknown`.
 
 ## Untyped commands
 

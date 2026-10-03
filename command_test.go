@@ -2,12 +2,14 @@ package vitra_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
 
 	"go.klarlabs.de/vitra"
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/plugin"
 )
 
 type greetIn struct {
@@ -178,5 +180,108 @@ func TestRuntime_TypeScriptIncludesTypedCommands(t *testing.T) {
 		if !strings.Contains(ts, want) {
 			t.Errorf("missing %q in:\n%s", want, ts)
 		}
+	}
+}
+
+// greetPlugin contributes the greet command without an executor, as
+// official and third-party plugins do.
+type greetPlugin struct{}
+
+func (greetPlugin) Manifest() plugin.Manifest {
+	return plugin.Manifest{ID: "example.greet", Name: "Greet", Version: plugin.SemVer{Major: 1},
+		Permissions: []domain.PermissionName{"greet"}}
+}
+
+func (greetPlugin) Contribute() (plugin.Contribution, error) {
+	cmd, err := domain.NewCommandDefinition("greet", "Greet someone", "greet")
+	if err != nil {
+		return plugin.Contribution{}, err
+	}
+	cmd.WithPlugin("example.greet")
+	return plugin.Contribution{Commands: []*domain.CommandDefinition{cmd}}, nil
+}
+
+func pluginRuntime(t *testing.T) *vitra.Runtime {
+	t.Helper()
+	rt := typedRuntime(t)
+	if err := rt.RegisterPlugin(context.Background(), greetPlugin{}); err != nil {
+		t.Fatal(err)
+	}
+	return rt
+}
+
+// Bind gives a plugin-contributed command a typed handler: strict decoding,
+// the authorized invocation, and a typed client.
+func TestBind_TypesAPluginCommand(t *testing.T) {
+	rt := pluginRuntime(t)
+	var gotWindow domain.WindowID
+	if err := vitra.Bind(rt, "greet", func(_ context.Context, inv domain.Invocation, in greetIn) (greetOut, error) {
+		gotWindow = inv.Caller.Window
+		return greetOut{Message: "hi " + in.Name}, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	out, err := invokeAs(t, rt, "greet", map[string]any{"name": "Ada"}, "")
+	if got, _ := out.(greetOut); err != nil || got.Message != "hi Ada" || gotWindow != "main" {
+		t.Fatalf("greet = %v, %v (window %q)", out, err, gotWindow)
+	}
+	if _, err := invokeAs(t, rt, "greet", map[string]any{"name": "Ada", "admin": true}, ""); !errors.Is(err, &domain.ErrValidation{}) {
+		t.Fatalf("unknown field: %v, want a validation error", err)
+	}
+	ts, err := rt.TypeScript("app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "greet(input: GreetIn, resourcePath?: string): Promise<GreetOut>;"; !strings.Contains(ts, want) {
+		t.Fatalf("missing %q in:\n%s", want, ts)
+	}
+	// The plugin's description and permission are kept.
+	if !strings.Contains(ts, "/** Greet someone — requires permission `greet` */") {
+		t.Fatalf("plugin definition not kept:\n%s", ts)
+	}
+}
+
+func TestBind_RequiresARegisteredCommandAndHandler(t *testing.T) {
+	rt := pluginRuntime(t)
+	h := func(context.Context, domain.Invocation, greetIn) (greetOut, error) { return greetOut{}, nil }
+	var nf *domain.ErrNotFound
+	if err := vitra.Bind(rt, "missing", h); !errors.As(err, &nf) {
+		t.Fatalf("Bind on an unknown command: %v, want not found", err)
+	}
+	if err := vitra.Bind[greetIn, greetOut](rt, "greet", nil); err == nil {
+		t.Fatal("Bind accepted a nil handler")
+	}
+	if _, err := invokeAs(t, rt, "greet", nil, ""); err == nil {
+		t.Fatal("a failed Bind left an executor behind")
+	}
+}
+
+// A Void command returns nothing: the frontend gets null, and the generated
+// client says Promise<void>.
+func TestVoid_IsNullOnTheWireAndVoidInTheClient(t *testing.T) {
+	rt := typedRuntime(t)
+	called := false
+	if err := vitra.Register(rt, vitra.Command[struct{}, vitra.Void]{
+		Name: "ping", Permission: "greet",
+		Handler: func(context.Context, domain.Invocation, struct{}) (vitra.Void, error) {
+			called = true
+			return vitra.Void{}, nil
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	out, err := invokeAs(t, rt, "ping", nil, "")
+	if err != nil || out != nil || !called {
+		t.Fatalf("ping = %#v, %v (called %v); want nil output", out, err, called)
+	}
+	if b, err := json.Marshal(vitra.Void{}); err != nil || string(b) != "null" {
+		t.Fatalf("Void encodes as %s, %v", b, err)
+	}
+	ts, err := rt.TypeScript("app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "ping(input?: {}, resourcePath?: string): Promise<void>;"; !strings.Contains(ts, want) {
+		t.Fatalf("missing %q in:\n%s", want, ts)
 	}
 }
