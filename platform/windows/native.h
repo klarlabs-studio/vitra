@@ -65,7 +65,12 @@ char *vitra_open_directory_dialog(const char *title, const char *default_path);
 int vitra_message_dialog(const char *title, const char *message, int confirm);
 int vitra_show_notification(const char *title, const char *body);
 
-void vitra_tray_set(const char *tooltip, const void *png, int png_len);
+/* click_activates: a left click calls goVitraTrayClick instead of reporting
+ * the "tray.activate" action (the menu stays on right click). */
+void vitra_tray_set(const char *tooltip, const void *png, int png_len, int click_activates);
+/* vitra_tray_anchor stores the notification icon's rectangle in screen
+ * pixels; 0 when no icon is shown. */
+int vitra_tray_anchor(int *x, int *y, int *w, int *h);
 void vitra_tray_clear_menu(void);
 void vitra_tray_add_menu_item(const char *item_id, const char *item_label, int flags);
 void vitra_tray_clear(void);

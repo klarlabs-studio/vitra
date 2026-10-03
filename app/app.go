@@ -85,8 +85,10 @@ type App struct {
 	windows map[domain.WindowID]WindowOptions
 	// tokens holds each window's bridge sender token (see bridge.Preload).
 	tokens map[domain.WindowID]string
-	// actions is the native activation fan-out (see OnAction).
-	actions actionFanout
+	// actions and trayClicks fan native activations out to Go handlers and
+	// page events (see OnAction, OnTrayClick).
+	actions    fanout[string]
+	trayClicks fanout[platform.TrayClick]
 	// tray is whether SetTray last showed a tray (under mu).
 	tray bool
 }
@@ -338,12 +340,21 @@ type eventMsg struct {
 
 // Emit pushes a host→frontend event to every open window subscribed to name.
 func (a *App) Emit(ctx context.Context, name domain.EventName, payload any) error {
+	return a.emitTo(ctx, name, payload, nil)
+}
+
+// emitTo emits like Emit, to the subscribed windows in allowed only (all of
+// them when allowed is nil).
+func (a *App) emitTo(ctx context.Context, name domain.EventName, payload any, allowed map[domain.WindowID]bool) error {
 	deliveries, err := a.rt.EmitEvent(name, payload)
 	if err != nil {
 		return err
 	}
 	var first error
 	for _, d := range deliveries {
+		if allowed != nil && !allowed[d.Window] {
+			continue
+		}
 		msg := mustJSON(eventMsg{Type: "event", Event: string(d.Event.Name), Payload: d.Event.Payload})
 		if err := a.host.PostMessage(ctx, d.Window, msg); err != nil && first == nil {
 			first = err

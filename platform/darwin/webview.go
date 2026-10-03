@@ -39,6 +39,7 @@ type Host struct {
 	onReject    func(domain.WindowID, string)
 	onNav       func(domain.WindowID, string) bool
 	onAction    func(id string)
+	onTrayClick func(platform.TrayClick)
 	onDrop      func(windowID domain.WindowID, paths []string)
 	onDestroy   func(windowID domain.WindowID)
 	looping     bool
@@ -191,6 +192,10 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeaturePresentation: {
 			Feature: platform.FeaturePresentation, Available: true,
 			Detail: "NSApplicationActivationPolicyAccessory: no Dock icon or app menu",
+		},
+		platform.FeatureTrayAnchor: {
+			Feature: platform.FeatureTrayAnchor, Available: true,
+			Detail: "status item frame, in top-left screen points",
 		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,
@@ -730,7 +735,11 @@ func (h *Host) SetTray(spec platform.TraySpec) error {
 		if spec.Template {
 			template = 1
 		}
-		C.vitra_tray_set(ct, ctitle, icon, C.int(len(spec.Icon)), template)
+		var clicks C.int
+		if spec.ClickActivates {
+			clicks = 1
+		}
+		C.vitra_tray_set(ct, ctitle, icon, C.int(len(spec.Icon)), template, clicks)
 		C.vitra_tray_clear_menu()
 		for _, it := range spec.Items {
 			cid := C.CString(it.ID)
@@ -743,6 +752,64 @@ func (h *Host) SetTray(spec platform.TraySpec) error {
 	})
 	<-done
 	return nil
+}
+
+// SetTrayClickHandler registers fn for left clicks on a tray whose spec
+// sets ClickActivates.
+func (h *Host) SetTrayClickHandler(fn func(platform.TrayClick)) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.onTrayClick = fn
+}
+
+// TrayAnchor returns the status item's rectangle in top-left screen points.
+func (h *Host) TrayAnchor() (platform.Rect, error) {
+	type result struct {
+		r  platform.Rect
+		ok bool
+	}
+	ch := make(chan result, 1)
+	h.dispatch(func() {
+		var x, y, w, hgt C.int
+		ok := C.vitra_tray_anchor(&x, &y, &w, &hgt) != 0
+		ch <- result{platform.Rect{X: int(x), Y: int(y), Width: int(w), Height: int(hgt)}, ok}
+	})
+	got := <-ch
+	if !got.ok {
+		return platform.Rect{}, &platform.ErrUnsupported{Feature: platform.FeatureTrayAnchor, OS: platform.OSDarwin, Detail: "no status item is shown in the menu bar"}
+	}
+	return got.r, nil
+}
+
+// clickTray runs a left click on the status item (tests).
+func (h *Host) clickTray() {
+	done := make(chan struct{})
+	h.dispatch(func() {
+		C.vitra_tray_click()
+		close(done)
+	})
+	<-done
+}
+
+//export goVitraTrayClick
+func goVitraTrayClick(x, y, w, hgt, has C.int) {
+	activeMu.Lock()
+	h := active
+	activeMu.Unlock()
+	if h == nil {
+		return
+	}
+	h.mu.Lock()
+	fn := h.onTrayClick
+	h.mu.Unlock()
+	if fn == nil {
+		return
+	}
+	click := platform.TrayClick{HasAnchor: has != 0}
+	if click.HasAnchor {
+		click.Anchor = platform.Rect{X: int(x), Y: int(y), Width: int(w), Height: int(hgt)}
+	}
+	go fn(click)
 }
 
 // trayState reports the status item as AppKit holds it (tests).

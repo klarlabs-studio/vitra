@@ -74,12 +74,11 @@ Each milestone is one PR and adds its own tests, docs and CHANGELOG entry.
 - Tests: option validation (an accessory app with no window and no tray is an
   error at `Run`), and that the packaging plist contains the key.
 
-### M3 — Tray activation and anchor (`feat(tray)`)
+### M3 — Tray activation and anchor (`feat(tray)`) — delivered
 
-- Split clicks. A primary click emits `tray.click` with `{x, y, anchor}`; a
-  secondary click opens the menu.
-  - Rule: if `TraySpec` has a menu and no click handler is registered, a
-    primary click opens the menu, matching how tray icons behave today.
+- Split clicks with `TraySpec.ClickActivates`: a primary click emits
+  `tray.click` with `{anchor}` and a secondary click opens the menu. Without
+  it, clicks behave as before (menu on macOS, `tray.activate` elsewhere).
 - `platform.TrayAnchor() (Rect, error)` returns the icon's screen rect:
   - darwin: `button.window.frame`
   - Windows: `Shell_NotifyIconGetRect`

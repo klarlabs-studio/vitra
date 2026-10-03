@@ -260,3 +260,51 @@ func trayPNG(t *testing.T) []byte {
 }
 
 func reflectEqual(a, b any) bool { return fmt.Sprint(a) == fmt.Sprint(b) }
+
+// With ClickActivates a left click is a tray click carrying the position the
+// panel reported, which TrayAnchor then returns.
+func TestTraySNIClickActivates(t *testing.T) {
+	watcher := startFake(t, "fake_sni_watcher.py")
+	h := newHostOnThisThread()
+	actions := make(chan string, 4)
+	h.SetActionHandler(func(id string) { actions <- id })
+	clicks := make(chan platform.TrayClick, 4)
+	h.SetTrayClickHandler(func(c platform.TrayClick) { clicks <- c })
+	if err := h.SetTray(platform.TraySpec{Title: "42%", ClickActivates: true}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(h.ClearTray)
+	watcher.waitCall("RegisterStatusNotifierItem")
+	if _, err := h.TrayAnchor(); err == nil {
+		t.Fatal("TrayAnchor before any click should be unknown")
+	}
+
+	watcher.send("activateat 1200 4")
+	select {
+	case c := <-clicks:
+		want := platform.Rect{X: 1200, Y: 4}
+		if !c.HasAnchor || c.Anchor != want {
+			t.Fatalf("click %+v", c)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("no tray click")
+	}
+	if r, err := h.TrayAnchor(); err != nil || r != (platform.Rect{X: 1200, Y: 4}) {
+		t.Fatalf("TrayAnchor = %+v, %v", r, err)
+	}
+	// A panel that cannot tell where the icon is sends 0,0.
+	watcher.send("activate")
+	select {
+	case c := <-clicks:
+		if c.HasAnchor {
+			t.Fatalf("click without position %+v", c)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("no tray click")
+	}
+	select {
+	case id := <-actions:
+		t.Fatalf("click also reported action %q", id)
+	case <-time.After(200 * time.Millisecond):
+	}
+}

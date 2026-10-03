@@ -115,6 +115,8 @@ application.OnAction(func(id string) {
 })
 ```
 
+Set `ClickActivates` to handle the left click yourself, for example to open a panel: the click goes to `App.OnTrayClick` (and to the page as `tray.click`) with the icon's screen rectangle when the host knows it, and the menu moves to the right click. `App.TrayAnchor` returns the same rectangle at any time. The rectangle is in the host's own window coordinates, so only pass it back to the same host. Some Wayland panels report no position at all.
+
 A menu bar app usually has no Dock icon and no main window. Set `Presentation: app.PresentationAccessory` and leave `Window.ID` empty; call `SetTray` before `Run`, since an app with neither a window nor a tray could not be seen or quit. Closing an accessory app's last window does not quit it. On macOS it runs without a Dock icon or app menu; on Linux and Windows its windows get no taskbar entry. Package it with `vitra package --accessory` so macOS shows no Dock icon from launch either.
 
 ```go

@@ -53,6 +53,7 @@ type Host struct {
 	onMessage   func(domain.WindowID, string, []byte) []byte
 	onNav       func(domain.WindowID, string) bool
 	onAction    func(id string)
+	onTrayClick func(platform.TrayClick)
 	onDrop      func(windowID domain.WindowID, paths []string)
 	onDestroy   func(windowID domain.WindowID)
 	accessory   bool // windows get no taskbar button (under mu)
@@ -186,6 +187,10 @@ func (h *Host) Features() platform.FeatureSet {
 		platform.FeaturePresentation: {
 			Feature: platform.FeaturePresentation, Available: true,
 			Detail: "accessory windows are owned by a hidden window, so they get no taskbar button",
+		},
+		platform.FeatureTrayAnchor: {
+			Feature: platform.FeatureTrayAnchor, Available: true,
+			Detail: "Shell_NotifyIconGetRect, in screen pixels",
 		},
 		platform.FeatureSingleInstance: {
 			Feature: platform.FeatureSingleInstance, Available: true,
@@ -737,7 +742,11 @@ func (h *Host) SetTray(spec platform.TraySpec) error {
 			icon = C.CBytes(spec.Icon)
 			defer C.free(icon)
 		}
-		C.vitra_tray_set(ct, icon, C.int(len(spec.Icon)))
+		var clicks C.int
+		if spec.ClickActivates {
+			clicks = 1
+		}
+		C.vitra_tray_set(ct, icon, C.int(len(spec.Icon)), clicks)
 		C.vitra_tray_clear_menu()
 		for _, it := range spec.Items {
 			cid := C.CString(it.ID)
@@ -750,6 +759,54 @@ func (h *Host) SetTray(spec platform.TraySpec) error {
 	})
 	<-done
 	return nil
+}
+
+// SetTrayClickHandler registers fn for left clicks on a tray whose spec
+// sets ClickActivates.
+func (h *Host) SetTrayClickHandler(fn func(platform.TrayClick)) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.onTrayClick = fn
+}
+
+// TrayAnchor returns the notification icon's rectangle in screen pixels.
+func (h *Host) TrayAnchor() (platform.Rect, error) {
+	type result struct {
+		r  platform.Rect
+		ok bool
+	}
+	ch := make(chan result, 1)
+	h.dispatch(func() {
+		var x, y, w, hgt C.int
+		ok := C.vitra_tray_anchor(&x, &y, &w, &hgt) != 0
+		ch <- result{platform.Rect{X: int(x), Y: int(y), Width: int(w), Height: int(hgt)}, ok}
+	})
+	got := <-ch
+	if !got.ok {
+		return platform.Rect{}, &platform.ErrUnsupported{Feature: platform.FeatureTrayAnchor, OS: platform.OSWindows, Detail: "no notification icon is shown"}
+	}
+	return got.r, nil
+}
+
+//export goVitraTrayClick
+func goVitraTrayClick(x, y, w, hgt, has C.int) {
+	activeMu.Lock()
+	h := active
+	activeMu.Unlock()
+	if h == nil {
+		return
+	}
+	h.mu.Lock()
+	fn := h.onTrayClick
+	h.mu.Unlock()
+	if fn == nil {
+		return
+	}
+	click := platform.TrayClick{HasAnchor: has != 0}
+	if click.HasAnchor {
+		click.Anchor = platform.Rect{X: int(x), Y: int(y), Width: int(w), Height: int(hgt)}
+	}
+	go fn(click)
 }
 
 // menuFlags packs a menu item's separator, disabled and checked states.

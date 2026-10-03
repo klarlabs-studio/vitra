@@ -17,6 +17,7 @@ extern void goVitraIdle(unsigned long long);
 extern void goVitraDestroy(char *);
 extern int goVitraNav(char *, char *);
 extern void goVitraAction(char *);
+extern void goVitraTrayClick(int, int, int, int, int);
 extern void goVitraDrop(char *, char *);
 
 #define VITRA_MAX_ACTIONS 256
@@ -419,6 +420,38 @@ static LRESULT CALLBACK vitra_wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 	}
 }
 
+static int g_tray_click_activates = 0;
+
+int vitra_tray_anchor(int *x, int *y, int *w, int *h) {
+	if (!g_tray_added || !g_tray_hwnd) {
+		return 0;
+	}
+	NOTIFYICONIDENTIFIER id;
+	memset(&id, 0, sizeof(id));
+	id.cbSize = sizeof(id);
+	id.hWnd = g_tray_hwnd;
+	id.uID = 1;
+	RECT r;
+	if (FAILED(Shell_NotifyIconGetRect(&id, &r))) {
+		return 0;
+	}
+	*x = r.left;
+	*y = r.top;
+	*w = r.right - r.left;
+	*h = r.bottom - r.top;
+	return 1;
+}
+
+static void tray_primary_click(void) {
+	if (!g_tray_click_activates) {
+		goVitraAction("tray.activate");
+		return;
+	}
+	int x = 0, y = 0, w = 0, h = 0;
+	int has = vitra_tray_anchor(&x, &y, &w, &h);
+	goVitraTrayClick(x, y, w, h, has);
+}
+
 static LRESULT CALLBACK tray_wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	switch (msg) {
 	case WM_HOTKEY:
@@ -428,7 +461,7 @@ static LRESULT CALLBACK tray_wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 		if (lParam == WM_RBUTTONUP || lParam == WM_CONTEXTMENU) {
 			show_tray_menu(hwnd);
 		} else if (lParam == WM_LBUTTONUP || lParam == NIN_SELECT) {
-			goVitraAction("tray.activate");
+			tray_primary_click();
 		}
 		return 0;
 	case WM_COMMAND:
@@ -1371,7 +1404,8 @@ int vitra_show_notification(const char *title, const char *body) {
 /* vitra_tray_set shows the notification-area icon: png (Vista+ icons may
  * hold PNG data) or the default application icon when png is NULL. The
  * notification area has no text: the caller folds the title into tooltip. */
-void vitra_tray_set(const char *tooltip, const void *png, int png_len) {
+void vitra_tray_set(const char *tooltip, const void *png, int png_len, int click_activates) {
+	g_tray_click_activates = click_activates;
 	ensure_tray_window();
 	if (!g_tray_hwnd) {
 		return;

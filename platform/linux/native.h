@@ -71,7 +71,11 @@ char *vitra_open_directory_dialog(const char *title, const char *default_path);
 int vitra_message_dialog(const char *title, const char *message, int confirm);
 int vitra_show_notification(const char *title, const char *body);
 
-void vitra_tray_set(const char *tooltip, const char *title, const unsigned char *rgba, int width, int height);
+/* click_activates: a left click calls goVitraTrayClick instead of reporting
+ * the "tray.activate" action (the menu stays on right click). */
+void vitra_tray_set(const char *tooltip, const char *title, const unsigned char *rgba, int width, int height, int click_activates);
+/* vitra_tray_anchor stores the GtkStatusIcon's rectangle; 0 when unknown. */
+int vitra_tray_anchor(int *x, int *y, int *w, int *h);
 void vitra_tray_clear_menu(void);
 void vitra_tray_add_menu_item(const char *item_id, const char *item_label, int flags);
 void vitra_tray_clear(void);
@@ -79,7 +83,10 @@ void vitra_tray_clear(void);
 /* StatusNotifierItem tray (org.kde.StatusNotifierWatcher + dbusmenu). */
 int vitra_sni_available(void);
 int vitra_sni_set(const char *tooltip, const char *title, const unsigned char *argb, int width, int height,
-	const char *const *ids, const char *const *labels, const int *flags, int n);
+	const char *const *ids, const char *const *labels, const int *flags, int n, int click_activates);
+/* vitra_sni_anchor stores the position of the last Activate the panel sent;
+ * 0 when there was none or the panel sent no position. */
+int vitra_sni_anchor(int *x, int *y);
 void vitra_sni_clear(void);
 
 void vitra_win_set_drag_drop(VitraWin *w, int enabled);

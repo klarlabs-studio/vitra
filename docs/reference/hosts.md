@@ -31,6 +31,8 @@ The app checks for each of these with a type assertion when a command needs it. 
 | `Notifier` | `ShowNotification` | `notifications.show` |
 | `MenuBar` | `SetMenuBar`, plus `ActionReporter` | `menu.set`, `menu.clear` |
 | `Tray` | `SetTray(TraySpec)`, `ClearTray`, plus `ActionReporter` | `tray.set`, `tray.clear`, `App.SetTray` |
+| `TrayClickReporter` | `SetTrayClickHandler` | `tray.click` event, `App.OnTrayClick` (with `TraySpec.ClickActivates`) |
+| `TrayAnchorer` | `TrayAnchor` | `App.TrayAnchor` |
 | `GlobalShortcuts` | `RegisterGlobalShortcut`, `UnregisterGlobalShortcut`, plus `ActionReporter` | `shortcut.*` |
 | `ActionReporter` | `SetActionHandler` | `menu.action`, `tray.action`, `shortcut.action` events |
 | `DragDrop` | `EnableDragDrop`, `SetDragDropHandler` | `dragdrop.receive`, `dragdrop.drop` event |
