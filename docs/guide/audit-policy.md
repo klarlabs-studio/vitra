@@ -30,6 +30,18 @@ rt.SetAudit(&audit.JSONLSink{W: f})
 
 Sinks are called synchronously, sometimes from the UI thread. Keep `Append` fast and hand slow work to a goroutine.
 
+### Event JSON
+
+`JSONLSink` and `FileSink` write one object per line, led by its format version:
+
+```json
+{"schema":"1","at":"2026-10-03T12:00:00Z","kind":"command.invoke","window":"main","origin":"vitra://app","action":"notes.save","outcome":"allowed"}
+```
+
+- `schema` is `audit.EventSchema`. A custom sink that writes JSON should encode with `audit.MarshalEvent` so its lines match.
+- `audit.ParseEvent` reads a line back. It reads every schema written by an earlier release of the same major version and refuses newer ones with `audit.ErrUnsupportedSchema`; `FileSink.List` skips such lines. A line without `schema` (Vitra 0.9 and earlier) is read as schema `"1"`.
+- CEF output has no `schema` field: CEF lines are versioned by their own header (`CEF:0|…`).
+
 ### Rotating file sink
 
 ```go
@@ -54,6 +66,7 @@ A policy document lets an administrator restrict an app without rebuilding it:
 
 ```json
 {
+  "schema": "1",
   "deny_permissions": ["clipboard.read", "path.open"],
   "allowed_update_channels": ["stable"],
   "require_update_signature": true,
@@ -70,3 +83,6 @@ rt.SetPolicy(eng)
 - Policy only **tightens**: it can turn an allow into a deny, never the reverse. Each override is audited as `policy.override`.
 - In `production`, update signatures are always required.
 - The document is plain JSON, so MDM tools can deploy it.
+- `schema` is the format version (`policy.DocumentSchema`); `Document.Save` and `Encode` always write it. A runtime reads every schema written for an earlier release of the same major version. A newer or unknown schema is refused with `policy.ErrUnsupportedSchema`, before any field is checked, so a policy is never half-applied. Update the app before deploying a policy in a newer schema.
+- A document without `schema` (written for Vitra 0.9 and earlier) is read as schema `"1"`. **Deprecated:** support for unversioned documents is removed before 1.0. Add `"schema": "1"`.
+- Unknown fields are rejected.
