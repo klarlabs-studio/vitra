@@ -25,11 +25,22 @@ import (
 // privateBus is the private session bus address, or empty when none runs.
 var privateBus string
 
+// TestMain starts the private bus, then keeps the main goroutine on the main
+// thread (init locks it) running whatever onMainThread hands it while the
+// tests run on other goroutines.
 func TestMain(m *testing.M) {
 	stop := startPrivateSessionBus()
-	code := m.Run()
-	stop()
-	os.Exit(code)
+	done := make(chan int)
+	go func() { done <- m.Run() }()
+	for {
+		select {
+		case f := <-mainThreadJobs:
+			f()
+		case code := <-done:
+			stop()
+			os.Exit(code)
+		}
+	}
 }
 
 func startPrivateSessionBus() func() {

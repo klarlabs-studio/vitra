@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"go.klarlabs.de/vitra/domain"
@@ -18,8 +17,7 @@ func TestNativeWindowChrome(t *testing.T) {
 	if os.Getenv("DISPLAY") == "" {
 		t.Skip("DISPLAY is required for GTK window chrome")
 	}
-	runtime.LockOSThread()
-	h := New()
+	h := newHostOnThisThread()
 	if !h.Features().Available(platform.FeatureWindowChrome) {
 		t.Fatal("native host should expose window.chrome")
 	}

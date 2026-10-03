@@ -23,8 +23,13 @@ void vitra_win32_init(const char *prgname);
 const char *vitra_get_program_name(void);
 void vitra_win32_main(void);
 void vitra_win32_quit(void);
+/* Make the calling thread the UI thread: queued jobs are posted to it. */
+void vitra_win32_bind_ui_thread(void);
 /* Queue Go job id for goVitraIdle on the UI thread. */
 void vitra_idle_add(unsigned long long id);
+/* Post Go job id to the UI thread's job window, even from the UI thread. */
+void vitra_idle_post(unsigned long long id);
+unsigned long vitra_current_thread_id(void);
 void vitra_set_devtools(int enabled);
 
 VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload);

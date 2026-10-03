@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"unsafe"
 
 	"go.klarlabs.de/vitra/domain"
@@ -27,6 +28,10 @@ import (
 )
 
 func init() { runtime.LockOSThread() }
+
+// mainThread is the tid of the process's main thread. On Linux the main
+// thread's tid is the process id.
+var mainThread = os.Getpid()
 
 // Host is a WebKitGTK desktop host.
 type Host struct {
@@ -46,6 +51,14 @@ type Host struct {
 	programName string   // WM_CLASS / StartupWMClass; empty → filepath.Base(os.Args[0])
 	jobs        sync.Map // uint64 -> func()
 	jobSeq      uint64
+	// uiThread is the OS thread (Linux tid) that owns GTK: the process's
+	// main thread, which init locks the main goroutine to and Run is
+	// documented to run on. Before Run, only calls from this thread run
+	// inline; calls from any other thread wait for the loop. It is fixed in
+	// New rather than taken from the first thread to call gtk_init:
+	// ensureInit runs inside dispatched calls, so that would bless whichever
+	// goroutine happened to call first.
+	uiThread int
 
 	// Wayland global shortcuts via the GlobalShortcuts portal: the bound set,
 	// in registration order. portalMu serializes rebinding.
@@ -74,8 +87,9 @@ var (
 // New constructs a Linux host.
 func New() *Host {
 	h := &Host{
-		windows: make(map[domain.WindowID]*nativeWindow),
-		origins: make(map[domain.WindowID]domain.Origin),
+		windows:  make(map[domain.WindowID]*nativeWindow),
+		origins:  make(map[domain.WindowID]domain.Origin),
+		uiThread: mainThread,
 	}
 	activeMu.Lock()
 	active = h
@@ -1010,28 +1024,47 @@ func (h *Host) Quit() {
 	h.dispatch(func() { C.vitra_gtk_quit() })
 }
 
-// dispatch runs fn on the UI thread: queued while the loop runs, inline
-// before it starts.
+// dispatch runs fn on the UI thread. It is queued while the loop runs, and
+// also before the loop starts when the caller is not the UI thread:
+// g_idle_add attaches to the default main context, which gtk_main drains once
+// Run starts the loop. Only a call that is already on the UI thread before
+// Run runs inline, so gtk_init and every widget call stay on that thread.
 func (h *Host) dispatch(fn func()) {
-	if !h.enqueue(fn) {
-		fn()
+	if h.enqueue(fn) {
+		return
 	}
+	if !h.onUIThread() {
+		h.post(fn)
+		return
+	}
+	fn()
 }
+
+// onUIThread reports whether the caller runs on the thread that owns GTK.
+func (h *Host) onUIThread() bool { return syscall.Gettid() == h.uiThread }
 
 // enqueue queues fn for the UI thread and reports whether the loop is running
 // to take it.
 func (h *Host) enqueue(fn func()) bool {
 	h.mu.Lock()
-	if !h.looping {
-		h.mu.Unlock()
+	looping := h.looping
+	h.mu.Unlock()
+	if !looping {
 		return false
 	}
+	h.post(fn)
+	return true
+}
+
+// post queues fn on the default main context, whether or not the loop runs
+// yet.
+func (h *Host) post(fn func()) {
+	h.mu.Lock()
 	h.jobSeq++
 	id := h.jobSeq
 	h.mu.Unlock()
 	h.jobs.Store(id, fn)
 	C.vitra_idle_add(C.ulonglong(id))
-	return true
 }
 
 //export goVitraIdle

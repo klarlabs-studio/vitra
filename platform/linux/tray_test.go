@@ -4,7 +4,6 @@ package linux
 
 import (
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ import (
 
 func TestTraySNI(t *testing.T) {
 	watcher := startFake(t, "fake_sni_watcher.py")
-	h := New()
+	h := newHostOnThisThread()
 	got := make(chan string, 8)
 	h.SetActionHandler(func(id string) { got <- id })
 
@@ -116,9 +115,8 @@ func TestTrayFallsBackToGtkStatusIcon(t *testing.T) {
 		t.Skip("DISPLAY is required for GtkStatusIcon")
 	}
 	requireDBusFakes(t)
-	runtime.LockOSThread()
 	// No fake watcher: nobody owns org.kde.StatusNotifierWatcher.
-	h := New()
+	h := newHostOnThisThread()
 	tray := h.Features()[platform.FeatureTray]
 	if !tray.Available || !strings.Contains(tray.Detail, "GtkStatusIcon") {
 		t.Fatalf("no watcher: want GtkStatusIcon tray, got %+v", tray)

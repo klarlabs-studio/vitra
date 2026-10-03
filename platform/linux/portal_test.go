@@ -17,7 +17,7 @@ import (
 
 func newPortalHost(t *testing.T) (*Host, chan string) {
 	t.Helper()
-	h := New()
+	h := newHostOnThisThread()
 	h.forcePortal = true
 	got := make(chan string, 8)
 	h.SetActionHandler(func(id string) { got <- id })
