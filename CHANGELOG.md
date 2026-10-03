@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-03
+
+Consistent errors from every stub host, and a complete Go reference on
+pkg.go.dev.
+
+### Upgrading from 0.8.0
+- Only affects builds without `-tags vitra_native` on Linux. The stub host's errors are now `*platform.ErrUnsupported`. If you compared error text, use `errors.As` and check `Feature` instead.
+
 ### Changed
 - **Breaking:** the Linux stub host (built without `-tags vitra_native`) now fails with `*platform.ErrUnsupported` naming the missing feature, like the macOS and Windows stubs, instead of a plain error. Code that matched the old message text should use `errors.As` instead.
+- The stub hosts that pkg.go.dev renders now document every method, and `platform/linux` has a package overview there.
 
 ## [0.8.0] - 2026-10-02
 
@@ -459,7 +468,8 @@ Windows (WebView2) behind `-tags vitra_native`.
 - Quickstart example demonstrating grant → invoke → navigate denial.
 - Klarlabs tooling: Makefile, golangci-lint, coverctl, nox, warden, shared go-ci.
 
-[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/klarlabs-studio/vitra/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/klarlabs-studio/vitra/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/klarlabs-studio/vitra/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/klarlabs-studio/vitra/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/klarlabs-studio/vitra/compare/v0.6.0...v0.7.0
