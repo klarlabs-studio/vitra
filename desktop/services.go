@@ -59,7 +59,7 @@ type MenuItem struct {
 type MenuService struct {
 	Gateway Gateway
 	Host    platform.Host
-	OnSet   func(ctx context.Context, items []MenuItem) error // optional native hook
+	OnSet   func(ctx context.Context, items []MenuItem) error // native hook; nil fails with ErrUnsupported
 	OnClear func(ctx context.Context) error
 }
 
@@ -71,10 +71,10 @@ func (s *MenuService) SetMenu(ctx context.Context, caller domain.Caller, items [
 	if err := platform.Require(s.Host, platform.FeatureMenuBar); err != nil {
 		return err
 	}
-	if s.OnSet != nil {
-		return s.OnSet(ctx, items)
+	if s.OnSet == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureMenuBar, OS: s.Host.OS(), Detail: "no menu adapter bound"}
 	}
-	return nil
+	return s.OnSet(ctx, items)
 }
 
 // ClearMenu authorizes menu.set then clears the menu bar.
@@ -85,10 +85,10 @@ func (s *MenuService) ClearMenu(ctx context.Context, caller domain.Caller) error
 	if err := platform.Require(s.Host, platform.FeatureMenuBar); err != nil {
 		return err
 	}
-	if s.OnClear != nil {
-		return s.OnClear(ctx)
+	if s.OnClear == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureMenuBar, OS: s.Host.OS(), Detail: "no menu adapter bound"}
 	}
-	return nil
+	return s.OnClear(ctx)
 }
 
 // TrayService manages tray icons/menus.
@@ -107,10 +107,10 @@ func (s *TrayService) SetTray(ctx context.Context, caller domain.Caller, tooltip
 	if err := platform.Require(s.Host, platform.FeatureTray); err != nil {
 		return err
 	}
-	if s.OnSet != nil {
-		return s.OnSet(ctx, tooltip, items)
+	if s.OnSet == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureTray, OS: s.Host.OS(), Detail: "no tray adapter bound"}
 	}
-	return nil
+	return s.OnSet(ctx, tooltip, items)
 }
 
 // ClearTray authorizes tray.set then clears the tray icon.
@@ -121,10 +121,10 @@ func (s *TrayService) ClearTray(ctx context.Context, caller domain.Caller) error
 	if err := platform.Require(s.Host, platform.FeatureTray); err != nil {
 		return err
 	}
-	if s.OnClear != nil {
-		return s.OnClear(ctx)
+	if s.OnClear == nil {
+		return &platform.ErrUnsupported{Feature: platform.FeatureTray, OS: s.Host.OS(), Detail: "no tray adapter bound"}
 	}
-	return nil
+	return s.OnClear(ctx)
 }
 
 // DialogService opens native file, directory, and message dialogs.

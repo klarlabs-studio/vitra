@@ -80,14 +80,10 @@ func scaffoldTypeScriptClient(plugins []scaffoldPlugin) (string, error) {
 }
 
 // typesOnlyHost is the host the CLI binds official plugins to when it only
-// needs their command types. Generating a client never runs a command, so
-// no host method is called beyond the two event-handler setters
-// UseOfficialPlugins installs; any other call would panic on the nil
-// embedded host.
+// needs their command types. It has no optional capabilities, and binding
+// calls no core host method, so the nil embedded host is never reached:
+// generating a client never runs a command.
 type typesOnlyHost struct{ app.DesktopHost }
-
-func (typesOnlyHost) SetActionHandler(func(string))                      {}
-func (typesOnlyHost) SetDragDropHandler(func(domain.WindowID, []string)) {}
 
 // bindOfficialTypes registers plugins on rt and binds their commands the
 // way app.UseOfficialPlugins does, so rt.TypeScript types them exactly as

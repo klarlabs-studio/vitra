@@ -138,9 +138,9 @@ func TestGenerateTypeScript_TypedShapes(t *testing.T) {
 }
 
 type pickOptions struct {
-	Title    string   `json:"title,omitempty"`
-	Filters  []string `json:"filters,omitzero"`
-	internal int
+	Title   string   `json:"title,omitempty"`
+	Filters []string `json:"filters,omitzero"`
+	_       int      // unexported fields are not encoded, so they don't count
 }
 
 // An input whose fields are all optional may be left out: null decodes to

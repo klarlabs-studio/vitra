@@ -57,15 +57,19 @@ func (a *App) UseOfficialPlugins(ctx context.Context, plugins ...plugin.Plugin) 
 			return fmt.Errorf("bind %s: %w", p.Manifest().ID, err)
 		}
 	}
-	a.host.SetActionHandler(func(id string) {
-		payload := map[string]any{"id": id}
-		for _, ev := range []domain.EventName{"menu.action", "tray.action", "shortcut.action"} {
-			_ = a.Emit(context.Background(), ev, payload)
-		}
-	})
-	a.host.SetDragDropHandler(func(window domain.WindowID, paths []string) {
-		_ = a.Emit(context.Background(), "dragdrop.drop", map[string]any{"window": string(window), "paths": paths})
-	})
+	if ar, ok := a.host.(platform.ActionReporter); ok {
+		ar.SetActionHandler(func(id string) {
+			payload := map[string]any{"id": id}
+			for _, ev := range []domain.EventName{"menu.action", "tray.action", "shortcut.action"} {
+				_ = a.Emit(context.Background(), ev, payload)
+			}
+		})
+	}
+	if dd, ok := a.host.(platform.DragDrop); ok {
+		dd.SetDragDropHandler(func(window domain.WindowID, paths []string) {
+			_ = a.Emit(context.Background(), "dragdrop.drop", map[string]any{"window": string(window), "paths": paths})
+		})
+	}
 	return nil
 }
 
@@ -147,7 +151,15 @@ func openFiles(h DesktopHost, opts platform.DialogFileOptions) ([]string, error)
 		}
 		return multi.OpenFilesDialog(opts)
 	}
-	path, err := h.OpenFileDialog(opts)
+	dialogs, ok := h.(platform.Dialogs)
+	if !ok {
+		return nil, &platform.ErrUnsupported{
+			Feature: platform.FeatureDialogOpen,
+			OS:      h.OS(),
+			Detail:  "host does not implement platform.Dialogs",
+		}
+	}
+	path, err := dialogs.OpenFileDialog(opts)
 	if err != nil || path == "" {
 		return nil, err
 	}
@@ -171,15 +183,17 @@ func (a *App) bindDialog() error {
 		OnOpen: func(_ context.Context, opts platform.DialogFileOptions) ([]string, error) {
 			return openFiles(h, opts)
 		},
-		OnSave: func(_ context.Context, opts platform.DialogFileOptions) (string, error) {
-			return h.SaveFileDialog(opts)
-		},
-		OnOpenDirectory: func(_ context.Context, opts platform.DialogFileOptions) (string, error) {
-			return h.OpenDirectoryDialog(opts)
-		},
-		OnMessage: func(_ context.Context, title, message, kind string) (bool, error) {
-			return h.MessageDialog(title, message, kind)
-		},
+	}
+	if d, ok := h.(platform.Dialogs); ok {
+		dialogs.OnSave = func(_ context.Context, opts platform.DialogFileOptions) (string, error) {
+			return d.SaveFileDialog(opts)
+		}
+		dialogs.OnOpenDirectory = func(_ context.Context, opts platform.DialogFileOptions) (string, error) {
+			return d.OpenDirectoryDialog(opts)
+		}
+		dialogs.OnMessage = func(_ context.Context, title, message, kind string) (bool, error) {
+			return d.MessageDialog(title, message, kind)
+		}
 	}
 	b := a.binder()
 	on(b, "dialog.open", func(ctx context.Context, caller domain.Caller, in official.DialogOptions) ([]string, error) {
@@ -198,12 +212,10 @@ func (a *App) bindDialog() error {
 }
 
 func (a *App) bindClipboard() error {
-	h := a.host
-	clips := &desktop.ClipboardService{
-		Gateway: a.rt,
-		Host:    h,
-		OnRead:  func(context.Context) (string, error) { return h.ClipboardGet() },
-		OnWrite: func(_ context.Context, text string) error { return h.ClipboardSet(text) },
+	clips := &desktop.ClipboardService{Gateway: a.rt, Host: a.host}
+	if c, ok := a.host.(platform.Clipboard); ok {
+		clips.OnRead = func(context.Context) (string, error) { return c.ClipboardGet() }
+		clips.OnWrite = func(_ context.Context, text string) error { return c.ClipboardSet(text) }
 	}
 	b := a.binder()
 	on(b, "clipboard.read", func(ctx context.Context, caller domain.Caller, _ none) (string, error) {
@@ -214,8 +226,10 @@ func (a *App) bindClipboard() error {
 }
 
 func (a *App) bindBrowser() error {
-	h := a.host
-	browser := &desktop.BrowserService{Gateway: a.rt, Host: h, OnOpen: h.OpenURL}
+	browser := &desktop.BrowserService{Gateway: a.rt, Host: a.host}
+	if o, ok := a.host.(platform.URLOpener); ok {
+		browser.OnOpen = o.OpenURL
+	}
 	b := a.binder()
 	onVoid(b, "browser.open", browser.OpenURL)
 	return b.err()
@@ -231,11 +245,9 @@ func (a *App) bindOS() error {
 }
 
 func (a *App) bindNotification() error {
-	h := a.host
-	notes := &desktop.NotificationService{
-		Gateway: a.rt,
-		Host:    h,
-		OnShow:  func(_ context.Context, title, body string) error { return h.ShowNotification(title, body) },
+	notes := &desktop.NotificationService{Gateway: a.rt, Host: a.host}
+	if n, ok := a.host.(platform.Notifier); ok {
+		notes.OnShow = func(_ context.Context, title, body string) error { return n.ShowNotification(title, body) }
 	}
 	b := a.binder()
 	onVoid(b, "notifications.show", func(ctx context.Context, caller domain.Caller, in official.NotificationInput) error {
@@ -245,34 +257,33 @@ func (a *App) bindNotification() error {
 }
 
 func (a *App) bindPath() error {
-	h := a.host
-	paths := &desktop.PathService{Gateway: a.rt, Host: h, OnOpen: h.OpenPath}
+	paths := &desktop.PathService{Gateway: a.rt, Host: a.host}
+	if o, ok := a.host.(platform.PathOpener); ok {
+		paths.OnOpen = o.OpenPath
+	}
 	b := a.binder()
 	onVoid(b, "path.open", paths.Open)
 	return b.err()
 }
 
 func (a *App) bindWindow() error {
-	h := a.host
 	w := &desktop.WindowService{
 		Gateway: a.rt,
-		Host:    h,
-		OnApply: func(_ context.Context, id domain.WindowID, c platform.WindowChrome) error {
-			return h.ApplyWindowChrome(id, c)
-		},
-		OnRead: func(_ context.Context, id domain.WindowID) (platform.WindowChrome, error) {
-			return h.ReadWindowChrome(id)
-		},
-		OnFocus: func(_ context.Context, id domain.WindowID) error {
-			return h.FocusWindow(id)
-		},
-		OnBlur: func(_ context.Context, id domain.WindowID) error {
-			return h.BlurWindow(id)
-		},
+		Host:    a.host,
 		OnCreate: func(ctx context.Context, o desktop.WindowCreateOptions) error {
 			return a.OpenWindow(ctx, WindowOptions{ID: o.ID, Title: o.Title, Path: o.Path, Width: o.Width, Height: o.Height})
 		},
 		OnClose: a.CloseWindow,
+	}
+	if h, ok := a.host.(platform.WindowControls); ok {
+		w.OnApply = func(_ context.Context, id domain.WindowID, c platform.WindowChrome) error {
+			return h.ApplyWindowChrome(id, c)
+		}
+		w.OnRead = func(_ context.Context, id domain.WindowID) (platform.WindowChrome, error) {
+			return h.ReadWindowChrome(id)
+		}
+		w.OnFocus = func(_ context.Context, id domain.WindowID) error { return h.FocusWindow(id) }
+		w.OnBlur = func(_ context.Context, id domain.WindowID) error { return h.BlurWindow(id) }
 	}
 	b := a.binder()
 	on(b, "window.create", func(ctx context.Context, caller domain.Caller, in official.WindowCreateInput) (official.WindowCreated, error) {
@@ -353,14 +364,13 @@ func menuItems(items []official.MenuItem) []desktop.MenuItem {
 }
 
 func (a *App) bindMenu() error {
-	h, primary := a.host, a.opts.Window.ID
-	menus := &desktop.MenuService{
-		Gateway: a.rt,
-		Host:    h,
-		OnSet: func(_ context.Context, items []desktop.MenuItem) error {
+	primary := a.opts.Window.ID
+	menus := &desktop.MenuService{Gateway: a.rt, Host: a.host}
+	if h, ok := a.host.(platform.MenuBar); ok {
+		menus.OnSet = func(_ context.Context, items []desktop.MenuItem) error {
 			return h.SetMenuBar(primary, nativeItems(items, "App"))
-		},
-		OnClear: func(context.Context) error { return h.SetMenuBar(primary, nil) },
+		}
+		menus.OnClear = func(context.Context) error { return h.SetMenuBar(primary, nil) }
 	}
 	b := a.binder()
 	onVoid(b, "menu.set", func(ctx context.Context, caller domain.Caller, in official.MenuInput) error {
@@ -373,14 +383,12 @@ func (a *App) bindMenu() error {
 }
 
 func (a *App) bindTray() error {
-	h := a.host
-	trays := &desktop.TrayService{
-		Gateway: a.rt,
-		Host:    h,
-		OnSet: func(_ context.Context, tooltip string, items []desktop.MenuItem) error {
+	trays := &desktop.TrayService{Gateway: a.rt, Host: a.host}
+	if h, ok := a.host.(platform.Tray); ok {
+		trays.OnSet = func(_ context.Context, tooltip string, items []desktop.MenuItem) error {
 			return h.SetTray(tooltip, nativeItems(items, ""))
-		},
-		OnClear: func(context.Context) error { h.ClearTray(); return nil },
+		}
+		trays.OnClear = func(context.Context) error { h.ClearTray(); return nil }
 	}
 	b := a.binder()
 	onVoid(b, "tray.set", func(ctx context.Context, caller domain.Caller, in official.TrayInput) error {
@@ -393,11 +401,9 @@ func (a *App) bindTray() error {
 }
 
 func (a *App) bindDragDrop() error {
-	h := a.host
-	drops := &desktop.DragDropService{
-		Gateway:  a.rt,
-		Host:     h,
-		OnEnable: func(_ context.Context, id domain.WindowID, on bool) error { return h.EnableDragDrop(id, on) },
+	drops := &desktop.DragDropService{Gateway: a.rt, Host: a.host}
+	if h, ok := a.host.(platform.DragDrop); ok {
+		drops.OnEnable = func(_ context.Context, id domain.WindowID, on bool) error { return h.EnableDragDrop(id, on) }
 	}
 	b := a.binder()
 	onVoid(b, "dragdrop.receive", func(ctx context.Context, caller domain.Caller, in official.DragDropInput) error {
@@ -407,16 +413,14 @@ func (a *App) bindDragDrop() error {
 }
 
 func (a *App) bindShortcut() error {
-	h := a.host
-	shortcuts := &desktop.ShortcutService{
-		Gateway: a.rt,
-		Host:    h,
-		OnRegister: func(_ context.Context, accelerator, action string) error {
+	shortcuts := &desktop.ShortcutService{Gateway: a.rt, Host: a.host}
+	if h, ok := a.host.(platform.GlobalShortcuts); ok {
+		shortcuts.OnRegister = func(_ context.Context, accelerator, action string) error {
 			return h.RegisterGlobalShortcut(accelerator, action)
-		},
-		OnUnregister: func(_ context.Context, accelerator string) error {
+		}
+		shortcuts.OnUnregister = func(_ context.Context, accelerator string) error {
 			return h.UnregisterGlobalShortcut(accelerator)
-		},
+		}
 	}
 	b := a.binder()
 	onVoid(b, "shortcut.register", func(ctx context.Context, caller domain.Caller, in official.ShortcutInput) error {
