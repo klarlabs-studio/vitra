@@ -549,8 +549,27 @@ func openAuditWriter(path string) (io.Writer, string, error) {
 	return f, path, nil
 }
 
+// nativeHost is what this demo uses: the core every host implements, plus
+// the optional capabilities the OS hosts in platform/* all have. A custom
+// host for a smaller app would implement only the core and what it needs.
+type nativeHost interface {
+	app.DesktopHost
+	platform.MenuBar
+	platform.Tray
+	platform.GlobalShortcuts
+	platform.DragDrop
+	platform.FileDropInjector
+	platform.WindowControls
+	platform.ScriptEvaluator
+	platform.SingleInstance
+	platform.URLSchemeRegistrar
+	platform.FileAssociationRegistrar
+	platform.URLOpener
+	platform.Clipboard
+}
+
 // newDesktopHost selects the OS DesktopHost adapter (Linux / Darwin / Windows).
-func newDesktopHost() app.DesktopHost {
+func newDesktopHost() nativeHost {
 	const prog = "vitra-competitive"
 	switch runtime.GOOS {
 	case "darwin":

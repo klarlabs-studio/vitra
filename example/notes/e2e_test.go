@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"go.klarlabs.de/vitra/audit"
+	"go.klarlabs.de/vitra/platform"
 )
 
 // reportPrefix is where the page sends its attack results: the navigation
@@ -80,7 +81,8 @@ setTimeout(function(){
   var r={};document.querySelectorAll("#attack-list li").forEach(function(li){r[li.dataset.attack]=li.querySelector(".result").className+"|"+li.querySelector(".result").textContent;});
   window.location.assign("` + reportPrefix + `"+encodeURIComponent(JSON.stringify(r)));
 },6000);})();`
-		if err := host.Eval(mainWindow, js); err != nil {
+		// The native hosts all run script for tests (platform.ScriptEvaluator).
+		if err := host.(platform.ScriptEvaluator).Eval(mainWindow, js); err != nil {
 			t.Errorf("eval: %v", err)
 			return
 		}

@@ -5,6 +5,8 @@ import (
 	"os"
 	"runtime"
 	"strings"
+
+	"go.klarlabs.de/vitra/platform"
 )
 
 func registerScheme(args []string) error {
@@ -30,12 +32,9 @@ func registerScheme(args []string) error {
 		}
 	}
 	host := currentHost()
-	type schemeRegistrar interface {
-		RegisterURLScheme(scheme, appID, execPath string) error
-	}
-	reg, ok := host.(schemeRegistrar)
+	reg, ok := host.(platform.URLSchemeRegistrar)
 	if !ok {
-		return fmt.Errorf("host does not support URL scheme registration")
+		return &platform.ErrUnsupported{Feature: platform.FeatureDeepLink, OS: host.OS(), Detail: "host does not implement platform.URLSchemeRegistrar"}
 	}
 	if err := reg.RegisterURLScheme(scheme, appID, execPath); err != nil {
 		return err
@@ -96,12 +95,9 @@ func registerFiles(args []string) error {
 		name = appID
 	}
 	host := currentHost()
-	type fileRegistrar interface {
-		RegisterFileAssociations(appID, execPath, name string, mimeTypes []string) error
-	}
-	reg, ok := host.(fileRegistrar)
+	reg, ok := host.(platform.FileAssociationRegistrar)
 	if !ok {
-		return fmt.Errorf("host does not support file association registration")
+		return &platform.ErrUnsupported{Feature: platform.FeatureFileAssociation, OS: host.OS(), Detail: "host does not implement platform.FileAssociationRegistrar"}
 	}
 	if err := reg.RegisterFileAssociations(appID, execPath, name, mimes); err != nil {
 		return err
