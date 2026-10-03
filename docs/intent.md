@@ -11,8 +11,9 @@ This document is the product charter. Implementation follows DDD/TDD under
 Klarlabs conventions. The repository delivers the **secure runtime kernel**
 and **runnable DesktopHost adapters** on Linux (`platform/linux`), Darwin
 (`platform/darwin`), and Windows (`platform/windows`) under `-tags vitra_native`.
-Linux global OS hotkeys are available on X11 (`XGrabKey`); Wayland stays
-explicit unsupported (use in-window `MenuItem.Shortcut`). SIEM/MDM hooks ship
+Linux global OS hotkeys are available on X11 (`XGrabKey`) and on Wayland
+through the `org.freedesktop.portal.GlobalShortcuts` portal; without the
+portal they stay explicit unsupported (use in-window `MenuItem.Shortcut`). SIEM/MDM hooks ship
 as portable audit exporters (JSONL/CEF) and JSON policy documents on the Phase 5
 ports.
 

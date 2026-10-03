@@ -98,7 +98,11 @@ Command handlers never use this caller. They act as the window that called them.
 
 Every host reports its features (`host.Features()`). Anything unavailable returns `platform.ErrUnsupported` with a reason instead of silently doing nothing. Notable cases:
 
-- **Linux:** global shortcuts work on X11; on Wayland use in-window menu shortcuts.
+- **Linux:** global shortcuts work on X11 (`XGrabKey`). On Wayland they go through the `org.freedesktop.portal.GlobalShortcuts` portal (GNOME 48+, KDE Plasma 6, other desktops whose `xdg-desktop-portal` backend implements it). `Features()` reports the shortcut feature available only while that portal is running; without it `shortcut.register` returns `ErrUnsupported`, so fall back to in-window menu shortcuts (`MenuItem.Shortcut`). Through the portal:
+  - The accelerator is the *preferred* key. The desktop may show a consent dialog, and the user can approve, change the key, or refuse. A refusal or cancel is returned as an error from `shortcut.register`.
+  - Each action id is one portal shortcut, so registering a second accelerator for the same action replaces the first.
+  - The portal cannot unbind a single shortcut. `shortcut.unregister` rebinds the remaining shortcuts on a new portal session, which the desktop may confirm with the user again.
+  - Desktops attribute shortcuts to an app id. An unsandboxed app with a reverse-DNS program name (`host.SetProgramName("com.example.Notes")`, matching its `.desktop` file) registers it with the portal, so the user's choices are remembered between runs. Flatpak apps get their id from the sandbox.
 - **macOS:** notifications need an app bundle with a bundle identifier. An unbundled binary (`go run`, `vitra dev`) gets `ErrUnsupported`; package the app with `vitra package --format app-dir`.
 - **Windows:** requires the WebView2 runtime.
 

@@ -216,7 +216,7 @@ Details: [`docs/architecture-ddd.md`](docs/architecture-ddd.md).
 | Windows WebView2 | **Done** (Navigate/Eval/message via WebView2Loader; Evergreen Runtime required) |
 | Windows global shortcuts | **Done** (`RegisterHotKey`) |
 | Darwin global shortcuts | **Done** (`RegisterEventHotKey`; Ctrl→Command) |
-| Linux global shortcuts | **Done on X11** (`XGrabKey`); unsupported on Wayland (use in-window `MenuItem.Shortcut`) |
+| Linux global shortcuts | **Done** on X11 (`XGrabKey`) and on Wayland via the `org.freedesktop.portal.GlobalShortcuts` portal (GNOME 48+, KDE Plasma 6; the user may be asked to approve); `ErrUnsupported` on Wayland without the portal |
 
 ## Stability
 

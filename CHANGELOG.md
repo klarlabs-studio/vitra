@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - If you called official commands through `Runtime.Invoke` in Go, `window.create` now returns `official.WindowCreated` instead of `map[string]any` (same JSON).
 
 ### Added
+- Linux: global shortcuts on Wayland through the `org.freedesktop.portal.GlobalShortcuts` portal (GDBus, no new dependency). `Features()` reports `shortcut.global` available on Wayland only while the portal is running; without it `RegisterGlobalShortcut` still returns `ErrUnsupported`. The desktop may ask the user to approve each binding, and a refusal is returned as an error. Activations arrive as `shortcut.action` events as on X11. Unregistering rebinds the remaining shortcuts on a new portal session, since the portal cannot unbind one. Accelerators are passed as the portal's preferred trigger (`Ctrl+Shift+Y` → `CTRL+SHIFT+y`). (#275)
 - `schema` format version on signed update manifests (`updater.ManifestSchema`), covered by the signature: stripping, adding, or changing it invalidates the manifest. `SignManifest` and `BuildSignedManifest` always write it.
 - `updater.ParseManifest`, which decodes a manifest and checks its schema. `Fetcher.FetchManifest`, `vitra update-apply`, and `vitra update-stage` use it.
 - `schema` format version on policy documents (`policy.DocumentSchema`). `Document.Encode` and `Save` always write it; `ParseDocument` checks it before any other field.

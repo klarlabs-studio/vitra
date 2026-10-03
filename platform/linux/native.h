@@ -75,4 +75,9 @@ int vitra_hotkey_supported(void);
 int vitra_register_hotkey(const char *accelerator, const char *action_id);
 int vitra_unregister_hotkey(const char *accelerator);
 
+/* Wayland global shortcuts (org.freedesktop.portal.GlobalShortcuts). */
+int vitra_gs_portal_version(void);
+int vitra_gs_portal_bind(const char *const *ids, const char *const *triggers, int n, char **err_out);
+void vitra_gs_portal_close(void);
+
 #endif

@@ -930,3 +930,377 @@ int vitra_unregister_hotkey(const char *accelerator) {
 	return 0;
 #endif
 }
+
+/* ===================================================================== *
+ * Wayland global shortcuts: org.freedesktop.portal.GlobalShortcuts.
+ *
+ * XGrabKey (above) needs an X11 display. On Wayland the compositor owns the
+ * keyboard, and the GlobalShortcuts portal is the supported way to ask it
+ * for OS-wide shortcuts. Everything here is plain GDBus, which GTK already
+ * links.
+ *
+ * Flow: CreateSession → BindShortcuts, each answered asynchronously by a
+ * Request.Response signal (0 = granted, 1 = cancelled by the user, 2 = other
+ * failure). Binding may show the desktop's consent dialog, so the calls
+ * block the calling Go goroutine (never the GTK thread) on a private main
+ * context until the response arrives. Activated signals are received on a
+ * dedicated listener thread and forwarded through goVitraAction.
+ *
+ * The portal has no "unbind": the Go side rebinds the remaining set on a
+ * fresh session and closes the old one.
+ * ===================================================================== */
+
+#define VITRA_PORTAL_BUS "org.freedesktop.portal.Desktop"
+#define VITRA_PORTAL_PATH "/org/freedesktop/portal/desktop"
+#define VITRA_PORTAL_GS "org.freedesktop.portal.GlobalShortcuts"
+/* Consent dialogs wait on a person; give them time, but never hang forever. */
+#define VITRA_PORTAL_RESPONSE_TIMEOUT_S 300
+#define VITRA_PORTAL_CALL_TIMEOUT_MS 5000
+
+static GMutex g_gs_mu;
+static char *g_gs_session = NULL; /* current session object path, or NULL */
+static guint g_gs_token = 0;
+static int g_gs_registered = 0;
+static GThread *g_gs_listener = NULL;
+
+static GDBusConnection *gs_bus(void) {
+	/* Process-wide shared connection: GIO keeps it alive; held, never freed. */
+	static GDBusConnection *conn = NULL;
+	if (conn && !g_dbus_connection_is_closed(conn)) {
+		return conn;
+	}
+	GError *err = NULL;
+	GDBusConnection *c = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &err);
+	if (!c) {
+		if (err) {
+			g_error_free(err);
+		}
+		return NULL;
+	}
+	conn = c;
+	return conn;
+}
+
+/* vitra_gs_portal_version returns the GlobalShortcuts portal's interface
+ * version, or 0 when no session bus or no such portal is present. */
+int vitra_gs_portal_version(void) {
+	GDBusConnection *conn = gs_bus();
+	if (!conn) {
+		return 0;
+	}
+	GError *err = NULL;
+	GVariant *ret = g_dbus_connection_call_sync(conn, VITRA_PORTAL_BUS, VITRA_PORTAL_PATH,
+		"org.freedesktop.DBus.Properties", "Get",
+		g_variant_new("(ss)", VITRA_PORTAL_GS, "version"),
+		G_VARIANT_TYPE("(v)"), G_DBUS_CALL_FLAGS_NONE, VITRA_PORTAL_CALL_TIMEOUT_MS, NULL, &err);
+	if (!ret) {
+		if (err) {
+			g_error_free(err);
+		}
+		return 0;
+	}
+	GVariant *v = NULL;
+	g_variant_get(ret, "(v)", &v);
+	int version = 0;
+	if (v && g_variant_is_of_type(v, G_VARIANT_TYPE_UINT32)) {
+		version = (int)g_variant_get_uint32(v);
+	}
+	if (v) {
+		g_variant_unref(v);
+	}
+	g_variant_unref(ret);
+	return version;
+}
+
+static void gs_on_activated(GDBusConnection *conn, const gchar *sender, const gchar *path,
+	const gchar *iface, const gchar *signal, GVariant *params, gpointer user_data) {
+	(void)conn;
+	(void)sender;
+	(void)path;
+	(void)iface;
+	(void)signal;
+	(void)user_data;
+	if (!g_variant_is_of_type(params, G_VARIANT_TYPE("(osta{sv})"))) {
+		return;
+	}
+	const gchar *session = NULL;
+	const gchar *id = NULL;
+	g_variant_get(params, "(&o&sta{sv})", &session, &id, NULL, NULL);
+	g_mutex_lock(&g_gs_mu);
+	int ours = g_gs_session != NULL && g_strcmp0(g_gs_session, session) == 0;
+	g_mutex_unlock(&g_gs_mu);
+	if (ours && id && id[0] != '\0') {
+		/* Shortcut ids are Vitra action ids (see webview.go). */
+		goVitraAction((char *)id);
+	}
+}
+
+static gpointer gs_listener_main(gpointer data) {
+	GDBusConnection *conn = G_DBUS_CONNECTION(data);
+	GMainContext *ctx = g_main_context_new();
+	g_main_context_push_thread_default(ctx);
+	g_dbus_connection_signal_subscribe(conn, VITRA_PORTAL_BUS, VITRA_PORTAL_GS, "Activated",
+		VITRA_PORTAL_PATH, NULL, G_DBUS_SIGNAL_FLAGS_NONE, gs_on_activated, NULL, NULL);
+	GMainLoop *loop = g_main_loop_new(ctx, FALSE);
+	g_main_loop_run(loop); /* for the life of the process */
+	g_main_loop_unref(loop);
+	g_main_context_pop_thread_default(ctx);
+	g_main_context_unref(ctx);
+	g_object_unref(conn);
+	return NULL;
+}
+
+static void gs_ensure_listener(GDBusConnection *conn) {
+	if (g_gs_listener) {
+		return;
+	}
+	g_gs_listener = g_thread_new("vitra-portal-shortcuts", gs_listener_main, g_object_ref(conn));
+}
+
+typedef struct {
+	int done;
+	guint32 code;
+	GVariant *results;
+} GsResponse;
+
+static void gs_on_response(GDBusConnection *conn, const gchar *sender, const gchar *path,
+	const gchar *iface, const gchar *signal, GVariant *params, gpointer user_data) {
+	(void)conn;
+	(void)sender;
+	(void)path;
+	(void)iface;
+	(void)signal;
+	GsResponse *r = (GsResponse *)user_data;
+	if (r->done || !g_variant_is_of_type(params, G_VARIANT_TYPE("(ua{sv})"))) {
+		return;
+	}
+	g_variant_get(params, "(u@a{sv})", &r->code, &r->results);
+	r->done = 1;
+}
+
+static gboolean gs_on_timeout(gpointer user_data) {
+	int *expired = (int *)user_data;
+	*expired = 1;
+	return G_SOURCE_REMOVE;
+}
+
+/* gs_request calls a portal method that answers through a Request object and
+ * waits for its Response. The request path is derived from handle_token and
+ * subscribed before the call (the bus applies the match rule before it routes
+ * the call), so a fast response cannot be missed. Returns the response code
+ * (0 ok, 1 cancelled, 2 other), or 3 on a D-Bus error or timeout; *err_out
+ * describes failures. *results is set (caller unrefs) on code 0. */
+static int gs_request(GDBusConnection *conn, const char *method, GVariant *args, const char *token,
+	GVariant **results, char **err_out) {
+	*results = NULL;
+	const gchar *unique = g_dbus_connection_get_unique_name(conn);
+	if (!unique) {
+		g_variant_unref(g_variant_ref_sink(args));
+		*err_out = g_strdup("session bus connection has no unique name");
+		return 3;
+	}
+	/* ":1.42" → "1_42" per the portal Request spec. */
+	gchar *sender = g_strdup(unique[0] == ':' ? unique + 1 : unique);
+	g_strdelimit(sender, ".", '_');
+	gchar *req_path = g_strdup_printf(VITRA_PORTAL_PATH "/request/%s/%s", sender, token);
+	g_free(sender);
+
+	GMainContext *ctx = g_main_context_new();
+	g_main_context_push_thread_default(ctx);
+	GsResponse resp = {0, 2, NULL};
+	guint sub = g_dbus_connection_signal_subscribe(conn, VITRA_PORTAL_BUS, "org.freedesktop.portal.Request",
+		"Response", req_path, NULL, G_DBUS_SIGNAL_FLAGS_NONE, gs_on_response, &resp, NULL);
+
+	int code = 3;
+	GError *err = NULL;
+	GVariant *ret = g_dbus_connection_call_sync(conn, VITRA_PORTAL_BUS, VITRA_PORTAL_PATH, VITRA_PORTAL_GS,
+		method, args, G_VARIANT_TYPE("(o)"), G_DBUS_CALL_FLAGS_NONE, VITRA_PORTAL_CALL_TIMEOUT_MS, NULL, &err);
+	if (!ret) {
+		*err_out = g_strdup_printf("%s: %s", method, err ? err->message : "call failed");
+		if (err) {
+			g_error_free(err);
+		}
+	} else {
+		const gchar *handle = NULL;
+		g_variant_get(ret, "(&o)", &handle);
+		if (g_strcmp0(handle, req_path) != 0) {
+			/* Every GlobalShortcuts portal honours handle_token; anything
+			 * else would answer on a path nobody listens to. */
+			*err_out = g_strdup_printf("%s: unexpected request handle %s", method, handle);
+		} else {
+			int expired = 0;
+			GSource *timer = g_timeout_source_new_seconds(VITRA_PORTAL_RESPONSE_TIMEOUT_S);
+			g_source_set_callback(timer, gs_on_timeout, &expired, NULL);
+			g_source_attach(timer, ctx);
+			while (!resp.done && !expired) {
+				g_main_context_iteration(ctx, TRUE);
+			}
+			g_source_destroy(timer);
+			g_source_unref(timer);
+			if (resp.done) {
+				code = (int)resp.code;
+				if (code == 0) {
+					*results = resp.results;
+					resp.results = NULL;
+				}
+			} else {
+				*err_out = g_strdup_printf("%s: no response from the portal", method);
+				/* Withdraw the pending request so no dialog outlives us. */
+				GVariant *closed = g_dbus_connection_call_sync(conn, VITRA_PORTAL_BUS, req_path,
+					"org.freedesktop.portal.Request", "Close", NULL, NULL, G_DBUS_CALL_FLAGS_NONE,
+					VITRA_PORTAL_CALL_TIMEOUT_MS, NULL, NULL);
+				if (closed) {
+					g_variant_unref(closed);
+				}
+			}
+		}
+		g_variant_unref(ret);
+	}
+	g_dbus_connection_signal_unsubscribe(conn, sub);
+	if (resp.results) {
+		g_variant_unref(resp.results);
+	}
+	/* Drain what the unsubscribe queued before dropping the context. */
+	while (g_main_context_iteration(ctx, FALSE)) {
+	}
+	g_main_context_pop_thread_default(ctx);
+	g_main_context_unref(ctx);
+	g_free(req_path);
+	return code;
+}
+
+static void gs_close_session(GDBusConnection *conn, const char *session) {
+	if (!conn || !session) {
+		return;
+	}
+	GVariant *ret = g_dbus_connection_call_sync(conn, VITRA_PORTAL_BUS, session, "org.freedesktop.portal.Session",
+		"Close", NULL, NULL, G_DBUS_CALL_FLAGS_NONE, VITRA_PORTAL_CALL_TIMEOUT_MS, NULL, NULL);
+	if (ret) {
+		g_variant_unref(ret);
+	}
+}
+
+/* Tell xdg-desktop-portal which app this host (unsandboxed) process is:
+ * portals key shortcut consent by app id. Only reverse-DNS program names
+ * qualify. Optional interface (xdg-desktop-portal ≥ 1.19); errors ignored. */
+static void gs_register_app(GDBusConnection *conn) {
+	if (g_gs_registered) {
+		return;
+	}
+	g_gs_registered = 1;
+	const char *app = g_get_prgname();
+	if (!app || !strchr(app, '.') || !g_dbus_is_name(app) || g_dbus_is_unique_name(app)) {
+		return;
+	}
+	GVariantBuilder opts;
+	g_variant_builder_init(&opts, G_VARIANT_TYPE_VARDICT);
+	GVariant *ret = g_dbus_connection_call_sync(conn, VITRA_PORTAL_BUS, VITRA_PORTAL_PATH,
+		"org.freedesktop.host.portal.Registry", "Register", g_variant_new("(sa{sv})", app, &opts),
+		NULL, G_DBUS_CALL_FLAGS_NONE, VITRA_PORTAL_CALL_TIMEOUT_MS, NULL, NULL);
+	if (ret) {
+		g_variant_unref(ret);
+	}
+}
+
+/* vitra_gs_portal_bind binds exactly ids[i] → triggers[i] (i < n) on a new
+ * portal session and, on success, closes the previous session. On failure the
+ * previous session (and its shortcuts) stays active. Returns 0 on success,
+ * 1 when the user cancelled or refused, 2 on any other failure; *err_out
+ * (g_free) describes failures. Blocks until the portal answers. Callers
+ * serialize calls (webview.go holds a mutex). */
+int vitra_gs_portal_bind(const char *const *ids, const char *const *triggers, int n, char **err_out) {
+	*err_out = NULL;
+	GDBusConnection *conn = gs_bus();
+	if (!conn) {
+		*err_out = g_strdup("no D-Bus session bus");
+		return 2;
+	}
+	gs_register_app(conn);
+	gs_ensure_listener(conn);
+
+	guint tok = ++g_gs_token;
+	gchar *ctoken = g_strdup_printf("vitra_c%u", tok);
+	gchar *stoken = g_strdup_printf("vitra_s%u", tok);
+	gchar *btoken = g_strdup_printf("vitra_b%u", tok);
+
+	GVariantBuilder opts;
+	g_variant_builder_init(&opts, G_VARIANT_TYPE_VARDICT);
+	g_variant_builder_add(&opts, "{sv}", "handle_token", g_variant_new_string(ctoken));
+	g_variant_builder_add(&opts, "{sv}", "session_handle_token", g_variant_new_string(stoken));
+	GVariant *results = NULL;
+	int code = gs_request(conn, "CreateSession", g_variant_new("(a{sv})", &opts), ctoken, &results, err_out);
+	gchar *session = NULL;
+	if (code == 0) {
+		GVariant *sh = g_variant_lookup_value(results, "session_handle", NULL);
+		if (sh && (g_variant_is_of_type(sh, G_VARIANT_TYPE_STRING) || g_variant_is_of_type(sh, G_VARIANT_TYPE_OBJECT_PATH))) {
+			session = g_variant_dup_string(sh, NULL);
+		}
+		if (sh) {
+			g_variant_unref(sh);
+		}
+		g_variant_unref(results);
+		results = NULL;
+		if (!session || !g_variant_is_object_path(session)) {
+			g_free(session);
+			session = NULL;
+			*err_out = g_strdup("CreateSession: no session handle in the response");
+			code = 2;
+		}
+	} else if (!*err_out) {
+		*err_out = g_strdup(code == 1 ? "CreateSession: cancelled by the user" : "CreateSession: refused by the portal");
+	}
+
+	if (session) {
+		GVariantBuilder list;
+		g_variant_builder_init(&list, G_VARIANT_TYPE("a(sa{sv})"));
+		for (int i = 0; i < n; i++) {
+			GVariantBuilder props;
+			g_variant_builder_init(&props, G_VARIANT_TYPE_VARDICT);
+			g_variant_builder_add(&props, "{sv}", "description", g_variant_new_string(ids[i]));
+			if (triggers[i] && triggers[i][0] != '\0') {
+				g_variant_builder_add(&props, "{sv}", "preferred_trigger", g_variant_new_string(triggers[i]));
+			}
+			g_variant_builder_add(&list, "(sa{sv})", ids[i], &props);
+		}
+		GVariantBuilder bopts;
+		g_variant_builder_init(&bopts, G_VARIANT_TYPE_VARDICT);
+		g_variant_builder_add(&bopts, "{sv}", "handle_token", g_variant_new_string(btoken));
+		code = gs_request(conn, "BindShortcuts", g_variant_new("(oa(sa{sv})sa{sv})", session, &list, "", &bopts),
+			btoken, &results, err_out);
+		if (results) {
+			g_variant_unref(results);
+		}
+		if (code == 0) {
+			g_mutex_lock(&g_gs_mu);
+			gchar *old = g_gs_session;
+			g_gs_session = session;
+			g_mutex_unlock(&g_gs_mu);
+			gs_close_session(conn, old);
+			g_free(old);
+		} else {
+			if (!*err_out) {
+				*err_out = g_strdup(code == 1 ? "BindShortcuts: cancelled or refused by the user"
+				                              : "BindShortcuts: refused by the portal");
+			}
+			gs_close_session(conn, session);
+			g_free(session);
+		}
+	}
+	g_free(ctoken);
+	g_free(stoken);
+	g_free(btoken);
+	return code == 0 ? 0 : (code == 1 ? 1 : 2);
+}
+
+/* vitra_gs_portal_close ends the current session, releasing every shortcut. */
+void vitra_gs_portal_close(void) {
+	g_mutex_lock(&g_gs_mu);
+	gchar *old = g_gs_session;
+	g_gs_session = NULL;
+	g_mutex_unlock(&g_gs_mu);
+	if (old) {
+		gs_close_session(gs_bus(), old);
+		g_free(old);
+	}
+}
+/* ====================== end Wayland global shortcuts ===================== */

@@ -18,7 +18,7 @@ func TestNativeGlobalShortcut(t *testing.T) {
 		t.Skip("DISPLAY is required for X11 global shortcuts")
 	}
 	if strings.EqualFold(os.Getenv("XDG_SESSION_TYPE"), "wayland") || os.Getenv("WAYLAND_DISPLAY") != "" {
-		t.Skip("Wayland session — global shortcuts stay unsupported")
+		t.Skip("Wayland session — shortcuts use the portal (portal_test.go), not XGrabKey")
 	}
 	runtime.LockOSThread()
 
