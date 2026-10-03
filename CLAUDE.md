@@ -22,7 +22,7 @@ make cover
 make e2e            # Linux native Eval→invoke round-trip (needs WebKitGTK + xvfb)
 go test ./... -race
 go run ./example/quickstart
-go run ./cmd/vitra -- help
+go run ./cmd/vitra help
 ```
 
 Zero external dependencies in the kernel — standard library only.
@@ -40,7 +40,7 @@ policy/ audit/ updater/ worker/   Enterprise policy, audit sinks, signed updates
 cmd/vitra/       Developer CLI
 
 internal/        Not importable by apps:
-  application/   Use cases
+  application/   Use cases, invocation pipeline, capability gateway, repository ports
   inmemory/      Default repository adapters
   ipc/ bridge/   Wire envelope + injected frontend preload
   bindings/      TypeScript client generator
@@ -66,4 +66,5 @@ Keep packages apps don't need under `internal/`.
 ## Security Invariants
 
 Encode new privileged behavior as tests. See `docs/intent.md` §9 and existing
-tests in `domain/gateway_test.go`, `domain/invocation_test.go`, `vitra_test.go`.
+tests in `domain/pathscope_test.go`, `internal/application/gateway_test.go`,
+`internal/application/invocation_test.go`, `vitra_test.go`.

@@ -1,10 +1,23 @@
-package domain
+package application
 
 import (
 	"errors"
 	"sync"
 	"time"
+
+	"go.klarlabs.de/vitra/domain"
 )
+
+// ResourceID identifies a long-lived native resource handle.
+type ResourceID string
+
+// NewResourceID validates and returns a ResourceID.
+func NewResourceID(s string) (ResourceID, error) {
+	if s == "" {
+		return "", errors.New("resource id must not be empty")
+	}
+	return ResourceID(s), nil
+}
 
 // ResourceHandle represents a long-lived native resource with ownership.
 // Handles are not unrestricted pointers — closing the owning window must
@@ -13,14 +26,14 @@ type ResourceHandle struct {
 	mu       sync.RWMutex
 	id       ResourceID
 	kind     string
-	owner    WindowID
+	owner    domain.WindowID
 	closed   bool
 	created  time.Time
 	closedAt time.Time
 }
 
 // NewResourceHandle creates an open handle owned by window.
-func NewResourceHandle(id ResourceID, kind string, owner WindowID) (*ResourceHandle, error) {
+func NewResourceHandle(id ResourceID, kind string, owner domain.WindowID) (*ResourceHandle, error) {
 	if id == "" {
 		return nil, errors.New("resource id is required")
 	}
@@ -53,7 +66,7 @@ func (h *ResourceHandle) Kind() string {
 }
 
 // Owner returns the owning window.
-func (h *ResourceHandle) Owner() WindowID {
+func (h *ResourceHandle) Owner() domain.WindowID {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.owner

@@ -28,18 +28,3 @@ func TestWindow_LifecycleAndCaller(t *testing.T) {
 		t.Fatal("closed window must not yield caller")
 	}
 }
-
-func TestResourceHandle_Ownership(t *testing.T) {
-	h, err := domain.NewResourceHandle("res-1", "file", "main")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h.Owner() != "main" || h.IsClosed() {
-		t.Fatal("bad handle")
-	}
-	h.Close()
-	if !h.IsClosed() {
-		t.Fatal("expected closed")
-	}
-	h.Close() // idempotent
-}

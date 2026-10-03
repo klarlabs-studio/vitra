@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"go.klarlabs.de/vitra/domain"
+	"go.klarlabs.de/vitra/internal/application"
 	"go.klarlabs.de/vitra/internal/inmemory"
 )
 
@@ -76,8 +77,8 @@ func TestRepos_RoundTrip(t *testing.T) {
 	}
 
 	resources := inmemory.NewResourceRepo()
-	h, _ := domain.NewResourceHandle("r1", "file", "main")
-	h2, _ := domain.NewResourceHandle("r2", "file", "other")
+	h, _ := application.NewResourceHandle("r1", "file", "main")
+	h2, _ := application.NewResourceHandle("r2", "file", "other")
 	_ = resources.Save(h)
 	_ = resources.Save(h2)
 	gotH, err := resources.Get("r1")

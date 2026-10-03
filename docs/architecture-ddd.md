@@ -8,8 +8,8 @@ to exactly one layer and obeys the dependency direction below.
 
 ```
 vitra (root)            Runtime facade — what consumers import.
-domain/                 Aggregates, value objects, domain services, ports. Zero deps.
-internal/application/   Use cases that orchestrate the domain.
+domain/                 Aggregates, value objects, denials, typed invocations. Zero deps.
+internal/application/   Use cases, the invocation pipeline, the capability gateway, ports.
 internal/inmemory/      In-memory port adapters (tests + single-process kernel).
 cmd/vitra/              Developer CLI (delivery adapter).
 example/                Runnable documentation — not a supported API.
@@ -25,9 +25,10 @@ Infrastructure packages (`platform/*` WebView adapters, `internal/packaging`,
 |---------|---------|---------------|
 | Identity & values | `domain` | `AppID`, `WindowID`, `Origin`, `PermissionName`, `CommandName`, `GrantName` |
 | Window lifecycle | `domain` | `Window` aggregate, navigate/close |
-| Capability | `domain` | `CapabilityGrant`, `PathScope`, `CapabilityGateway`, `Decision` |
-| Commands | `domain` | `CommandDefinition`, `InvocationService` |
-| Resources | `domain` | `ResourceHandle` ownership |
+| Capability | `domain` | `CapabilityGrant`, `PathScope`, `Decision`, `DenialCode`, `EffectiveSurface` |
+| Commands | `domain` | `CommandDefinition`, `CommandExecutor`, `Invocation` |
+| Authorization pipeline | `internal/application` | `CapabilityGateway`, `InvocationService` |
+| Resources | `internal/application` | `ResourceHandle` ownership |
 | Runtime orchestration | `internal/application` | open/navigate/close window, register grant/command, invoke, inspect |
 | Delivery | `vitra`, `cmd/vitra` | facade + CLI |
 
@@ -48,17 +49,21 @@ Infrastructure packages (`platform/*` WebView adapters, `internal/packaging`,
 | `Window` | Non-empty id/origin; navigation forbidden when closed; caller unavailable when closed |
 | `CapabilityGrant` | At least one window, origin, and permission; no duplicate permissions; deny paths win |
 | `CommandDefinition` | Non-empty name and required permission |
-| `ResourceHandle` | Owned by exactly one window; close is idempotent |
+| `ResourceHandle` (`internal/application`) | Owned by exactly one window; close is idempotent |
 
-## Domain Services
+## Services (`internal/application`)
+
+The authorization pipeline is internal: apps reach it through `vitra.Runtime`
+(`Invoke`, `Authorize`, `InspectCapabilities`), so it can change without
+breaking the public `domain` API.
 
 - **`CapabilityGateway`** — evaluates grants; first allow wins; denials are specific and stable.
 - **`InvocationService`** — identify → resolve command → authorize → execute.
 
-## Ports (owned by domain)
+## Ports
 
-- `GrantRepository`, `WindowRepository`, `CommandRepository`, `ResourceRepository`
-- `CommandExecutor`, `CommandExecutorLookup`
+- `internal/application`: `GrantRepository`, `WindowRepository`, `CommandRepository`, `ResourceRepository`, `SubscriptionRepository`, `CommandExecutorLookup`
+- `domain`: `CommandExecutor`, the one port apps implement
 
 ## Composition Root
 
@@ -77,5 +82,6 @@ paths.
 ## Security Mapping
 
 Architectural tests live next to the code that enforces them. See
-`docs/intent.md` § Security Invariants and `domain/gateway_test.go`,
-`domain/invocation_test.go`, `vitra_test.go`.
+`docs/intent.md` § Security Invariants and `domain/pathscope_test.go`,
+`internal/application/gateway_test.go`, `internal/application/invocation_test.go`,
+`vitra_test.go`.

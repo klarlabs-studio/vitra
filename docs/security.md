@@ -217,17 +217,17 @@ rather than compared as URL strings.
 
 | Property | Tests |
 |---|---|
-| New windows have no authority (1) | `domain`: `TestGateway_NewWindowHasNoPrivileges` |
-| Navigation drops authority (2) | `domain`: `TestGateway_NavigationDropsAuthority`; `app`: `TestApp_RunInvokeAndNavPolicy` (exact-origin nav, userinfo and adjacent-port bypasses) |
+| New windows have no authority (1) | `internal/application`: `TestGateway_NewWindowHasNoPrivileges` |
+| Navigation drops authority (2) | `internal/application`: `TestGateway_NavigationDropsAuthority`; `app`: `TestApp_RunInvokeAndNavPolicy` (exact-origin nav, userinfo and adjacent-port bypasses) |
 | Frontend input not trusted (3) | `vitra`: `TestRegister_RejectsMalformedInput`, `TestRegister_BindsInputResourcePathToAuthorizedPath`; `vitra`: `TestBind_TypesAPluginCommand`; `plugin/official`: `TestInputs_RejectUnknownFieldsWrongTypesAndMissingValues`, `TestWindowSizes_RejectInexactOrOutOfRangeNumbers`, `FuzzMenuInput`, `FuzzTrayInput`, `FuzzDialogOptions`, `FuzzShortcutInput`, `FuzzShortcutRef`, `FuzzDragDropInput`, `FuzzWindowCreateInput`, `FuzzWindowRef`, `FuzzWindowAlwaysOnTopInput`, `FuzzWindowTitleInput`, `FuzzWindowSizeInput`, `FuzzWindowIconInput`, `FuzzWindowChromeInput`, `FuzzMessageDialogInput`, `FuzzNotificationInput`; `app`: `TestUseOfficialPlugins_DecodesInputStrictly` |
-| Host-stamped identity (4) | `internal/ipc`: `TestBridge_DiscardsSpoofedCallerIdentity`, `FuzzBridge_DecodeInvoke`; `domain`: `TestInvocationService_RejectsSpoofedOrigin`, `TestCallerExecutorFunc_ReceivesInvokingWindow`, `TestCallerExecutorFunc_FailsClosedWithoutInvocation` |
+| Host-stamped identity (4) | `internal/ipc`: `TestBridge_DiscardsSpoofedCallerIdentity`, `FuzzBridge_DecodeInvoke`; `internal/application`: `TestInvocationService_RejectsSpoofedOrigin`, `TestCallerExecutorFunc_ReceivesInvokingWindow`; `domain`: `TestCallerExecutorFunc_ActsAsInvocationCaller`, `TestCallerExecutorFunc_FailsClosedWithoutInvocation` |
 | Plugins cannot widen each other (6) | `plugin`: `TestRegistry_RejectsPermissionCollision` |
 | No shell by default (7) | `platform/windows`: `TestOpenURL_NeverInvokesShell`, `TestRegEscape` |
 | Verified updates (9) | `updater`: `TestPlanInstall_RequiresValidSignatureAndDigest`, `TestPlanInstall_RequiresNewerVersionSameAppAndChannel`, `TestChannelSource_RequiresHTTPSExceptLoopback`, `TestPlanInstall_RejectsExpiredOrUndatedManifests`, `TestManifest_ExpiryIsSigned`, `TestApplyInstall_RejectsUnsafeArchives`, `TestApplyInstall_EnforcesExtractionLimit`, `FuzzCompareVersions`; `policy`: `TestEngine_AuthorizeUpdate` |
 | Signing secrets outside config (10) | `internal/packaging`: `TestSpec_RejectsInlineSigningSecretPattern` |
 | Dev privileges stay out of release (11) | `policy`: `TestEngine_ProductionForcesSignatureAndBlocksDevPerms`; `app`: `TestRun_DevToolsOffByDefault` |
-| Remote content has no authority (12) | `domain`: `TestGateway_RemoteContentDeniedByDefault`, `TestNavigationPolicy_UntrustedDeniedByDefault` |
-| Deterministic denials (13) | `domain`: `TestGateway_DenialDeterministicAndInspectable`; `app`: `TestApp_AuditsRejectedMessagesAndBlockedNavigation` |
+| Remote content has no authority (12) | `internal/application`: `TestGateway_RemoteContentDeniedByDefault`; `domain`: `TestNavigationPolicy_UntrustedDeniedByDefault` |
+| Deterministic denials (13) | `internal/application`: `TestGateway_DenialDeterministicAndInspectable`; `app`: `TestApp_AuditsRejectedMessagesAndBlockedNavigation` |
 | Unsupported behavior is explicit (14) | `internal/platform/null`: `TestNullHost_ExplicitUnsupportedDialog` |
 | Path scopes | `domain`: `TestPathScope_RejectsBypasses`, `TestPathScope_WindowsDrivePaths`, `TestNewCapabilityGrant_RejectsMalformedPathPatterns`, `FuzzPathScope_Matches`; `desktop`: `TestFileService_ReadFollowsSymlinksOnlyWithinScope`, `TestFileService_WriteCannotEscapeThroughSymlinks`, `TestFileService_ReadCannotBeRacedOutOfScope`, `TestFileService_WriteCannotBeRacedOutOfScope`, `TestFileService_RaceWithoutFdPathLookup`, `TestPathService_OpenCannotBeRacedOutOfScope`, `TestPathService_OpenPassesTheVerifiedPath`; `domain`: `TestPathScope_WithDenyAliases`; `vitra`: `TestRegisterGrant_DenyCoversRealSpelling`; `desktop`: `TestFileService_DenyOnRealPathAppliesThroughAlias`, `TestFileService_DenyIgnoresUnicodeSpelling` |
 | Least-privilege starter | `cmd/vitra`: `TestScaffold_GrantsLeastPrivilegeByDefault` |

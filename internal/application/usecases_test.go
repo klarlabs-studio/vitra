@@ -38,7 +38,7 @@ func TestCloseWindow_ReleasesResources(t *testing.T) {
 	if _, err := open.Execute("main", domain.OriginPackagedLocal); err != nil {
 		t.Fatal(err)
 	}
-	h, err := domain.NewResourceHandle("r1", "stream", "main")
+	h, err := application.NewResourceHandle("r1", "stream", "main")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestInvokeCommand_EndToEnd(t *testing.T) {
 		return "ok:" + input.(string), nil
 	}))
 
-	invoker := &domain.InvocationService{
+	invoker := &application.InvocationService{
 		Commands:  commands,
 		Grants:    grants,
 		Windows:   windows,

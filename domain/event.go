@@ -98,15 +98,6 @@ func (s *Subscription) Close() {
 	s.closed = true
 }
 
-// SubscriptionRepository stores event subscriptions.
-type SubscriptionRepository interface {
-	Save(sub *Subscription) error
-	Get(id SubscriptionID) (*Subscription, error)
-	Delete(id SubscriptionID) error
-	ListByOwner(window WindowID) ([]*Subscription, error)
-	ListByEvent(event EventName) ([]*Subscription, error)
-}
-
 // EventDelivery is one window that should receive an emitted event.
 type EventDelivery struct {
 	Window WindowID
