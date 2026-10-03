@@ -251,6 +251,20 @@ func (h *Host) TrayAnchor() (platform.Rect, error) {
 	return platform.Rect{}, h.err(platform.FeatureTrayAnchor)
 }
 
+// ShowPanel returns ErrUnsupported (FeatureWindowPanel): it needs the
+// native host.
+func (h *Host) ShowPanel(domain.WindowID, platform.Rect, bool) error {
+	return h.err(platform.FeatureWindowPanel)
+}
+
+// HidePanel returns ErrUnsupported (FeatureWindowPanel).
+func (h *Host) HidePanel(domain.WindowID) error { return h.err(platform.FeatureWindowPanel) }
+
+// PanelShown returns ErrUnsupported (FeatureWindowPanel).
+func (h *Host) PanelShown(domain.WindowID) (bool, error) {
+	return false, h.err(platform.FeatureWindowPanel)
+}
+
 // ClearTray does nothing without the native host.
 func (h *Host) ClearTray() {}
 

@@ -126,6 +126,26 @@ static void vitra_tray_show_menu(void);
 
 @end
 
+/* VitraPanel is a borderless tray panel that can still take keyboard focus
+ * (borderless windows cannot by default). hiddenAt is when it last hid
+ * itself on losing key status. */
+@interface VitraPanel : NSPanel
+@property(nonatomic) CFAbsoluteTime hiddenAt;
+@end
+
+@implementation VitraPanel
+- (BOOL)canBecomeKeyWindow {
+	return YES;
+}
+- (BOOL)canBecomeMainWindow {
+	return NO;
+}
+@end
+
+/* A click on the tray icon that took the panel's focus arrives this long
+ * after the panel hid itself; it means "close", not "open again". */
+static const CFAbsoluteTime kVitraPanelReopenGuard = 0.3;
+
 @implementation VitraWinDelegate
 
 - (instancetype)initWithWindowID:(char *)wid {
@@ -186,6 +206,16 @@ static void vitra_tray_show_menu(void);
 	}
 }
 
+- (void)windowDidResignKey:(NSNotification *)notification {
+	if ([notification.object isKindOfClass:[VitraPanel class]]) {
+		VitraPanel *panel = notification.object;
+		if (panel.visible) {
+			panel.hiddenAt = CFAbsoluteTimeGetCurrent();
+			[panel orderOut:nil];
+		}
+	}
+}
+
 @end
 
 struct VitraWin {
@@ -203,6 +233,7 @@ struct VitraWin {
 	int req_width;
 	int req_height;
 	char *icon_path;
+	int panel;
 };
 
 static char *g_program_name = NULL;
@@ -263,7 +294,7 @@ void vitra_idle_add(unsigned long long id) {
 	});
 }
 
-VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload) {
+VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload, int panel) {
 	VitraWin *w = (VitraWin *)calloc(1, sizeof(VitraWin));
 	if (!w) {
 		return NULL;
@@ -304,20 +335,44 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 	w->dropView = [[VitraDropView alloc] initWithFrame:frame windowID:w->id];
 	[w->dropView addSubview:w->view];
 
-	NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
-			   NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
-	w->window = [[NSWindow alloc] initWithContentRect:frame
-					    styleMask:style
-					      backing:NSBackingStoreBuffered
-						defer:NO];
+	w->panel = panel ? 1 : 0;
+	if (panel) {
+		/* Non-activating: showing the panel does not pull the user's
+		 * frontmost app back, as menu bar popovers behave. */
+		VitraPanel *p = [[VitraPanel alloc] initWithContentRect:frame
+							       styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel
+								 backing:NSBackingStoreBuffered
+								   defer:NO];
+		p.floatingPanel = YES;
+		p.level = NSPopUpMenuWindowLevel;
+		p.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary;
+		p.hidesOnDeactivate = NO;
+		p.hasShadow = YES;
+		p.opaque = NO;
+		p.backgroundColor = [NSColor clearColor];
+		w->dropView.wantsLayer = YES;
+		w->dropView.layer.cornerRadius = 10.0;
+		w->dropView.layer.masksToBounds = YES;
+		w->window = p;
+		w->hidden = 1;
+	} else {
+		NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
+				   NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
+		w->window = [[NSWindow alloc] initWithContentRect:frame
+						    styleMask:style
+						      backing:NSBackingStoreBuffered
+							defer:NO];
+	}
 	/* vitra_win_free releases the window: closing it must not as well. */
 	w->window.releasedWhenClosed = NO;
 	w->window.title = title ? [NSString stringWithUTF8String:title] : @"";
 	w->window.contentView = w->dropView;
 	w->window.delegate = w->delegate;
-	[w->window center];
-	[w->window makeKeyAndOrderFront:nil];
-	[NSApp activateIgnoringOtherApps:YES];
+	if (!panel) {
+		[w->window center];
+		[w->window makeKeyAndOrderFront:nil];
+		[NSApp activateIgnoringOtherApps:YES];
+	}
 
 	if (uri && uri[0] != '\0') {
 		NSURL *url = [NSURL URLWithString:[NSString stringWithUTF8String:uri]];
@@ -326,6 +381,84 @@ VitraWin *vitra_win_new(const char *id, const char *title, int width, int height
 		}
 	}
 	return w;
+}
+
+/* Gap between the tray icon and the panel, in points. */
+static const CGFloat kVitraPanelGap = 4.0;
+
+int vitra_panel_show(VitraWin *w, int x, int y, int aw, int ah, int has_anchor) {
+	if (!w || !w->panel) {
+		return 0;
+	}
+	NSArray<NSScreen *> *screens = [NSScreen screens];
+	NSSize size = w->window.frame.size;
+	NSScreen *screen = [NSScreen mainScreen];
+	NSRect frame;
+	if (has_anchor && screens.count > 0) {
+		/* Top-left points → Cocoa coordinates (up from the primary bottom). */
+		CGFloat top = NSMaxY(screens[0].frame);
+		NSRect anchor = NSMakeRect(x, top - y - ah, aw, ah);
+		NSPoint mid = NSMakePoint(NSMidX(anchor), NSMidY(anchor));
+		for (NSScreen *s in screens) {
+			if (NSPointInRect(mid, s.frame)) {
+				screen = s;
+				break;
+			}
+		}
+		frame.size = size;
+		frame.origin.x = NSMidX(anchor) - size.width / 2;
+		if (NSMidY(anchor) < NSMidY(screen.frame)) {
+			frame.origin.y = NSMaxY(anchor) + kVitraPanelGap; /* icon at the bottom: open upward */
+		} else {
+			frame.origin.y = NSMinY(anchor) - size.height - kVitraPanelGap;
+		}
+	} else {
+		NSRect vis = screen.visibleFrame;
+		frame = NSMakeRect(NSMidX(vis) - size.width / 2, NSMidY(vis) - size.height / 2, size.width, size.height);
+	}
+	NSRect vis = screen.visibleFrame;
+	frame.origin.x = MAX(NSMinX(vis), MIN(frame.origin.x, NSMaxX(vis) - size.width));
+	frame.origin.y = MAX(NSMinY(vis), MIN(frame.origin.y, NSMaxY(vis) - size.height));
+	[w->window setFrame:frame display:YES];
+	[w->window makeKeyAndOrderFront:nil];
+	w->hidden = 0;
+	return 1;
+}
+
+int vitra_panel_hide(VitraWin *w) {
+	if (!w || !w->panel) {
+		return 0;
+	}
+	[w->window orderOut:nil];
+	w->hidden = 1;
+	return 1;
+}
+
+int vitra_panel_shown(VitraWin *w) {
+	if (!w || !w->panel) {
+		return -1;
+	}
+	VitraPanel *p = (VitraPanel *)w->window;
+	if (p.visible) {
+		return 1;
+	}
+	return p.hiddenAt > 0 && CFAbsoluteTimeGetCurrent() - p.hiddenAt < kVitraPanelReopenGuard;
+}
+
+void vitra_win_frame(VitraWin *w, int *x, int *y, int *fw, int *fh) {
+	NSArray<NSScreen *> *screens = [NSScreen screens];
+	NSRect r = w->window.frame;
+	CGFloat top = screens.count > 0 ? NSMaxY(screens[0].frame) : 0;
+	*x = (int)NSMinX(r);
+	*y = (int)(top - NSMaxY(r));
+	*fw = (int)NSWidth(r);
+	*fh = (int)NSHeight(r);
+}
+
+void vitra_panel_blur(VitraWin *w) {
+	if (w && w->panel) {
+		[w->delegate windowDidResignKey:[NSNotification notificationWithName:NSWindowDidResignKeyNotification object:w->window]];
+	}
 }
 
 void vitra_win_navigate(VitraWin *w, const char *uri) {

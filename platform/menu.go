@@ -1,5 +1,7 @@
 package platform
 
+import "go.klarlabs.de/vitra/domain"
+
 // MenuItem is a flat native menu-bar entry. Menu is the top-level label
 // (e.g. "File"); ID is the action identifier delivered to SetActionHandler.
 // Shortcut is an optional in-window accelerator (e.g. "Ctrl+Q" or
@@ -36,6 +38,10 @@ type TraySpec struct {
 	// (right) click instead. Without it a click opens the menu on macOS and
 	// reports the "tray.activate" action on Linux and Windows.
 	ClickActivates bool
+	// Panel names a panel window (WindowKindPanel) that a primary click
+	// shows under the icon and hides again; it implies ClickActivates. The
+	// app does this through Panels, so hosts ignore the field.
+	Panel domain.WindowID
 }
 
 // Rect is a screen rectangle in the host's window coordinates: origin at the

@@ -385,20 +385,20 @@ func (a *App) bindMenu() error {
 
 func (a *App) bindTray() error {
 	trays := &desktop.TrayService{Gateway: a.rt, Host: a.host}
-	if h, ok := a.host.(platform.Tray); ok {
+	if _, ok := a.host.(platform.Tray); ok {
 		trays.OnSet = func(_ context.Context, spec desktop.TraySpec) error {
-			return h.SetTray(platform.TraySpec{
+			return a.SetTray(platform.TraySpec{
 				Tooltip: spec.Tooltip, Title: spec.Title, Icon: spec.Icon, Template: spec.Template,
-				Items: nativeItems(spec.Items, ""), ClickActivates: spec.ClickActivates,
+				Items: nativeItems(spec.Items, ""), ClickActivates: spec.ClickActivates, Panel: spec.Panel,
 			})
 		}
-		trays.OnClear = func(context.Context) error { h.ClearTray(); return nil }
+		trays.OnClear = func(context.Context) error { a.ClearTray(); return nil }
 	}
 	b := a.binder()
 	onVoid(b, "tray.set", func(ctx context.Context, caller domain.Caller, in official.TrayInput) error {
 		spec := desktop.TraySpec{
 			Tooltip: in.Tooltip, Title: in.Title, Template: in.Template, Items: menuItems(in.Items),
-			ClickActivates: in.ClickActivates,
+			ClickActivates: in.ClickActivates, Panel: in.Panel,
 		}
 		if in.Icon != "" {
 			// The pipeline has authorized tray.set before this runs, so a

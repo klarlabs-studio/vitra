@@ -39,7 +39,20 @@ void vitra_idle_add(unsigned long long id);
 int vitra_is_main_thread(void);
 void vitra_set_devtools(int enabled);
 
-VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload);
+/* panel: a tray panel (borderless, floating, opened hidden, hidden when it
+ * loses key status) instead of a regular window. */
+VitraWin *vitra_win_new(const char *id, const char *title, int width, int height, const char *uri, const char *preload, int panel);
+/* vitra_panel_show places a panel under the anchor (x, y, w, h in top-left
+ * screen points; centered when has_anchor is 0) and shows it. Returns 0 when
+ * w is not a panel. */
+int vitra_panel_show(VitraWin *w, int x, int y, int aw, int ah, int has_anchor);
+int vitra_panel_hide(VitraWin *w);
+/* vitra_panel_shown is 1 while the panel is visible or hid itself on losing
+ * focus less than a moment ago, 0 otherwise, -1 when w is not a panel. */
+int vitra_panel_shown(VitraWin *w);
+/* Tests: the window's frame in top-left screen points, and a focus loss. */
+void vitra_win_frame(VitraWin *w, int *x, int *y, int *fw, int *fh);
+void vitra_panel_blur(VitraWin *w);
 void vitra_win_navigate(VitraWin *w, const char *uri);
 void vitra_win_eval(VitraWin *w, const char *js);
 void vitra_win_close(VitraWin *w);

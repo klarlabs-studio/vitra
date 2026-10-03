@@ -88,15 +88,17 @@ Each milestone is one PR and adds its own tests, docs and CHANGELOG entry.
 - Tests: action routing (click vs menu item), and anchor plumbing through the
   null host.
 
-### M4 — Tray panel window (`feat(window)`)
+### M4 — Tray panel window (`feat(window)`) — delivered
 
 - `WindowOptions.Kind`: `WindowKindNormal` | `WindowKindPanel`. A panel is
   frameless, non-resizable, always on top, has no taskbar entry, and hides
   when it loses focus.
 - `TraySpec.Panel domain.WindowID`: a primary click toggles that panel, and the
-  host positions it under `TrayAnchor()`, clamped to the visible screen.
-  Shortcut commands `tray.panel.show` / `tray.panel.hide` are gated by
-  `tray.set`.
+  host positions it under the click's anchor (or `TrayAnchor()`), clamped to
+  the visible screen. Go gets `App.ShowTrayPanel` / `App.HideTrayPanel` (for
+  global shortcuts); the page closes its panel with `window.hide`.
+- A menu bar app makes its primary window the panel (`Window.Kind`); `Run`
+  opens it hidden and requires a tray.
 - Hosts:
   - darwin: `NSPanel` with `NSWindowStyleMaskBorderless |
     NSWindowStyleMaskNonactivatingPanel`, `becomesKeyOnlyIfNeeded = NO` so

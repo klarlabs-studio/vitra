@@ -67,6 +67,7 @@ export interface TrayInput {
   icon?: string;
   template?: boolean;
   clickActivates?: boolean;
+  panel?: string;
   items?: MenuItem[] | null;
 }
 

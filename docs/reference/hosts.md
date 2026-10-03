@@ -45,6 +45,7 @@ These are for your own Go code, not official commands:
 | Interface | Methods | For |
 |---|---|---|
 | `SingleInstance` | `TrySingleInstance`, `StartDeepLinkBridge`, `ForwardToPrimary` | One running instance; handing deep links to it |
+| `Panels` | `ShowPanel`, `HidePanel`, `PanelShown` | `WindowKindPanel` windows, `TraySpec.Panel` |
 | `PresentationSetter` | `SetPresentation` | `app.Options.Presentation` (menu bar apps) |
 | `URLSchemeRegistrar` | `RegisterURLScheme` | `vitra register-scheme` |
 | `FileAssociationRegistrar` | `RegisterFileAssociations` | `vitra register-files` |

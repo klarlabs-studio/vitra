@@ -34,6 +34,7 @@ const (
 	FeatureTrayTitle           Feature = "tray.title"
 	FeatureTrayIcon            Feature = "tray.icon"
 	FeatureTrayAnchor          Feature = "tray.anchor"
+	FeatureWindowPanel         Feature = "window.panel"
 	FeaturePresentation        Feature = "app.presentation"
 	FeatureDialogOpen          Feature = "dialog.open"
 	FeatureDialogSave          Feature = "dialog.save"
@@ -162,6 +163,18 @@ func (e *ErrUnsupported) Error() string {
 	return "platform unsupported: " + string(e.Feature) + " on " + string(e.OS)
 }
 
+// WindowKind is the kind of native window a WindowSpec asks for.
+type WindowKind string
+
+const (
+	// WindowKindNormal is a regular, decorated application window.
+	WindowKindNormal WindowKind = ""
+	// WindowKindPanel is a tray panel: frameless, not resizable, above other
+	// windows, without a taskbar entry, opened hidden, and hidden again when
+	// it loses focus. Hosts that implement Panels show it under the tray.
+	WindowKindPanel WindowKind = "panel"
+)
+
 // WindowSpec describes a window to create.
 type WindowSpec struct {
 	ID     domain.WindowID
@@ -169,6 +182,7 @@ type WindowSpec struct {
 	Origin domain.Origin
 	Width  int
 	Height int
+	Kind   WindowKind
 }
 
 // Host is the base native adapter port: the feature matrix and window

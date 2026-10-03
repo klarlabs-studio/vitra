@@ -38,9 +38,16 @@ func (a *App) SetTray(spec TraySpec) error {
 	if err := checkMenuItems(spec.Items); err != nil {
 		return err
 	}
+	if spec.Panel != "" {
+		if _, err := a.panels(); err != nil {
+			return err
+		}
+		spec.ClickActivates = true
+	}
 	if err := h.SetTray(spec); err != nil {
 		return err
 	}
+	a.useTrayPanel(spec.Panel)
 	a.mu.Lock()
 	a.tray = true
 	a.mu.Unlock()
@@ -53,6 +60,7 @@ func (a *App) ClearTray() {
 		h.ClearTray()
 		a.mu.Lock()
 		a.tray = false
+		a.trayPanel = ""
 		a.mu.Unlock()
 	}
 }
@@ -203,12 +211,15 @@ func trayClickPayload(c platform.TrayClick) trayClickEvent {
 	return trayClickEvent{Anchor: &trayRect{X: c.Anchor.X, Y: c.Anchor.Y, Width: c.Anchor.Width, Height: c.Anchor.Height}}
 }
 
-// trayClickWindows are the windows tray.click reaches: the primary window.
-// Other windows have no business reacting to the tray.
+// trayClickWindows are the windows tray.click reaches: the primary window
+// and the tray panel. Other windows have no business reacting to the tray.
 func (a *App) trayClickWindows() map[domain.WindowID]bool {
 	allowed := map[domain.WindowID]bool{}
 	if a.opts.Window.ID != "" {
 		allowed[a.opts.Window.ID] = true
+	}
+	if p := a.currentTrayPanel(); p != "" {
+		allowed[p] = true
 	}
 	return allowed
 }

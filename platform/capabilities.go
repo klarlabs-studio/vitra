@@ -169,6 +169,24 @@ type WindowControls interface {
 	BlurWindow(id domain.WindowID) error
 }
 
+// Panels shows and hides panel windows (WindowKindPanel) next to the tray
+// (FeatureWindowPanel).
+type Panels interface {
+	// ShowPanel places the panel under anchor (above it when the anchor is
+	// in the bottom half of its screen, as a bottom taskbar is), keeps it on
+	// the anchor's screen, and shows and focuses it. Without an anchor
+	// (hasAnchor false), or where windows cannot be placed, as on Wayland,
+	// the panel is centered.
+	ShowPanel(id domain.WindowID, anchor Rect, hasAnchor bool) error
+	// HidePanel hides the panel.
+	HidePanel(id domain.WindowID) error
+	// PanelShown reports whether the panel is shown. It also reports true
+	// for a moment after the panel hid itself on losing focus: when that
+	// happened because the user clicked the tray icon, the click means
+	// "close", not "open again".
+	PanelShown(id domain.WindowID) (bool, error)
+}
+
 // URLOpener opens a URL in the default browser (FeatureOpenURL).
 type URLOpener interface {
 	OpenURL(ctx context.Context, rawURL string) error
