@@ -68,6 +68,10 @@ int vitra_win_activate_accel(VitraWin *w, const char *shortcut);
 /* click_activates: a left click calls goVitraTrayClick and the menu opens on
  * a right (or control-) click, instead of on any click. */
 void vitra_tray_set(const char *tooltip, const char *title, const void *icon, int icon_len, int template_icon, int click_activates);
+/* vitra_rect_placed reports whether a rectangle in Cocoa screen coordinates
+ * has its middle on a screen. */
+int vitra_rect_placed(double x, double y, double w, double h);
+
 /* vitra_tray_anchor stores the status item's rectangle in top-left screen
  * points; returns 0 when no item is shown or placed yet. */
 int vitra_tray_anchor(int *x, int *y, int *w, int *h);

@@ -852,6 +852,23 @@ void vitra_tray_set(const char *tooltip, const char *title, const void *icon, in
 	g_tray.visible = YES;
 }
 
+/* vitra_rect_placed reports whether a rectangle in Cocoa screen
+ * coordinates has its middle on a screen. Not "fits inside one": on
+ * macOS 27 the status item's window rises a point above the screen's top
+ * edge, and requiring containment read every click as not placed yet. */
+int vitra_rect_placed(double x, double y, double w, double h) {
+	if (w <= 0 || h <= 0) {
+		return 0;
+	}
+	NSPoint mid = NSMakePoint(x + w / 2, y + h / 2);
+	for (NSScreen *screen in [NSScreen screens]) {
+		if (NSPointInRect(mid, screen.frame)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 int vitra_tray_anchor(int *x, int *y, int *w, int *h) {
 	NSWindow *win = g_tray ? g_tray.button.window : nil;
 	NSArray<NSScreen *> *screens = [NSScreen screens];
@@ -860,14 +877,7 @@ int vitra_tray_anchor(int *x, int *y, int *w, int *h) {
 	}
 	NSRect r = win.frame;
 	/* Until the menu bar places it, the item sits off screen. */
-	int placed = 0;
-	for (NSScreen *screen in screens) {
-		if (NSWidth(r) > 0 && NSHeight(r) > 0 && NSContainsRect(screen.frame, r)) {
-			placed = 1;
-			break;
-		}
-	}
-	if (!placed) {
+	if (!vitra_rect_placed(NSMinX(r), NSMinY(r), NSWidth(r), NSHeight(r))) {
 		return 0;
 	}
 	/* Cocoa screens grow upward from the primary screen's bottom-left. */
