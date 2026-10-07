@@ -949,6 +949,13 @@ func goVitraTrayClick(x, y, w, hgt, has C.int) {
 	go fn(click)
 }
 
+// rectPlaced reports whether a rectangle in Cocoa screen coordinates has
+// its middle on a screen, which is when the tray anchor counts it as
+// placed by the menu bar.
+func rectPlaced(x, y, w, h float64) bool {
+	return C.vitra_rect_placed(C.double(x), C.double(y), C.double(w), C.double(h)) != 0
+}
+
 // trayState reports the status item as AppKit holds it (tests).
 func (h *Host) trayState() string {
 	ch := make(chan string, 1)

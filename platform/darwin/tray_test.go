@@ -105,3 +105,21 @@ func TestTrayClickActivates(t *testing.T) {
 		t.Fatalf("tray state %q", state)
 	}
 }
+
+// A status item counts as placed when its middle is on a screen, not only
+// when it fits inside one. On macOS 27 the menu bar's item window rises a
+// point above the screen's top edge (1048+33 on a 1080-point screen);
+// requiring containment read every click as "not placed yet", so the
+// panel opened centered on the screen instead of under the icon.
+func TestTrayRectPlacedAllowsAnOverhang(t *testing.T) {
+	// The primary screen's origin is Cocoa's (0, 0) on every setup.
+	if !rectPlaced(10, -3, 20, 10) {
+		t.Error("an item overhanging the screen edge by 3 points is not placed")
+	}
+	if rectPlaced(-100000, -100000, 20, 10) {
+		t.Error("an item off every screen counts as placed")
+	}
+	if rectPlaced(10, 10, 0, 10) {
+		t.Error("an empty item counts as placed")
+	}
+}
